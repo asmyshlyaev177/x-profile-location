@@ -185,32 +185,32 @@ function injectStyles() {
 .x-loc-info {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px 16px 8px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  gap: 4px;
+  padding: 1px 16px 6px;
 }
-.x-loc-badge {
+.x-loc-icon {
+  font-size: 20px;
+  line-height: 1;
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+}
+.x-loc-icon-vpn {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  line-height: 1;
+  cursor: default;
+  user-select: none;
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-.x-loc-location {
-  background: rgba(29, 155, 240, 0.12);
-  color: rgb(29, 155, 240);
-}
-.x-loc-vpn {
-  background: rgba(255, 165, 0, 0.12);
-  color: rgb(205, 127, 50);
-}
-.x-loc-source {
-  background: rgba(113, 118, 123, 0.1);
-  color: rgb(83, 100, 113);
+  background: rgba(220, 38, 38, 0.15);
+  color: rgb(200, 25, 25);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: 4px;
+  padding: 2px 5px;
 }
 `;
   (document.head || document.documentElement).appendChild(style);
@@ -245,38 +245,37 @@ function extractScreenName(card: Element): string | null {
 // ---------------------------------------------------------------------------
 // Build info row DOM element
 // ---------------------------------------------------------------------------
+function makeIcon(emoji: string, tooltip: string): HTMLElement {
+  const span = document.createElement('span');
+  span.className = 'x-loc-icon';
+  span.textContent = emoji;
+  span.title = tooltip;
+  return span;
+}
+
 function buildInfoRow(data: LocationData): HTMLElement {
   const row = document.createElement('div');
   row.className = 'x-loc-info';
 
   if (data.location) {
     const { emoji, label } = getLocationDisplay(data.location);
-    const badge = document.createElement('span');
-    badge.className = 'x-loc-badge x-loc-location';
-    badge.textContent = `${emoji} ${label}`;
-    row.appendChild(badge);
+    row.appendChild(makeIcon(emoji, label));
   }
 
   if (!data.locationAccurate) {
-    const badge = document.createElement('span');
-    badge.className = 'x-loc-badge x-loc-vpn';
-    badge.textContent = '🔒 VPN/Proxy';
-    row.appendChild(badge);
+    const vpn = document.createElement('span');
+    vpn.className = 'x-loc-icon-vpn';
+    vpn.title = 'VPN/Proxy detected';
+    vpn.textContent = '⚠ VPN';
+    row.appendChild(vpn);
   }
 
   if (data.source) {
     const src = data.source.toLowerCase();
-    let sourceText: string | null = null;
     if (src.includes('iphone') || src.includes('ipad')) {
-      sourceText = '🍎 iOS App Store';
+      row.appendChild(makeIcon('🍎', 'iOS App Store'));
     } else if (src.includes('android')) {
-      sourceText = '▶ Google Play';
-    }
-    if (sourceText) {
-      const badge = document.createElement('span');
-      badge.className = 'x-loc-badge x-loc-source';
-      badge.textContent = sourceText;
-      row.appendChild(badge);
+      row.appendChild(makeIcon('🤖', 'Google Play Store'));
     }
   }
 
@@ -298,26 +297,28 @@ async function processCard(card: Element) {
 
   const row = buildInfoRow(data);
 
-  // Find insertion point
-  const followingCountEl = card.querySelector('[data-testid="userFollowingCount"]');
-  if (followingCountEl) {
-    // Insert after the follower/following section (parent row)
-    const section = followingCountEl.closest('div[class]') ?? followingCountEl.parentElement;
-    if (section?.parentElement) {
-      section.parentElement.insertBefore(row, section.nextSibling);
-      return;
+  // Find the @username span, then walk up until we reach the main content container
+  // (identifiable by having 3+ children: avatar row, name row, bio, followers…).
+  // At that point `el` is the name/handle row — insert our info right after it.
+  const atSpan = Array.from(card.querySelectorAll('span')).find(
+    (s) => s.textContent?.trim().toLowerCase() === `@${screenName.toLowerCase()}`,
+  );
+
+  if (atSpan) {
+    let el: Element | null = atSpan;
+    while (el && el !== card) {
+      const parent: Element | null = el.parentElement;
+      if (!parent || parent === card) break;
+      if (parent.children.length >= 3) {
+        parent.insertBefore(row, el.nextSibling);
+        return;
+      }
+      el = parent;
     }
   }
 
-  // After last child of card's first child div
-  const firstDiv = card.querySelector('div');
-  if (firstDiv) {
-    firstDiv.appendChild(row);
-    return;
-  }
-
-  // Fallback: append to card
-  card.appendChild(row);
+  // Fallback: append to the card's outermost content div
+  (card.querySelector('div > div > div') ?? card).appendChild(row);
 }
 
 // ---------------------------------------------------------------------------
