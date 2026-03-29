@@ -1,5 +1,1 @@
-import { render } from 'preact'
-import './index.css'
-import { App } from './app.tsx'
-
-render(<App />, document.getElementById('app')!)
+// Placeholder entry for the extension page (unused at runtime).

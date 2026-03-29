@@ -12,10 +12,12 @@ firefox.browser,
 safari.browser
   ],
   extension: {
-    type: 'overlay',options: 'embedded',manifest: [chrome,brave,firefox,safari],
+    type: 'overlay',
+    options: 'embedded',
+    manifest: [chrome, brave, firefox, safari],
     pages: {
-overlay: 'src/pages/main.html',
-    },    
+      overlay: 'src/pages/main.html',
+    },
   },
   development: {
     template: {
