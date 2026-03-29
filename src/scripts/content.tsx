@@ -71,14 +71,14 @@ const COUNTRY_FLAGS: Record<string, string> = {
 };
 
 const REGION_FLAGS: Record<string, string> = {
-  'Africa': '🌍',
+  'Africa': '⚠️',
   'Australasia': '🌏',
   'East Asia & Pacific': '🌏',
-  'Europe': '🌍',
+  'Europe': '🇪🇺',
   'North Africa': '🌍',
   'North America': '🌎',
   'South America': '🌎',
-  'South Asia': '🌏',
+  'South Asia': '⚠️',
   'West Asia': '🌍',
 };
 
