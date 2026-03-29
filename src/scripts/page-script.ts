@@ -3,15 +3,27 @@
   (window as any).__X_LOC_INJECTED__ = true;
 
   let headersCaptured = false;
+  let storedHeaders: Record<string, string> | null = null;
 
   function dispatchHeaders(headers: Record<string, string>) {
     if (headersCaptured) return;
     if (!headers['authorization']) return;
     headersCaptured = true;
+    storedHeaders = headers;
     window.dispatchEvent(
       new CustomEvent('x-loc-headers-captured', { detail: { headers } })
     );
   }
+
+  // content.tsx starts at document_idle and may miss the initial dispatch.
+  // It sends this event on init to request a re-dispatch of stored headers.
+  window.addEventListener('x-loc-request-headers', () => {
+    if (storedHeaders) {
+      window.dispatchEvent(
+        new CustomEvent('x-loc-headers-captured', { detail: { headers: storedHeaders } })
+      );
+    }
+  });
 
   // Wrap fetch
   const originalFetch = window.fetch.bind(window);

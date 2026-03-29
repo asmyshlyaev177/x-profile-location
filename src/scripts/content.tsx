@@ -2,8 +2,7 @@
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA';
 const API_BASE = 'https://x.com/i/api/graphql';
-const BEARER =
-  'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
+const ABOUT_ACCOUNT_URL = `${API_BASE}/${QUERY_ID}/AboutAccountQuery`;
 
 // ---------------------------------------------------------------------------
 // Country → flag emoji mapping
@@ -99,7 +98,11 @@ interface LocationData {
 
 let apiHeaders: Record<string, string> | null = null;
 const cache = new Map<string, LocationData | null>();
-const pendingSet = new Set<string>();
+// Shared promises — lets concurrent processCard calls for the same user
+// await the same in-flight fetch instead of getting null immediately.
+const pendingMap = new Map<string, Promise<LocationData | null>>();
+let rateLimitResetAt = 0;
+let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -109,69 +112,125 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+function formatCountdown(ms: number): string {
+  const s = Math.ceil(ms / 1000);
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+}
+
+// ---------------------------------------------------------------------------
+// Rate limit toast
+// ---------------------------------------------------------------------------
+function showRateLimitToast() {
+  let toast = document.getElementById('x-loc-rate-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'x-loc-rate-toast';
+    document.body.appendChild(toast);
+  }
+
+  if (rateLimitToastInterval) clearInterval(rateLimitToastInterval);
+
+  function tick() {
+    const remaining = rateLimitResetAt - Date.now();
+    const t = document.getElementById('x-loc-rate-toast');
+    if (remaining <= 0 || !t) {
+      if (rateLimitToastInterval) clearInterval(rateLimitToastInterval);
+      rateLimitToastInterval = null;
+      t?.remove();
+      return;
+    }
+    t.textContent = `⚠ Rate limit hit · resets in ${formatCountdown(remaining)}`;
+  }
+
+  tick();
+  rateLimitToastInterval = setInterval(tick, 1000);
+}
+
+// ---------------------------------------------------------------------------
+// API fetch
+// ---------------------------------------------------------------------------
 async function fetchLocationData(screenName: string): Promise<LocationData | null> {
   const lower = screenName.toLowerCase();
   if (cache.has(lower)) return cache.get(lower)!;
-  if (pendingSet.has(lower)) return null;
+  if (pendingMap.has(lower)) return pendingMap.get(lower)!;
 
-  pendingSet.add(lower);
-  try {
-    const variables = JSON.stringify({ screenName });
-    const url = `${API_BASE}/${QUERY_ID}/AboutAccountQuery?variables=${encodeURIComponent(variables)}`;
+  // Don't attempt without intercepted headers — avoids caching failures
+  // from unauthenticated requests before the page-script captures the session.
+  if (!apiHeaders) return null;
 
-    const headers: Record<string, string> = {
-      'authorization': BEARER,
-      'content-type': 'application/json',
-      'x-twitter-client-language': 'en',
-      'x-twitter-active-user': 'yes',
-    };
-
-    if (apiHeaders?.authorization) {
-      headers['authorization'] = apiHeaders.authorization;
-    }
-    if (apiHeaders?.['x-csrf-token']) {
-      headers['x-csrf-token'] = apiHeaders['x-csrf-token'];
-    } else {
-      const ct0 = getCookie('ct0');
-      if (ct0) headers['x-csrf-token'] = ct0;
-    }
-    if (apiHeaders?.['x-twitter-active-user']) {
-      headers['x-twitter-active-user'] = apiHeaders['x-twitter-active-user'];
-    }
-
-    const resp = await fetch(url, {
-      method: 'GET',
-      headers,
-      credentials: 'include',
-    });
-
-    if (!resp.ok) {
-      cache.set(lower, null);
-      return null;
-    }
-
-    const json = await resp.json();
-    const profile =
-      json?.data?.user_result_by_screen_name?.result?.about_profile ?? null;
-
-    if (!profile) {
-      cache.set(lower, null);
-      return null;
-    }
-
-    const data: LocationData = {
-      location: profile.account_based_in ?? null,
-      locationAccurate: profile.location_accurate !== false,
-      source: profile.source ?? null,
-    };
-    cache.set(lower, data);
-    return data;
-  } catch {
-    cache.set(lower, null);
+  if (rateLimitResetAt > Date.now()) {
+    showRateLimitToast();
     return null;
-  } finally {
-    pendingSet.delete(lower);
   }
+
+  // Capture snapshot so the IIFE always uses the headers that were valid at
+  // call time, even if apiHeaders is updated mid-flight.
+  const capturedHeaders = apiHeaders;
+
+  const promise = (async (): Promise<LocationData | null> => {
+    try {
+      const variables = JSON.stringify({ screenName });
+      const url = `${ABOUT_ACCOUNT_URL}?variables=${encodeURIComponent(variables)}`;
+
+      const headers: Record<string, string> = {
+        'authorization': capturedHeaders.authorization,
+        'content-type': 'application/json',
+        'x-twitter-client-language': capturedHeaders['x-twitter-client-language'] ?? 'en',
+        'x-twitter-active-user': capturedHeaders['x-twitter-active-user'] ?? 'yes',
+      };
+
+      if (capturedHeaders['x-csrf-token']) {
+        headers['x-csrf-token'] = capturedHeaders['x-csrf-token'];
+      } else {
+        const ct0 = getCookie('ct0');
+        if (ct0) headers['x-csrf-token'] = ct0;
+      }
+
+      const resp = await fetch(url, {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
+
+      if (resp.status === 429) {
+        const reset = resp.headers.get('x-rate-limit-reset');
+        rateLimitResetAt = reset ? parseInt(reset) * 1000 : Date.now() + 900000;
+        showRateLimitToast();
+        return null;
+      }
+
+      if (!resp.ok) {
+        cache.set(lower, null);
+        return null;
+      }
+
+      const json = await resp.json();
+      const profile =
+        json?.data?.user_result_by_screen_name?.result?.about_profile ?? null;
+
+      if (!profile) {
+        cache.set(lower, null);
+        return null;
+      }
+
+      const data: LocationData = {
+        location: profile.account_based_in ?? null,
+        locationAccurate: profile.location_accurate !== false,
+        source: profile.source ?? null,
+      };
+      cache.set(lower, data);
+      return data;
+    } catch {
+      cache.set(lower, null);
+      return null;
+    }
+  })();
+
+  pendingMap.set(lower, promise);
+  promise.finally(() => pendingMap.delete(lower));
+  return promise;
 }
 
 // ---------------------------------------------------------------------------
@@ -196,6 +255,9 @@ function injectStyles() {
   align-items: center;
   user-select: none;
 }
+.x-loc-icon-flag {
+  font-size: 26px;
+}
 .x-loc-icon-vpn {
   font-size: 12px;
   font-weight: 700;
@@ -211,6 +273,22 @@ function injectStyles() {
   border: 1px solid rgba(220, 38, 38, 0.4);
   border-radius: 4px;
   padding: 2px 5px;
+}
+#x-loc-rate-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(24, 24, 24, 0.93);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 2147483647;
+  pointer-events: none;
+  white-space: nowrap;
+  border: 1px solid rgba(220, 38, 38, 0.55);
 }
 `;
   (document.head || document.documentElement).appendChild(style);
@@ -259,7 +337,9 @@ function buildInfoRow(data: LocationData): HTMLElement {
 
   if (data.location) {
     const { emoji, label } = getLocationDisplay(data.location);
-    row.appendChild(makeIcon(emoji, label));
+    const icon = makeIcon(emoji, label);
+    icon.classList.add('x-loc-icon-flag');
+    row.appendChild(icon);
   }
 
   if (!data.locationAccurate) {
@@ -283,42 +363,48 @@ function buildInfoRow(data: LocationData): HTMLElement {
 }
 
 // ---------------------------------------------------------------------------
-// Process a hover card
+// Insert a row element into a hover card at the right position
 // ---------------------------------------------------------------------------
-async function processCard(card: Element) {
-  if (card.getAttribute('data-x-loc-done')) return;
-  card.setAttribute('data-x-loc-done', '1');
-
-  const screenName = extractScreenName(card);
-  if (!screenName) return;
-
-  const data = await fetchLocationData(screenName);
-  if (!data || (!data.location && data.locationAccurate && !data.source)) return;
-
-  const row = buildInfoRow(data);
-
-  // Find the @username span, then walk up until we reach the main content container
-  // (identifiable by having 3+ children: avatar row, name row, bio, followers…).
-  // At that point `el` is the name/handle row — insert our info right after it.
+function insertIntoCard(card: Element, screenName: string, el: HTMLElement) {
   const atSpan = Array.from(card.querySelectorAll('span')).find(
     (s) => s.textContent?.trim().toLowerCase() === `@${screenName.toLowerCase()}`,
   );
 
   if (atSpan) {
-    let el: Element | null = atSpan;
-    while (el && el !== card) {
-      const parent: Element | null = el.parentElement;
+    let node: Element | null = atSpan;
+    while (node && node !== card) {
+      const parent: Element | null = node.parentElement;
       if (!parent || parent === card) break;
       if (parent.children.length >= 3) {
-        parent.insertBefore(row, el.nextSibling);
+        parent.insertBefore(el, node.nextSibling);
         return;
       }
-      el = parent;
+      node = parent;
     }
   }
 
-  // Fallback: append to the card's outermost content div
-  (card.querySelector('div > div > div') ?? card).appendChild(row);
+  (card.querySelector('div > div > div') ?? card).appendChild(el);
+}
+
+// ---------------------------------------------------------------------------
+// Process a hover card
+// ---------------------------------------------------------------------------
+async function processCard(card: Element) {
+  if (card.getAttribute('data-x-loc-done')) return;
+
+  const screenName = extractScreenName(card);
+  // Don't mark done yet — card content may not be rendered. The observer will
+  // retry when React adds content inside the card.
+  if (!screenName) return;
+
+  card.setAttribute('data-x-loc-done', '1');
+
+  const data = await fetchLocationData(screenName);
+
+  if (!data || (!data.location && data.locationAccurate && !data.source)) return;
+
+  const row = buildInfoRow(data);
+  insertIntoCard(card, screenName, row);
 }
 
 // ---------------------------------------------------------------------------
@@ -326,20 +412,35 @@ async function processCard(card: Element) {
 // ---------------------------------------------------------------------------
 function startObserver() {
   const observer = new MutationObserver((mutations) => {
+    // Deduplicate within a single batch so we don't call processCard twice
+    // for the same card if multiple child nodes are added in one mutation.
+    const seen = new Set<Element>();
+
+    function tryProcess(card: Element) {
+      if (!seen.has(card)) {
+        seen.add(card);
+        processCard(card);
+      }
+    }
+
     for (const mutation of mutations) {
       for (const node of Array.from(mutation.addedNodes)) {
         if (!(node instanceof Element)) continue;
 
-        // Check if node itself is the hover card
-        if ((node as Element).matches('[data-testid="HoverCard"]')) {
-          processCard(node as Element);
+        // Node itself is the hover card
+        if (node.matches('[data-testid="HoverCard"]')) {
+          tryProcess(node);
         }
 
-        // Check descendants
-        const cards = (node as Element).querySelectorAll('[data-testid="HoverCard"]');
-        for (const card of Array.from(cards)) {
-          processCard(card);
+        // Descendants that are hover cards
+        for (const card of Array.from(node.querySelectorAll('[data-testid="HoverCard"]'))) {
+          tryProcess(card as Element);
         }
+
+        // Node was added *inside* an unprocessed hover card (e.g. React rendering
+        // content into the card container after it was already added to the DOM).
+        const parentCard = node.closest('[data-testid="HoverCard"]') as Element | null;
+        if (parentCard) tryProcess(parentCard);
       }
     }
   });
@@ -362,3 +463,5 @@ window.addEventListener('x-loc-headers-captured', (e: Event) => {
 // ---------------------------------------------------------------------------
 injectStyles();
 startObserver();
+// Request headers in case page-script already captured them before document_idle
+window.dispatchEvent(new CustomEvent('x-loc-request-headers'));
