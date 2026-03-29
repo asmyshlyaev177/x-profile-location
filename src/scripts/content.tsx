@@ -49,7 +49,7 @@ const COUNTRY_FLAGS: Record<string, string> = {
   'Pakistan': '🇵🇰', 'Palau': '🇵🇼', 'Panama': '🇵🇦',
   'Papua New Guinea': '🇵🇬', 'Paraguay': '🇵🇾', 'Peru': '🇵🇪',
   'Philippines': '🇵🇭', 'Poland': '🇵🇱', 'Portugal': '🇵🇹', 'Qatar': '🇶🇦',
-  'Romania': '🇷🇴', 'Russia': '🇷🇺', 'Rwanda': '🇷🇼',
+  'Romania': '🇷🇴', 'Russia': '🇷🇺', 'Russian Federation': '🇷🇺', 'Rwanda': '🇷🇼',
   'Saint Kitts and Nevis': '🇰🇳', 'Saint Lucia': '🇱🇨',
   'Saint Vincent and the Grenadines': '🇻🇨', 'Samoa': '🇼🇸',
   'San Marino': '🇸🇲', 'Sao Tome and Principe': '🇸🇹',
@@ -258,6 +258,20 @@ function injectStyles() {
 .x-loc-icon-flag {
   font-size: 26px;
 }
+.x-loc-store-block .x-loc-icon-flag {
+  font-size: 16px;
+}
+.x-loc-store-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin-left: 4px;
+  cursor: default;
+  user-select: none;
+}
 .x-loc-icon-ratelimit {
   font-size: 12px;
   font-weight: 700;
@@ -362,12 +376,25 @@ function buildInfoRow(data: LocationData): HTMLElement {
     const icon = makeIcon(emoji, label);
     icon.classList.add('x-loc-icon-flag');
     row.appendChild(icon);
-  }
 
-  if (storeEmoji && storeName) {
-    const locationLabel = data.location ? getLocationDisplay(data.location).label : null;
-    const tooltip = locationLabel ? `${storeName} · ${locationLabel}` : storeName;
-    row.appendChild(makeIcon(storeEmoji, tooltip));
+    if (storeEmoji && storeName) {
+      const block = document.createElement('span');
+      block.className = 'x-loc-store-block';
+      block.title = `${storeName} · ${label}`;
+
+      const phone = document.createElement('span');
+      phone.textContent = storeEmoji;
+
+      const flag = document.createElement('span');
+      flag.className = 'x-loc-icon-flag';
+      flag.textContent = emoji;
+
+      block.appendChild(phone);
+      block.appendChild(flag);
+      row.appendChild(block);
+    }
+  } else if (storeEmoji && storeName) {
+    row.appendChild(makeIcon(storeEmoji, storeName));
   }
 
   if (!data.locationAccurate) {
