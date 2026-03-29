@@ -265,7 +265,7 @@ function buildInfoRow(data: LocationData): HTMLElement {
   if (!data.locationAccurate) {
     const vpn = document.createElement('span');
     vpn.className = 'x-loc-icon-vpn';
-    vpn.title = 'VPN/Proxy detected';
+    vpn.title = 'VPN used, location can be innacurate';
     vpn.textContent = '⚠ VPN';
     row.appendChild(vpn);
   }
