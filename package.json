@@ -12,6 +12,7 @@
     "preact": "^10.29.0"
   },
   "devDependencies": {
+    "@bedframe/cli": "^0.1.2",
     "@preact/preset-vite": "^2.10.4",
     "@types/node": "^24.12.0",
     "typescript": "~5.9.3",
