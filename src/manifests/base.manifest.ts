@@ -39,17 +39,43 @@ export const baseManifest = {
   },options_ui: {
     page: 'pages/options.html',
     open_in_tab: false,
-  },content_scripts: [
+  },
+  content_scripts: [
+    {
+      js: ['scripts/page-script.ts'],
+      matches: [
+        '*://*.x.com/*',
+        '*://*.twitter.com/*',
+        '*://x.com/*',
+        '*://twitter.com/*',
+      ],
+      run_at: 'document_start',
+      world: 'MAIN',
+    },
     {
       js: ['scripts/content.tsx'],
-      matches: ['<all_urls>'],
+      matches: [
+        '*://*.x.com/*',
+        '*://*.twitter.com/*',
+        '*://x.com/*',
+        '*://twitter.com/*',
+      ],
     },
   ],
   web_accessible_resources: [
     {
       resources: ['assets/*', 'pages/*'],
-      matches: ['<all_urls>'],
+      matches: [
+        '*://*.x.com/*',
+        '*://*.twitter.com/*',
+        '*://x.com/*',
+        '*://twitter.com/*',
+      ],
     },
+  ],
+  host_permissions: [
+    '*://*.x.com/*',
+    '*://*.twitter.com/*',
   ],
   commands: {
     _execute_action: {
@@ -62,8 +88,8 @@ export const baseManifest = {
       },
     },
   },
-  permissions: [ 
-    'activeTab' 
+  permissions: [
+    'storage',
   ],
 } satisfies Manifest
 
