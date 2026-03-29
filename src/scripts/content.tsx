@@ -351,6 +351,12 @@ function buildInfoRow(data: LocationData): HTMLElement {
   const row = document.createElement('div');
   row.className = 'x-loc-info';
 
+  const src = data.source?.toLowerCase() ?? '';
+  const storeEmoji = src.includes('iphone') || src.includes('ipad') || src.includes('android') ? '📱' : null;
+  const storeName = src.includes('iphone') || src.includes('ipad') ? 'iOS App Store'
+    : src.includes('android') ? 'Google Play Store'
+    : null;
+
   if (data.location) {
     const { emoji, label } = getLocationDisplay(data.location);
     const icon = makeIcon(emoji, label);
@@ -358,21 +364,18 @@ function buildInfoRow(data: LocationData): HTMLElement {
     row.appendChild(icon);
   }
 
+  if (storeEmoji && storeName) {
+    const locationLabel = data.location ? getLocationDisplay(data.location).label : null;
+    const tooltip = locationLabel ? `${storeName} · ${locationLabel}` : storeName;
+    row.appendChild(makeIcon(storeEmoji, tooltip));
+  }
+
   if (!data.locationAccurate) {
     const vpn = document.createElement('span');
     vpn.className = 'x-loc-icon-vpn';
-    vpn.title = 'VPN used, location can be innacurate';
+    vpn.title = 'VPN used, location can be inaccurate';
     vpn.textContent = '⚠ VPN';
     row.appendChild(vpn);
-  }
-
-  if (data.source) {
-    const src = data.source.toLowerCase();
-    if (src.includes('iphone') || src.includes('ipad')) {
-      row.appendChild(makeIcon('🍎', 'iOS App Store'));
-    } else if (src.includes('android')) {
-      row.appendChild(makeIcon('🤖', 'Google Play Store'));
-    }
   }
 
   return row;
