@@ -1,4 +1,13 @@
 {
+  "env": {
+    "ENABLE_LSP_TOOL": "1",
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["chrome-devtools", "cclsp"],
+  "enabledPlugins": {
+    "chrome-devtools-mcp@claude-plugins-official": true
+  },
   "hooks": {
     "PreToolUse": [
       {
