@@ -258,6 +258,22 @@ function injectStyles() {
 .x-loc-icon-flag {
   font-size: 26px;
 }
+.x-loc-icon-ratelimit {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  line-height: 1;
+  cursor: default;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(180, 120, 0, 0.12);
+  color: rgb(160, 100, 0);
+  border: 1px solid rgba(180, 120, 0, 0.4);
+  border-radius: 4px;
+  padding: 2px 5px;
+}
 .x-loc-icon-vpn {
   font-size: 12px;
   font-weight: 700;
@@ -362,6 +378,28 @@ function buildInfoRow(data: LocationData): HTMLElement {
   return row;
 }
 
+function buildRateLimitRow(): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'x-loc-info';
+
+  const badge = document.createElement('span');
+  badge.className = 'x-loc-icon-ratelimit';
+  badge.title = 'X API rate limit reached — location lookups paused until reset';
+  badge.textContent = `⏱ ${formatCountdown(rateLimitResetAt - Date.now())}`;
+  row.appendChild(badge);
+
+  const interval = setInterval(() => {
+    const remaining = rateLimitResetAt - Date.now();
+    if (remaining <= 0 || !badge.isConnected) {
+      clearInterval(interval);
+      return;
+    }
+    badge.textContent = `⏱ ${formatCountdown(remaining)}`;
+  }, 1000);
+
+  return row;
+}
+
 // ---------------------------------------------------------------------------
 // Insert a row element into a hover card at the right position
 // ---------------------------------------------------------------------------
@@ -400,6 +438,11 @@ async function processCard(card: Element) {
   card.setAttribute('data-x-loc-done', '1');
 
   const data = await fetchLocationData(screenName);
+
+  if (data === null && rateLimitResetAt > Date.now()) {
+    insertIntoCard(card, screenName, buildRateLimitRow());
+    return;
+  }
 
   if (!data || (!data.location && data.locationAccurate && !data.source)) return;
 
