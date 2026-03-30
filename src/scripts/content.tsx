@@ -245,7 +245,7 @@ function injectStyles() {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 16px 6px;
+  padding: 2px;
 }
 .x-loc-icon {
   font-size: 20px;
