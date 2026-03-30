@@ -8,6 +8,7 @@ const ABOUT_ACCOUNT_URL = `${API_BASE}/${QUERY_ID}/AboutAccountQuery`;
 const SEL_HOVER_CARD = '[data-testid="HoverCard"]';
 const SEL_USER_NAME = '[data-testid="UserName"] a[href]';
 const SEL_USER_NAME_ALT = '[data-testid="User-Name"] a[href]';
+const RESET_DEFAULT = 60 * 5 * 1000;
 
 // ---------------------------------------------------------------------------
 // Country → flag emoji mapping
@@ -201,7 +202,7 @@ async function fetchLocationData(screenName: string): Promise<LocationData | nul
 
       if (resp.status === 429) {
         const reset = resp.headers.get('x-rate-limit-reset');
-        rateLimitResetAt = reset ? parseInt(reset) * 1000 : Date.now() + 900000;
+        rateLimitResetAt = reset ? parseInt(reset) * 1000 : Date.now() + RESET_DEFAULT;
         showRateLimitToast();
         return null;
       }
