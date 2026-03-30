@@ -4,6 +4,11 @@ const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA';
 const API_BASE = 'https://x.com/i/api/graphql';
 const ABOUT_ACCOUNT_URL = `${API_BASE}/${QUERY_ID}/AboutAccountQuery`;
 
+// X related selectors
+const SEL_HOVER_CARD = '[data-testid="HoverCard"]';
+const SEL_USER_NAME = '[data-testid="UserName"] a[href]';
+const SEL_USER_NAME_ALT = '[data-testid="User-Name"] a[href]';
+
 // ---------------------------------------------------------------------------
 // Country → flag emoji mapping
 // ---------------------------------------------------------------------------
@@ -330,8 +335,8 @@ function injectStyles() {
 function extractScreenName(card: Element): string | null {
   // Try data-testid="UserName" or "User-Name"
   const nameEl =
-    card.querySelector('[data-testid="UserName"] a[href]') ??
-    card.querySelector('[data-testid="User-Name"] a[href]');
+    card.querySelector(SEL_USER_NAME) ??
+    card.querySelector(SEL_USER_NAME_ALT);
   if (nameEl) {
     const href = nameEl.getAttribute('href') ?? '';
     const match = href.match(/^\/([A-Za-z0-9_]{1,50})$/);
@@ -501,18 +506,18 @@ function startObserver() {
         if (!(node instanceof Element)) continue;
 
         // Node itself is the hover card
-        if (node.matches('[data-testid="HoverCard"]')) {
+        if (node.matches(SEL_HOVER_CARD)) {
           tryProcess(node);
         }
 
         // Descendants that are hover cards
-        for (const card of Array.from(node.querySelectorAll('[data-testid="HoverCard"]'))) {
+        for (const card of Array.from(node.querySelectorAll(SEL_HOVER_CARD))) {
           tryProcess(card as Element);
         }
 
         // Node was added *inside* an unprocessed hover card (e.g. React rendering
         // content into the card container after it was already added to the DOM).
-        const parentCard = node.closest('[data-testid="HoverCard"]') as Element | null;
+        const parentCard = node.closest(SEL_HOVER_CARD) as Element | null;
         if (parentCard) tryProcess(parentCard);
       }
     }
