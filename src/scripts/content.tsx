@@ -1,4 +1,6 @@
 // content.tsx — plain DOM, no React/Preact
+import { cleanupCache, getCached, setCached } from './cache';
+import type { LocationData } from './cache';
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA';
 const API_BASE = 'https://x.com/i/api/graphql';
@@ -99,12 +101,6 @@ function getLocationDisplay(loc: string): { emoji: string; label: string } {
 // ---------------------------------------------------------------------------
 // Types & state
 // ---------------------------------------------------------------------------
-interface LocationData {
-  location: string | null;
-  locationAccurate: boolean;
-  source: string | null;
-}
-
 let apiHeaders: Record<string, string> | null = null;
 const cache = new Map<string, LocationData | null>();
 // Shared promises — lets concurrent processCard calls for the same user
@@ -165,20 +161,27 @@ async function fetchLocationData(screenName: string): Promise<LocationData | nul
   if (cache.has(lower)) return cache.get(lower)!;
   if (pendingMap.has(lower)) return pendingMap.get(lower)!;
 
-  // Don't attempt without intercepted headers — avoids caching failures
-  // from unauthenticated requests before the page-script captures the session.
-  if (!apiHeaders) return null;
-
-  if (rateLimitResetAt > Date.now()) {
-    showRateLimitToast();
-    return null;
-  }
-
   // Capture snapshot so the IIFE always uses the headers that were valid at
   // call time, even if apiHeaders is updated mid-flight.
   const capturedHeaders = apiHeaders;
 
   const promise = (async (): Promise<LocationData | null> => {
+    // Check persistent cache before hitting the network
+    const stored = await getCached(lower);
+    if (stored !== undefined) {
+      cache.set(lower, stored);
+      return stored;
+    }
+
+    // Don't attempt without intercepted headers — avoids caching failures
+    // from unauthenticated requests before the page-script captures the session.
+    if (!capturedHeaders) return null;
+
+    if (rateLimitResetAt > Date.now()) {
+      showRateLimitToast();
+      return null;
+    }
+
     try {
       const variables = JSON.stringify({ screenName });
       const url = `${ABOUT_ACCOUNT_URL}?variables=${encodeURIComponent(variables)}`;
@@ -230,6 +233,7 @@ async function fetchLocationData(screenName: string): Promise<LocationData | nul
         source: profile.source ?? null,
       };
       cache.set(lower, data);
+      await setCached(lower, data);
       return data;
     } catch {
       cache.set(lower, null);
@@ -584,5 +588,6 @@ window.addEventListener('x-loc-headers-captured', (e: Event) => {
 // ---------------------------------------------------------------------------
 injectStyles();
 startObserver();
+cleanupCache();
 // Request headers in case page-script already captured them before document_idle
 window.dispatchEvent(new CustomEvent('x-loc-request-headers'));
