@@ -8,7 +8,8 @@ const ABOUT_ACCOUNT_URL = `${API_BASE}/${QUERY_ID}/AboutAccountQuery`;
 const SEL_HOVER_CARD = '[data-testid="HoverCard"]';
 const SEL_USER_NAME = '[data-testid="UserName"] a[href]';
 const SEL_USER_NAME_ALT = '[data-testid="User-Name"] a[href]';
-const SEL_PRIMARY_TWEET = 'article[data-testid="tweet"][tabindex="-1"]';
+const SEL_TWEET = 'article[data-testid="tweet"]';
+const SEL_PRIMARY_TWEET = `${SEL_TWEET}[tabindex="-1"]`;
 const PRIMARY_TWEET_ATTR = 'data-x-loc-primary-done';
 const RESET_DEFAULT = 60 * 5 * 1000;
 
@@ -551,38 +552,18 @@ function startObserver() {
       }
     }
 
-    let checkPrimary = false;
+    const nodes = mutations
+      .flatMap(m => Array.from(m.addedNodes))
+      .filter((n): n is Element => n instanceof Element);
 
-    for (const mutation of mutations) {
-      for (const node of Array.from(mutation.addedNodes)) {
-        if (!(node instanceof Element)) continue;
+    for (const node of nodes) {
+      const card = node.closest(SEL_HOVER_CARD) ?? node.querySelector(SEL_HOVER_CARD);
+      if (card) { tryProcess(card as Element); break; }
 
-        // Node itself is the hover card
-        if (node.matches(SEL_HOVER_CARD)) {
-          tryProcess(node);
-        }
-
-        // Descendants that are hover cards
-        for (const card of Array.from(node.querySelectorAll(SEL_HOVER_CARD))) {
-          tryProcess(card as Element);
-        }
-
-        // Node was added *inside* an unprocessed hover card (e.g. React rendering
-        // content into the card container after it was already added to the DOM).
-        const parentCard = node.closest(SEL_HOVER_CARD) as Element | null;
-        if (parentCard) tryProcess(parentCard);
-
-        // Check if a tweet article was added — may be the primary tweet
-        if (
-          node.matches('article[data-testid="tweet"]') ||
-          node.querySelector('article[data-testid="tweet"]')
-        ) {
-          checkPrimary = true;
-        }
+      if (node.matches(SEL_TWEET) || node.querySelector(SEL_TWEET)) {
+        processPrimaryTweet(); break;
       }
     }
-
-    if (checkPrimary) processPrimaryTweet();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
