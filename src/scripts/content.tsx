@@ -8,6 +8,8 @@ const ABOUT_ACCOUNT_URL = `${API_BASE}/${QUERY_ID}/AboutAccountQuery`;
 const SEL_HOVER_CARD = '[data-testid="HoverCard"]';
 const SEL_USER_NAME = '[data-testid="UserName"] a[href]';
 const SEL_USER_NAME_ALT = '[data-testid="User-Name"] a[href]';
+const SEL_PRIMARY_TWEET = 'article[data-testid="tweet"][tabindex="-1"]';
+const PRIMARY_TWEET_ATTR = 'data-x-loc-primary-done';
 const RESET_DEFAULT = 60 * 5 * 1000;
 
 // ---------------------------------------------------------------------------
@@ -487,6 +489,53 @@ async function processCard(card: Element) {
 }
 
 // ---------------------------------------------------------------------------
+// Process primary tweet author on status pages
+// ---------------------------------------------------------------------------
+async function processPrimaryTweet() {
+  if (!/\/status\/\d+/.test(location.pathname)) return;
+
+  const tweet = document.querySelector(SEL_PRIMARY_TWEET);
+  if (!tweet || tweet.getAttribute(PRIMARY_TWEET_ATTR)) return;
+
+  const userNameEl =
+    tweet.querySelector('[data-testid="User-Name"]') ??
+    tweet.querySelector('[data-testid="UserName"]');
+  if (!userNameEl) return;
+
+  const link = userNameEl.querySelector('a[href]');
+  if (!link) return;
+
+  const href = link.getAttribute('href') ?? '';
+  const m = href.match(/^\/([A-Za-z0-9_]{1,50})$/);
+  if (!m) return;
+
+  const screenName = m[1];
+  tweet.setAttribute(PRIMARY_TWEET_ATTR, '1');
+
+  const data = await fetchLocationData(screenName);
+
+  let row: HTMLElement | null = null;
+  if (data === null && rateLimitResetAt > Date.now()) {
+    row = buildRateLimitRow();
+  } else if (data && (data.location || !data.locationAccurate || data.source)) {
+    row = buildInfoRow(data);
+  }
+
+  if (!row) return;
+
+  // Guard against double-injection if React re-renders before await resolves
+  const handleDiv = userNameEl.children[1] as Element | undefined;
+  if (handleDiv?.nextElementSibling?.classList.contains('x-loc-info')) return;
+
+  (row as HTMLElement).style.marginTop = '2px';
+  if (handleDiv) {
+    handleDiv.insertAdjacentElement('afterend', row);
+  } else {
+    userNameEl.appendChild(row);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // MutationObserver
 // ---------------------------------------------------------------------------
 function startObserver() {
@@ -501,6 +550,8 @@ function startObserver() {
         processCard(card);
       }
     }
+
+    let checkPrimary = false;
 
     for (const mutation of mutations) {
       for (const node of Array.from(mutation.addedNodes)) {
@@ -520,8 +571,18 @@ function startObserver() {
         // content into the card container after it was already added to the DOM).
         const parentCard = node.closest(SEL_HOVER_CARD) as Element | null;
         if (parentCard) tryProcess(parentCard);
+
+        // Check if a tweet article was added — may be the primary tweet
+        if (
+          node.matches('article[data-testid="tweet"]') ||
+          node.querySelector('article[data-testid="tweet"]')
+        ) {
+          checkPrimary = true;
+        }
       }
     }
+
+    if (checkPrimary) processPrimaryTweet();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
