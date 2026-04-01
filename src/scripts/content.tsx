@@ -378,11 +378,11 @@ function buildInfoRow(data: LocationData): HTMLElement {
   const row = document.createElement('div');
   row.className = 'x-loc-info';
 
-  const mobileSource = /android\s+app|app\s+store/i.test(data.source ?? '');
+  const mobileSource = /android\s+app|app\s+store/i.test(data?.source ?? '');
   const sourceCountry = mobileSource
     && data.source?.replace(/\s*(android\s+app|app\s+store)/i, '').trim() || null;
 
-  if (data.location) {
+  if (data?.location) {
     const { emoji, label } = getLocationDisplay(data.location);
     const icon = makeIcon(emoji, label);
     icon.classList.add('x-loc-icon-flag');
@@ -409,7 +409,7 @@ function buildInfoRow(data: LocationData): HTMLElement {
     row.appendChild(makeIcon('📱', data.source!));
   }
 
-  if (!data.locationAccurate) {
+  if (data?.locationAccurate === false) {
     const vpn = document.createElement('span');
     vpn.className = 'x-loc-icon-vpn';
     vpn.title = 'VPN used, location can be inaccurate';
