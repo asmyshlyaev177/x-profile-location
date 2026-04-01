@@ -378,11 +378,9 @@ function buildInfoRow(data: LocationData): HTMLElement {
   const row = document.createElement('div');
   row.className = 'x-loc-info';
 
-  const src = data.source?.toLowerCase() ?? '';
-  const storeEmoji = src.includes('iphone') || src.includes('ipad') || src.includes('android') ? '📱' : null;
-  const storeName = src.includes('iphone') || src.includes('ipad') ? 'iOS App Store'
-    : src.includes('android') ? 'Google Play Store'
-    : null;
+  const mobileSource = /android\s+app|app\s+store/i.test(data.source ?? '');
+  const sourceCountry = mobileSource
+    && data.source?.replace(/\s*(android\s+app|app\s+store)/i, '').trim() || null;
 
   if (data.location) {
     const { emoji, label } = getLocationDisplay(data.location);
@@ -390,24 +388,25 @@ function buildInfoRow(data: LocationData): HTMLElement {
     icon.classList.add('x-loc-icon-flag');
     row.appendChild(icon);
 
-    if (storeEmoji && storeName) {
+    if (sourceCountry) {
+      const { emoji: storeFlag } = getLocationDisplay(sourceCountry);
       const block = document.createElement('span');
       block.className = 'x-loc-store-block';
-      block.title = `${storeName} · ${label}`;
+      block.title = data.source!;
 
       const phone = document.createElement('span');
-      phone.textContent = storeEmoji;
+      phone.textContent = '📱';
 
       const flag = document.createElement('span');
       flag.className = 'x-loc-icon-flag';
-      flag.textContent = emoji;
+      flag.textContent = storeFlag;
 
       block.appendChild(phone);
       block.appendChild(flag);
       row.appendChild(block);
     }
-  } else if (storeEmoji && storeName) {
-    row.appendChild(makeIcon(storeEmoji, storeName));
+  } else if (sourceCountry) {
+    row.appendChild(makeIcon('📱', data.source!));
   }
 
   if (!data.locationAccurate) {

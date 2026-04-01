@@ -3,7 +3,8 @@ import { createStore, del, entries, get, set } from 'idb-keyval';
 export interface LocationData {
   location: string | null;
   locationAccurate: boolean;
-  source: string | null;
+  // 'web' | 'Country Android App' | 'Country App Store' | null
+  source: `${string} Android App` | `${string} App Store` | 'web' | null;
 }
 
 interface CachedEntry {
