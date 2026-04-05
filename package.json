@@ -1,7 +1,7 @@
 {
   "name": "X Profile Viewer",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "bedframe dev",
@@ -44,6 +44,7 @@
   "license": "UNLICENSED",
   "author": {
     "name": "asmyshlyaev177",
+    "email": "asmyshlyaev177@gmail.com",
     "url": "https://asmyshlyaev177.dev"
   },
   "lint-staged": {
