@@ -4,7 +4,7 @@ import pkg from '../../package.json'
 export const baseManifest = {
   // Required
   // - - - - - - - - -
-  name: pkg.name,
+  name: 'X Profile Viewer',
   version: pkg.version,
   manifest_version: 3,
 
