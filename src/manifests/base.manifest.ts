@@ -25,7 +25,7 @@ export const baseManifest = {
       128: 'assets/icons/icon-128x128.png',
     },
     default_title: pkg.name,
-    
+    default_popup: 'pages/options.html',
   },
 
   // Optional

@@ -17,6 +17,7 @@ safari.browser
     manifest: [chrome, brave, firefox, safari],
     pages: {
       overlay: 'src/pages/main.html',
+      options: 'src/pages/options.html',
     },
   },
   development: {

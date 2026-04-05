@@ -1,0 +1,116 @@
+.container {
+  font-family: system-ui, -apple-system, sans-serif;
+  padding: 16px;
+  min-width: 320px;
+  max-width: 480px;
+}
+
+.heading {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111;
+}
+
+.subtitle {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 13px;
+}
+
+.chipFlag {
+  font-size: 15px;
+}
+
+.chipRemove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #991b1b;
+  padding: 0 0 0 2px;
+  line-height: 1;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.autocomplete {
+  position: relative;
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  outline: none;
+  color: #111;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  margin: 3px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.dropdownItem {
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #111;
+}
+
+.dropdownItem:hover {
+  background: #f3f4f6;
+}
+
+.dropdownFlag {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.empty {
+  color: #9ca3af;
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.soon {
+  margin-top: 14px;
+  font-size: 15px;
+  font-weight: bold;
+}
