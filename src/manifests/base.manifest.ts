@@ -37,10 +37,7 @@ export const baseManifest = {
     service_worker: 'scripts/service-worker.ts',
     type: 'module',
   },
-  options_ui: {
-    page: 'pages/options.html',
-    open_in_tab: false,
-  },
+
   content_scripts: [
     {
       js: ['scripts/page-script.ts'],
