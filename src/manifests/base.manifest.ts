@@ -31,7 +31,7 @@ export const baseManifest = {
   // Optional
   // - - - - - - - - -
   author: {
-    email: 'author@example.com'
+    email: pkg.author.email,
   },
   background: {
     service_worker: 'scripts/service-worker.ts',
