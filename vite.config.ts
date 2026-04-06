@@ -13,6 +13,7 @@ const {
 
 export default defineConfig(({ mode }) => ({
   root: resolve(__dirname, './src'),
+  envDir: resolve(__dirname),
   publicDir: resolve(__dirname, 'public'),
   resolve: {
     alias: {

@@ -1,5 +1,6 @@
 import { render } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
+import { trackEvent } from '../scripts/analytics'
 import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, REGION_FLAGS } from '../scripts/countries'
 import css from './options.module.css'
 
@@ -24,7 +25,10 @@ function Options() {
   }
 
   function add(country: string) {
-    if (!blocked.includes(country)) save([...blocked, country])
+    if (!blocked.includes(country)) {
+      save([...blocked, country])
+      trackEvent('country_blocked', { country })
+    }
     setQuery('')
     setOpen(false)
     inputRef.current?.focus()
@@ -32,6 +36,7 @@ function Options() {
 
   function remove(country: string) {
     save(blocked.filter((c) => c !== country))
+    trackEvent('country_unblocked', { country })
   }
 
   const suggestions =
