@@ -75,17 +75,6 @@ export const baseManifest = {
     '*://*.x.com/*',
     '*://*.twitter.com/*',
   ],
-  commands: {
-    _execute_action: {
-      suggested_key: {
-        default: 'Ctrl+Shift+1',
-        mac: 'Ctrl+Shift+1',
-        linux: 'Ctrl+Shift+1',
-        windows: 'Ctrl+Shift+1',
-        chromeos: 'Ctrl+Shift+1',
-      },
-    },
-  },
   permissions: [
     'storage',
   ],
