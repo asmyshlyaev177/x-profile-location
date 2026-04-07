@@ -1,11 +1,11 @@
-export const siteUrl = 'https://x-profile-viewer.vercel.app'
+export const siteUrl = 'https://x-profile-location.vercel.app'
 
 export const seo = {
-  title: 'X Profile Viewer — Your Browser, Reimagined',
+  title: 'X Profile Location — See Where Every X Profile Is From',
   description:
-    'Browse X / Twitter profiles with a beautiful reading mode, smart curation dashboard, and seamless sync across all your devices.',
+    'Browser extension that shows the real country of any X / Twitter profile as a flag emoji on hover cards. Includes VPN detection, mobile app source, and per-country blocking.',
   keywords:
-    'X, Twitter, profile viewer, browser extension, reading mode, curation, Chrome extension, Firefox extension',
+    'X Twitter profile location, country flag extension, Twitter location checker, VPN detection Twitter, where is this Twitter user from, X profile country, Chrome extension, Firefox extension',
   author: 'asmyshlyaev177',
 
   og: {
@@ -14,7 +14,7 @@ export const seo = {
     image: `${siteUrl}/og-image.png`,
     imageWidth: '1200',
     imageHeight: '630',
-    siteName: 'X Profile Viewer',
+    siteName: 'X Profile Location',
   },
 
   twitter: {
