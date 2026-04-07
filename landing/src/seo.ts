@@ -1,6 +1,6 @@
 // Falls back to production URL when import.meta.env is unavailable (e.g. vite.config.ts load time)
 export const siteUrl: string =
-  import.meta.env?.VITE_SITE_URL ?? 'https://x-profile-location.vercel.app'
+  import.meta.env?.VITE_SITE_URL ?? 'https://x-profile-location.pages.dev/'
 
 export const seo = {
   title: 'X Profile Location — See Where Every X Profile Is From',
