@@ -94,7 +94,8 @@
   color: #111;
 }
 
-.dropdownItem:hover {
+.dropdownItem:hover,
+.dropdownItemActive {
   background: #f3f4f6;
 }
 
