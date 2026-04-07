@@ -1,4 +1,4 @@
-export const siteUrl = 'https://asmyshlyaev177.github.io/x-profile-location'
+export const siteUrl = 'https://x-profile-viewer.vercel.app'
 
 export const seo = {
   title: 'X Profile Viewer — Your Browser, Reimagined',

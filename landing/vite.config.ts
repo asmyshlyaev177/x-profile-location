@@ -18,5 +18,5 @@ export default defineConfig({
     tailwindcss(),
     sitemap({ hostname: siteUrl }),
   ],
-  base: './',
+  base: '/',
 })
