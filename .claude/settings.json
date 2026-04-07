@@ -4,16 +4,25 @@
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["chrome-devtools", "cclsp"],
-  "enabledPlugins": {
-    "chrome-devtools-mcp@claude-plugins-official": true
-  },
+  "enabledMcpjsonServers": [
+    "chrome-devtools",
+    "cclsp"
+  ],
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "dippy" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dippy"
+          }
+        ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "chrome-devtools-mcp@claude-plugins-official": true,
+    "figma@claude-plugins-official": true
   }
 }
