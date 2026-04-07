@@ -47,6 +47,9 @@
     "email": "asmyshlyaev177@gmail.com",
     "url": "https://asmyshlyaev177.dev"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp", "workerd"]
+  },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,css,html,json}": "oxfmt --no-error-on-unmatched-pattern",
     "*.{js,jsx,ts,tsx}": "oxlint --fix"
