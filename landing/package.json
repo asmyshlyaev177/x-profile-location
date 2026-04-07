@@ -7,13 +7,15 @@
     "dev": "vite --port 5173",
     "generate:images": "node scripts/generate-images.mjs",
     "build": "node scripts/generate-images.mjs && vite build && node scripts/minify-html.mjs",
-    "preview": "vite preview --port 5173"
+    "preview": "vite preview --port 5173",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "preact": "^10.25.0",
     "preact-render-to-string": "^6.5.0"
   },
   "devDependencies": {
+    "wrangler": "^4.0.0",
     "@preact/preset-vite": "^2.10.4",
     "@tailwindcss/vite": "^4.2.2",
     "html-minifier-terser": "^7.2.0",
