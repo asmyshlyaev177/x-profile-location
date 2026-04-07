@@ -29,6 +29,7 @@ export const seo = {
 /** Returns the full set of <head> elements for vite-prerender-plugin */
 export function buildHeadElements() {
   return new Set([
+    { type: 'meta', props: { name: 'google-site-verification', content: 'VGWeNcrEVDQA07xz1L_6VZjcMEip0kTWdxxpIEmmbKc' } },
     { type: 'meta', props: { name: 'description', content: seo.description } },
     { type: 'meta', props: { name: 'keywords', content: seo.keywords } },
     { type: 'meta', props: { name: 'author', content: seo.author } },
