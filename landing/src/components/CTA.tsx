@@ -1,3 +1,5 @@
+import { InstallButton } from './InstallButton'
+
 export function CTA() {
   return (
     <section class="relative overflow-hidden bg-dark py-28">
@@ -11,23 +13,11 @@ export function CTA() {
           Know where every profile is from.
         </h2>
         <p class="text-lg text-white/50 mb-10 max-w-lg mx-auto">
-          Free, open-source, and works right out of the box — no sign-up, no
-          tracking, no permissions beyond x.com.
+          Core features are free. Advanced features — are coming as a paid upgrade.
         </p>
 
         <div class="flex flex-wrap items-center justify-center gap-4">
-          <a
-            href="#"
-            class="inline-flex items-center rounded-full bg-teal px-8 py-3.5 text-sm font-semibold text-dark hover:bg-teal-dark transition-colors"
-          >
-            Add to Chrome — It's Free
-          </a>
-          <a
-            href="#"
-            class="inline-flex items-center rounded-full border border-white/20 px-8 py-3.5 text-sm font-semibold text-white hover:border-white/40 hover:bg-white/5 transition-colors"
-          >
-            View Source on GitHub
-          </a>
+          <InstallButton size="lg" />
         </div>
       </div>
     </section>
