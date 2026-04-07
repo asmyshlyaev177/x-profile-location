@@ -31,17 +31,17 @@
   <text x="80" y="392" font-family="ui-sans-serif,system-ui,sans-serif" font-size="24" fill="#ffffff" opacity="0.55">real country — powered by X's own data.</text>
 
   <!-- Feature pills -->
-  <rect x="80"  y="440" width="118" height="34" rx="17" fill="#ef444420" stroke="#ef444450" stroke-width="1.5"/>
-  <text x="105" y="462" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="700" fill="#ef4444" text-anchor="middle">&#9888; VPN detect</text>
+  <rect x="80"  y="440" width="126" height="34" rx="17" fill="#ef444420" stroke="#ef444450" stroke-width="1.5"/>
+  <text x="143" y="462" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="700" fill="#ef4444" text-anchor="middle">&#9888; VPN detect</text>
 
-  <rect x="210" y="440" width="134" height="34" rx="17" fill="#a855f720" stroke="#a855f750" stroke-width="1.5"/>
-  <text x="277" y="462" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="700" fill="#a855f7" text-anchor="middle">Mobile source</text>
+  <rect x="218" y="440" width="134" height="34" rx="17" fill="#a855f720" stroke="#a855f750" stroke-width="1.5"/>
+  <text x="285" y="462" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="700" fill="#a855f7" text-anchor="middle">Mobile source</text>
 
-  <rect x="356" y="440" width="148" height="34" rx="17" fill="#00d4c020" stroke="#00d4c050" stroke-width="1.5"/>
-  <text x="430" y="462" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="700" fill="#00d4c0" text-anchor="middle">Country blocking</text>
+  <rect x="364" y="440" width="148" height="34" rx="17" fill="#00d4c020" stroke="#00d4c050" stroke-width="1.5"/>
+  <text x="438" y="462" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="700" fill="#00d4c0" text-anchor="middle">Country blocking</text>
 
   <!-- Bottom URL -->
-  <text x="80" y="570" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="700" fill="#ffffff" opacity="0.30">x-profile-location.vercel.app</text>
+  <text x="80" y="570" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="700" fill="#ffffff" opacity="0.30">x-profile-location.pages.dev</text>
 
   <!-- ── RIGHT COLUMN — hover card mockup ── -->
 

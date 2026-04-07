@@ -21,7 +21,7 @@ export const seo = {
 
   twitter: {
     card: 'summary_large_image',
-    site: '@asmyshlyaev177',
+    site: `${siteUrl}`,
     image: `${siteUrl}/og-image.png`,
   },
 } as const
