@@ -8,7 +8,8 @@
     "generate:images": "node scripts/generate-images.mjs",
     "build": "node scripts/generate-images.mjs && vite build && node scripts/minify-html.mjs",
     "preview": "vite preview --port 5173",
-    "deploy": "wrangler pages deploy dist --project-name x-profile-location"
+    "deploy": "wrangler pages deploy dist --project-name x-profile-location",
+    "create_cloudflare_pages": "pnpm wrangler pages project create x-profile-location"
   },
   "dependencies": {
     "preact": "^10.25.0",
