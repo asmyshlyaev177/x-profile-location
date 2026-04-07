@@ -4,9 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "vite --port 5173",
+    "generate:images": "node scripts/generate-images.mjs",
+    "build": "node scripts/generate-images.mjs && vite build",
+    "preview": "vite preview --port 5173"
   },
   "dependencies": {
     "preact": "^10.25.0",
@@ -15,6 +16,7 @@
   "devDependencies": {
     "@preact/preset-vite": "^2.10.4",
     "@tailwindcss/vite": "^4.2.2",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.8.0",
     "vite": "^6.0.0",
