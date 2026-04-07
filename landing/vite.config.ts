@@ -19,4 +19,9 @@ export default defineConfig({
     sitemap({ hostname: siteUrl }),
   ],
   base: '/',
+  build: {
+    minify: 'esbuild',   // JS — esbuild (fast, good compression)
+    cssMinify: true,     // CSS — esbuild
+    cssCodeSplit: false, // single CSS file for a single-page site
+  },
 })

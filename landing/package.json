@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --port 5173",
     "generate:images": "node scripts/generate-images.mjs",
-    "build": "node scripts/generate-images.mjs && vite build",
+    "build": "node scripts/generate-images.mjs && vite build && node scripts/minify-html.mjs",
     "preview": "vite preview --port 5173"
   },
   "dependencies": {
@@ -16,6 +16,7 @@
   "devDependencies": {
     "@preact/preset-vite": "^2.10.4",
     "@tailwindcss/vite": "^4.2.2",
+    "html-minifier-terser": "^7.2.0",
     "sharp": "^0.34.5",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.8.0",
