@@ -8,6 +8,9 @@
       <stop offset="0%" stop-color="#00d4c0" stop-opacity="0.10"/>
       <stop offset="100%" stop-color="#00d4c0" stop-opacity="0"/>
     </radialGradient>
+    <clipPath id="flag-pl"><rect x="838" y="218" width="34" height="20" rx="5"/></clipPath>
+    <clipPath id="flag-ua"><rect x="838" y="322" width="34" height="20" rx="5"/></clipPath>
+    <clipPath id="flag-jp"><rect x="838" y="426" width="34" height="20" rx="5"/></clipPath>
   </defs>
 
   <!-- Background -->
@@ -66,19 +69,23 @@
   <!-- Avatar lines -->
   <rect x="838" y="183" width="104" height="10" rx="5" fill="#ffffff45"/>
   <rect x="838" y="201" width="72" height="8"  rx="4" fill="#ffffff22"/>
-  <!-- Country badge: DE -->
-  <rect x="838" y="218" width="34" height="20" rx="5" fill="#3b82f6"/>
-  <text x="855" y="232" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="800" fill="#ffffff" text-anchor="middle">DE</text>
-  <text x="880" y="232" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" fill="#ffffff70">Germany</text>
+  <!-- Country flag: Poland -->
+  <g clip-path="url(#flag-pl)">
+    <rect x="838" y="218" width="34" height="10" fill="#ffffff"/>
+    <rect x="838" y="228" width="34" height="10" fill="#dc143c"/>
+  </g>
+  <text x="880" y="232" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" fill="#ffffff70">Poland</text>
 
   <!-- ── Row 2: US + VPN ── -->
   <rect x="774" y="258" width="336" height="90" rx="12" fill="#ffffff06" stroke="#ffffff0f" stroke-width="1"/>
   <circle cx="806" cy="303" r="22" fill="#ffffff12"/>
   <rect x="838" y="287" width="110" height="10" rx="5" fill="#ffffff45"/>
   <rect x="838" y="305" width="76" height="8"  rx="4" fill="#ffffff22"/>
-  <!-- Country badge: US -->
-  <rect x="838" y="322" width="34" height="20" rx="5" fill="#3b82f6"/>
-  <text x="855" y="336" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="800" fill="#ffffff" text-anchor="middle">US</text>
+  <!-- Country flag: Ukraine -->
+  <g clip-path="url(#flag-ua)">
+    <rect x="838" y="322" width="34" height="10" fill="#005bbb"/>
+    <rect x="838" y="332" width="34" height="10" fill="#ffd500"/>
+  </g>
   <!-- VPN badge -->
   <rect x="880" y="322" width="68" height="20" rx="5" fill="#ef444420" stroke="#ef444460" stroke-width="1"/>
   <text x="914" y="336" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700" fill="#ef4444" text-anchor="middle">&#9888; VPN</text>
@@ -88,9 +95,11 @@
   <circle cx="806" cy="407" r="22" fill="#ffffff12"/>
   <rect x="838" y="391" width="92" height="10" rx="5" fill="#ffffff45"/>
   <rect x="838" y="409" width="62" height="8"  rx="4" fill="#ffffff22"/>
-  <!-- Country badge: JP -->
-  <rect x="838" y="426" width="34" height="20" rx="5" fill="#3b82f6"/>
-  <text x="855" y="440" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="800" fill="#ffffff" text-anchor="middle">JP</text>
+  <!-- Country flag: Japan -->
+  <g clip-path="url(#flag-jp)">
+    <rect x="838" y="426" width="34" height="20" fill="#ffffff"/>
+    <circle cx="855" cy="436" r="7" fill="#bc002d"/>
+  </g>
   <text x="880" y="440" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" fill="#ffffff70">Japan</text>
   <!-- Mobile badge -->
   <rect x="930" y="426" width="66" height="20" rx="5" fill="#a855f720" stroke="#a855f760" stroke-width="1"/>

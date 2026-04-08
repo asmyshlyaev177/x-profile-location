@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="560" viewBox="0 0 1400 560">
+  <defs>
+    <radialGradient id="glow1" cx="20%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#00d4c0" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#00d4c0" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="80%" cy="80%" r="40%">
+      <stop offset="0%" stop-color="#00d4c0" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#00d4c0" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="flag-pl"><rect x="966" y="168" width="40" height="22" rx="5"/></clipPath>
+    <clipPath id="flag-ua"><rect x="966" y="286" width="40" height="22" rx="5"/></clipPath>
+    <clipPath id="flag-jp"><rect x="966" y="404" width="40" height="22" rx="5"/></clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="560" fill="#0b0b12"/>
+  <rect width="1400" height="560" fill="url(#glow1)"/>
+  <rect width="1400" height="560" fill="url(#glow2)"/>
+
+  <!-- ── LEFT COLUMN ── -->
+
+  <!-- Headline -->
+  <text x="80" y="178" font-family="ui-sans-serif,system-ui,sans-serif" font-size="72" font-weight="800" fill="#ffffff" letter-spacing="-2">See Where Every</text>
+  <text x="80" y="266" font-family="ui-sans-serif,system-ui,sans-serif" font-size="72" font-weight="800" fill="#00d4c0" letter-spacing="-2">X Profile Is From</text>
+
+  <!-- Description -->
+  <text x="80" y="320" font-family="ui-sans-serif,system-ui,sans-serif" font-size="22" fill="#ffffff" opacity="0.55">Hover any profile and instantly see their</text>
+  <text x="80" y="348" font-family="ui-sans-serif,system-ui,sans-serif" font-size="22" fill="#ffffff" opacity="0.55">real country — powered by X's own data.</text>
+
+  <!-- Feature pills -->
+  <rect x="80"  y="390" width="126" height="34" rx="17" fill="#ef444420" stroke="#ef444450" stroke-width="1.5"/>
+  <text x="143" y="412" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="700" fill="#ef4444" text-anchor="middle">&#9888; VPN detect</text>
+
+  <rect x="218" y="390" width="134" height="34" rx="17" fill="#a855f720" stroke="#a855f750" stroke-width="1.5"/>
+  <text x="285" y="412" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="700" fill="#a855f7" text-anchor="middle">Mobile source</text>
+
+  <rect x="364" y="390" width="148" height="34" rx="17" fill="#00d4c020" stroke="#00d4c050" stroke-width="1.5"/>
+  <text x="438" y="412" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="700" fill="#00d4c0" text-anchor="middle">Country blocking</text>
+
+  <!-- Bottom URL -->
+  <text x="80" y="516" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="700" fill="#ffffff" opacity="0.30">x-profile-location.pages.dev</text>
+
+  <!-- ── RIGHT COLUMN — hover card mockup ── -->
+
+  <!-- Card glow -->
+  <rect x="855" y="40" width="470" height="480" rx="24" fill="#00d4c0" opacity="0.05"/>
+
+  <!-- Card body -->
+  <rect x="865" y="30" width="470" height="500" rx="20" fill="#131320" stroke="#00d4c040" stroke-width="1.5"/>
+
+  <!-- Browser chrome bar -->
+  <rect x="865" y="30" width="470" height="50" rx="20" fill="#0f0f1c"/>
+  <rect x="865" y="55"  width="470" height="25" fill="#0f0f1c"/>
+  <circle cx="895" cy="55" r="5" fill="#ff5f5780"/>
+  <circle cx="915" cy="55" r="5" fill="#febc2e80"/>
+  <circle cx="935" cy="55" r="5" fill="#28c84080"/>
+  <rect x="955" y="45" width="200" height="18" rx="9" fill="#ffffff10"/>
+  <text x="1055" y="58" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="#ffffff30" text-anchor="middle">x.com/profile</text>
+
+  <!-- ── Row 1: Germany ── -->
+  <rect x="889" y="96" width="422" height="104" rx="12" fill="#ffffff06" stroke="#ffffff0f" stroke-width="1"/>
+  <circle cx="924" cy="148" r="26" fill="#00d4c018"/>
+  <rect x="966" y="130" width="124" height="12" rx="6" fill="#ffffff45"/>
+  <rect x="966" y="150" width="86" height="9"  rx="4" fill="#ffffff22"/>
+  <!-- Country flag: Poland -->
+  <g clip-path="url(#flag-pl)">
+    <rect x="966" y="168" width="40" height="11" fill="#ffffff"/>
+    <rect x="966" y="179" width="40" height="11" fill="#dc143c"/>
+  </g>
+  <text x="1016" y="183" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" fill="#ffffff70">Poland</text>
+
+  <!-- ── Row 2: US + VPN ── -->
+  <rect x="889" y="214" width="422" height="104" rx="12" fill="#ffffff06" stroke="#ffffff0f" stroke-width="1"/>
+  <circle cx="924" cy="266" r="26" fill="#ffffff12"/>
+  <rect x="966" y="248" width="134" height="12" rx="6" fill="#ffffff45"/>
+  <rect x="966" y="268" width="92" height="9"  rx="4" fill="#ffffff22"/>
+  <!-- Country flag: Ukraine -->
+  <g clip-path="url(#flag-ua)">
+    <rect x="966" y="286" width="40" height="11" fill="#005bbb"/>
+    <rect x="966" y="297" width="40" height="11" fill="#ffd500"/>
+  </g>
+  <rect x="1016" y="286" width="78" height="22" rx="5" fill="#ef444420" stroke="#ef444460" stroke-width="1"/>
+  <text x="1055" y="301" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700" fill="#ef4444" text-anchor="middle">&#9888; VPN</text>
+
+  <!-- ── Row 3: Japan + Mobile ── -->
+  <rect x="889" y="332" width="422" height="104" rx="12" fill="#ffffff06" stroke="#ffffff0f" stroke-width="1"/>
+  <circle cx="924" cy="384" r="26" fill="#ffffff12"/>
+  <rect x="966" y="366" width="112" height="12" rx="6" fill="#ffffff45"/>
+  <rect x="966" y="386" width="76" height="9"  rx="4" fill="#ffffff22"/>
+  <!-- Country flag: Japan -->
+  <g clip-path="url(#flag-jp)">
+    <rect x="966" y="404" width="40" height="22" fill="#ffffff"/>
+    <circle cx="986" cy="415" r="8" fill="#bc002d"/>
+  </g>
+  <text x="1016" y="419" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" fill="#ffffff70">Japan</text>
+  <rect x="1074" y="404" width="76" height="22" rx="5" fill="#a855f720" stroke="#a855f760" stroke-width="1"/>
+  <text x="1112" y="419" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700" fill="#a855f7" text-anchor="middle">Mobile</text>
+
+  <!-- Card label -->
+  <text x="1100" y="488" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600" fill="#00d4c0" opacity="0.45" letter-spacing="1.5" text-anchor="middle">X PROFILE LOCATION</text>
+</svg>
