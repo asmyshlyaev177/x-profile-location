@@ -10,7 +10,7 @@ export default defineConfig({
       prerender: {
         enabled: true,
         renderTarget: '#app',
-        additionalPrerenderRoutes: ['/'],
+        additionalPrerenderRoutes: ['/', '/privacy-policy'],
         previewMiddlewareEnabled: true,
         previewMiddlewareFallback: '/index.html',
       },
