@@ -40,12 +40,12 @@
     "vite": "8.0.3",
     "vitest": "4.1.2"
   },
-  "description": "X Profile Viewer",
+  "description": "X Profile Location",
   "license": "UNLICENSED",
   "author": {
     "name": "asmyshlyaev177",
     "email": "asmyshlyaev177@gmail.com",
-    "url": "https://asmyshlyaev177.dev"
+    "url": "https://x-profile-location.pages.dev/"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild", "sharp", "workerd"]
