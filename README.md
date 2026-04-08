@@ -11,7 +11,7 @@
 
 # . - Browser Extension
 
-X Profile Viewer
+X Profile Location
 
 A browser extension built with [Bedframe](https://bedframe.dev), a modern framework for cross-browser extension development.
 
