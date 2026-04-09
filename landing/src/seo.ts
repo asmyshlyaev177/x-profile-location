@@ -2,6 +2,8 @@
 export const siteUrl: string =
   import.meta.env?.VITE_SITE_URL ?? 'https://x-profile-location.pages.dev/'
 
+export const buildDate = new Date().toISOString()
+
 export const seo = {
   title: 'X Profile Location — See Where Every X Profile Is From',
   description:
@@ -17,6 +19,7 @@ export const seo = {
     imageWidth: '1200',
     imageHeight: '630',
     siteName: 'X Profile Location',
+    updatedTime: buildDate,
   },
 
   twitter: {
@@ -50,6 +53,10 @@ export function buildHeadElements() {
     { type: 'meta', props: { name: 'twitter:title', content: seo.title } },
     { type: 'meta', props: { name: 'twitter:description', content: seo.description } },
     { type: 'meta', props: { name: 'twitter:image', content: seo.twitter.image } },
+
+    // Last modified / updated time
+    { type: 'meta', props: { property: 'og:updated_time', content: buildDate } },
+    { type: 'meta', props: { 'http-equiv': 'last-modified', content: buildDate } },
 
     // Canonical
     { type: 'link', props: { rel: 'canonical', href: seo.og.url } },

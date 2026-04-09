@@ -1,3 +1,5 @@
+import { CHROME_STORE_URL } from './constants'
+
 export type SupportedBrowser = 'chrome' | 'firefox' | 'edge'
 
 export interface StoreEntry {
@@ -10,7 +12,7 @@ export const STORES: Record<SupportedBrowser, StoreEntry> = {
   chrome: {
     browser: 'chrome',
     label: 'Add to Chrome',
-    url: '#', // TODO: replace with Chrome Web Store URL
+    url: CHROME_STORE_URL,
   },
   firefox: {
     browser: 'firefox',
