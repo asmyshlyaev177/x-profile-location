@@ -3,6 +3,7 @@ import { baseManifest } from './base.manifest'
 
 const updatedFirefoxManifest = {
   ...baseManifest,
+  author: baseManifest.author.email,
   background: {
     scripts: [baseManifest.background.service_worker],
   },
@@ -14,7 +15,7 @@ const updatedFirefoxManifest = {
   },
 }
 
-export const firefox = createManifest(updatedFirefoxManifest, 'firefox')
+export const firefox = createManifest(updatedFirefoxManifest as any, 'firefox')
 
 
 
