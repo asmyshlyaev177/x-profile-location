@@ -33,7 +33,7 @@ const features: Feature[] = [
 
 export function Features() {
   return (
-    <section class="bg-surface pb-24 border-t border-border">
+    <section class="bg-surface pt-16 pb-24 border-t border-border">
       <div class="mx-auto max-w-7xl px-6 lg:px-8">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-10">
           {features.map((f) => (
@@ -47,16 +47,19 @@ export function Features() {
 
 function FeatureCard({ feature }: { feature: Feature }) {
   return (
-    <div class="flex flex-col items-start gap-4">
+    <div
+      class="flex flex-col items-start gap-4 rounded-xl border border-border p-5"
+      style={`background: #252830;`}
+    >
       <div
-        class="flex h-12 w-12 items-center justify-center rounded-2xl"
-        style={`background: ${feature.color}15;`}
+        class="flex h-10 w-10 items-center justify-center rounded-lg"
+        style={`background: ${feature.color}18;`}
       >
         <feature.icon />
       </div>
       <div>
         <h3 class="text-base font-bold text-white mb-1">{feature.title}</h3>
-        <p class="text-sm text-secondary leading-relaxed">{feature.description}</p>
+        <p class="text-sm text-[#d0d2d8] leading-relaxed">{feature.description}</p>
       </div>
     </div>
   )

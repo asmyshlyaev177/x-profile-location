@@ -13,7 +13,7 @@ export function CTA() {
         <h2 class="text-4xl lg:text-5xl font-extrabold text-white tracking-tight mb-4">
           Know where every profile is from.
         </h2>
-        <p class="text-lg text-secondary mb-10 max-w-lg mx-auto">
+        <p class="text-lg text-[#a0a3ab] mb-10 max-w-lg mx-auto">
           Free to use. Install in seconds.
         </p>
 

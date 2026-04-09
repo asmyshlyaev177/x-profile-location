@@ -20,7 +20,7 @@ export function Hero() {
               <span class="text-teal">X Profile Is From</span>
             </h1>
 
-            <p class="text-lg text-secondary leading-relaxed mb-10 max-w-md">
+            <p class="text-lg text-[#a0a3ab] leading-relaxed mb-10 max-w-md">
               Hover any X profile to instantly see their real country.
               Powered by X's own location data.
             </p>

@@ -5,9 +5,9 @@ export function SeeItInAction() {
         {/* Heading */}
         <div class="text-center mb-14">
           <h2 class="text-4xl font-extrabold text-white tracking-tight mb-4">
-            See it in Action
+            See It in Action
           </h2>
-          <p class="text-lg text-secondary max-w-xl mx-auto">
+          <p class="text-lg text-[#a0a3ab] max-w-xl mx-auto">
             Works on hover cards, profile pages, and individual tweets — no setup needed.
           </p>
         </div>
@@ -60,18 +60,21 @@ function Card({
 }) {
   return (
     <div
-      class="rounded-2xl overflow-hidden bg-dark-card border border-border hover:border-white/20 transition-all duration-200 hover:-translate-y-0.5"
-      style={`border-top: 2px solid ${accentColor};`}
+      class="rounded-2xl overflow-hidden border border-border hover:border-white/20 transition-all duration-200 ease-out hover:-translate-y-0.5"
+      style={`background: #252830; border-top: 2px solid ${accentColor};`}
     >
       {/* Preview area */}
-      <div class="relative h-44 flex items-center justify-center overflow-hidden bg-dark">
+      <div
+        class="relative h-44 flex items-center justify-center overflow-hidden"
+        style="background: #1c1e24;"
+      >
         <div class="relative">{preview}</div>
       </div>
 
       {/* Text */}
       <div class="px-5 py-4">
         <h3 class="text-base font-bold text-white mb-1.5">{title}</h3>
-        <p class="text-sm text-secondary leading-relaxed">{description}</p>
+        <p class="text-sm text-[#d0d2d8] leading-relaxed">{description}</p>
       </div>
     </div>
   )
