@@ -29,7 +29,7 @@ const features: Feature[] = [
 
 export function Features() {
   return (
-    <section class="bg-surface pb-24">
+    <section class="bg-surface pb-24 border-t border-border">
       <div class="mx-auto max-w-7xl px-6 lg:px-8">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-10">
           {features.map((f) => (
@@ -44,12 +44,12 @@ export function Features() {
 function FeatureCard({ feature }: { feature: Feature }) {
   return (
     <div class="flex flex-col items-start gap-4">
-      <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-dark/8">
+      <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
         <feature.icon />
       </div>
       <div>
-        <h3 class="text-base font-bold text-dark mb-1">{feature.title}</h3>
-        <p class="text-sm text-dark/60 leading-relaxed">{feature.description}</p>
+        <h3 class="text-base font-bold text-white mb-1">{feature.title}</h3>
+        <p class="text-sm text-secondary leading-relaxed">{feature.description}</p>
       </div>
     </div>
   )
@@ -62,7 +62,7 @@ function FlagIcon() {
       height="22"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#00d4c0"
+      stroke="#1d9bf0"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -80,7 +80,7 @@ function VpnIcon() {
       height="22"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#00d4c0"
+      stroke="#1d9bf0"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -99,7 +99,7 @@ function BlockIcon() {
       height="22"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#00d4c0"
+      stroke="#1d9bf0"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"

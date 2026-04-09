@@ -4,10 +4,10 @@ export function SeeItInAction() {
       <div class="mx-auto max-w-7xl px-6 lg:px-8">
         {/* Heading */}
         <div class="text-center mb-14">
-          <h2 class="text-4xl font-extrabold text-dark tracking-tight mb-4">
+          <h2 class="text-4xl font-extrabold text-white tracking-tight mb-4">
             See it in Action
           </h2>
-          <p class="text-lg text-dark/60 max-w-xl mx-auto">
+          <p class="text-lg text-secondary max-w-xl mx-auto">
             Works on hover cards across the feed, profile pages, and tweet
             detail views — no config needed.
           </p>
@@ -51,22 +51,18 @@ export function SeeItInAction() {
 function Card({
   title,
   description,
-  accentColor,
   preview,
 }: {
   title: string
   description: string
-  accentColor: string
+  accentColor?: string
   preview: preact.ComponentChildren
 }) {
   return (
-    <div class="rounded-2xl overflow-hidden bg-dark-card border border-white/8 shadow-lg">
+    <div class="rounded-2xl overflow-hidden bg-dark-card border border-border">
       {/* Preview area */}
-      <div class="relative h-44 flex items-center justify-center overflow-hidden" style="background: #131320;">
-        <div
-          class="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-16 blur-3xl opacity-20 rounded-full"
-          style={`background: ${accentColor};`}
-        />
+      <div class="relative h-44 flex items-center justify-center overflow-hidden bg-dark">
+        {/* Flat — no glow */}
         <div class="relative">{preview}</div>
       </div>
 
@@ -84,7 +80,7 @@ function Card({
 // ---------------------------------------------------------------------------
 function HoverCard({ children }: { children: preact.ComponentChildren }) {
   return (
-    <div class="rounded-xl border border-white/12 bg-dark p-3 w-56 space-y-2.5">
+    <div class="rounded-xl border border-border bg-dark-card p-3 w-56 space-y-2.5">
       <div class="flex items-start gap-2.5">
         <div class="h-8 w-8 rounded-full bg-white/15 shrink-0" />
         <div class="flex-1 space-y-1.5 pt-0.5">

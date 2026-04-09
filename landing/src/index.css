@@ -1,12 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-dark: #0b0b12;
-  --color-dark-card: #131320;
-  --color-teal: #00d4c0;
-  --color-teal-dark: #00b8a8;
-  --color-surface: #edeef7;
-  --font-family-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --color-dark: #000000;
+  --color-dark-card: #16181c;
+  --color-teal: #1d9bf0;
+  --color-teal-dark: #1a8cd8;
+  --color-surface: #16181c;
+  --color-border: #2f3336;
+  --color-secondary: #71767b;
+  --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
 }
 
 @layer base {

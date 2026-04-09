@@ -1,22 +1,19 @@
+import { useEffect, useRef } from 'preact/hooks'
 import { InstallButton } from './InstallButton'
 
 export function Hero() {
   return (
     <section class="relative overflow-hidden bg-dark min-h-screen flex items-center">
-      {/* Background glow blobs */}
-      <div class="pointer-events-none absolute inset-0">
-        <div class="absolute -top-32 -left-32 w-120 h-120 rounded-full bg-teal/10 blur-[120px]" />
-        <div class="absolute top-1/2 right-0 w-90 h-90 rounded-full bg-teal/8 blur-[100px] -translate-y-1/2" />
-      </div>
+      {/* Subtle border at bottom */}
+      <div class="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-border" />
 
       <div class="relative mx-auto max-w-7xl px-6 lg:px-8 py-24 w-full">
         <div class="flex flex-col lg:flex-row items-center gap-16">
           {/* Left: copy */}
           <div class="flex-1 max-w-xl">
             {/* Badge */}
-            <div class="inline-flex items-center gap-2 rounded-full border border-teal/30 bg-teal/10 px-4 py-1.5 mb-8">
-              <span class="h-1.5 w-1.5 rounded-full bg-teal animate-pulse" />
-              <span class="text-xs font-medium text-teal tracking-wide uppercase">
+            <div class="inline-flex items-center gap-2 rounded-full border border-border bg-dark-card px-4 py-1.5 mb-8">
+              <span class="text-xs font-medium text-secondary tracking-wide uppercase">
                 Chrome Extension
               </span>
             </div>
@@ -49,19 +46,56 @@ export function Hero() {
 }
 
 function HoverCardMockup() {
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el) return
+
+    const MAX_TILT = 12 // degrees
+
+    const clamp = (v: number, min: number, max: number) =>
+      Math.max(min, Math.min(max, v))
+
+    const onMove = (e: MouseEvent) => {
+      const rect = el.getBoundingClientRect()
+      const cx = rect.left + rect.width / 2
+      const cy = rect.top + rect.height / 2
+      // normalise to -1 … 1, clamped so distant cursor doesn't over-rotate
+      const nx = clamp((e.clientX - cx) / (rect.width / 2), -1, 1)
+      const ny = clamp((e.clientY - cy) / (rect.height / 2), -1, 1)
+      const ry = nx * MAX_TILT   // horizontal mouse → Y-axis rotation
+      const rx = -ny * MAX_TILT  // vertical mouse → X-axis rotation (inverted)
+      el.style.transform = `rotateY(${ry}deg) rotateX(${rx}deg)`
+    }
+
+    const onLeave = () => {
+      el.style.transform = 'rotateY(-6deg) rotateX(3deg)'
+    }
+
+    // listen on the whole hero section so tilt responds before the cursor is over the card
+    const section = el.closest('section')!
+    section.addEventListener('mousemove', onMove)
+    section.addEventListener('mouseleave', onLeave)
+    return () => {
+      section.removeEventListener('mousemove', onMove)
+      section.removeEventListener('mouseleave', onLeave)
+    }
+  }, [])
+
   return (
     <div class="relative w-full max-w-sm" style="perspective: 1000px;">
-      {/* Outer glow */}
-      <div class="absolute inset-0 rounded-2xl bg-teal/20 blur-3xl scale-90 opacity-60" />
+      {/* No glow — flat X aesthetic */}
 
       {/* X Feed background */}
       <div
-        class="relative rounded-2xl border border-white/10 bg-dark-card shadow-2xl overflow-hidden p-4 space-y-3"
+        ref={cardRef}
+        class="relative rounded-2xl border border-border bg-dark-card overflow-hidden p-4 space-y-3 transition-transform duration-150 ease-out"
         style="transform: rotateY(-6deg) rotateX(3deg);"
       >
         {/* Feed items */}
         {[1, 2].map((i) => (
-          <div key={i} class="rounded-xl border border-white/6 bg-white/3 p-3 space-y-2">
+          <div key={i} class="rounded-xl border border-border bg-white/3 p-3 space-y-2">
             <div class="flex items-center gap-2">
               <div class="h-8 w-8 rounded-full bg-white/15 shrink-0" />
               <div class="space-y-1">
@@ -77,7 +111,7 @@ function HoverCardMockup() {
         ))}
 
         {/* Hover card overlay */}
-        <div class="rounded-xl border border-teal/30 bg-[#0f0f1c] shadow-lg p-4 space-y-3">
+        <div class="rounded-xl border border-border bg-dark p-4 space-y-3">
           {/* Profile row */}
           <div class="flex items-start gap-3">
             <div class="h-12 w-12 rounded-full bg-teal/30 shrink-0" />
@@ -108,15 +142,15 @@ function HoverCardMockup() {
             </div>
           </div>
           {/* Extension badge label */}
-          <div class="flex items-center gap-1.5 pt-1 border-t border-white/6">
-            <span class="text-[10px] text-teal/60 font-medium uppercase tracking-wide">
+          <div class="flex items-center gap-1.5 pt-1 border-t border-border">
+            <span class="text-[10px] text-teal font-medium uppercase tracking-wide">
               X Profile Location
             </span>
           </div>
         </div>
 
         {/* VPN example row */}
-        <div class="rounded-xl border border-white/6 bg-white/3 p-3">
+        <div class="rounded-xl border border-border bg-white/3 p-3">
           <div class="flex items-center gap-2">
             <div class="h-8 w-8 rounded-full bg-white/15 shrink-0" />
             <div class="flex-1 space-y-1">
