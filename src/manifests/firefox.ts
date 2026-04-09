@@ -11,6 +11,9 @@ const updatedFirefoxManifest = {
     gecko: {
       id: 'x-profile-location@asmyshlyaev177',
       // ^^^ https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_specific_settings#id
+      data_collection_permissions: {
+        hostnames: [],
+      },
     },
   },
 }
