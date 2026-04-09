@@ -20,7 +20,7 @@ export function InstallButton({ size = 'lg', override }: InstallButtonProps) {
   return (
     <a
       href={store.url}
-      class={`inline-flex items-center gap-2 rounded-full bg-white ${px} text-sm font-bold text-black hover:bg-white/90 transition-colors`}
+      class={`inline-flex items-center gap-2 rounded-full bg-white ${px} text-sm font-bold text-black hover:bg-white/90 hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-all duration-200`}
     >
       <BrowserIcon browser={browser} />
       {store.label}

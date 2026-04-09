@@ -1,6 +1,5 @@
 import { Hero } from './components/Hero'
 import { SeeItInAction } from './components/SeeItInAction'
-import { Features } from './components/Features'
 import { CTA } from './components/CTA'
 import { Footer } from './components/Footer'
 import { PrivacyPolicy } from './components/PrivacyPolicy'
@@ -27,7 +26,6 @@ export function App({ url }: AppProps) {
     <main>
       <Hero />
       <SeeItInAction />
-      <Features />
       <CTA />
       <Footer />
     </main>

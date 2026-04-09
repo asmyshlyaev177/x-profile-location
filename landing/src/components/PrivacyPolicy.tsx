@@ -94,22 +94,6 @@ export function PrivacyPolicy() {
               the revised policy.
             </p>
           </section>
-
-          <section>
-            <h2 class="text-xl font-bold text-white mb-3">Contact</h2>
-            <p>
-              Questions or concerns? Open an issue on{' '}
-              <a
-                href="https://github.com/asmyshlyaev177/x-profile-location"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-teal hover:underline"
-              >
-                GitHub
-              </a>
-              .
-            </p>
-          </section>
         </div>
       </div>
     </div>

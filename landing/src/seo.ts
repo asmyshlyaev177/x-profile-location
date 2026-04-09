@@ -7,7 +7,7 @@ export const buildDate = new Date().toISOString()
 export const seo = {
   title: 'X Profile Location — See Where Every X Profile Is From',
   description:
-    'Browser extension that shows the real country of any X / Twitter profile as a flag emoji on hover cards. Includes VPN detection, mobile app source, and per-country blocking.',
+    'Browser extension that shows the real country of any X / Twitter profile as a flag emoji on hover cards. Includes VPN detection, mobile app source, and per-country highlighting.',
   keywords:
     'X Twitter profile location, country flag extension, Twitter location checker, VPN detection Twitter, where is this Twitter user from, X profile country, Chrome extension',
   author: 'asmyshlyaev177',

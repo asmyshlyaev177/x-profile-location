@@ -8,8 +8,7 @@ export function SeeItInAction() {
             See it in Action
           </h2>
           <p class="text-lg text-secondary max-w-xl mx-auto">
-            Works on hover cards across the feed, profile pages, and tweet
-            detail views — no config needed.
+            Works on hover cards, profile pages, and individual tweets — no setup needed.
           </p>
         </div>
 
@@ -17,26 +16,26 @@ export function SeeItInAction() {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <Card
             title="Country Flag on Hover"
-            description="Instantly shows the verified country flag from X's own location data right inside every hover card."
-            accentColor="#00d4c0"
+            description="See the real country flag directly in hover cards — no clicks needed."
+            accentColor="#6b9e7a"
             preview={<CountryFlagPreview />}
           />
           <Card
             title="VPN Detection"
-            description="When X marks a location as potentially inaccurate a ⚠ VPN badge appears next to the flag."
-            accentColor="#ef4444"
+            description="When X flags a location as potentially inaccurate, a ⚠ VPN badge appears next to the flag."
+            accentColor="#d4736e"
             preview={<VpnPreview />}
           />
           <Card
-            title="Mobile App Store Country"
-            description="Accounts registered via Android or iOS show a 📱 badge with the App Store country alongside the flag."
-            accentColor="#a855f7"
+            title="Registration Country"
+            description="See which country's app store was used to create the account, shown as a 📱 badge."
+            accentColor="#c9a461"
             preview={<MobilePreview />}
           />
           <Card
-            title="Rate Limit Timer"
-            description="When X's API rate limit is hit, a live countdown shows exactly how long until lookups resume."
-            accentColor="#f59e0b"
+            title="Lookup Cooldown"
+            description="When X temporarily limits lookups, a countdown shows exactly when they'll resume."
+            accentColor="#d19a66"
             preview={<RateLimitPreview />}
           />
         </div>
@@ -51,25 +50,28 @@ export function SeeItInAction() {
 function Card({
   title,
   description,
+  accentColor,
   preview,
 }: {
   title: string
   description: string
-  accentColor?: string
+  accentColor: string
   preview: preact.ComponentChildren
 }) {
   return (
-    <div class="rounded-2xl overflow-hidden bg-dark-card border border-border">
+    <div
+      class="rounded-2xl overflow-hidden bg-dark-card border border-border hover:border-white/20 transition-all duration-200 hover:-translate-y-0.5"
+      style={`border-top: 2px solid ${accentColor};`}
+    >
       {/* Preview area */}
       <div class="relative h-44 flex items-center justify-center overflow-hidden bg-dark">
-        {/* Flat — no glow */}
         <div class="relative">{preview}</div>
       </div>
 
       {/* Text */}
       <div class="px-5 py-4">
         <h3 class="text-base font-bold text-white mb-1.5">{title}</h3>
-        <p class="text-xs text-white/50 leading-relaxed">{description}</p>
+        <p class="text-sm text-secondary leading-relaxed">{description}</p>
       </div>
     </div>
   )

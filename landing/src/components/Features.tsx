@@ -4,6 +4,7 @@ interface Feature {
   icon: () => VNode
   title: string
   description: string
+  color: string
 }
 
 const features: Feature[] = [
@@ -12,18 +13,21 @@ const features: Feature[] = [
     title: 'Instant Country Flags',
     description:
       'Country flag and region appear directly in X hover cards and tweet pages — no clicks, no popups, just glanceable context.',
+    color: '#6b9e7a',
   },
   {
     icon: VpnIcon,
     title: 'VPN Detection',
     description:
       "When X marks a profile's location as potentially inaccurate, a ⚠ VPN badge appears so you know to take the location with a grain of salt.",
+    color: '#d4736e',
   },
   {
     icon: BlockIcon,
-    title: 'Per-Country Blocking',
+    title: 'Per-Country Highlighting',
     description:
       'Mark specific countries in the options page to replace their flags with ⚠️ — useful for quickly spotting accounts from certain regions.',
+    color: '#c9a461',
   },
 ]
 
@@ -44,7 +48,10 @@ export function Features() {
 function FeatureCard({ feature }: { feature: Feature }) {
   return (
     <div class="flex flex-col items-start gap-4">
-      <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
+      <div
+        class="flex h-12 w-12 items-center justify-center rounded-2xl"
+        style={`background: ${feature.color}15;`}
+      >
         <feature.icon />
       </div>
       <div>
@@ -62,7 +69,7 @@ function FlagIcon() {
       height="22"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#1d9bf0"
+      stroke="#6b9e7a"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -80,7 +87,7 @@ function VpnIcon() {
       height="22"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#1d9bf0"
+      stroke="#d4736e"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -99,7 +106,7 @@ function BlockIcon() {
       height="22"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#1d9bf0"
+      stroke="#c9a461"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"

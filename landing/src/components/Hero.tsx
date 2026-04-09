@@ -3,31 +3,26 @@ import { InstallButton } from './InstallButton'
 
 export function Hero() {
   return (
-    <section class="relative overflow-hidden bg-dark min-h-screen flex items-center">
-      {/* Subtle border at bottom */}
+    <section
+      class="relative overflow-hidden bg-dark min-h-screen flex items-center"
+      style="background-image: radial-gradient(rgba(255,255,255,0.15) 1.5px, transparent 1.5px); background-size: 28px 28px;"
+    >
+      {/* Bottom border */}
       <div class="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-border" />
 
       <div class="relative mx-auto max-w-7xl px-6 lg:px-8 py-24 w-full">
         <div class="flex flex-col lg:flex-row items-center gap-16">
           {/* Left: copy */}
           <div class="flex-1 max-w-xl">
-            {/* Badge */}
-            <div class="inline-flex items-center gap-2 rounded-full border border-border bg-dark-card px-4 py-1.5 mb-8">
-              <span class="text-xs font-medium text-secondary tracking-wide uppercase">
-                Chrome Extension
-              </span>
-            </div>
-
-            <h1 class="text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight text-white mb-6">
+            <h1 class="text-5xl lg:text-7xl font-extrabold leading-tight tracking-tight text-white mb-6">
               See Where Every
               <br />
               <span class="text-teal">X Profile Is From</span>
             </h1>
 
-            <p class="text-lg text-white/60 leading-relaxed mb-10 max-w-md">
-              Hover any X&nbsp;/&nbsp;Twitter profile and instantly see their
-              real country flag — powered by X's own verified location data.
-              Includes VPN detection and per-country blocking.
+            <p class="text-lg text-secondary leading-relaxed mb-10 max-w-md">
+              Hover any X profile to instantly see their real country.
+              Powered by X's own location data.
             </p>
 
             <div class="flex flex-wrap items-center gap-4">
@@ -90,7 +85,7 @@ function HoverCardMockup() {
       {/* X Feed background */}
       <div
         ref={cardRef}
-        class="relative rounded-2xl border border-border bg-dark-card overflow-hidden p-4 space-y-3 transition-transform duration-150 ease-out"
+        class="relative rounded-2xl border border-border bg-dark-card overflow-hidden p-4 space-y-3 transition-transform duration-150 ease-out shadow-[0_8px_60px_-12px_rgba(109,158,122,0.15)]"
         style="transform: rotateY(-6deg) rotateX(3deg);"
       >
         {/* Feed items */}
@@ -114,7 +109,7 @@ function HoverCardMockup() {
         <div class="rounded-xl border border-border bg-dark p-4 space-y-3">
           {/* Profile row */}
           <div class="flex items-start gap-3">
-            <div class="h-12 w-12 rounded-full bg-teal/30 shrink-0" />
+            <div class="h-12 w-12 rounded-full bg-sage/30 shrink-0" />
             <div class="flex-1 space-y-1.5">
               <div class="h-3 w-28 rounded bg-white/50" />
               <div class="h-2.5 w-20 rounded bg-white/25" />
@@ -143,7 +138,7 @@ function HoverCardMockup() {
           </div>
           {/* Extension badge label */}
           <div class="flex items-center gap-1.5 pt-1 border-t border-border">
-            <span class="text-[10px] text-teal font-medium uppercase tracking-wide">
+            <span class="text-[10px] text-sage font-medium uppercase tracking-wide">
               X Profile Location
             </span>
           </div>

@@ -2,7 +2,10 @@ import { InstallButton } from './InstallButton'
 
 export function CTA() {
   return (
-    <section class="relative overflow-hidden bg-dark py-28">
+    <section
+      class="relative overflow-hidden bg-dark py-28"
+      style="background: radial-gradient(ellipse at center, #0d0d12 0%, #000000 70%);"
+    >
       {/* Top border */}
       <div class="absolute top-0 left-0 right-0 h-px bg-border" />
 
@@ -11,7 +14,7 @@ export function CTA() {
           Know where every profile is from.
         </h2>
         <p class="text-lg text-secondary mb-10 max-w-lg mx-auto">
-          Core features are free. Advanced features — are coming as a paid upgrade.
+          Free to use. Install in seconds.
         </p>
 
         <div class="flex flex-wrap items-center justify-center gap-4">
