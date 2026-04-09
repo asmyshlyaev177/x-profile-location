@@ -1,6 +1,6 @@
 import { CHROME_STORE_URL } from './constants'
 
-export type SupportedBrowser = 'chrome' | 'firefox' | 'edge'
+export type SupportedBrowser = 'chrome' | 'edge'
 
 export interface StoreEntry {
   browser: SupportedBrowser
@@ -14,11 +14,6 @@ export const STORES: Record<SupportedBrowser, StoreEntry> = {
     label: 'Add to Chrome',
     url: CHROME_STORE_URL,
   },
-  firefox: {
-    browser: 'firefox',
-    label: 'Add to Firefox',
-    url: '#', // TODO: replace with AMO URL
-  },
   edge: {
     browser: 'edge',
     label: 'Add to Edge',
@@ -31,6 +26,6 @@ export function detectBrowser(): SupportedBrowser {
   if (typeof navigator === 'undefined') return 'chrome'
   const ua = navigator.userAgent
   if (ua.includes('Edg/')) return 'edge'
-  if (ua.includes('Firefox/')) return 'firefox'
+
   return 'chrome' // Chrome, Brave, and anything else → Chrome Web Store
 }

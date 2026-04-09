@@ -17,7 +17,7 @@ export function Hero() {
             <div class="inline-flex items-center gap-2 rounded-full border border-teal/30 bg-teal/10 px-4 py-1.5 mb-8">
               <span class="h-1.5 w-1.5 rounded-full bg-teal animate-pulse" />
               <span class="text-xs font-medium text-teal tracking-wide uppercase">
-                Chrome &amp; Firefox Extension
+                Chrome Extension
               </span>
             </div>
 
