@@ -40,7 +40,7 @@ export const COUNTRY_FLAGS: Record<string, string> = {
   'Pakistan': '🇵🇰', 'Palau': '🇵🇼', 'Panama': '🇵🇦',
   'Papua New Guinea': '🇵🇬', 'Paraguay': '🇵🇾', 'Peru': '🇵🇪',
   'Philippines': '🇵🇭', 'Poland': '🇵🇱', 'Portugal': '🇵🇹', 'Qatar': '🇶🇦',
-  'Romania': '🇷🇴', 'Russia': '🇷🇺', 'Russian Federation': '🇷🇺', 'Rwanda': '🇷🇼',
+  'Romania': '🇷🇴', 'Russian Federation': '🇷🇺', 'Rwanda': '🇷🇼',
   'Saint Kitts and Nevis': '🇰🇳', 'Saint Lucia': '🇱🇨',
   'Saint Vincent and the Grenadines': '🇻🇨', 'Samoa': '🇼🇸',
   'San Marino': '🇸🇲', 'Sao Tome and Principe': '🇸🇹',
@@ -57,7 +57,7 @@ export const COUNTRY_FLAGS: Record<string, string> = {
   'United Arab Emirates': '🇦🇪', 'United Kingdom': '🇬🇧',
   'United States': '🇺🇸', 'Uruguay': '🇺🇾', 'Uzbekistan': '🇺🇿',
   'Vanuatu': '🇻🇺', 'Vatican City': '🇻🇦', 'Venezuela': '🇻🇪',
-  'Vietnam': '🇻🇳', 'Viet Nam': '🇻🇳', 'Yemen': '🇾🇪', 'Zambia': '🇿🇲', 'Zimbabwe': '🇿🇼',
+  'Viet Nam': '🇻🇳', 'Yemen': '🇾🇪', 'Zambia': '🇿🇲', 'Zimbabwe': '🇿🇼',
 };
 
 export const REGION_FLAGS: Record<string, string> = {
