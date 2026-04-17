@@ -57,7 +57,7 @@ export const COUNTRY_FLAGS: Record<string, string> = {
   'United Arab Emirates': '🇦🇪', 'United Kingdom': '🇬🇧',
   'United States': '🇺🇸', 'Uruguay': '🇺🇾', 'Uzbekistan': '🇺🇿',
   'Vanuatu': '🇻🇺', 'Vatican City': '🇻🇦', 'Venezuela': '🇻🇪',
-  'Vietnam': '🇻🇳', 'Yemen': '🇾🇪', 'Zambia': '🇿🇲', 'Zimbabwe': '🇿🇼',
+  'Vietnam': '🇻🇳', 'Viet Nam': '🇻🇳', 'Yemen': '🇾🇪', 'Zambia': '🇿🇲', 'Zimbabwe': '🇿🇼',
 };
 
 export const REGION_FLAGS: Record<string, string> = {
