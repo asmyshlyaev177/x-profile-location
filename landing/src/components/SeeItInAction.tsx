@@ -28,7 +28,7 @@ export function SeeItInAction() {
           />
           <Card
             title="Registration Country"
-            description="See which country's app store was used to create the account, shown as a 📱 badge."
+            description="See which country's app store was used to create the account — shown as a 📱 badge before the location flag."
             accentColor="#c9a461"
             preview={<MobilePreview />}
           />
@@ -132,8 +132,6 @@ function VpnPreview() {
 function MobilePreview() {
   return (
     <HoverCard>
-      <span class="text-base leading-none">🇯🇵</span>
-      <span class="text-xs text-white/55">Japan</span>
       <span
         class="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded"
         style="background:rgba(168,85,247,.12);color:rgb(180,100,255);border:1px solid rgba(168,85,247,.3);"
@@ -141,6 +139,8 @@ function MobilePreview() {
         <span>📱</span>
         <span>🇯🇵</span>
       </span>
+      <span class="text-base leading-none">🇯🇵</span>
+      <span class="text-xs text-white/55">Japan</span>
     </HoverCard>
   )
 }

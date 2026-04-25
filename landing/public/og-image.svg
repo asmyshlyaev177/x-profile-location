@@ -10,7 +10,8 @@
     </radialGradient>
     <clipPath id="flag-pl"><rect x="838" y="218" width="34" height="20" rx="5"/></clipPath>
     <clipPath id="flag-ua"><rect x="838" y="322" width="34" height="20" rx="5"/></clipPath>
-    <clipPath id="flag-jp"><rect x="838" y="426" width="34" height="20" rx="5"/></clipPath>
+    <clipPath id="flag-jp"><rect x="912" y="426" width="34" height="20" rx="5"/></clipPath>
+    <clipPath id="flag-jp-store"><rect x="856" y="429" width="18" height="12" rx="2"/></clipPath>
   </defs>
 
   <!-- Background -->
@@ -95,15 +96,19 @@
   <circle cx="806" cy="407" r="22" fill="#ffffff12"/>
   <rect x="838" y="391" width="92" height="10" rx="5" fill="#ffffff45"/>
   <rect x="838" y="409" width="62" height="8"  rx="4" fill="#ffffff22"/>
+  <!-- Mobile badge: phone icon + mini Japan flag -->
+  <rect x="838" y="426" width="46" height="20" rx="5" fill="#a855f720" stroke="#a855f760" stroke-width="1"/>
+  <rect x="844" y="429" width="8" height="13" rx="2" fill="none" stroke="#a855f7" stroke-width="1.5"/>
+  <g clip-path="url(#flag-jp-store)">
+    <rect x="856" y="429" width="18" height="12" fill="#ffffff"/>
+    <circle cx="865" cy="435" r="4" fill="#bc002d"/>
+  </g>
   <!-- Country flag: Japan -->
   <g clip-path="url(#flag-jp)">
-    <rect x="838" y="426" width="34" height="20" fill="#ffffff"/>
-    <circle cx="855" cy="436" r="7" fill="#bc002d"/>
+    <rect x="912" y="426" width="34" height="20" fill="#ffffff"/>
+    <circle cx="929" cy="436" r="7" fill="#bc002d"/>
   </g>
-  <text x="880" y="440" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" fill="#ffffff70">Japan</text>
-  <!-- Mobile badge -->
-  <rect x="930" y="426" width="66" height="20" rx="5" fill="#a855f720" stroke="#a855f760" stroke-width="1"/>
-  <text x="963" y="440" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700" fill="#a855f7" text-anchor="middle">Mobile</text>
+  <text x="954" y="440" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" fill="#ffffff70">Japan</text>
 
   <!-- Card label -->
   <text x="934" y="502" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600" fill="#00d4c0" opacity="0.45" letter-spacing="1.5" text-anchor="middle">X PROFILE LOCATION</text>

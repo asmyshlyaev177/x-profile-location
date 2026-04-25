@@ -72,6 +72,18 @@ export const REGION_FLAGS: Record<string, string> = {
   'West Asia': '🌍',
 };
 
+export const REGION_ABBR: Record<string, string> = {
+  'Africa': 'AFR',
+  'Australasia': 'AUS',
+  'East Asia & Pacific': 'EAP',
+  'Europe': 'EUR',
+  'North Africa': 'NAF',
+  'North America': 'NAM',
+  'South America': 'SAM',
+  'South Asia': 'SAS',
+  'West Asia': 'WAS',
+};
+
 export const BLOCKED_COUNTRIES_KEY = 'blockedCountries';
 
 export const DEFAULT_BLOCKED_COUNTRIES = ['Africa', 'India', 'South Asia', 'Nigeria', 'Pakistan', 'Bangladesh']

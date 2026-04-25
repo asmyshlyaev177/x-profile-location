@@ -1,7 +1,7 @@
 // content.tsx — plain DOM, no React/Preact
 import { cleanupCache, getCached, setCached } from './cache';
 import type { LocationData } from './cache';
-import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, REGION_FLAGS } from './countries';
+import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, REGION_ABBR, REGION_FLAGS } from './countries';
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA';
 const API_BASE = 'https://x.com/i/api/graphql';
@@ -36,7 +36,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 function getLocationDisplay(loc: string): { emoji: string; label: string } {
   if (blockedCountries.has(loc)) return { emoji: '⚠️', label: loc };
   if (COUNTRY_FLAGS[loc]) return { emoji: COUNTRY_FLAGS[loc], label: loc };
-  if (REGION_FLAGS[loc]) return { emoji: REGION_FLAGS[loc], label: loc };
+  if (REGION_FLAGS[loc]) return { emoji: REGION_ABBR[loc] ?? REGION_FLAGS[loc], label: loc };
   return { emoji: '🌐', label: loc };
 }
 
@@ -324,31 +324,29 @@ function buildInfoRow(data: LocationData): HTMLElement {
   const sourceCountry = mobileSource
     && data.source?.replace(/\s*(android\s+app|app\s+store)/i, '').trim() || null;
 
+  if (sourceCountry) {
+    const { emoji: storeFlag } = getLocationDisplay(sourceCountry);
+    const block = document.createElement('span');
+    block.className = 'x-loc-store-block';
+    block.title = data.source!;
+
+    const phone = document.createElement('span');
+    phone.textContent = '📱';
+
+    const flag = document.createElement('span');
+    flag.className = 'x-loc-icon-flag';
+    flag.textContent = storeFlag;
+
+    block.appendChild(phone);
+    block.appendChild(flag);
+    row.appendChild(block);
+  }
+
   if (data?.location) {
     const { emoji, label } = getLocationDisplay(data.location);
     const icon = makeIcon(emoji, label);
     icon.classList.add('x-loc-icon-flag');
     row.appendChild(icon);
-
-    if (sourceCountry) {
-      const { emoji: storeFlag } = getLocationDisplay(sourceCountry);
-      const block = document.createElement('span');
-      block.className = 'x-loc-store-block';
-      block.title = data.source!;
-
-      const phone = document.createElement('span');
-      phone.textContent = '📱';
-
-      const flag = document.createElement('span');
-      flag.className = 'x-loc-icon-flag';
-      flag.textContent = storeFlag;
-
-      block.appendChild(phone);
-      block.appendChild(flag);
-      row.appendChild(block);
-    }
-  } else if (sourceCountry) {
-    row.appendChild(makeIcon('📱', data.source!));
   }
 
   if (data?.locationAccurate === false) {
