@@ -33,10 +33,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-function getLocationDisplay(loc: string): { emoji: string; label: string } {
+function getLocationDisplay(loc: string): { emoji: string; label: string; isText?: boolean } {
   if (blockedCountries.has(loc)) return { emoji: '⚠️', label: loc };
   if (COUNTRY_FLAGS[loc]) return { emoji: COUNTRY_FLAGS[loc], label: loc };
-  if (REGION_FLAGS[loc]) return { emoji: REGION_ABBR[loc] ?? REGION_FLAGS[loc], label: loc };
+  if (REGION_FLAGS[loc]) {
+    const abbr = REGION_ABBR[loc];
+    return abbr
+      ? { emoji: abbr, label: loc, isText: true }
+      : { emoji: REGION_FLAGS[loc], label: loc };
+  }
   return { emoji: '🌐', label: loc };
 }
 
@@ -213,8 +218,16 @@ function injectStyles() {
 .x-loc-icon-flag {
   font-size: 26px;
 }
+.x-loc-icon-flag.x-loc-icon-abbr {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
 .x-loc-store-block .x-loc-icon-flag {
   font-size: 16px;
+}
+.x-loc-store-block .x-loc-icon-flag.x-loc-icon-abbr {
+  font-size: 11px;
 }
 .x-loc-store-block {
   display: inline-flex;
@@ -325,7 +338,7 @@ function buildInfoRow(data: LocationData): HTMLElement {
     && data.source?.replace(/\s*(android\s+app|app\s+store)/i, '').trim() || null;
 
   if (sourceCountry) {
-    const { emoji: storeFlag } = getLocationDisplay(sourceCountry);
+    const { emoji: storeFlag, isText: storeFlagIsText } = getLocationDisplay(sourceCountry);
     const block = document.createElement('span');
     block.className = 'x-loc-store-block';
     block.title = data.source!;
@@ -334,7 +347,7 @@ function buildInfoRow(data: LocationData): HTMLElement {
     phone.textContent = '📱';
 
     const flag = document.createElement('span');
-    flag.className = 'x-loc-icon-flag';
+    flag.className = `x-loc-icon-flag ${storeFlagIsText ? 'x-loc-icon-abbr' : ''}`;
     flag.textContent = storeFlag;
 
     block.appendChild(phone);
@@ -343,9 +356,10 @@ function buildInfoRow(data: LocationData): HTMLElement {
   }
 
   if (data?.location) {
-    const { emoji, label } = getLocationDisplay(data.location);
+    const { emoji, label, isText } = getLocationDisplay(data.location);
     const icon = makeIcon(emoji, label);
     icon.classList.add('x-loc-icon-flag');
+    if (isText) icon.classList.add('x-loc-icon-abbr');
     row.appendChild(icon);
   }
 
