@@ -68,7 +68,9 @@ export const REGION_FLAGS: Record<string, string> = {
   'North Africa': '🌍',
   'North America': '🌎',
   'South America': '🌎',
+  'Central Asia': '🌎',
   'South Asia': '🌏',
+  'Southest Asia': '🌏',
   'West Asia': '🌍',
 };
 
@@ -80,7 +82,9 @@ export const REGION_ABBR: Record<string, string> = {
   'North Africa': 'NAF',
   'North America': 'NAM',
   'South America': 'SAM',
+  'Central Asia': 'CAS',
   'South Asia': 'SAS',
+  'Southest Asia': 'SEAS',
   'West Asia': 'WAS',
 };
 
