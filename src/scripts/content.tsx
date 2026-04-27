@@ -1,5 +1,5 @@
 // content.tsx — plain DOM, no React/Preact
-import { cleanupCache, getCached, setCached } from './cache';
+import { cleanupCache, getCached, mergeCached } from './cache';
 import type { LocationData } from './cache';
 import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, REGION_ABBR, REGION_FLAGS } from './countries';
 
@@ -49,10 +49,21 @@ function getLocationDisplay(loc: string): { emoji: string; label: string; isText
 // Types & state
 // ---------------------------------------------------------------------------
 let apiHeaders: Record<string, string> | null = null;
-const cache = new Map<string, LocationData | null>();
+
+class NormalizedMap<V> {
+  private map = new Map<string, V>();
+  private key(name: string) { return name.toLowerCase(); }
+  has(name: string) { return this.map.has(this.key(name)); }
+  get(name: string) { return this.map.get(this.key(name)); }
+  set(name: string, value: V) { this.map.set(this.key(name), value); }
+  delete(name: string) { return this.map.delete(this.key(name)); }
+}
+// Tracks users whose location was already fetched via API this session,
+// so repeat hovers skip the network and read from IDB instead.
+const checkedThisSession = new Set<string>();
 // Shared promises — lets concurrent processCard calls for the same user
 // await the same in-flight fetch instead of getting null immediately.
-const pendingMap = new Map<string, Promise<LocationData | null>>();
+const pendingMap = new NormalizedMap<Promise<LocationData | null>>();
 let rateLimitResetAt = 0;
 let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -104,24 +115,24 @@ function showRateLimitToast() {
 // API fetch
 // ---------------------------------------------------------------------------
 async function fetchLocationData(screenName: string): Promise<LocationData | null> {
-  const lower = screenName.toLowerCase();
-  if (cache.has(lower)) return cache.get(lower)!;
-  if (pendingMap.has(lower)) return pendingMap.get(lower)!;
+  if (pendingMap.has(screenName)) return pendingMap.get(screenName)!;
 
   // Capture snapshot so the IIFE always uses the headers that were valid at
   // call time, even if apiHeaders is updated mid-flight.
   const capturedHeaders = apiHeaders;
 
   const promise = (async (): Promise<LocationData | null> => {
-    // Check persistent cache before hitting the network
-    const stored = await getCached(lower);
-    if (stored !== undefined) {
-      cache.set(lower, stored);
-      return stored;
-    }
+    const stored = await getCached(screenName);
 
-    // Don't attempt without intercepted headers — avoids caching failures
-    // from unauthenticated requests before the page-script captures the session.
+    // Skip the network if location data is already in IDB.
+    // Bio-only entries (location: null, source: null) fall through.
+    if (stored?.location || stored?.source) return stored;
+
+    // Already ran the API lookup this session — return whatever IDB has (may include bio).
+    if (checkedThisSession.has(screenName.toLowerCase())) return stored ?? null;
+
+    // Don't attempt without intercepted headers — avoids failures before
+    // the page-script captures the session.
     if (!capturedHeaders) return null;
 
     if (rateLimitResetAt > Date.now()) {
@@ -160,36 +171,31 @@ async function fetchLocationData(screenName: string): Promise<LocationData | nul
         return null;
       }
 
-      if (!resp.ok) {
-        cache.set(lower, null);
-        return null;
-      }
+      if (!resp.ok) return null;
+
+      checkedThisSession.add(screenName.toLowerCase());
 
       const json = await resp.json();
       const profile =
         json?.data?.user_result_by_screen_name?.result?.about_profile ?? null;
 
-      if (!profile) {
-        cache.set(lower, null);
-        return null;
-      }
+      if (!profile) return stored ?? null;
 
       const data: LocationData = {
+        bio: stored?.bio ?? null,
         location: profile.account_based_in ?? null,
         locationAccurate: profile.location_accurate !== false,
         source: profile.source ?? null,
       };
-      cache.set(lower, data);
-      await setCached(lower, data);
+      await mergeCached(screenName, data);
       return data;
     } catch {
-      cache.set(lower, null);
       return null;
     }
   })();
 
-  pendingMap.set(lower, promise);
-  promise.finally(() => pendingMap.delete(lower));
+  pendingMap.set(screenName, promise);
+  promise.finally(() => pendingMap.delete(screenName));
   return promise;
 }
 
@@ -533,6 +539,18 @@ window.addEventListener('x-loc-headers-captured', (e: Event) => {
   const headers = (e as CustomEvent).detail?.headers;
   if (headers?.authorization) {
     apiHeaders = headers;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Listen for user bio data intercepted from timeline/tweet API responses
+// ---------------------------------------------------------------------------
+window.addEventListener('x-loc-users-data', (e: Event) => {
+  const users = (e as CustomEvent).detail?.users as Array<{ screenName: string; bio: string | null }> | undefined;
+  if (!users) return;
+  for (const { screenName, bio } of users) {
+    if (!bio) continue;
+    mergeCached(screenName, { bio });
   }
 });
 

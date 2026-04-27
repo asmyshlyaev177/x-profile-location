@@ -6,9 +6,16 @@ Live landing page: [x-profile-location.pages.dev](https://x-profile-location.pag
 
 ## How it works
 
-1. **`content.tsx`** — injected into every X page. Intercepts `AboutAccountQuery` API responses (via `page-script.ts`), caches results in IndexedDB, and injects a location row into hover cards and tweet articles.
-2. **`service-worker.ts`** — background script. Initialises the blocked-countries list in `chrome.storage.local` on install and tracks install/update analytics events.
-3. **`options.tsx`** — embedded options page where users configure which countries/regions to block.
+1. **`page-script.ts`** — runs in the page's own JS context (`world: MAIN`) to intercept `fetch`/`XHR`. Captures auth headers from outgoing `x.com/i/api/graphql` requests and extracts user bios from `HomeTimeline` and `TweetDetail` responses, dispatching both to the content script via custom events.
+2. **`content.tsx`** — injected into every X page. Listens for captured headers and bio data from `page-script.ts`, fetches location via `AboutAccountQuery` on hover, merges everything into an IndexedDB cache, and injects a location row into hover cards and tweet articles.
+3. **`service-worker.ts`** — background script. Initialises the blocked-countries list in `chrome.storage.local` on install and tracks install/update analytics events.
+4. **`options.tsx`** — embedded options page where users configure which countries/regions to block.
+
+### Data sources
+
+- **Location & VPN flag** — fetched on demand from X's `AboutAccountQuery` GraphQL endpoint using the session's own auth headers (no extra credentials needed).
+- **Bio** — extracted passively from `HomeTimeline` / `TweetDetail` responses as the user browses; no additional network requests.
+- **Store badge** — derived from the `source` field returned by `AboutAccountQuery` (e.g. `Japan Android App` → `📱 🇯🇵`).
 
 ### Icon display order (left → right)
 

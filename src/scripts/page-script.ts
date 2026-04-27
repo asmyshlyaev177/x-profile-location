@@ -1,3 +1,6 @@
+import { extractUsers } from './extract-users';
+import type { UserBio } from './extract-users';
+
 (function () {
   if ((window as any).__X_LOC_INJECTED__) return;
   (window as any).__X_LOC_INJECTED__ = true;
@@ -15,8 +18,6 @@
     );
   }
 
-  // content.tsx starts at document_idle and may miss the initial dispatch.
-  // It sends this event on init to request a re-dispatch of stored headers.
   window.addEventListener('x-loc-request-headers', () => {
     if (storedHeaders) {
       window.dispatchEvent(
@@ -25,10 +26,31 @@
     }
   });
 
+  // ---------------------------------------------------------------------------
+  // Bio extraction from timeline/tweet API responses
+  // ---------------------------------------------------------------------------
+  const BIO_INTERCEPT = ['HomeTimeline', 'TweetDetail'];
+
+  function dispatchUsers(users: UserBio[]) {
+    if (users.length === 0) return;
+    // Deduplicate by screenName (keep first occurrence)
+    const seen = new Set<string>();
+    const unique = users.filter(u => {
+      const key = u.screenName.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    window.dispatchEvent(new CustomEvent('x-loc-users-data', { detail: { users: unique } }));
+  }
+
+  // ---------------------------------------------------------------------------
   // Wrap fetch
+  // ---------------------------------------------------------------------------
   const originalFetch = window.fetch.bind(window);
   (window as any).fetch = function (input: RequestInfo | URL, init?: RequestInit) {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
     if (url.includes('x.com/i/api/graphql') && !headersCaptured) {
       const headers: Record<string, string> = {};
       const rawHeaders =
@@ -51,10 +73,25 @@
       }
       dispatchHeaders(headers);
     }
-    return originalFetch(input, init);
+
+    const shouldIntercept = BIO_INTERCEPT.some(p => url.includes(p));
+    const promise = originalFetch(input, init);
+
+    if (shouldIntercept) {
+      promise.then(response => {
+        const cloned = response.clone();
+        cloned.json().then((json: unknown) => {
+          dispatchUsers(extractUsers(json));
+        }).catch(() => {});
+      }).catch(() => {});
+    }
+
+    return promise;
   };
 
+  // ---------------------------------------------------------------------------
   // Wrap XMLHttpRequest
+  // ---------------------------------------------------------------------------
   const OriginalXHR = window.XMLHttpRequest;
   function PatchedXHR(this: XMLHttpRequest) {
     const xhr = new OriginalXHR();
@@ -62,9 +99,9 @@
     const _headers: Record<string, string> = {};
 
     const originalOpen = xhr.open.bind(xhr);
-    (xhr as any).open = function (method: string, url: string, ...rest: any[]) {
+    (xhr as any).open = function (method: string, url: string, async?: boolean, user?: string, password?: string) {
       _url = url;
-      return originalOpen(method, url, ...rest);
+      return originalOpen(method, url, async ?? true, user, password);
     };
 
     const originalSetRequestHeader = xhr.setRequestHeader.bind(xhr);
@@ -74,11 +111,19 @@
     };
 
     const originalSend = xhr.send.bind(xhr);
-    (xhr as any).send = function (...args: any[]) {
+    (xhr as any).send = function (body?: Document | XMLHttpRequestBodyInit | null) {
       if (_url.includes('x.com/i/api/graphql') && !headersCaptured) {
         dispatchHeaders(_headers);
       }
-      return originalSend(...args);
+      if (BIO_INTERCEPT.some(p => _url.includes(p))) {
+        xhr.addEventListener('load', () => {
+          try {
+            const json = JSON.parse(xhr.responseText);
+            dispatchUsers(extractUsers(json));
+          } catch { }
+        });
+      }
+      return originalSend(body);
     };
 
     return xhr;

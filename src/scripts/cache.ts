@@ -5,6 +5,7 @@ export interface LocationData {
   locationAccurate: boolean;
   // 'web' | 'Country Android App' | 'Country App Store' | null
   source: `${string} Android App` | `${string} App Store` | 'web' | null;
+  bio?: string | null;
 }
 
 interface CachedEntry {
@@ -17,14 +18,23 @@ const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 const locStore = createStore('x-profile-location', 'location-data');
 
 export async function getCached(username: string): Promise<LocationData | undefined> {
-  const entry = await get<CachedEntry>(username, locStore);
+  const key = username.toLowerCase();
+  const entry = await get<CachedEntry>(key, locStore);
   if (!entry) return undefined;
   if (Date.now() - entry.fetchedAt > CACHE_TTL) return undefined;
   return entry.data;
 }
 
 export async function setCached(username: string, data: LocationData): Promise<void> {
-  await set(username, { data, fetchedAt: Date.now() } satisfies CachedEntry, locStore);
+  const key = username.toLowerCase();
+  await set(key, { data, fetchedAt: Date.now() } satisfies CachedEntry, locStore);
+}
+
+export async function mergeCached(username: string, partial: Partial<LocationData>): Promise<void> {
+  const key = username.toLowerCase();
+  const existing = await get<CachedEntry>(key, locStore);
+  const base: LocationData = existing?.data ?? { location: null, locationAccurate: true, source: null };
+  await set(key, { data: { ...base, ...partial }, fetchedAt: Date.now() }, locStore);
 }
 
 export async function cleanupCache(): Promise<void> {
