@@ -1,177 +1,193 @@
 import { render } from 'preact'
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
+import { Autocomplete } from '../components/Autocomplete'
 import { trackEvent } from '../scripts/analytics'
-import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, REGION_FLAGS } from '../scripts/countries'
+import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_FLAGS } from '../scripts/countries'
 import css from './options.module.css'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 const ALL_LOCATIONS = Object.keys(ALL_FLAGS).sort()
 
+const KEYWORD_SUGGESTIONS = [
+  'NAFO', 'Free Palestine', '🏳️‍🌈', '🏳️‍⚧️', '🇵🇸', '🇺🇦', '🇷🇺', 'he/him', 'she/her', 'he/them', 'she/them', 'they/them', 'crypto', 'nft', 'trading', 'forex', 'airdrop', 'web3', 'defi',
+  'giveaway', 'investment', 'onlyfans',
+].sort((a, b) => a.localeCompare(b))
+
 function Options() {
   const [blocked, setBlocked] = useState<string[]>([])
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(-1)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLUListElement>(null)
+  const [keywords, setKeywords] = useState<string[]>([])
+  const [flagsEnabled, setFlagsEnabled] = useState(false)
+  const [flagsThreshold, setFlagsThreshold] = useState(2)
+  const [flagsUniqueOnly, setFlagsUniqueOnly] = useState(true)
 
   useEffect(() => {
-    chrome.storage.local.get(BLOCKED_COUNTRIES_KEY).then((result) => {
+    chrome.storage.local.get([BLOCKED_COUNTRIES_KEY, HIGHLIGHT_KEYWORDS_KEY, HIGHLIGHT_FLAGS_KEY]).then((result) => {
       setBlocked((result[BLOCKED_COUNTRIES_KEY] as string[] | undefined) ?? [])
+      setKeywords((result[HIGHLIGHT_KEYWORDS_KEY] as string[] | undefined) ?? [])
+      const flags = result[HIGHLIGHT_FLAGS_KEY] as { enabled?: boolean; threshold?: number; uniqueOnly?: boolean } | undefined
+      setFlagsEnabled(flags?.enabled ?? false)
+      setFlagsThreshold(flags?.threshold ?? 2)
+      setFlagsUniqueOnly(flags?.uniqueOnly ?? true)
     })
   }, [])
 
-  const suggestions =
-    query.length >= 1
-      ? ALL_LOCATIONS.filter(
-          (c) => !blocked.includes(c) && c.toLowerCase().includes(query.toLowerCase()),
-        ).slice(0, 12)
-      : []
-
-  // Reset active index whenever the suggestion list changes
-  useEffect(() => {
-    setActiveIndex(-1)
-  }, [query])
-
-  // Scroll the highlighted item into view
-  useEffect(() => {
-    if (activeIndex < 0 || !listRef.current) return
-    const item = listRef.current.children[activeIndex] as HTMLElement | undefined
-    item?.scrollIntoView({ block: 'nearest' })
-  }, [activeIndex])
-
-  function save(next: string[]) {
+  function addBlocked(country: string) {
+    if (blocked.includes(country)) return
+    const next = [...blocked, country]
     setBlocked(next)
     chrome.storage.local.set({ [BLOCKED_COUNTRIES_KEY]: next })
+    trackEvent('country_blocked', { country })
   }
 
-  function add(country: string) {
-    if (!blocked.includes(country)) {
-      save([...blocked, country])
-      trackEvent('country_blocked', { country })
-    }
-    setQuery('')
-    setOpen(false)
-    setActiveIndex(-1)
-    inputRef.current?.focus()
-  }
-
-  function remove(country: string) {
-    save(blocked.filter((c) => c !== country))
+  function removeBlocked(country: string) {
+    const next = blocked.filter((c) => c !== country)
+    setBlocked(next)
+    chrome.storage.local.set({ [BLOCKED_COUNTRIES_KEY]: next })
     trackEvent('country_unblocked', { country })
   }
 
-  function handleKeyDown(e: KeyboardEvent) {
-    if (!open || suggestions.length === 0) {
-      if (e.key === 'Escape') {
-        setOpen(false)
-        setActiveIndex(-1)
-      }
-      return
-    }
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault()
-        setActiveIndex((i) => Math.min(i + 1, suggestions.length - 1))
-        break
-      case 'ArrowUp':
-        e.preventDefault()
-        setActiveIndex((i) => Math.max(i - 1, 0))
-        break
-      case 'Enter':
-        e.preventDefault()
-        if (activeIndex >= 0) {
-          add(suggestions[activeIndex])
-        } else if (suggestions.length === 1) {
-          add(suggestions[0])
-        }
-        break
-      case 'Escape':
-        e.preventDefault()
-        setOpen(false)
-        setActiveIndex(-1)
-        break
-      case 'Tab':
-        setOpen(false)
-        setActiveIndex(-1)
-        break
-    }
+  function addKeyword(kw: string) {
+    const trimmed = kw.trim().toLowerCase()
+    if (!trimmed || keywords.includes(trimmed)) return
+    const next = [...keywords, trimmed].sort()
+    setKeywords(next)
+    chrome.storage.local.set({ [HIGHLIGHT_KEYWORDS_KEY]: next })
   }
 
-  const isOpen = open && suggestions.length > 0
+  function removeKeyword(kw: string) {
+    const next = keywords.filter((k) => k !== kw.trim().toLowerCase())
+    setKeywords(next)
+    chrome.storage.local.set({ [HIGHLIGHT_KEYWORDS_KEY]: next })
+  }
+
+  function updateFlags(enabled: boolean, threshold: number, uniqueOnly: boolean) {
+    setFlagsEnabled(enabled)
+    setFlagsThreshold(threshold)
+    setFlagsUniqueOnly(uniqueOnly)
+    chrome.storage.local.set({ [HIGHLIGHT_FLAGS_KEY]: { enabled, threshold, uniqueOnly } })
+  }
 
   return (
     <div class={css.container}>
-      <h2 class={css.heading}>Replace flags with ⚠️</h2>
-      <p class={css.subtitle}>Profiles from selected countries will show ⚠️ instead of their flag.</p>
+      <h1 class={css.title}>Options</h1>
 
-      {blocked.length > 0 && (
-        <div class={css.chips}>
-          {blocked.map((country) => (
-            <span key={country} class={css.chip}>
-              <span class={css.chipFlag}>{ALL_FLAGS[country] ?? '🌐'}</span>
-              {country}
-              <button class={css.chipRemove} onClick={() => remove(country)} title={`Remove ${country}`}>
-                ×
-              </button>
-            </span>
-          ))}
+      <details class={css.accordion} open>
+        <summary class={css.accordionSummary}>
+          <span>Highlight tweets by keyword 🔍</span>
+          <span class={css.accordionArrow}>▾</span>
+        </summary>
+        <div class={css.accordionContent}>
+          <p class={css.subtitle}>
+            Highlight tweets from users whose nickname or bio contains any of these keywords.
+          </p>
+
+          {keywords.length > 0 && (
+            <div class={css.chips}>
+              {keywords.map((kw) => (
+                <span key={kw} class={`${css.chip} ${css.chipKeyword}`}>
+                  {kw}
+                  <button class={css.chipRemove} onClick={() => removeKeyword(kw)} title={`Remove ${kw}`}>
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <Autocomplete
+            id="keyword"
+            selected={keywords}
+            allOptions={KEYWORD_SUGGESTIONS}
+            onSelect={addKeyword}
+            placeholder="Type a keyword or pick a suggestion..."
+            allowFreeInput
+            showWhenEmpty
+          />
+
+          {keywords.length === 0 && (
+            <p class={css.empty}>No keywords set — all comments shown normally.</p>
+          )}
         </div>
-      )}
+      </details>
 
-      <div class={css.autocomplete}>
-        <input
-          ref={inputRef}
-          class={css.input}
-          value={query}
-          role="combobox"
-          aria-expanded={isOpen}
-          aria-haspopup="listbox"
-          aria-autocomplete="list"
-          aria-controls="country-listbox"
-          aria-activedescendant={activeIndex >= 0 ? `country-option-${activeIndex}` : undefined}
-          onInput={(e) => {
-            setQuery((e.target as HTMLInputElement).value)
-            setOpen(true)
-          }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => { setOpen(false); setActiveIndex(-1) }, 150)}
-          onKeyDown={handleKeyDown}
-          placeholder="Search countries..."
-        />
-        {isOpen && (
-          <ul
-            id="country-listbox"
-            ref={listRef}
-            class={css.dropdown}
-            role="listbox"
-          >
-            {suggestions.map((c, i) => (
-              <li
-                id={`country-option-${i}`}
-                key={c}
-                class={`${css.dropdownItem} ${i === activeIndex ? css.dropdownItemActive : ''}`}
-                role="option"
-                aria-selected={i === activeIndex}
-                onMouseDown={() => add(c)}
-                onMouseEnter={() => setActiveIndex(i)}
-              >
+      <details class={css.accordion}>
+        <summary class={css.accordionSummary}>
+          <span>Highlight tweets by flags 🏴</span>
+          <span class={css.accordionArrow}>▾</span>
+        </summary>
+        <div class={css.accordionContent}>
+          <p class={css.subtitle}>Highlight tweets from users whose bio contains many flags.</p>
+          <label class={css.controlRow}>
+            <input
+              type="checkbox"
+              checked={flagsEnabled}
+              onChange={(e) => updateFlags((e.target as HTMLInputElement).checked, flagsThreshold, flagsUniqueOnly)}
+            />
+            <span>Highlight if bio has more than</span>
+            <input
+              type="number"
+              class={css.numberInput}
+              value={flagsThreshold}
+              min={0}
+              max={20}
+              disabled={!flagsEnabled}
+              onInput={(e) => updateFlags(flagsEnabled, Math.max(0, Number((e.target as HTMLInputElement).value)), flagsUniqueOnly)}
+            />
+            <span>flags</span>
+          </label>
+          <label class={css.controlRow}>
+            <input
+              type="checkbox"
+              checked={flagsUniqueOnly}
+              disabled={!flagsEnabled}
+              onChange={(e) => updateFlags(flagsEnabled, flagsThreshold, (e.target as HTMLInputElement).checked)}
+            />
+            <span>Count only unique flags</span>
+          </label>
+        </div>
+      </details>
+
+      <details class={css.accordion}>
+        <summary class={css.accordionSummary}>
+          <span>Replace flags with ⚠️</span>
+          <span class={css.accordionArrow}>▾</span>
+        </summary>
+        <div class={css.accordionContent}>
+          <p class={css.subtitle}>Profiles from selected countries will show ⚠️ instead of their flag.</p>
+
+          {blocked.length > 0 && (
+            <div class={css.chips}>
+              {blocked.map((country) => (
+                <span key={country} class={css.chip}>
+                  <span class={css.chipFlag}>{ALL_FLAGS[country] ?? '🌐'}</span>
+                  {country}
+                  <button class={css.chipRemove} onClick={() => removeBlocked(country)} title={`Remove ${country}`}>
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <Autocomplete
+            id="country"
+            selected={blocked}
+            allOptions={ALL_LOCATIONS}
+            onSelect={addBlocked}
+            placeholder="Search countries..."
+            renderOption={(c) => (
+              <>
                 <span class={css.dropdownFlag}>{ALL_FLAGS[c] ?? '🌐'}</span>
                 <span>{c}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+              </>
+            )}
+          />
 
-      {blocked.length === 0 && query.length === 0 && (
-        <p class={css.empty}>No countries selected — all flags shown as-is.</p>
-      )}
-
-      <div className={css.soon}>
-        More features are coming soon!
-      </div>
+          {blocked.length === 0 && (
+            <p class={css.empty}>No countries selected — all flags shown as-is.</p>
+          )}
+        </div>
+      </details>
     </div>
   )
 }

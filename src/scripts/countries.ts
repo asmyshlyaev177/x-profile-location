@@ -95,5 +95,7 @@ export const REGION_ABBR: Record<string, string> = {
 };
 
 export const BLOCKED_COUNTRIES_KEY = 'blockedCountries';
+export const HIGHLIGHT_KEYWORDS_KEY = 'highlightKeywords';
+export const HIGHLIGHT_FLAGS_KEY = 'highlightFlags';
 
 export const DEFAULT_BLOCKED_COUNTRIES = ['Africa', 'India', 'South Asia', 'Nigeria', 'Pakistan', 'Bangladesh']

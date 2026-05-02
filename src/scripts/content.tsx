@@ -1,7 +1,7 @@
 // content.tsx — plain DOM, no React/Preact
 import { cleanupCache, getCached, mergeCached } from './cache';
 import type { LocationData } from './cache';
-import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, REGION_ABBR, REGION_FLAGS } from './countries';
+import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_ABBR, REGION_FLAGS } from './countries';
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA';
 const API_BASE = 'https://x.com/i/api/graphql';
@@ -20,16 +20,40 @@ const RESET_DEFAULT = 60 * 5 * 1000;
 // Blocked countries (loaded from chrome.storage.local, set via options page)
 // ---------------------------------------------------------------------------
 let blockedCountries = new Set<string>();
+let highlightKeywords = new Set<string>();
+let highlightFlagsEnabled = false;
+let highlightFlagsThreshold = 2;
+let highlightFlagsUniqueOnly = false;
 
-chrome.storage.local.get(BLOCKED_COUNTRIES_KEY).then((result) => {
-  const stored = (result as Record<string, unknown>)[BLOCKED_COUNTRIES_KEY];
-  blockedCountries = new Set<string>(Array.isArray(stored) ? stored : []);
+chrome.storage.local.get([BLOCKED_COUNTRIES_KEY, HIGHLIGHT_KEYWORDS_KEY, HIGHLIGHT_FLAGS_KEY]).then((result) => {
+  const r = result as Record<string, unknown>;
+  blockedCountries = new Set<string>(Array.isArray(r[BLOCKED_COUNTRIES_KEY]) ? r[BLOCKED_COUNTRIES_KEY] as string[] : []);
+  highlightKeywords = new Set<string>(
+    Array.isArray(r[HIGHLIGHT_KEYWORDS_KEY]) ? (r[HIGHLIGHT_KEYWORDS_KEY] as string[]).map((k) => k.toLowerCase()) : [],
+  );
+  const flags = r[HIGHLIGHT_FLAGS_KEY] as { enabled?: boolean; threshold?: number; uniqueOnly?: boolean } | undefined;
+  highlightFlagsEnabled = flags?.enabled ?? false;
+  highlightFlagsThreshold = flags?.threshold ?? 2;
+  highlightFlagsUniqueOnly = flags?.uniqueOnly ?? false;
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes[BLOCKED_COUNTRIES_KEY]) {
+  if (area !== 'local') return;
+  if (changes[BLOCKED_COUNTRIES_KEY]) {
     const next = changes[BLOCKED_COUNTRIES_KEY].newValue;
     blockedCountries = new Set<string>(Array.isArray(next) ? next : []);
+  }
+  if (changes[HIGHLIGHT_KEYWORDS_KEY]) {
+    const next = changes[HIGHLIGHT_KEYWORDS_KEY].newValue;
+    highlightKeywords = new Set<string>(Array.isArray(next) ? (next as string[]).map((k) => k.toLowerCase()) : []);
+    rehighlightAll();
+  }
+  if (changes[HIGHLIGHT_FLAGS_KEY]) {
+    const next = changes[HIGHLIGHT_FLAGS_KEY].newValue as { enabled?: boolean; threshold?: number; uniqueOnly?: boolean } | undefined;
+    highlightFlagsEnabled = next?.enabled ?? false;
+    highlightFlagsThreshold = next?.threshold ?? 2;
+    highlightFlagsUniqueOnly = next?.uniqueOnly ?? false;
+    rehighlightAll();
   }
 });
 
@@ -294,8 +318,73 @@ function injectStyles() {
   white-space: nowrap;
   border: 1px solid rgba(220, 38, 38, 0.55);
 }
+article[data-x-loc-highlighted] {
+  border-left: 3px solid #f59e0b !important;
+  background: rgba(245, 158, 11, 0.05) !important;
+}
 `;
   (document.head || document.documentElement).appendChild(style);
+}
+
+// ---------------------------------------------------------------------------
+// Keyword highlight helpers
+// ---------------------------------------------------------------------------
+function matchesAnyKeyword(text: string): boolean {
+  if (highlightKeywords.size === 0) return false;
+  const lower = text.toLowerCase();
+  for (const kw of highlightKeywords) {
+    if (lower.includes(kw)) return true;
+  }
+  return false;
+}
+
+function countFlagsInBio(bio: string): number {
+  const matches = bio.match(/[\u{1F1E6}-\u{1F1FF}]{2}/gu) ?? [];
+  return highlightFlagsUniqueOnly ? new Set(matches).size : matches.length;
+}
+
+function extractTweetScreenName(article: Element): string | null {
+  const userNameEl =
+    article.querySelector('[data-testid="User-Name"]') ??
+    article.querySelector('[data-testid="UserName"]');
+  if (!userNameEl) return null;
+  const link = userNameEl.querySelector('a[href]');
+  if (!link) return null;
+  const href = link.getAttribute('href') ?? '';
+  const m = href.match(/^\/([A-Za-z0-9_]{1,50})$/);
+  return m ? m[1] : null;
+}
+
+function shouldHighlight(screenName: string, bio: string | null | undefined): boolean {
+  if (matchesAnyKeyword(screenName)) return true;
+  if (bio) {
+    if (matchesAnyKeyword(bio)) return true;
+    if (highlightFlagsEnabled && countFlagsInBio(bio) > highlightFlagsThreshold) return true;
+  }
+  return false;
+}
+
+async function tryHighlightArticle(article: Element) {
+  if (highlightKeywords.size === 0 && !highlightFlagsEnabled) return;
+  if (article.hasAttribute('data-x-loc-highlighted')) return;
+  const screenName = extractTweetScreenName(article);
+  if (!screenName) return;
+  const data = await getCached(screenName);
+  if (shouldHighlight(screenName, data?.bio)) {
+    article.setAttribute('data-x-loc-highlighted', '1');
+  }
+}
+
+function rehighlightAll() {
+  const articles = Array.from(document.querySelectorAll<Element>(SEL_TWEET));
+  if (highlightKeywords.size === 0 && !highlightFlagsEnabled) {
+    articles.forEach((a) => a.removeAttribute('data-x-loc-highlighted'));
+    return;
+  }
+  articles.forEach((a) => {
+    a.removeAttribute('data-x-loc-highlighted');
+    tryHighlightArticle(a);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -519,6 +608,15 @@ function startObserver() {
       .flatMap(m => Array.from(m.addedNodes))
       .filter((n): n is Element => n instanceof Element);
 
+    // Highlight newly added tweets
+    for (const node of nodes) {
+      if (node.matches(SEL_TWEET)) {
+        tryHighlightArticle(node);
+      } else {
+        node.querySelectorAll<Element>(SEL_TWEET).forEach((t) => tryHighlightArticle(t));
+      }
+    }
+
     for (const node of nodes) {
       const card = node.closest(SEL_HOVER_CARD) ?? node.querySelector(SEL_HOVER_CARD);
       if (card) { tryProcess(card as Element); break; }
@@ -551,6 +649,13 @@ window.addEventListener('x-loc-users-data', (e: Event) => {
   for (const { screenName, bio } of users) {
     if (!bio) continue;
     mergeCached(screenName, { bio });
+    if (shouldHighlight(screenName, bio)) {
+      const lc = screenName.toLowerCase();
+      document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
+        const sn = extractTweetScreenName(article);
+        if (sn?.toLowerCase() === lc) article.setAttribute('data-x-loc-highlighted', '1');
+      });
+    }
   }
 });
 
