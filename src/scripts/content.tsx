@@ -72,7 +72,8 @@ function getLocationDisplay(loc: string): { emoji: string; label: string; isText
 // ---------------------------------------------------------------------------
 // Types & state
 // ---------------------------------------------------------------------------
-let apiHeaders: Record<string, string> | null = null;
+export let apiHeaders: Record<string, string> | null = null;
+export function setApiHeaders(h: Record<string, string> | null) { apiHeaders = h; }
 
 class NormalizedMap<V> {
   private map = new Map<string, V>();
@@ -138,7 +139,7 @@ function showRateLimitToast() {
 // ---------------------------------------------------------------------------
 // API fetch
 // ---------------------------------------------------------------------------
-async function fetchLocationData(userName: string): Promise<LocationData | null> {
+export async function fetchLocationData(userName: string): Promise<LocationData | null> {
   if (pendingMap.has(userName)) return pendingMap.get(userName)!;
 
   // Capture snapshot so the IIFE always uses the headers that were valid at
@@ -165,7 +166,7 @@ async function fetchLocationData(userName: string): Promise<LocationData | null>
     }
 
     try {
-      const variables = JSON.stringify({ userName });
+      const variables = JSON.stringify({ screenName: userName });
       const url = `${ABOUT_ACCOUNT_URL}?variables=${encodeURIComponent(variables)}`;
 
       const headers: Record<string, string> = {
