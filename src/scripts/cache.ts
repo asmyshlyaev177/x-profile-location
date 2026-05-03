@@ -6,6 +6,7 @@ export interface LocationData {
   // 'web' | 'Country Android App' | 'Country App Store' | null
   source: `${string} Android App` | `${string} App Store` | 'web' | null;
   bio?: string | null;
+  displayName?: string | null;
 }
 
 interface CachedEntry {

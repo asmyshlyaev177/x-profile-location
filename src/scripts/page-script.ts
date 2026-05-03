@@ -33,10 +33,10 @@ import type { UserBio } from './extract-users';
 
   function dispatchUsers(users: UserBio[]) {
     if (users.length === 0) return;
-    // Deduplicate by screenName (keep first occurrence)
+    // Deduplicate by userName (keep first occurrence)
     const seen = new Set<string>();
     const unique = users.filter(u => {
-      const key = u.screenName.toLowerCase();
+      const key = u.userName.toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;

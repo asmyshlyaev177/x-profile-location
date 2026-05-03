@@ -138,22 +138,22 @@ function showRateLimitToast() {
 // ---------------------------------------------------------------------------
 // API fetch
 // ---------------------------------------------------------------------------
-async function fetchLocationData(screenName: string): Promise<LocationData | null> {
-  if (pendingMap.has(screenName)) return pendingMap.get(screenName)!;
+async function fetchLocationData(userName: string): Promise<LocationData | null> {
+  if (pendingMap.has(userName)) return pendingMap.get(userName)!;
 
   // Capture snapshot so the IIFE always uses the headers that were valid at
   // call time, even if apiHeaders is updated mid-flight.
   const capturedHeaders = apiHeaders;
 
   const promise = (async (): Promise<LocationData | null> => {
-    const stored = await getCached(screenName);
+    const stored = await getCached(userName);
 
     // Skip the network if location data is already in IDB.
     // Bio-only entries (location: null, source: null) fall through.
     if (stored?.location || stored?.source) return stored;
 
     // Already ran the API lookup this session — return whatever IDB has (may include bio).
-    if (checkedThisSession.has(screenName.toLowerCase())) return stored ?? null;
+    if (checkedThisSession.has(userName.toLowerCase())) return stored ?? null;
 
     // Don't attempt without intercepted headers — avoids failures before
     // the page-script captures the session.
@@ -165,7 +165,7 @@ async function fetchLocationData(screenName: string): Promise<LocationData | nul
     }
 
     try {
-      const variables = JSON.stringify({ screenName });
+      const variables = JSON.stringify({ userName });
       const url = `${ABOUT_ACCOUNT_URL}?variables=${encodeURIComponent(variables)}`;
 
       const headers: Record<string, string> = {
@@ -197,7 +197,7 @@ async function fetchLocationData(screenName: string): Promise<LocationData | nul
 
       if (!resp.ok) return null;
 
-      checkedThisSession.add(screenName.toLowerCase());
+      checkedThisSession.add(userName.toLowerCase());
 
       const json = await resp.json();
       const profile =
@@ -211,15 +211,15 @@ async function fetchLocationData(screenName: string): Promise<LocationData | nul
         locationAccurate: profile.location_accurate !== false,
         source: profile.source ?? null,
       };
-      await mergeCached(screenName, data);
+      await mergeCached(userName, data);
       return data;
     } catch {
       return null;
     }
   })();
 
-  pendingMap.set(screenName, promise);
-  promise.finally(() => pendingMap.delete(screenName));
+  pendingMap.set(userName, promise);
+  promise.finally(() => pendingMap.delete(userName));
   return promise;
 }
 
@@ -343,34 +343,37 @@ function countFlagsInBio(bio: string): number {
   return highlightFlagsUniqueOnly ? new Set(matches).size : matches.length;
 }
 
-function extractTweetScreenName(article: Element): string | null {
+function extractTweetUserInfo(article: Element): { userName: string | null; displayName: string } {
   const userNameEl =
     article.querySelector('[data-testid="User-Name"]') ??
     article.querySelector('[data-testid="UserName"]');
-  if (!userNameEl) return null;
-  const link = userNameEl.querySelector('a[href]');
-  if (!link) return null;
-  const href = link.getAttribute('href') ?? '';
-  const m = href.match(/^\/([A-Za-z0-9_]{1,50})$/);
-  return m ? m[1] : null;
+  if (!userNameEl) return { userName: null, displayName: '' };
+  let userName: string | null = null;
+  let displayName = '';
+  for (const link of Array.from(userNameEl.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
+    const href = link.getAttribute('href') ?? '';
+    const m = href.match(/^\/([A-Za-z0-9_]{1,50})$/);
+    if (!m) continue;
+    if (!userName) userName = m[1];
+    const text = link.textContent?.trim() ?? '';
+    if (text && !text.startsWith('@') && !displayName) displayName = text;
+  }
+  return { userName, displayName };
 }
 
-function shouldHighlight(screenName: string, bio: string | null | undefined): boolean {
-  if (matchesAnyKeyword(screenName)) return true;
-  if (bio) {
-    if (matchesAnyKeyword(bio)) return true;
-    if (highlightFlagsEnabled && countFlagsInBio(bio) > highlightFlagsThreshold) return true;
-  }
+function shouldHighlight(userName: string, displayName: string, bio: string | null | undefined): boolean {
+  if (matchesAnyKeyword(`${userName} ${displayName} ${bio ?? ''}`)) return true;
+  if (highlightFlagsEnabled && countFlagsInBio(`${userName} ${displayName} ${bio ?? ''}`) > highlightFlagsThreshold) return true;
   return false;
 }
 
 async function tryHighlightArticle(article: Element) {
   if (highlightKeywords.size === 0 && !highlightFlagsEnabled) return;
   if (article.hasAttribute('data-x-loc-highlighted')) return;
-  const screenName = extractTweetScreenName(article);
-  if (!screenName) return;
-  const data = await getCached(screenName);
-  if (shouldHighlight(screenName, data?.bio)) {
+  const { userName, displayName } = extractTweetUserInfo(article);
+  if (!userName) return;
+  const data = await getCached(userName);
+  if (shouldHighlight(userName, displayName || data?.displayName || '', data?.bio)) {
     article.setAttribute('data-x-loc-highlighted', '1');
   }
 }
@@ -494,9 +497,9 @@ function buildRateLimitRow(): HTMLElement {
 // ---------------------------------------------------------------------------
 // Insert a row element into a hover card at the right position
 // ---------------------------------------------------------------------------
-function insertIntoCard(card: Element, screenName: string, el: HTMLElement) {
+function insertIntoCard(card: Element, userName: string, el: HTMLElement) {
   const atSpan = Array.from(card.querySelectorAll('span')).find(
-    (s) => s.textContent?.trim().toLowerCase() === `@${screenName.toLowerCase()}`,
+    (s) => s.textContent?.trim().toLowerCase() === `@${userName.toLowerCase()}`,
   );
 
   if (atSpan) {
@@ -521,24 +524,24 @@ function insertIntoCard(card: Element, screenName: string, el: HTMLElement) {
 async function processCard(card: Element) {
   if (card.getAttribute('data-x-loc-done')) return;
 
-  const screenName = extractScreenName(card);
+  const userName = extractScreenName(card);
   // Don't mark done yet — card content may not be rendered. The observer will
   // retry when React adds content inside the card.
-  if (!screenName) return;
+  if (!userName) return;
 
   card.setAttribute('data-x-loc-done', '1');
 
-  const data = await fetchLocationData(screenName);
+  const data = await fetchLocationData(userName);
 
   if (data === null && rateLimitResetAt > Date.now()) {
-    insertIntoCard(card, screenName, buildRateLimitRow());
+    insertIntoCard(card, userName, buildRateLimitRow());
     return;
   }
 
   if (!data || (!data.location && data.locationAccurate && !data.source)) return;
 
   const row = buildInfoRow(data);
-  insertIntoCard(card, screenName, row);
+  insertIntoCard(card, userName, row);
 }
 
 // ---------------------------------------------------------------------------
@@ -562,10 +565,10 @@ async function processPrimaryTweet() {
   const m = href.match(/^\/([A-Za-z0-9_]{1,50})$/);
   if (!m) return;
 
-  const screenName = m[1];
+  const userName = m[1];
   tweet.setAttribute(PRIMARY_TWEET_ATTR, '1');
 
-  const data = await fetchLocationData(screenName);
+  const data = await fetchLocationData(userName);
 
   let row: HTMLElement | null = null;
   if (data === null && rateLimitResetAt > Date.now()) {
@@ -644,15 +647,16 @@ window.addEventListener('x-loc-headers-captured', (e: Event) => {
 // Listen for user bio data intercepted from timeline/tweet API responses
 // ---------------------------------------------------------------------------
 window.addEventListener('x-loc-users-data', (e: Event) => {
-  const users = (e as CustomEvent).detail?.users as Array<{ screenName: string; bio: string | null }> | undefined;
+  const users = (e as CustomEvent).detail?.users as Array<{ userName: string; displayName: string | null; bio: string | null }> | undefined;
   if (!users) return;
-  for (const { screenName, bio } of users) {
-    if (!bio) continue;
-    mergeCached(screenName, { bio });
-    if (shouldHighlight(screenName, bio)) {
-      const lc = screenName.toLowerCase();
+  for (const { userName, displayName, bio } of users) {
+    const patch: Parameters<typeof mergeCached>[1] = { bio: bio ?? null };
+    if (displayName) patch.displayName = displayName;
+    mergeCached(userName, patch);
+    if (shouldHighlight(userName, displayName ?? '', bio)) {
+      const lc = userName.toLowerCase();
       document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
-        const sn = extractTweetScreenName(article);
+        const sn = extractTweetUserInfo(article).userName ?? '';
         if (sn?.toLowerCase() === lc) article.setAttribute('data-x-loc-highlighted', '1');
       });
     }

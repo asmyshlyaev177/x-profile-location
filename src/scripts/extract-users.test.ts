@@ -5,7 +5,7 @@ import { extractUsers } from './extract-users';
 // Helpers
 // ---------------------------------------------------------------------------
 function makeUser(
-  screenName: string,
+  userName: string,
   opts: {
     via?: 'core' | 'legacy';
     legacyDesc?: string | null;
@@ -15,9 +15,9 @@ function makeUser(
   const { via = 'core', legacyDesc, profileBioDesc } = opts;
   return {
     __typename: 'User',
-    core: via === 'core' ? { screen_name: screenName } : undefined,
+    core: via === 'core' ? { screen_name: userName } : undefined,
     legacy: {
-      ...(via === 'legacy' ? { screen_name: screenName } : {}),
+      ...(via === 'legacy' ? { screen_name: userName } : {}),
       ...(legacyDesc !== undefined ? { description: legacyDesc } : {}),
     },
     profile_bio: profileBioDesc !== undefined ? { description: profileBioDesc } : undefined,
@@ -72,14 +72,14 @@ describe('base cases', () => {
 // Direct User node — screen_name source
 // ---------------------------------------------------------------------------
 describe('User node — screen_name from core', () => {
-  it('extracts screenName from core.screen_name', () => {
+  it('extracts userName from core.screen_name', () => {
     const user = makeUser('alice', { via: 'core' });
-    expect(extractUsers(user)).toEqual([{ screenName: 'alice', bio: null }]);
+    expect(extractUsers(user)).toEqual([{ userName: 'alice', displayName: null, bio: null }]);
   });
 
   it('falls back to legacy.screen_name when core is absent', () => {
     const user = makeUser('bob', { via: 'legacy' });
-    expect(extractUsers(user)).toEqual([{ screenName: 'bob', bio: null }]);
+    expect(extractUsers(user)).toEqual([{ userName: 'bob', displayName: null, bio: null }]);
   });
 
   it('core.screen_name takes priority over legacy.screen_name when both present', () => {
@@ -88,7 +88,7 @@ describe('User node — screen_name from core', () => {
       core: { screen_name: 'primary' },
       legacy: { screen_name: 'secondary', description: 'bio' },
     };
-    expect(extractUsers(user)).toEqual([{ screenName: 'primary', bio: 'bio' }]);
+    expect(extractUsers(user)).toEqual([{ userName: 'primary', displayName: null, bio: 'bio' }]);
   });
 
   it('returns [] when __typename is User but no screen_name anywhere', () => {
@@ -103,38 +103,38 @@ describe('User node — screen_name from core', () => {
 describe('User node — bio extraction', () => {
   it('returns null bio when no description fields present', () => {
     const user = makeUser('charlie');
-    expect(extractUsers(user)).toEqual([{ screenName: 'charlie', bio: null }]);
+    expect(extractUsers(user)).toEqual([{ userName: 'charlie', displayName: null, bio: null }]);
   });
 
   it('uses legacy.description when profile_bio is absent', () => {
     const user = makeUser('dave', { legacyDesc: 'legacy bio' });
-    expect(extractUsers(user)).toEqual([{ screenName: 'dave', bio: 'legacy bio' }]);
+    expect(extractUsers(user)).toEqual([{ userName: 'dave', displayName: null, bio: 'legacy bio' }]);
   });
 
   it('uses profile_bio.description when present', () => {
     const user = makeUser('eve', { profileBioDesc: 'profile bio' });
-    expect(extractUsers(user)).toEqual([{ screenName: 'eve', bio: 'profile bio' }]);
+    expect(extractUsers(user)).toEqual([{ userName: 'eve', displayName: null, bio: 'profile bio' }]);
   });
 
   it('profile_bio.description takes priority over legacy.description', () => {
     const user = makeUser('frank', { legacyDesc: 'legacy', profileBioDesc: 'profile' });
-    expect(extractUsers(user)).toEqual([{ screenName: 'frank', bio: 'profile' }]);
+    expect(extractUsers(user)).toEqual([{ userName: 'frank', displayName: null, bio: 'profile' }]);
   });
 
   it('falls back to legacy.description when profile_bio.description is null', () => {
     const user = makeUser('grace', { legacyDesc: 'legacy bio', profileBioDesc: null });
-    expect(extractUsers(user)).toEqual([{ screenName: 'grace', bio: 'legacy bio' }]);
+    expect(extractUsers(user)).toEqual([{ userName: 'grace', displayName: null, bio: 'legacy bio' }]);
   });
 
   it('returns null bio when both descriptions are null', () => {
     const user = makeUser('heidi', { legacyDesc: null, profileBioDesc: null });
-    expect(extractUsers(user)).toEqual([{ screenName: 'heidi', bio: null }]);
+    expect(extractUsers(user)).toEqual([{ userName: 'heidi', displayName: null, bio: null }]);
   });
 
   it('handles empty string bio', () => {
     const user = makeUser('ivan', { legacyDesc: '' });
     // empty string is falsy but still a valid description value
-    expect(extractUsers(user)).toEqual([{ screenName: 'ivan', bio: '' }]);
+    expect(extractUsers(user)).toEqual([{ userName: 'ivan', displayName: null, bio: '' }]);
   });
 });
 
@@ -147,7 +147,7 @@ describe('non-User __typename nodes', () => {
       __typename: 'Tweet',
       author: makeUser('judy', { legacyDesc: 'hi' }),
     };
-    expect(extractUsers(payload)).toEqual([{ screenName: 'judy', bio: 'hi' }]);
+    expect(extractUsers(payload)).toEqual([{ userName: 'judy', displayName: null, bio: 'hi' }]);
   });
 
   it('does not treat a non-User node as a User', () => {
@@ -162,7 +162,7 @@ describe('non-User __typename nodes', () => {
 describe('nested objects', () => {
   it('finds a User nested one level deep', () => {
     const payload = { data: makeUser('kate', { legacyDesc: 'bio' }) };
-    expect(extractUsers(payload)).toEqual([{ screenName: 'kate', bio: 'bio' }]);
+    expect(extractUsers(payload)).toEqual([{ userName: 'kate', displayName: null, bio: 'bio' }]);
   });
 
   it('finds multiple Users at different nesting levels', () => {
@@ -174,18 +174,18 @@ describe('nested objects', () => {
     };
     const result = extractUsers(payload);
     expect(result).toHaveLength(2);
-    expect(result).toContainEqual({ screenName: 'user1', bio: 'bio1' });
-    expect(result).toContainEqual({ screenName: 'user2', bio: 'bio2' });
+    expect(result).toContainEqual({ userName: 'user1', displayName: null, bio: 'bio1' });
+    expect(result).toContainEqual({ userName: 'user2', displayName: null, bio: 'bio2' });
   });
 
   it('handles null values inside nested objects without throwing', () => {
     const payload = { a: null, b: makeUser('lena', { legacyDesc: 'ok' }) };
-    expect(extractUsers(payload)).toEqual([{ screenName: 'lena', bio: 'ok' }]);
+    expect(extractUsers(payload)).toEqual([{ userName: 'lena', displayName: null, bio: 'ok' }]);
   });
 
   it('handles primitive values in nested objects', () => {
     const payload = { x: 1, y: 'str', z: makeUser('mia') };
-    expect(extractUsers(payload)).toEqual([{ screenName: 'mia', bio: null }]);
+    expect(extractUsers(payload)).toEqual([{ userName: 'mia', displayName: null, bio: null }]);
   });
 });
 
@@ -195,7 +195,7 @@ describe('nested objects', () => {
 describe('array inputs', () => {
   it('finds a User directly inside an array', () => {
     const arr = [makeUser('nina', { legacyDesc: 'b' })];
-    expect(extractUsers(arr)).toEqual([{ screenName: 'nina', bio: 'b' }]);
+    expect(extractUsers(arr)).toEqual([{ userName: 'nina', displayName: null, bio: 'b' }]);
   });
 
   it('finds multiple Users in an array', () => {
@@ -205,18 +205,18 @@ describe('array inputs', () => {
     ];
     const result = extractUsers(arr);
     expect(result).toHaveLength(2);
-    expect(result).toContainEqual({ screenName: 'oscar', bio: 'bio-o' });
-    expect(result).toContainEqual({ screenName: 'pat', bio: 'bio-p' });
+    expect(result).toContainEqual({ userName: 'oscar', displayName: null, bio: 'bio-o' });
+    expect(result).toContainEqual({ userName: 'pat', displayName: null, bio: 'bio-p' });
   });
 
   it('skips null and primitive entries in an array', () => {
     const arr = [null, 42, 'x', makeUser('quinn')];
-    expect(extractUsers(arr)).toEqual([{ screenName: 'quinn', bio: null }]);
+    expect(extractUsers(arr)).toEqual([{ userName: 'quinn', displayName: null, bio: null }]);
   });
 
   it('handles nested arrays', () => {
     const arr = [[makeUser('rose', { legacyDesc: 'nested' })]];
-    expect(extractUsers(arr)).toEqual([{ screenName: 'rose', bio: 'nested' }]);
+    expect(extractUsers(arr)).toEqual([{ userName: 'rose', displayName: null, bio: 'nested' }]);
   });
 });
 
@@ -228,7 +228,7 @@ describe('depth limit', () => {
     // nest() wraps at depth 1 per layer; extractUsers starts at depth 0 and
     // passes depth+1 for each child traversal, so 20 layers reaches depth 20.
     const payload = nest(makeUser('sam', { legacyDesc: 'deep' }), 20);
-    expect(extractUsers(payload)).toEqual([{ screenName: 'sam', bio: 'deep' }]);
+    expect(extractUsers(payload)).toEqual([{ userName: 'sam', displayName: null, bio: 'deep' }]);
   });
 
   it('does NOT find a User at depth 21', () => {
@@ -241,7 +241,7 @@ describe('depth limit', () => {
       shallow: makeUser('uma', { legacyDesc: 'found' }),
       deep: nest(makeUser('vic', { legacyDesc: 'lost' }), 21),
     };
-    expect(extractUsers(payload)).toEqual([{ screenName: 'uma', bio: 'found' }]);
+    expect(extractUsers(payload)).toEqual([{ userName: 'uma', displayName: null, bio: 'found' }]);
   });
 });
 
@@ -281,7 +281,7 @@ describe('HomeTimeline-like shape', () => {
         },
       },
     };
-    expect(extractUsers(payload)).toEqual([{ screenName: 'wendy', bio: 'Timeline bio' }]);
+    expect(extractUsers(payload)).toEqual([{ userName: 'wendy', displayName: null, bio: 'Timeline bio' }]);
   });
 
   it('extracts multiple authors from multiple tweet entries', () => {
@@ -318,8 +318,8 @@ describe('HomeTimeline-like shape', () => {
 
     const result = extractUsers(payload);
     expect(result).toHaveLength(2);
-    expect(result).toContainEqual({ screenName: 'xena', bio: 'bio x' });
-    expect(result).toContainEqual({ screenName: 'yara', bio: 'bio y' });
+    expect(result).toContainEqual({ userName: 'xena', displayName: null, bio: 'bio x' });
+    expect(result).toContainEqual({ userName: 'yara', displayName: null, bio: 'bio y' });
   });
 });
 
@@ -381,7 +381,7 @@ describe('TweetDetail-like shape (replies)', () => {
 
     const result = extractUsers(payload);
     expect(result).toHaveLength(2);
-    expect(result).toContainEqual({ screenName: 'zara', bio: 'primary bio' });
-    expect(result).toContainEqual({ screenName: 'amir', bio: 'reply bio' });
+    expect(result).toContainEqual({ userName: 'zara', displayName: null, bio: 'primary bio' });
+    expect(result).toContainEqual({ userName: 'amir', displayName: null, bio: 'reply bio' });
   });
 });
