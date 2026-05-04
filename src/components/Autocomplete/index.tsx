@@ -10,8 +10,8 @@ export interface AutocompleteProps {
   placeholder?: string
   /** Allow committing arbitrary typed text on Enter, not just suggestions */
   allowFreeInput?: boolean
-  /** Show suggestions even when the query is empty */
-  showWhenEmpty?: boolean
+  /** Close the dropdown after an option is selected (default: true) */
+  closeOnSelect?: boolean
   renderOption?: (opt: string) => ComponentChild
 }
 
@@ -22,7 +22,7 @@ export function Autocomplete({
   onSelect,
   placeholder,
   allowFreeInput,
-  showWhenEmpty,
+  closeOnSelect = true,
   renderOption,
 }: AutocompleteProps) {
   const [query, setQuery] = useState('')
@@ -35,7 +35,7 @@ export function Autocomplete({
   const available = allOptions.filter((o) => !selectedLower.includes(o.toLowerCase()))
   const suggestions =
     query.length === 0
-      ? showWhenEmpty ? available : []
+      ? available
       : available.filter((o) => o.toLowerCase().includes(query.toLowerCase()))
 
   useEffect(() => { setActiveIndex(-1) }, [query])
@@ -49,7 +49,7 @@ export function Autocomplete({
   function commit(value: string) {
     onSelect(value)
     setQuery('')
-    setOpen(false)
+    if (closeOnSelect) setOpen(false)
     setActiveIndex(-1)
     inputRef.current?.focus()
   }
@@ -120,7 +120,7 @@ export function Autocomplete({
               class={`${css.dropdownItem} ${i === activeIndex ? css.dropdownItemActive : ''}`}
               role="option"
               aria-selected={i === activeIndex}
-              onMouseDown={() => commit(opt)}
+              onMouseDown={(e) => { e.preventDefault(); commit(opt) }}
               onMouseEnter={() => setActiveIndex(i)}
             >
               {renderOption ? renderOption(opt) : opt}

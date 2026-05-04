@@ -2,6 +2,7 @@
 import { cleanupCache, getCached, mergeCached } from './cache';
 import type { LocationData } from './cache';
 import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_ABBR, REGION_FLAGS } from './countries';
+import { graphemeIncludes, toGraphemes } from './grapheme';
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA';
 const API_BASE = 'https://x.com/i/api/graphql';
@@ -330,11 +331,12 @@ article[data-x-loc-highlighted] {
 // ---------------------------------------------------------------------------
 // Keyword highlight helpers
 // ---------------------------------------------------------------------------
+
 function matchesAnyKeyword(text: string): boolean {
   if (highlightKeywords.size === 0) return false;
-  const lower = text.toLowerCase();
+  const haystack = toGraphemes(text.toLowerCase());
   for (const kw of highlightKeywords) {
-    if (lower.includes(kw)) return true;
+    if (graphemeIncludes(haystack, toGraphemes(kw))) return true;
   }
   return false;
 }

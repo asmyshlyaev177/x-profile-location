@@ -9,7 +9,7 @@ const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 const ALL_LOCATIONS = Object.keys(ALL_FLAGS).sort()
 
 const KEYWORD_SUGGESTIONS = [
-  'NAFO', 'Free Palestine', '🏳️‍🌈', '🏳️‍⚧️', '🇵🇸', '🇺🇦', '🇷🇺', 'he/him', 'she/her', 'he/them', 'she/them', 'they/them', 'crypto', 'nft', 'trading', 'forex', 'airdrop', 'web3', 'defi',
+  'NAFO', 'Free Palestine', '🏳️‍🌈', '🏳️‍⚧️', '🇵🇸', '🇺🇦', '🇷🇺', '🇮🇳', 'he/him', 'she/her', 'he/them', 'she/them', 'they/them', 'crypto', 'nft', 'trading', 'forex', 'airdrop', 'web3', 'defi',
   'giveaway', 'investment', 'onlyfans',
 ].sort((a, b) => a.localeCompare(b))
 
@@ -101,7 +101,7 @@ function Options() {
             onSelect={addKeyword}
             placeholder="Type a keyword or pick a suggestion..."
             allowFreeInput
-            showWhenEmpty
+            closeOnSelect={false}
           />
 
           {keywords.length === 0 && (
