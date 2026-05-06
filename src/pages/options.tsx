@@ -2,7 +2,7 @@ import { render } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import { trackEvent } from '../scripts/analytics'
-import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_FLAGS } from '../scripts/countries'
+import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_FLAGS, SHOW_LOCATION_IN_FEED_KEY } from '../scripts/countries'
 import css from './options.module.css'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
@@ -19,6 +19,7 @@ function Options() {
   const [flagsEnabled, setFlagsEnabled] = useState(false)
   const [flagsThreshold, setFlagsThreshold] = useState(2)
   const [flagsUniqueOnly, setFlagsUniqueOnly] = useState(true)
+  const [showLocationInFeed, setShowLocationInFeed] = useState(false)
   const [cacheCleared, setCacheCleared] = useState(false)
 
   async function handleClearCache() {
@@ -28,13 +29,14 @@ function Options() {
   }
 
   useEffect(() => {
-    chrome.storage.local.get([BLOCKED_COUNTRIES_KEY, HIGHLIGHT_KEYWORDS_KEY, HIGHLIGHT_FLAGS_KEY]).then((result) => {
+    chrome.storage.local.get([BLOCKED_COUNTRIES_KEY, HIGHLIGHT_KEYWORDS_KEY, HIGHLIGHT_FLAGS_KEY, SHOW_LOCATION_IN_FEED_KEY]).then((result) => {
       setBlocked((result[BLOCKED_COUNTRIES_KEY] as string[] | undefined) ?? [])
       setKeywords((result[HIGHLIGHT_KEYWORDS_KEY] as string[] | undefined) ?? [])
       const flags = result[HIGHLIGHT_FLAGS_KEY] as { enabled?: boolean; threshold?: number; uniqueOnly?: boolean } | undefined
       setFlagsEnabled(flags?.enabled ?? false)
       setFlagsThreshold(flags?.threshold ?? 2)
       setFlagsUniqueOnly(flags?.uniqueOnly ?? true)
+      setShowLocationInFeed(Boolean(result[SHOW_LOCATION_IN_FEED_KEY]))
     })
   }, [])
 
@@ -153,6 +155,19 @@ function Options() {
           </label>
         </div>
       </details>
+
+      <label class={css.inlineOption}>
+        <input
+          type="checkbox"
+          checked={showLocationInFeed}
+          onChange={(e) => {
+            const next = (e.target as HTMLInputElement).checked
+            setShowLocationInFeed(next)
+            chrome.storage.local.set({ [SHOW_LOCATION_IN_FEED_KEY]: next })
+          }}
+        />
+        <span>Show location in feed 📍</span>
+      </label>
 
       <details class={css.accordion}>
         <summary class={css.accordionSummary}>

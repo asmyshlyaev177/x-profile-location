@@ -149,6 +149,18 @@
   margin-top: 10px;
 }
 
+.inlineOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+  cursor: pointer;
+  user-select: none;
+  padding: 10px 2px;
+}
+
 .cacheSection {
   margin-top: 20px;
   padding-top: 16px;

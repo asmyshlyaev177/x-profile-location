@@ -1,7 +1,7 @@
 // content.tsx — plain DOM, no React/Preact
 import { cleanupCache, clearAllCache, getCached, mergeCached } from './cache';
 import type { LocationData } from './cache';
-import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_ABBR, REGION_FLAGS } from './countries';
+import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_ABBR, REGION_FLAGS, SHOW_LOCATION_IN_FEED_KEY } from './countries';
 import { graphemeIncludes, toGraphemes } from './grapheme';
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA';
@@ -25,8 +25,9 @@ let highlightKeywords = new Set<string>();
 let highlightFlagsEnabled = false;
 let highlightFlagsThreshold = 2;
 let highlightFlagsUniqueOnly = false;
+let showLocationInFeed = false;
 
-chrome.storage.local.get([BLOCKED_COUNTRIES_KEY, HIGHLIGHT_KEYWORDS_KEY, HIGHLIGHT_FLAGS_KEY]).then((result) => {
+chrome.storage.local.get([BLOCKED_COUNTRIES_KEY, HIGHLIGHT_KEYWORDS_KEY, HIGHLIGHT_FLAGS_KEY, SHOW_LOCATION_IN_FEED_KEY]).then((result) => {
   const r = result as Record<string, unknown>;
   blockedCountries = new Set<string>(Array.isArray(r[BLOCKED_COUNTRIES_KEY]) ? r[BLOCKED_COUNTRIES_KEY] as string[] : []);
   highlightKeywords = new Set<string>(
@@ -36,6 +37,7 @@ chrome.storage.local.get([BLOCKED_COUNTRIES_KEY, HIGHLIGHT_KEYWORDS_KEY, HIGHLIG
   highlightFlagsEnabled = flags?.enabled ?? false;
   highlightFlagsThreshold = flags?.threshold ?? 2;
   highlightFlagsUniqueOnly = flags?.uniqueOnly ?? false;
+  showLocationInFeed = Boolean(r[SHOW_LOCATION_IN_FEED_KEY]);
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -55,6 +57,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
     highlightFlagsThreshold = next?.threshold ?? 2;
     highlightFlagsUniqueOnly = next?.uniqueOnly ?? false;
     rehighlightAll();
+  }
+  if (changes[SHOW_LOCATION_IN_FEED_KEY]) {
+    showLocationInFeed = Boolean(changes[SHOW_LOCATION_IN_FEED_KEY].newValue);
+    refreshFeedLocations();
   }
 });
 
@@ -405,6 +411,66 @@ function rehighlightAll() {
   });
 }
 
+const FEED_LOCATION_ATTR = 'data-x-loc-feed-done';
+
+async function tryInjectFeedLocation(article: Element) {
+  if (!showLocationInFeed) return;
+  if (article.getAttribute(FEED_LOCATION_ATTR)) return;
+  if (article.matches(SEL_PRIMARY_TWEET)) return;
+
+  const { userName } = extractTweetUserInfo(article);
+  if (!userName) return;
+
+  article.setAttribute(FEED_LOCATION_ATTR, '1');
+
+  const data = await getCached(userName);
+  if (!data || (!data.location && data.locationAccurate && !data.source)) return;
+
+  const userNameEl =
+    article.querySelector('[data-testid="User-Name"]') ??
+    article.querySelector('[data-testid="UserName"]');
+  if (!userNameEl) return;
+
+  if (article.querySelector('.x-loc-feed-row')) return;
+
+  const row = buildInfoRow(data);
+  row.classList.add('x-loc-feed-row');
+  userNameEl.insertAdjacentElement('afterend', row);
+}
+
+function injectFeedLocationForUser(userName: string, data: LocationData) {
+  if (!showLocationInFeed) return;
+  if (!data.location && data.locationAccurate && !data.source) return;
+  const lc = userName.toLowerCase();
+  document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
+    if (extractTweetUserInfo(article).userName?.toLowerCase() !== lc) return;
+    if (article.matches(SEL_PRIMARY_TWEET)) return;
+    const userNameEl =
+      article.querySelector('[data-testid="User-Name"]') ??
+      article.querySelector('[data-testid="UserName"]');
+    if (!userNameEl || article.querySelector('.x-loc-feed-row')) return;
+    article.setAttribute(FEED_LOCATION_ATTR, '1');
+    const row = buildInfoRow(data);
+    row.classList.add('x-loc-feed-row');
+    userNameEl.insertAdjacentElement('afterend', row);
+  });
+}
+
+function refreshFeedLocations() {
+  const articles = Array.from(document.querySelectorAll<Element>(SEL_TWEET));
+  if (!showLocationInFeed) {
+    articles.forEach((a) => {
+      a.removeAttribute(FEED_LOCATION_ATTR);
+      a.querySelectorAll('.x-loc-feed-row').forEach((el) => el.remove());
+    });
+    return;
+  }
+  articles.forEach((a) => {
+    a.removeAttribute(FEED_LOCATION_ATTR);
+    tryInjectFeedLocation(a);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Extract screen name from hover card
 // ---------------------------------------------------------------------------
@@ -557,6 +623,7 @@ async function processCard(card: Element) {
 
   const row = buildInfoRow(data);
   insertIntoCard(card, userName, row);
+  injectFeedLocationForUser(userName, data);
 }
 
 // ---------------------------------------------------------------------------
@@ -626,12 +693,16 @@ function startObserver() {
       .flatMap(m => Array.from(m.addedNodes))
       .filter((n): n is Element => n instanceof Element);
 
-    // Highlight newly added tweets
+    // Highlight newly added tweets and inject cached feed locations
     for (const node of nodes) {
       if (node.matches(SEL_TWEET)) {
         tryHighlightArticle(node);
+        tryInjectFeedLocation(node);
       } else {
-        node.querySelectorAll<Element>(SEL_TWEET).forEach((t) => tryHighlightArticle(t));
+        node.querySelectorAll<Element>(SEL_TWEET).forEach((t) => {
+          tryHighlightArticle(t);
+          tryInjectFeedLocation(t);
+        });
       }
     }
 
