@@ -148,3 +148,31 @@
   font-size: 12px;
   margin-top: 10px;
 }
+
+.cacheSection {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.clearCacheBtn {
+  padding: 7px 14px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid #fca5a5;
+  background: #fee2e2;
+  color: #991b1b;
+  cursor: pointer;
+}
+
+.clearCacheBtn:hover:not(:disabled) {
+  background: #fecaca;
+  border-color: #f87171;
+}
+
+.clearCacheBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

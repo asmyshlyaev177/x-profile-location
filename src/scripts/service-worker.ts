@@ -12,10 +12,32 @@ chrome.runtime.onInstalled.addListener((details): void => {
     }
   })
 
+  chrome.contextMenus.create({
+    id: 'open-options',
+    title: 'Options',
+    contexts: ['action'],
+  })
+
   if (details.reason === 'install') {
     trackEvent('extension_installed')
   } else if (details.reason === 'update') {
     trackEvent('extension_updated', { previous_version: details.previousVersion })
+  }
+})
+
+chrome.contextMenus.onClicked.addListener((info) => {
+  if (info.menuItemId === 'open-options') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('pages/options.html') })
+  }
+})
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === 'CLEAR_CACHE') {
+    chrome.tabs.query({ url: ['*://*.x.com/*', '*://x.com/*', '*://*.twitter.com/*', '*://twitter.com/*'] }, (tabs) => {
+      for (const tab of tabs) {
+        if (tab.id != null) chrome.tabs.sendMessage(tab.id, { type: 'CLEAR_CACHE' })
+      }
+    })
   }
 })
 

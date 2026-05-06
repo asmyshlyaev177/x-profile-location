@@ -19,6 +19,13 @@ function Options() {
   const [flagsEnabled, setFlagsEnabled] = useState(false)
   const [flagsThreshold, setFlagsThreshold] = useState(2)
   const [flagsUniqueOnly, setFlagsUniqueOnly] = useState(true)
+  const [cacheCleared, setCacheCleared] = useState(false)
+
+  async function handleClearCache() {
+    await chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' })
+    setCacheCleared(true)
+    setTimeout(() => setCacheCleared(false), 2000)
+  }
 
   useEffect(() => {
     chrome.storage.local.get([BLOCKED_COUNTRIES_KEY, HIGHLIGHT_KEYWORDS_KEY, HIGHLIGHT_FLAGS_KEY]).then((result) => {
@@ -188,6 +195,12 @@ function Options() {
           )}
         </div>
       </details>
+
+      <div class={css.cacheSection}>
+        <button class={css.clearCacheBtn} onClick={handleClearCache} disabled={cacheCleared}>
+          {cacheCleared ? 'Cache cleared!' : 'Clear location cache'}
+        </button>
+      </div>
     </div>
   )
 }

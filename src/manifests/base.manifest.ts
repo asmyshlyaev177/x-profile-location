@@ -77,6 +77,7 @@ export const baseManifest = {
   ],
   permissions: [
     'storage',
+    'contextMenus',
   ],
 } satisfies Manifest
 

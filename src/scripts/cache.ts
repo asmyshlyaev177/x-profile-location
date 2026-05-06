@@ -38,6 +38,11 @@ export async function mergeCached(username: string, partial: Partial<LocationDat
   await set(key, { data: { ...base, ...partial }, fetchedAt: Date.now() }, locStore);
 }
 
+export async function clearAllCache(): Promise<void> {
+  const all = await entries<string, CachedEntry>(locStore);
+  await Promise.all(all.map(([key]) => del(key, locStore)));
+}
+
 export async function cleanupCache(): Promise<void> {
   const all = await entries<string, CachedEntry>(locStore);
   const cutoff = Date.now() - CACHE_TTL;

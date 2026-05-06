@@ -1,5 +1,5 @@
 // content.tsx — plain DOM, no React/Preact
-import { cleanupCache, getCached, mergeCached } from './cache';
+import { cleanupCache, clearAllCache, getCached, mergeCached } from './cache';
 import type { LocationData } from './cache';
 import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_ABBR, REGION_FLAGS } from './countries';
 import { graphemeIncludes, toGraphemes } from './grapheme';
@@ -97,6 +97,13 @@ export function __testResetState() {
   checkedThisSession.clear();
   rateLimitResetAt = 0;
 }
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === 'CLEAR_CACHE') {
+    checkedThisSession.clear();
+    clearAllCache();
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
