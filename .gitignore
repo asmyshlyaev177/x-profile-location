@@ -37,4 +37,5 @@ test-results
 
 
 # Auth state (contains session cookies — do not commit)
-e2e/.auth/
+e2e/.auth/profile
+!e2e/.auth/state.json
