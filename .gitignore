@@ -24,6 +24,9 @@ dist-ssr
 *.sw?
 # Tests
 coverage
+playwright-report
+test-results
+
 # local env files
 .env
 .env*
@@ -32,3 +35,6 @@ coverage
 .env.production
 !.env.example
 
+
+# Auth state (contains session cookies — do not commit)
+e2e/.auth/
