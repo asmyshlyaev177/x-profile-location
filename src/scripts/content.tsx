@@ -93,6 +93,11 @@ const pendingMap = new NormalizedMap<Promise<LocationData | null>>();
 let rateLimitResetAt = 0;
 let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null;
 
+export function __testResetState() {
+  checkedThisSession.clear();
+  rateLimitResetAt = 0;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
