@@ -121,6 +121,65 @@ test('tweet detail: hover location shown for second-level reply', async ({ page 
   expect(replyLocation.basedIn).not.toBeNull();
 });
 
+test('rate limit: toast shown on 429, badge in hover card, no further API calls', async ({ page }) => {
+  await page.goto('https://x.com/WhiteHouse/status/2051844397348913230');
+  await page.waitForTimeout(2_000);
+
+  const toast = page.locator('#x-loc-rate-toast');
+
+  // Scroll by a fixed step, hover any username link not yet seen, repeat until toast.
+  // In record mode this naturally exhausts the API quota; in replay the HAR contains
+  // the 429 response at the point where it was originally hit.
+  const hovered = new Set<string>();
+
+  outer: while (true) {
+    await page.evaluate(() => window.scrollBy(0, 600));
+    await page.waitForTimeout(300);
+
+    // Snapshot all hrefs currently in the DOM in one evaluate call.
+    const hrefs = await page
+      .locator('article[data-testid="tweet"] [data-testid="User-Name"] a[href^="/"]:not([href*="/status/"])')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+
+    for (const href of hrefs) {
+      if (!href || hovered.has(href)) continue;
+
+      hovered.add(href);
+      await page.locator(`[data-testid="User-Name"] a[href="${href}"]`).first().hover();
+      await page.waitForResponse(/AboutAccountQuery/, { timeout: 5_000 }).catch(() => {});
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(150);
+
+      if (await toast.isVisible()) break outer;
+    }
+  }
+
+  await expect(toast).toBeVisible({ timeout: 5_000 });
+  expect(await toast.textContent()).toMatch(/resets in/i);
+
+  // Dismiss hover card, then hover a fresh username — extension must skip the API call.
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(300);
+
+  const freshLink = page
+    .locator('article[data-testid="tweet"]')
+    .last()
+    .locator('[data-testid="User-Name"] a[href^="/"]')
+    .first();
+  await freshLink.scrollIntoViewIfNeeded();
+
+  const extraCallFired = page
+    .waitForRequest(/AboutAccountQuery/, { timeout: 3_000 })
+    .then(() => true)
+    .catch(() => false);
+  await freshLink.hover();
+  expect(await extraCallFired).toBe(false);
+
+  // Hover card must show the rate limit countdown badge.
+  const card = page.locator('[data-testid="HoverCard"]');
+  await card.locator('.x-loc-icon-ratelimit').waitFor({ timeout: 10_000 });
+});
+
 test('second hover uses checkedThisSession cache — no repeat API call', async ({ page }) => {
   // First hover: populates checkedThisSession and IDB for this username.
   await hoverOwnTweet(page, 'sotaproject');
