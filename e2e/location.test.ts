@@ -56,6 +56,71 @@ test('no app store block; location matches About page', async ({ page }) => {
   expect(fromCard.isVpn).toBe(false);
 });
 
+test('tweet detail: inline location for author, hover location for first reply', async ({ page }) => {
+  // Navigate to elonmusk's profile to discover the first tweet URL dynamically
+  // so the test works with whatever tweet is at the top at recording time.
+  const tweetPath = await navigateToTweetDetail(page, 'elonmusk');
+
+  // Opening the detail page triggers an AboutAccountQuery for the author.
+  const authorQueryDone = page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 });
+  await page.goto(`https://x.com${tweetPath}`);
+  await authorQueryDone;
+
+  // Author's location is injected inline into the first article on the detail page.
+  const authorArticle = page.locator('article[data-testid="tweet"]').first();
+  await authorArticle.locator('.x-loc-info').waitFor({ timeout: 10_000 });
+  const authorLocation = await hoverCardLocation(authorArticle);
+  expect(authorLocation.basedIn).not.toBeNull();
+
+  // Hover the first reply's username to trigger a location fetch for that user.
+  const firstReplyArticle = page.locator('article[data-testid="tweet"]').nth(1);
+  const replyLink = firstReplyArticle
+    .locator('[data-testid="User-Name"] a[href^="/"]')
+    .first();
+  await replyLink.waitFor({ timeout: 15_000 });
+
+  const replyQueryDone = page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 });
+  await replyLink.hover();
+  await replyQueryDone;
+
+  const replyCard = page.locator('[data-testid="HoverCard"]');
+  await replyCard.locator('.x-loc-info').waitFor({ timeout: 10_000 });
+  const replyLocation = await hoverCardLocation(replyCard);
+  expect(replyLocation.basedIn).not.toBeNull();
+});
+
+test('tweet detail: hover location shown for second-level reply', async ({ page }) => {
+  const tweetPath = await navigateToTweetDetail(page, 'elonmusk');
+
+  await page.goto(`https://x.com${tweetPath}`);
+  await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 });
+
+  // Click the first reply to open its own detail page; second-level replies appear there.
+  const firstReplyArticle = page.locator('article[data-testid="tweet"]').nth(1);
+  const replyStatusLink = firstReplyArticle
+    .locator('a[href*="/status/"]')
+    .first();
+  await replyStatusLink.waitFor({ timeout: 15_000 });
+  await replyStatusLink.click();
+  await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 });
+
+  // On the reply's detail page, hover the first reply (= second-level reply).
+  const secondLevelReplyArticle = page.locator('article[data-testid="tweet"]').nth(1);
+  const secondLevelLink = secondLevelReplyArticle
+    .locator('[data-testid="User-Name"] a[href^="/"]')
+    .first();
+  await secondLevelLink.waitFor({ timeout: 15_000 });
+
+  const replyQueryDone = page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 });
+  await secondLevelLink.hover();
+  await replyQueryDone;
+
+  const replyCard = page.locator('[data-testid="HoverCard"]');
+  await replyCard.locator('.x-loc-info').waitFor({ timeout: 10_000 });
+  const replyLocation = await hoverCardLocation(replyCard);
+  expect(replyLocation.basedIn).not.toBeNull();
+});
+
 test('second hover uses checkedThisSession cache — no repeat API call', async ({ page }) => {
   // First hover: populates checkedThisSession and IDB for this username.
   await hoverOwnTweet(page, 'sotaproject');
@@ -173,6 +238,21 @@ async function officialAccountLocation(page: Page, screenName: string): Promise<
 
     return { basedIn, appStoreCountry, isVpn };
   });
+}
+
+/**
+ * Navigates to the user's profile, finds the first status link authored by
+ * that user, and returns the path (e.g. "/elonmusk/status/123").
+ */
+async function navigateToTweetDetail(page: Page, screenName: string): Promise<string> {
+  await page.goto(`https://x.com/${screenName}`);
+  const link = page
+    .locator(`article[data-testid="tweet"] a[href*="/${screenName}/status/" i]`)
+    .first();
+  await link.waitFor({ timeout: 15_000 });
+  const href = await link.getAttribute('href');
+  if (!href) throw new Error(`No status link found for @${screenName}`);
+  return href;
 }
 
 /**
