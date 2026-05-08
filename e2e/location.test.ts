@@ -183,6 +183,51 @@ test('rate limit: toast shown on 429, badge in hover card, no further API calls'
   await cachedCard.locator('.x-loc-icon-flag, .x-loc-store-block, .x-loc-icon-vpn').first().waitFor({ timeout: 10_000 });
 });
 
+test('clear cache button empties IDB and forces fresh API call on re-hover', async ({ page, context, extensionId }) => {
+  // Hover to populate IDB for sotaproject.
+  await hoverOwnTweet(page, 'sotaproject');
+
+  // IDB should contain the lowercased username key before clearing.
+  const keysBefore = await readIdb(page);
+  expect(keysBefore).toContain('sotaproject');
+
+  // Open the options page and click "Clear location cache".
+  const optionsPage = await context.newPage();
+  await optionsPage.goto(`chrome-extension://${extensionId}/pages/options.html`);
+  // Use a class selector so the locator survives the text change after clicking.
+  const clearBtn = optionsPage.locator('[class*="clearCacheBtn"]');
+  await clearBtn.waitFor({ timeout: 5_000 });
+  await clearBtn.click();
+  // Button text flips to "Cache cleared!" once the message round-trip completes.
+  await expect(clearBtn).toHaveText('Cache cleared!', { timeout: 5_000 });
+  await optionsPage.close();
+
+  // Give the content script time to process the relayed CLEAR_CACHE message.
+  await page.waitForTimeout(500);
+
+  // IDB must now be empty.
+  const keysAfter = await readIdb(page);
+  expect(keysAfter).toHaveLength(0);
+
+  // Move mouse away to dismiss any open hover card.
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(400);
+
+  // Re-hover the same user — checkedThisSession was also cleared, so a fresh
+  // AboutAccountQuery must fire instead of being short-circuited.
+  const queryFired = page
+    .waitForRequest(/AboutAccountQuery/, { timeout: 8_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  const usernameLink = page
+    .locator('article[data-testid="tweet"] [data-testid="User-Name"] a[href="/sotaproject" i]')
+    .first();
+  await usernameLink.hover();
+
+  expect(await queryFired).toBe(true);
+});
+
 test('second hover uses checkedThisSession cache — no repeat API call', async ({ page }) => {
   // First hover: populates checkedThisSession and IDB for this username.
   await hoverOwnTweet(page, 'sotaproject');
@@ -315,6 +360,30 @@ async function navigateToTweetDetail(page: Page, screenName: string): Promise<st
   const href = await link.getAttribute('href');
   if (!href) throw new Error(`No status link found for @${screenName}`);
   return href;
+}
+
+/**
+ * Returns all keys currently stored in the extension's IDB cache (x-profile-location /
+ * location-data). Must be called on a page at the x.com origin since IDB is origin-scoped.
+ */
+async function readIdb(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    new Promise<string[]>((resolve, reject) => {
+      const req = indexedDB.open('x-profile-location');
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('location-data')) {
+          db.close();
+          return resolve([]);
+        }
+        const tx = db.transaction('location-data', 'readonly');
+        const keysReq = tx.objectStore('location-data').getAllKeys();
+        keysReq.onsuccess = () => { db.close(); resolve(keysReq.result as string[]); };
+        keysReq.onerror = () => { db.close(); reject(keysReq.error); };
+      };
+    }),
+  );
 }
 
 /**
