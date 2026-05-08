@@ -1,18 +1,21 @@
 export function SeeItInAction() {
   return (
-    <section class="bg-surface py-24">
+    <section class="bg-surface py-24 border-t border-border">
       <div class="mx-auto max-w-7xl px-6 lg:px-8">
         {/* Heading */}
         <div class="text-center mb-14">
+          <span class="inline-block text-xs font-semibold uppercase tracking-widest text-teal mb-4">
+            Features
+          </span>
           <h2 class="text-4xl font-extrabold text-white tracking-tight mb-4">
-            See It in Action
+            Everything packed in
           </h2>
           <p class="text-lg text-[#a0a3ab] max-w-xl mx-auto">
             Works on hover cards, profile pages, and individual tweets — no setup needed.
           </p>
         </div>
 
-        {/* 2×2 grid */}
+        {/* 2×3 grid */}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <Card
             title="Country Flag on Hover"

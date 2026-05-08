@@ -1,4 +1,5 @@
 import { Hero } from './components/Hero'
+import { Screenshots } from './components/Screenshots'
 import { SeeItInAction } from './components/SeeItInAction'
 import { CTA } from './components/CTA'
 import { Footer } from './components/Footer'
@@ -25,6 +26,7 @@ export function App({ url }: AppProps) {
   return (
     <main>
       <Hero />
+      <Screenshots />
       <SeeItInAction />
       <CTA />
       <Footer />
