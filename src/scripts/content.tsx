@@ -1,8 +1,8 @@
 // content.tsx — plain DOM, no React/Preact
 import { cleanupCache, clearAllCache, getCached, mergeCached } from './cache';
+import { matchesAnyKeyword, setKeywords } from './keywords';
 import type { LocationData } from './cache';
 import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_ABBR, REGION_FLAGS, SHOW_LOCATION_IN_FEED_KEY } from './countries';
-import { graphemeIncludes, toGraphemes } from './grapheme';
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA';
 const API_BASE = 'https://x.com/i/api/graphql';
@@ -33,6 +33,7 @@ chrome.storage.local.get([BLOCKED_COUNTRIES_KEY, HIGHLIGHT_KEYWORDS_KEY, HIGHLIG
   highlightKeywords = new Set<string>(
     Array.isArray(r[HIGHLIGHT_KEYWORDS_KEY]) ? (r[HIGHLIGHT_KEYWORDS_KEY] as string[]).map((k) => k.toLowerCase()) : [],
   );
+  setKeywords([...highlightKeywords]);
   const flags = r[HIGHLIGHT_FLAGS_KEY] as { enabled?: boolean; threshold?: number; uniqueOnly?: boolean } | undefined;
   highlightFlagsEnabled = flags?.enabled ?? false;
   highlightFlagsThreshold = flags?.threshold ?? 2;
@@ -49,6 +50,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes[HIGHLIGHT_KEYWORDS_KEY]) {
     const next = changes[HIGHLIGHT_KEYWORDS_KEY].newValue;
     highlightKeywords = new Set<string>(Array.isArray(next) ? (next as string[]).map((k) => k.toLowerCase()) : []);
+    setKeywords([...highlightKeywords]);
     rehighlightAll();
   }
   if (changes[HIGHLIGHT_FLAGS_KEY]) {
@@ -349,15 +351,6 @@ article[data-x-loc-highlighted] {
 // ---------------------------------------------------------------------------
 // Keyword highlight helpers
 // ---------------------------------------------------------------------------
-
-function matchesAnyKeyword(text: string): boolean {
-  if (highlightKeywords.size === 0) return false;
-  const haystack = toGraphemes(text.toLowerCase());
-  for (const kw of highlightKeywords) {
-    if (graphemeIncludes(haystack, toGraphemes(kw))) return true;
-  }
-  return false;
-}
 
 function countFlagsInBio(bio: string): number {
   const matches = bio.match(/[\u{1F1E6}-\u{1F1FF}]{2}/gu) ?? [];
