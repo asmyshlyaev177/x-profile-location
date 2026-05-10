@@ -73,7 +73,7 @@ export const REGION_FLAGS: Record<string, string> = {
   'East Asia': '🌏',
   'Central Asia': '🌎',
   'South Asia': '🌏',
-  'Southest Asia': '🌏',
+  'Southeast Asia': '🌏',
   'West Asia': '🌍',
 };
 
@@ -90,7 +90,7 @@ export const REGION_ABBR: Record<string, string> = {
   'South America': 'SAM',
   'Central Asia': 'CAS',
   'South Asia': 'SAS',
-  'Southest Asia': 'SEAS',
+  'Southeast Asia': 'SEAS',
   'West Asia': 'WAS',
 };
 
