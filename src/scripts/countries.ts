@@ -39,7 +39,7 @@ export const COUNTRY_FLAGS: Record<string, string> = {
   'North Macedonia': '🇲🇰', 'Norway': '🇳🇴', 'Oman': '🇴🇲',
   'Pakistan': '🇵🇰', 'Palau': '🇵🇼', 'Panama': '🇵🇦',
   'Papua New Guinea': '🇵🇬', 'Paraguay': '🇵🇾', 'Peru': '🇵🇪',
-  'Philippines': '🇵🇭', 'Poland': '🇵🇱', 'Portugal': '🇵🇹', 'Qatar': '🇶🇦',
+  'Philippines': '🇵🇭', 'Poland': '🇵🇱', 'Portugal': '🇵🇹', 'Puerto Rico': '🇵🇷','Qatar': '🇶🇦',
   'Romania': '🇷🇴', 'Russian Federation': '🇷🇺', 'Rwanda': '🇷🇼',
   'Saint Kitts and Nevis': '🇰🇳', 'Saint Lucia': '🇱🇨',
   'Saint Vincent and the Grenadines': '🇻🇨', 'Samoa': '🇼🇸',
