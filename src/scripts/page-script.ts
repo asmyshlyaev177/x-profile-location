@@ -1,5 +1,6 @@
 import { extractUsers } from './extract-users';
 import type { UserBio } from './extract-users';
+import { EVENTS, X_GRAPHQL_PATH } from './constants';
 
 (function () {
   if ((window as any).__X_LOC_INJECTED__) return;
@@ -14,14 +15,14 @@ import type { UserBio } from './extract-users';
     headersCaptured = true;
     storedHeaders = headers;
     window.dispatchEvent(
-      new CustomEvent('x-loc-headers-captured', { detail: { headers } })
+      new CustomEvent(EVENTS.HEADERS_CAPTURED, { detail: { headers } })
     );
   }
 
-  window.addEventListener('x-loc-request-headers', () => {
+  window.addEventListener(EVENTS.REQUEST_HEADERS, () => {
     if (storedHeaders) {
       window.dispatchEvent(
-        new CustomEvent('x-loc-headers-captured', { detail: { headers: storedHeaders } })
+        new CustomEvent(EVENTS.HEADERS_CAPTURED, { detail: { headers: storedHeaders } })
       );
     }
   });
@@ -41,7 +42,7 @@ import type { UserBio } from './extract-users';
       seen.add(key);
       return true;
     });
-    window.dispatchEvent(new CustomEvent('x-loc-users-data', { detail: { users: unique } }));
+    window.dispatchEvent(new CustomEvent(EVENTS.USERS_DATA, { detail: { users: unique } }));
   }
 
   // ---------------------------------------------------------------------------
@@ -51,7 +52,7 @@ import type { UserBio } from './extract-users';
   (window as any).fetch = function (input: RequestInfo | URL, init?: RequestInit) {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
 
-    if (url.includes('x.com/i/api/graphql') && !headersCaptured) {
+    if (url.includes(X_GRAPHQL_PATH) && !headersCaptured) {
       const headers: Record<string, string> = {};
       const rawHeaders =
         init?.headers ??
@@ -112,7 +113,7 @@ import type { UserBio } from './extract-users';
 
     const originalSend = xhr.send.bind(xhr);
     (xhr as any).send = function (body?: Document | XMLHttpRequestBodyInit | null) {
-      if (_url.includes('x.com/i/api/graphql') && !headersCaptured) {
+      if (_url.includes(X_GRAPHQL_PATH) && !headersCaptured) {
         dispatchHeaders(_headers);
       }
       if (BIO_INTERCEPT.some(p => _url.includes(p))) {

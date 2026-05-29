@@ -4,9 +4,10 @@ import { matchesAnyKeyword, setKeywords } from './keywords';
 import type { LocationData } from './cache';
 import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_ABBR, REGION_FLAGS, SHOW_LOCATION_IN_FEED_KEY } from './countries';
 import { isMobile } from './device';
+import { EVENTS, X_GRAPHQL_PATH } from './constants';
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA';
-const API_BASE = 'https://x.com/i/api/graphql';
+const API_BASE = `https://${X_GRAPHQL_PATH}`;
 const ABOUT_ACCOUNT_URL = `${API_BASE}/${QUERY_ID}/AboutAccountQuery`;
 
 // X related selectors
@@ -17,6 +18,10 @@ const SEL_TWEET = 'article[data-testid="tweet"]';
 const SEL_PRIMARY_TWEET = `${SEL_TWEET}[tabindex="-1"]`;
 const PRIMARY_TWEET_ATTR = 'data-x-loc-primary-done';
 const RESET_DEFAULT = 60 * 5 * 1000;
+const RE_SCREEN_NAME_HREF = /^\/([A-Za-z0-9_]{1,50})$/;
+const RE_AT_MENTION = /^@[A-Za-z0-9_]{1,50}$/;
+const RE_MOBILE_SOURCE = /android\s+app|app\s+store/i;
+const RE_MOBILE_SOURCE_STRIP = /\s*(android\s+app|app\s+store)/i;
 
 // ---------------------------------------------------------------------------
 // Blocked countries (loaded from chrome.storage.local, set via options page)
@@ -169,9 +174,9 @@ function showLocationOverlay(data: LocationData) {
   existing?.remove();
   if (locationToastTimer) clearTimeout(locationToastTimer);
 
-  const mobileSource = /android\s+app|app\s+store/i.test(data.source ?? '');
+  const mobileSource = RE_MOBILE_SOURCE.test(data.source ?? '');
   const sourceCountry = mobileSource
-    ? (data.source?.replace(/\s*(android\s+app|app\s+store)/i, '').trim() || null)
+    ? (data.source?.replace(RE_MOBILE_SOURCE_STRIP, '').trim() || null)
     : null;
   const vpn = data.locationAccurate === false;
 
@@ -415,22 +420,23 @@ article[data-x-loc-highlighted] {
 // Keyword highlight helpers
 // ---------------------------------------------------------------------------
 
+function getNameEl(el: Element): Element | null {
+  return el.querySelector('[data-testid="User-Name"]') ?? el.querySelector('[data-testid="UserName"]');
+}
+
 function countFlagsInBio(bio: string): number {
   const matches = bio.match(/[\u{1F1E6}-\u{1F1FF}]{2}/gu) ?? [];
   return highlightFlagsUniqueOnly ? new Set(matches).size : matches.length;
 }
 
 function extractTweetUserInfo(article: Element): { userName: string | null; displayName: string } {
-  const userNameEl =
-    article.querySelector('[data-testid="User-Name"]') ??
-    article.querySelector('[data-testid="UserName"]');
+  const userNameEl = getNameEl(article);
   if (!userNameEl) return { userName: null, displayName: '' };
   let userName: string | null = null;
   let displayName = '';
   for (const link of Array.from(userNameEl.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
     const href = link.getAttribute('href') ?? '';
-    // TODO: store regex in a const
-    const m = href.match(/^\/([A-Za-z0-9_]{1,50})$/);
+    const m = href.match(RE_SCREEN_NAME_HREF);
     if (!m) continue;
     if (!userName) userName = m[1];
     const text = link.textContent?.trim() ?? '';
@@ -483,9 +489,7 @@ async function tryInjectFeedLocation(article: Element) {
   const data = await getCached(userName);
   if (!data || (!data.location && data.locationAccurate && !data.source)) return;
 
-  const userNameEl =
-    article.querySelector('[data-testid="User-Name"]') ??
-    article.querySelector('[data-testid="UserName"]');
+  const userNameEl = getNameEl(article);
   if (!userNameEl) return;
 
   if (article.querySelector('.x-loc-feed-row')) return;
@@ -502,9 +506,7 @@ function injectFeedLocationForUser(userName: string, data: LocationData) {
   document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
     if (extractTweetUserInfo(article).userName?.toLowerCase() !== lc) return;
     if (article.matches(SEL_PRIMARY_TWEET)) return;
-    const userNameEl =
-      article.querySelector('[data-testid="User-Name"]') ??
-      article.querySelector('[data-testid="UserName"]');
+    const userNameEl = getNameEl(article);
     if (!userNameEl || article.querySelector('.x-loc-feed-row')) return;
     article.setAttribute(FEED_LOCATION_ATTR, '1');
     const row = buildInfoRow(data);
@@ -538,7 +540,7 @@ function extractScreenName(card: Element): string | null {
     card.querySelector(SEL_USER_NAME_ALT);
   if (nameEl) {
     const href = nameEl.getAttribute('href') ?? '';
-    const match = href.match(/^\/([A-Za-z0-9_]{1,50})$/);
+    const match = href.match(RE_SCREEN_NAME_HREF);
     if (match) return match[1];
   }
 
@@ -546,7 +548,7 @@ function extractScreenName(card: Element): string | null {
   const spans = card.querySelectorAll('span');
   for (const span of Array.from(spans)) {
     const text = span.textContent?.trim() ?? '';
-    if (/^@[A-Za-z0-9_]{1,50}$/.test(text)) {
+    if (RE_AT_MENTION.test(text)) {
       return text.slice(1);
     }
   }
@@ -569,9 +571,9 @@ function buildInfoRow(data: LocationData): HTMLElement {
   const row = document.createElement('div');
   row.className = 'x-loc-info';
 
-  const mobileSource = /android\s+app|app\s+store/i.test(data?.source ?? '');
+  const mobileSource = RE_MOBILE_SOURCE.test(data?.source ?? '');
   const sourceCountry = mobileSource
-    && data.source?.replace(/\s*(android\s+app|app\s+store)/i, '').trim() || null;
+    && data.source?.replace(RE_MOBILE_SOURCE_STRIP, '').trim() || null;
 
   if (sourceCountry) {
     const { emoji: storeFlag, isText: storeFlagIsText } = getLocationDisplay(sourceCountry);
@@ -659,16 +661,17 @@ function insertIntoCard(card: Element, userName: string, el: HTMLElement) {
 // ---------------------------------------------------------------------------
 // Process a hover card
 // ---------------------------------------------------------------------------
-// TODO: extract data-x-loc-done into a constant
+const HOVER_CARD_DONE_ATTR = 'data-x-loc-done';
+
 async function processCard(card: Element) {
-  if (card.getAttribute('data-x-loc-done')) return;
+  if (card.getAttribute(HOVER_CARD_DONE_ATTR)) return;
 
   const userName = extractScreenName(card);
   // Don't mark done yet — card content may not be rendered. The observer will
   // retry when React adds content inside the card.
   if (!userName) return;
 
-  card.setAttribute('data-x-loc-done', '1');
+  card.setAttribute(HOVER_CARD_DONE_ATTR, '1');
 
   const data = await fetchLocationData(userName);
 
@@ -693,16 +696,14 @@ async function processPrimaryTweet() {
   const tweet = document.querySelector(SEL_PRIMARY_TWEET);
   if (!tweet || tweet.getAttribute(PRIMARY_TWEET_ATTR)) return;
 
-  const userNameEl =
-    tweet.querySelector('[data-testid="User-Name"]') ??
-    tweet.querySelector('[data-testid="UserName"]');
+  const userNameEl = getNameEl(tweet);
   if (!userNameEl) return;
 
   const link = userNameEl.querySelector('a[href]');
   if (!link) return;
 
   const href = link.getAttribute('href') ?? '';
-  const m = href.match(/^\/([A-Za-z0-9_]{1,50})$/);
+  const m = href.match(RE_SCREEN_NAME_HREF);
   if (!m) return;
 
   const userName = m[1];
@@ -807,9 +808,7 @@ function startSwipeListener() {
 
     // Inject below username even if showLocationInFeed is off — user explicitly swiped
     if (!article.querySelector('.x-loc-feed-row')) {
-      const userNameEl =
-        article.querySelector('[data-testid="User-Name"]') ??
-        article.querySelector('[data-testid="UserName"]');
+      const userNameEl = getNameEl(article);
       if (userNameEl) {
         article.setAttribute(FEED_LOCATION_ATTR, '1');
         const row = buildInfoRow(data);
@@ -825,7 +824,7 @@ function startSwipeListener() {
 // ---------------------------------------------------------------------------
 // Listen for captured headers from page-script
 // ---------------------------------------------------------------------------
-window.addEventListener('x-loc-headers-captured', (e: Event) => {
+window.addEventListener(EVENTS.HEADERS_CAPTURED, (e: Event) => {
   const headers = (e as CustomEvent).detail?.headers;
   if (headers?.authorization) {
     apiHeaders = headers;
@@ -835,7 +834,7 @@ window.addEventListener('x-loc-headers-captured', (e: Event) => {
 // ---------------------------------------------------------------------------
 // Listen for user bio data intercepted from timeline/tweet API responses
 // ---------------------------------------------------------------------------
-window.addEventListener('x-loc-users-data', (e: Event) => {
+window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
   const users = (e as CustomEvent).detail?.users as Array<{ userName: string; displayName: string | null; bio: string | null }> | undefined;
   if (!users) return;
   for (const { userName, displayName, bio } of users) {
@@ -860,4 +859,4 @@ startObserver();
 startSwipeListener();
 cleanupCache();
 // Request headers in case page-script already captured them before document_idle
-window.dispatchEvent(new CustomEvent('x-loc-request-headers'));
+window.dispatchEvent(new CustomEvent(EVENTS.REQUEST_HEADERS));
