@@ -8,6 +8,7 @@ const SCREENSHOTS = [
   { src: '/Warning-screenshot-x-profile-location.png', label: 'Warnings', alt: 'Warnings instead of selected country flags' },
   { src: '/Flags_screenshot-x-profile-location.png', label: 'Inline flags', alt: 'Inline flags' },
   { src: '/Highlight2_screenshot-x-profile-location.png', label: 'Highlight flags', alt: 'Highlight flags' },
+  { src: '/swipe_right.png', label: 'Swipe right (mobile)', alt: 'Swipe right (mobile)' },
 
 ]
 

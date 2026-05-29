@@ -11,7 +11,7 @@ export function SeeItInAction() {
             Everything packed in
           </h2>
           <p class="text-lg text-[#a0a3ab] max-w-xl mx-auto">
-            Works on hover cards, profile pages, and individual tweets — no setup needed.
+            Works on hover cards, profile pages, individual tweets, and touch screens — no setup needed.
           </p>
         </div>
 
@@ -52,6 +52,12 @@ export function SeeItInAction() {
             description="Tweets from users matching your keywords or flag patterns are marked with an amber highlight so they stand out."
             accentColor="#f59e0b"
             preview={<HighlightedTweetPreview />}
+          />
+          <Card
+            title="Mobile Swipe to Reveal"
+            description="On touch screens, swipe right on any tweet to instantly fetch the author's location. A brief overlay confirms the country."
+            accentColor="#7c3aed"
+            preview={<MobileSwipePreview />}
           />
         </div>
       </div>
@@ -204,6 +210,42 @@ function OptionsPreview() {
           <span>Highlight by flags 🏴</span>
           <span style="color:#6b7280;font-size:9px;">▸</span>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function MobileSwipePreview() {
+  return (
+    <div class="relative w-56">
+      {/* Tweet row */}
+      <div class="rounded-lg border p-3" style="background:#1c1e24;border-color:rgba(255,255,255,0.1);">
+        <div class="flex gap-2">
+          <div class="h-6 w-6 rounded-full shrink-0" style="background:rgba(255,255,255,0.15);" />
+          <div class="flex-1 space-y-1.5">
+            <div class="h-2 w-20 rounded" style="background:rgba(255,255,255,0.4);" />
+            {/* injected location row */}
+            <div class="flex items-center gap-1.5">
+              <span style="font-size:14px;line-height:1;">🇧🇷</span>
+              <span style="font-size:10px;color:rgba(255,255,255,0.5);">Brazil</span>
+            </div>
+            <div class="h-1.5 w-full rounded" style="background:rgba(255,255,255,0.1);" />
+          </div>
+        </div>
+      </div>
+      {/* Swipe arrow */}
+      <div
+        class="absolute inset-y-0 left-0 flex items-center"
+        style="left:-28px;"
+      >
+        <span style="font-size:20px;opacity:0.7;">👉</span>
+      </div>
+      {/* Toast */}
+      <div
+        class="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold text-white"
+        style="background:rgba(24,24,24,0.93);border:1px solid rgba(29,155,240,0.55);"
+      >
+        🇧🇷 Brazil
       </div>
     </div>
   )

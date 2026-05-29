@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import { trackEvent } from '../scripts/analytics'
 import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_FLAGS, SHOW_LOCATION_IN_FEED_KEY } from '../scripts/countries'
+import { isMobile } from '../scripts/device'
 import css from './options.module.css'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
@@ -168,6 +169,9 @@ function Options() {
         />
         <span>Show location in feed 📍</span>
       </label>
+      {isMobile && (
+        <p class={css.mobileHint}>👉 Swipe right on any tweet to fetch its location</p>
+      )}
 
       <details class={css.accordion}>
         <summary class={css.accordionSummary}>

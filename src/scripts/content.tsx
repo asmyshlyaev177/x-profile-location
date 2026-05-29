@@ -3,6 +3,7 @@ import { cleanupCache, clearAllCache, getCached, mergeCached } from './cache';
 import { matchesAnyKeyword, setKeywords } from './keywords';
 import type { LocationData } from './cache';
 import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_ABBR, REGION_FLAGS, SHOW_LOCATION_IN_FEED_KEY } from './countries';
+import { isMobile } from './device';
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA';
 const API_BASE = 'https://x.com/i/api/graphql';
@@ -38,7 +39,8 @@ chrome.storage.local.get([BLOCKED_COUNTRIES_KEY, HIGHLIGHT_KEYWORDS_KEY, HIGHLIG
   highlightFlagsEnabled = flags?.enabled ?? false;
   highlightFlagsThreshold = flags?.threshold ?? 2;
   highlightFlagsUniqueOnly = flags?.uniqueOnly ?? false;
-  showLocationInFeed = Boolean(r[SHOW_LOCATION_IN_FEED_KEY]);
+  // Default to true on mobile when the user hasn't explicitly set the preference yet
+  showLocationInFeed = SHOW_LOCATION_IN_FEED_KEY in r ? Boolean(r[SHOW_LOCATION_IN_FEED_KEY]) : isMobile;
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -155,6 +157,51 @@ function showRateLimitToast() {
 
   tick();
   rateLimitToastInterval = setInterval(tick, 1000);
+}
+
+// ---------------------------------------------------------------------------
+// Location overlay toast (mobile swipe feedback)
+// ---------------------------------------------------------------------------
+let locationToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+function showLocationOverlay(data: LocationData) {
+  const existing = document.getElementById('x-loc-location-toast');
+  existing?.remove();
+  if (locationToastTimer) clearTimeout(locationToastTimer);
+
+  const mobileSource = /android\s+app|app\s+store/i.test(data.source ?? '');
+  const sourceCountry = mobileSource
+    ? (data.source?.replace(/\s*(android\s+app|app\s+store)/i, '').trim() || null)
+    : null;
+  const vpn = data.locationAccurate === false;
+
+  let text = '';
+  if (sourceCountry) {
+    if (sourceCountry === data.location) {
+      // AppStore and location agree — reliable, no VPN badge needed
+      const { emoji } = getLocationDisplay(sourceCountry);
+      text = `${emoji} ${sourceCountry}`;
+    } else {
+      // AppStore and location differ — show AppStore country as more reliable signal
+      const { emoji } = getLocationDisplay(sourceCountry);
+      text = `${emoji} ${sourceCountry}`;
+      if (vpn) text += ' · ⚠ VPN';
+    }
+  } else {
+    if (data.location) {
+      const { emoji } = getLocationDisplay(data.location);
+      text = `${emoji} ${data.location}`;
+    }
+    if (vpn) text += (text ? ' · ' : '') + '⚠ VPN';
+  }
+  if (!text) return;
+
+  const toast = document.createElement('div');
+  toast.id = 'x-loc-location-toast';
+  toast.textContent = text;
+  document.body.appendChild(toast);
+
+  locationToastTimer = setTimeout(() => toast.remove(), 2500);
 }
 
 // ---------------------------------------------------------------------------
@@ -340,6 +387,22 @@ function injectStyles() {
   white-space: nowrap;
   border: 1px solid rgba(220, 38, 38, 0.55);
 }
+#x-loc-location-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(24, 24, 24, 0.93);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  z-index: 2147483647;
+  pointer-events: none;
+  white-space: nowrap;
+  border: 1px solid rgba(29, 155, 240, 0.55);
+}
 article[data-x-loc-highlighted] {
   border-left: 3px solid #f59e0b !important;
   background: rgba(245, 158, 11, 0.05) !important;
@@ -366,6 +429,7 @@ function extractTweetUserInfo(article: Element): { userName: string | null; disp
   let displayName = '';
   for (const link of Array.from(userNameEl.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
     const href = link.getAttribute('href') ?? '';
+    // TODO: store regex in a const
     const m = href.match(/^\/([A-Za-z0-9_]{1,50})$/);
     if (!m) continue;
     if (!userName) userName = m[1];
@@ -595,6 +659,7 @@ function insertIntoCard(card: Element, userName: string, el: HTMLElement) {
 // ---------------------------------------------------------------------------
 // Process a hover card
 // ---------------------------------------------------------------------------
+// TODO: extract data-x-loc-done into a constant
 async function processCard(card: Element) {
   if (card.getAttribute('data-x-loc-done')) return;
 
@@ -713,6 +778,51 @@ function startObserver() {
 }
 
 // ---------------------------------------------------------------------------
+// Swipe-right on a tweet to fetch location (mobile)
+// ---------------------------------------------------------------------------
+function startSwipeListener() {
+  let startX = 0;
+  let startY = 0;
+
+  document.body.addEventListener('touchstart', (e: TouchEvent) => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.body.addEventListener('touchend', async (e: TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = Math.abs(e.changedTouches[0].clientY - startY);
+
+    // Require a clear rightward swipe, not a vertical scroll or tap
+    if (dx < 40 || dy > 50) return;
+
+    const article = (e.target as Element).closest<Element>(SEL_TWEET);
+    if (!article) return;
+
+    const { userName } = extractTweetUserInfo(article);
+    if (!userName) return;
+
+    const data = await fetchLocationData(userName);
+    if (!data || (!data.location && data.locationAccurate !== false && !data.source)) return;
+
+    // Inject below username even if showLocationInFeed is off — user explicitly swiped
+    if (!article.querySelector('.x-loc-feed-row')) {
+      const userNameEl =
+        article.querySelector('[data-testid="User-Name"]') ??
+        article.querySelector('[data-testid="UserName"]');
+      if (userNameEl) {
+        article.setAttribute(FEED_LOCATION_ATTR, '1');
+        const row = buildInfoRow(data);
+        row.classList.add('x-loc-feed-row');
+        userNameEl.insertAdjacentElement('afterend', row);
+      }
+    }
+
+    showLocationOverlay(data);
+  }, { passive: true });
+}
+
+// ---------------------------------------------------------------------------
 // Listen for captured headers from page-script
 // ---------------------------------------------------------------------------
 window.addEventListener('x-loc-headers-captured', (e: Event) => {
@@ -747,6 +857,7 @@ window.addEventListener('x-loc-users-data', (e: Event) => {
 // ---------------------------------------------------------------------------
 injectStyles();
 startObserver();
+startSwipeListener();
 cleanupCache();
 // Request headers in case page-script already captured them before document_idle
 window.dispatchEvent(new CustomEvent('x-loc-request-headers'));

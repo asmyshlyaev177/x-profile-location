@@ -149,6 +149,12 @@
   margin-top: 10px;
 }
 
+.mobileHint {
+  margin: 0 0 10px 2px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
 .inlineOption {
   display: flex;
   align-items: center;
