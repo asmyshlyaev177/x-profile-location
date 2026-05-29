@@ -57,8 +57,6 @@ export const test = base.extend<Fixtures>({
       }
     }
 
-    await context.route('**google-analytics.com/**', (route) => route.abort());
-
     await use(context);
     await context.close();
     await rm(userDataDir, { recursive: true, force: true });

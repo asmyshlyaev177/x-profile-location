@@ -1,6 +1,5 @@
 
 import { BLOCKED_COUNTRIES_KEY, DEFAULT_BLOCKED_COUNTRIES } from './countries'
-import { trackEvent } from './analytics'
 
 chrome.runtime.onInstalled.addListener((details): void => {
   console.log('[service-worker.ts] > onInstalled', details)
@@ -17,12 +16,6 @@ chrome.runtime.onInstalled.addListener((details): void => {
     title: 'Options',
     contexts: ['action'],
   })
-
-  if (details.reason === 'install') {
-    trackEvent('extension_installed')
-  } else if (details.reason === 'update') {
-    trackEvent('extension_updated', { previous_version: details.previousVersion })
-  }
 })
 
 chrome.contextMenus.onClicked.addListener((info) => {
@@ -41,12 +34,6 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 })
 
-addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
-  trackEvent('extension_error', {
-    message: event.reason?.message ?? String(event.reason),
-    // Omit stack trace to avoid leaking personal information
-  })
-})
 
 
 

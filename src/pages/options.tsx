@@ -1,7 +1,6 @@
 import { render } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
-import { trackEvent } from '../scripts/analytics'
 import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_FLAGS, SHOW_LOCATION_IN_FEED_KEY } from '../scripts/countries'
 import { isMobile } from '../scripts/device'
 import css from './options.module.css'
@@ -46,14 +45,12 @@ function Options() {
     const next = [...blocked, country]
     setBlocked(next)
     chrome.storage.local.set({ [BLOCKED_COUNTRIES_KEY]: next })
-    trackEvent('country_blocked', { country })
   }
 
   function removeBlocked(country: string) {
     const next = blocked.filter((c) => c !== country)
     setBlocked(next)
     chrome.storage.local.set({ [BLOCKED_COUNTRIES_KEY]: next })
-    trackEvent('country_unblocked', { country })
   }
 
   function addKeyword(kw: string) {
