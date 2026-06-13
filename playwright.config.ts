@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e',
@@ -24,9 +24,10 @@ export default defineConfig({
   ],
   webServer: {
     // Proxy forwards to real x.com; records/replays extension API calls.
-    command: 'test-proxy-recorder https://x.com --port 8100 --dir ./e2e/recordings',
+    command:
+      'test-proxy-recorder https://x.com --port 8100 --dir ./e2e/recordings',
     url: 'http://localhost:8100/__control',
     reuseExistingServer: true,
     timeout: 10_000,
   },
-});
+})

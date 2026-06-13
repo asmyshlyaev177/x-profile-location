@@ -4,10 +4,7 @@
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "chrome-devtools",
-    "cclsp"
-  ],
+  "enabledMcpjsonServers": ["chrome-devtools", "cclsp"],
   "hooks": {
     "PreToolUse": [
       {

@@ -124,7 +124,9 @@ describe('Autocomplete', () => {
   })
 
   it('renders custom renderOption', async () => {
-    const { input, user } = setup({ renderOption: (opt) => <b data-testid="custom">{opt}</b> })
+    const { input, user } = setup({
+      renderOption: (opt) => <b data-testid="custom">{opt}</b>,
+    })
     await user.type(input, 'app')
     expect(screen.getByTestId('custom')).toBeInTheDocument()
   })

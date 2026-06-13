@@ -11,8 +11,10 @@ interface AppProps {
 }
 
 export function App({ url }: AppProps) {
-  const path = url ?? (typeof window !== 'undefined' ? window.location.pathname : '/')
-  const isPrivacyPolicy = path === '/privacy-policy' || path === '/privacy-policy/'
+  const path =
+    url ?? (typeof window !== 'undefined' ? window.location.pathname : '/')
+  const isPrivacyPolicy =
+    path === '/privacy-policy' || path === '/privacy-policy/'
 
   if (isPrivacyPolicy) {
     return (

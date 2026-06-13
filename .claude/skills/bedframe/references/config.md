@@ -32,7 +32,9 @@ export default createBedframe({
         language: 'typescript',
         packageManager: 'bun',
         lintFormat: true,
-        tests: { /* vitest config */ },
+        tests: {
+          /* vitest config */
+        },
         git: true,
         gitHooks: true,
         commitLint: true,

@@ -9,19 +9,24 @@ interface PrerenderData {
 
 export async function prerender({ url }: PrerenderData = {}) {
   const path = url ?? '/'
-  const isPrivacyPolicy = path === '/privacy-policy' || path === '/privacy-policy/'
+  const isPrivacyPolicy =
+    path === '/privacy-policy' || path === '/privacy-policy/'
 
   const title = isPrivacyPolicy
     ? `Privacy Policy — ${seo.og.siteName}`
     : seo.title
 
-  const canonical = isPrivacyPolicy
-    ? `${siteUrl}privacy-policy`
-    : seo.og.url
+  const canonical = isPrivacyPolicy ? `${siteUrl}privacy-policy` : seo.og.url
 
   const headElements = isPrivacyPolicy
     ? new Set([
-        { type: 'meta', props: { name: 'description', content: 'Privacy Policy for X Profile Location browser extension.' } },
+        {
+          type: 'meta',
+          props: {
+            name: 'description',
+            content: 'Privacy Policy for X Profile Location browser extension.',
+          },
+        },
         { type: 'link', props: { rel: 'canonical', href: canonical } },
         { type: 'meta', props: { name: 'robots', content: 'noindex' } },
       ])

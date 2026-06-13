@@ -72,15 +72,15 @@ Built output goes to `dist/<browser>/`.
 
 ## Tech stack
 
-| Concern | Tool |
-| --- | --- |
-| Framework | [Bedframe](https://bedframe.dev) |
-| UI | Preact + TSX |
-| Build | Vite |
-| Styling | Tailwind CSS v4 |
-| Tests | Vitest + Happy DOM |
-| Lint/format | Oxlint + oxfmt |
-| Package manager | pnpm |
+| Concern         | Tool                             |
+| --------------- | -------------------------------- |
+| Framework       | [Bedframe](https://bedframe.dev) |
+| UI              | Preact + TSX                     |
+| Build           | Vite                             |
+| Styling         | Tailwind CSS v4                  |
+| Tests           | Vitest + Happy DOM               |
+| Lint/format     | Oxlint + oxfmt                   |
+| Package manager | pnpm                             |
 
 ## Browsers
 

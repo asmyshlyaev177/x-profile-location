@@ -13,13 +13,9 @@
   ],
   "compilerOptions": {
     "baseUrl": ".",
-    "types": [
-      "@types/chrome"
-    ],
+    "types": ["@types/chrome"],
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   }
 }

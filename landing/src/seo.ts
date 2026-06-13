@@ -32,7 +32,13 @@ export const seo = {
 /** Returns the full set of <head> elements for vite-prerender-plugin */
 export function buildHeadElements() {
   return new Set([
-    { type: 'meta', props: { name: 'google-site-verification', content: 'VGWeNcrEVDQA07xz1L_6VZjcMEip0kTWdxxpIEmmbKc' } },
+    {
+      type: 'meta',
+      props: {
+        name: 'google-site-verification',
+        content: 'VGWeNcrEVDQA07xz1L_6VZjcMEip0kTWdxxpIEmmbKc',
+      },
+    },
     { type: 'meta', props: { name: 'description', content: seo.description } },
     { type: 'meta', props: { name: 'keywords', content: seo.keywords } },
     { type: 'meta', props: { name: 'author', content: seo.author } },
@@ -41,22 +47,52 @@ export function buildHeadElements() {
     { type: 'meta', props: { property: 'og:type', content: seo.og.type } },
     { type: 'meta', props: { property: 'og:url', content: seo.og.url } },
     { type: 'meta', props: { property: 'og:title', content: seo.title } },
-    { type: 'meta', props: { property: 'og:description', content: seo.description } },
+    {
+      type: 'meta',
+      props: { property: 'og:description', content: seo.description },
+    },
     { type: 'meta', props: { property: 'og:image', content: seo.og.image } },
-    { type: 'meta', props: { property: 'og:image:width', content: seo.og.imageWidth } },
-    { type: 'meta', props: { property: 'og:image:height', content: seo.og.imageHeight } },
-    { type: 'meta', props: { property: 'og:site_name', content: seo.og.siteName } },
+    {
+      type: 'meta',
+      props: { property: 'og:image:width', content: seo.og.imageWidth },
+    },
+    {
+      type: 'meta',
+      props: { property: 'og:image:height', content: seo.og.imageHeight },
+    },
+    {
+      type: 'meta',
+      props: { property: 'og:site_name', content: seo.og.siteName },
+    },
 
     // Twitter Card
-    { type: 'meta', props: { name: 'twitter:card', content: seo.twitter.card } },
-    { type: 'meta', props: { name: 'twitter:site', content: seo.twitter.site } },
+    {
+      type: 'meta',
+      props: { name: 'twitter:card', content: seo.twitter.card },
+    },
+    {
+      type: 'meta',
+      props: { name: 'twitter:site', content: seo.twitter.site },
+    },
     { type: 'meta', props: { name: 'twitter:title', content: seo.title } },
-    { type: 'meta', props: { name: 'twitter:description', content: seo.description } },
-    { type: 'meta', props: { name: 'twitter:image', content: seo.twitter.image } },
+    {
+      type: 'meta',
+      props: { name: 'twitter:description', content: seo.description },
+    },
+    {
+      type: 'meta',
+      props: { name: 'twitter:image', content: seo.twitter.image },
+    },
 
     // Last modified / updated time
-    { type: 'meta', props: { property: 'og:updated_time', content: buildDate } },
-    { type: 'meta', props: { 'http-equiv': 'last-modified', content: buildDate } },
+    {
+      type: 'meta',
+      props: { property: 'og:updated_time', content: buildDate },
+    },
+    {
+      type: 'meta',
+      props: { 'http-equiv': 'last-modified', content: buildDate },
+    },
 
     // Canonical
     { type: 'link', props: { rel: 'canonical', href: seo.og.url } },

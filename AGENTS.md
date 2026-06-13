@@ -170,5 +170,3 @@ Before publish, confirm:
 - Keep config, manifests, pages, scripts, build, and release surfaces aligned.
 - Treat build support and publish support as separate concerns.
 - Prefer narrow manifest permission changes and browser-specific deltas.
-
-

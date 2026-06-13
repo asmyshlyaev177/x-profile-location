@@ -32,17 +32,23 @@ export function Autocomplete({
   const listRef = useRef<HTMLUListElement>(null)
 
   const selectedLower = selected.map((s) => s.toLowerCase())
-  const available = allOptions.filter((o) => !selectedLower.includes(o.toLowerCase()))
+  const available = allOptions.filter(
+    (o) => !selectedLower.includes(o.toLowerCase()),
+  )
   const suggestions =
     query.length === 0
       ? available
       : available.filter((o) => o.toLowerCase().includes(query.toLowerCase()))
 
-  useEffect(() => { setActiveIndex(-1) }, [query])
+  useEffect(() => {
+    setActiveIndex(-1)
+  }, [query])
 
   useEffect(() => {
     if (activeIndex < 0 || !listRef.current) return
-    const item = listRef.current.children[activeIndex] as HTMLElement | undefined
+    const item = listRef.current.children[activeIndex] as
+      | HTMLElement
+      | undefined
     item?.scrollIntoView({ block: 'nearest' })
   }, [activeIndex])
 
@@ -69,7 +75,10 @@ export function Autocomplete({
       return
     }
     if (!isOpen) {
-      if (e.key === 'Escape') { setOpen(false); setActiveIndex(-1) }
+      if (e.key === 'Escape') {
+        setOpen(false)
+        setActiveIndex(-1)
+      }
       return
     }
     switch (e.key) {
@@ -104,15 +113,30 @@ export function Autocomplete({
         aria-haspopup="listbox"
         aria-autocomplete="list"
         aria-controls={`${id}-listbox`}
-        aria-activedescendant={activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined}
-        onInput={(e) => { setQuery((e.target as HTMLInputElement).value); setOpen(true) }}
+        aria-activedescendant={
+          activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined
+        }
+        onInput={(e) => {
+          setQuery((e.target as HTMLInputElement).value)
+          setOpen(true)
+        }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => { setOpen(false); setActiveIndex(-1) }, 150)}
+        onBlur={() =>
+          setTimeout(() => {
+            setOpen(false)
+            setActiveIndex(-1)
+          }, 150)
+        }
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
       />
       {isOpen && (
-        <ul id={`${id}-listbox`} ref={listRef} class={css.dropdown} role="listbox">
+        <ul
+          id={`${id}-listbox`}
+          ref={listRef}
+          class={css.dropdown}
+          role="listbox"
+        >
           {suggestions.map((opt, i) => (
             <li
               id={`${id}-option-${i}`}
@@ -120,7 +144,10 @@ export function Autocomplete({
               class={`${css.dropdownItem} ${i === activeIndex ? css.dropdownItemActive : ''}`}
               role="option"
               aria-selected={i === activeIndex}
-              onMouseDown={(e) => { e.preventDefault(); commit(opt) }}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                commit(opt)
+              }}
               onMouseEnter={() => setActiveIndex(i)}
             >
               {renderOption ? renderOption(opt) : opt}

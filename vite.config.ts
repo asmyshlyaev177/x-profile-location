@@ -7,9 +7,7 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 const { manifest, pages } = bedframeConfig.extension
-const {
-  tests,
-} = bedframeConfig.development.template.config
+const { tests } = bedframeConfig.development.template.config
 
 export default defineConfig(({ mode }) => ({
   root: resolve(__dirname, './src'),
@@ -20,11 +18,7 @@ export default defineConfig(({ mode }) => ({
       '@': resolve(__dirname, './src'),
     },
   },
-  plugins: [
-    bedframe(manifest),
-    preact(),
-    tailwindcss(),
-  ],
+  plugins: [bedframe(manifest), preact(), tailwindcss()],
   build: {
     outDir: resolve(__dirname, 'dist', mode),
     emptyOutDir: true,
@@ -40,4 +34,3 @@ export default defineConfig(({ mode }) => ({
     },
   },
 }))
-

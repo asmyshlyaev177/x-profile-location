@@ -1,10 +1,12 @@
 export function Footer() {
   return (
-    <footer class="bg-dark border-t border-border py-8">
-      <div class="mx-auto max-w-7xl px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-secondary">
-        <p>© {new Date().getFullYear()} X Profile Location. All rights reserved.</p>
+    <footer class="bg-dark border-border border-t py-8">
+      <div class="text-secondary mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 text-sm sm:flex-row lg:px-8">
+        <p>
+          © {new Date().getFullYear()} X Profile Location. All rights reserved.
+        </p>
         <nav class="flex gap-6">
-          <a href="/privacy-policy" class="hover:text-white transition-colors">
+          <a href="/privacy-policy" class="transition-colors hover:text-white">
             Privacy Policy
           </a>
         </nav>

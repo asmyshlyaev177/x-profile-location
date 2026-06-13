@@ -17,7 +17,10 @@ function _segmentUnicode(text: string): string[] {
   return result
 }
 
-export function graphemeIncludes(haystack: string[], needle: string[]): boolean {
+export function graphemeIncludes(
+  haystack: string[],
+  needle: string[],
+): boolean {
   const nLen = needle.length
   const limit = haystack.length - nLen
   outer: for (let i = 0; i <= limit; i++) {
@@ -33,14 +36,22 @@ function isWordChar(g: string): boolean {
   // ASCII fast-path: a-z A-Z 0-9 _  (covers keywords like "nft", "crypto").
   const c = g.charCodeAt(0)
   if (g.length === 1 && c < 128) {
-    return (c >= 97 && c <= 122) || (c >= 65 && c <= 90) || (c >= 48 && c <= 57) || c === 95
+    return (
+      (c >= 97 && c <= 122) ||
+      (c >= 65 && c <= 90) ||
+      (c >= 48 && c <= 57) ||
+      c === 95
+    )
   }
   return wordCharRe.test(g)
 }
 
 // Like graphemeIncludes but only matches at word boundaries.
 // Adjacent letters/digits/underscores prevent a match; symbols like # $ . do not.
-export function graphemeIncludesWord(haystack: string[], needle: string[]): boolean {
+export function graphemeIncludesWord(
+  haystack: string[],
+  needle: string[],
+): boolean {
   if (needle.length === 0) return true
   const nLen = needle.length
   const hLen = haystack.length
@@ -52,7 +63,8 @@ export function graphemeIncludesWord(haystack: string[], needle: string[]): bool
       if (haystack[i + j] !== needle[j]) continue outer
     }
     if (needleStartIsWord && i > 0 && isWordChar(haystack[i - 1])) continue
-    if (needleEndIsWord && i + nLen < hLen && isWordChar(haystack[i + nLen])) continue
+    if (needleEndIsWord && i + nLen < hLen && isWordChar(haystack[i + nLen]))
+      continue
     return true
   }
   return false
@@ -84,7 +96,10 @@ export function setKeywords(keywords: string[]): void {
     const parts = textKws.map((kw) => kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     // Negative lookbehind/lookahead on \p{L}\p{N}_ gives correct word boundaries
     // for any script (Cyrillic, Arabic, …) without needing grapheme segmentation.
-    keywordPattern = new RegExp(`(?<![\\p{L}\\p{N}_])(${parts.join('|')})(?![\\p{L}\\p{N}_])`, 'iu')
+    keywordPattern = new RegExp(
+      `(?<![\\p{L}\\p{N}_])(${parts.join('|')})(?![\\p{L}\\p{N}_])`,
+      'iu',
+    )
   }
 }
 

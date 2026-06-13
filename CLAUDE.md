@@ -38,17 +38,17 @@ page-script.ts                      content.tsx
 
 ## Key files
 
-| File | Purpose |
-|------|---------|
-| `src/scripts/page-script.ts` | Injected into `world: MAIN`. Wraps `fetch` + `XMLHttpRequest`. Captures auth headers; extracts bios from HomeTimeline/TweetDetail. |
-| `src/scripts/content.tsx` | Content script. Listens for events from page-script, calls `AboutAccountQuery`, injects DOM rows, runs MutationObserver, handles keyword/flag highlighting. |
-| `src/scripts/extract-users.ts` | Recursive GraphQL response walker. Finds `__typename: 'User'` nodes up to depth 20. |
-| `src/scripts/cache.ts` | IndexedDB wrapper (idb-keyval). 7-day TTL. Keys are lowercased usernames. |
-| `src/scripts/countries.ts` | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps + storage key constants. |
-| `src/scripts/grapheme.ts` | Grapheme-cluster-aware substring search, used for keyword highlight matching. |
-| `src/scripts/service-worker.ts` | Background script. Sets `blockedCountries` defaults in `chrome.storage.local` on install. |
-| `src/pages/options.tsx` | Preact options page: blocked countries, keyword highlights, flag-count threshold. |
-| `src/components/Autocomplete/` | Reusable Preact autocomplete used in the options page. |
+| File                            | Purpose                                                                                                                                                     |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/scripts/page-script.ts`    | Injected into `world: MAIN`. Wraps `fetch` + `XMLHttpRequest`. Captures auth headers; extracts bios from HomeTimeline/TweetDetail.                          |
+| `src/scripts/content.tsx`       | Content script. Listens for events from page-script, calls `AboutAccountQuery`, injects DOM rows, runs MutationObserver, handles keyword/flag highlighting. |
+| `src/scripts/extract-users.ts`  | Recursive GraphQL response walker. Finds `__typename: 'User'` nodes up to depth 20.                                                                         |
+| `src/scripts/cache.ts`          | IndexedDB wrapper (idb-keyval). 7-day TTL. Keys are lowercased usernames.                                                                                   |
+| `src/scripts/countries.ts`      | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps + storage key constants.                                                                                |
+| `src/scripts/grapheme.ts`       | Grapheme-cluster-aware substring search, used for keyword highlight matching.                                                                               |
+| `src/scripts/service-worker.ts` | Background script. Sets `blockedCountries` defaults in `chrome.storage.local` on install.                                                                   |
+| `src/pages/options.tsx`         | Preact options page: blocked countries, keyword highlights, flag-count threshold.                                                                           |
+| `src/components/Autocomplete/`  | Reusable Preact autocomplete used in the options page.                                                                                                      |
 
 ---
 
@@ -67,6 +67,7 @@ Headers (captured from page's own requests):
 ```
 
 **Response shape:**
+
 ```json
 {
   "data": {
@@ -93,18 +94,18 @@ Rate-limit response: **HTTP 429** + `x-rate-limit-reset` header (Unix seconds).
 ```typescript
 // cache.ts
 interface LocationData {
-  location: string | null;                              // "United States", "South Asia", …
-  locationAccurate: boolean;                            // false → VPN likely
-  source: `${string} Android App` | `${string} App Store` | 'web' | null;
-  bio?: string | null;
-  displayName?: string | null;
+  location: string | null // "United States", "South Asia", …
+  locationAccurate: boolean // false → VPN likely
+  source: `${string} Android App` | `${string} App Store` | 'web' | null
+  bio?: string | null
+  displayName?: string | null
 }
 
 // extract-users.ts
 interface UserBio {
-  userName: string;         // screen name, not display name
-  displayName: string | null;
-  bio: string | null;
+  userName: string // screen name, not display name
+  displayName: string | null
+  bio: string | null
 }
 ```
 
@@ -127,14 +128,14 @@ interface UserBio {
 
 These are module-level `let` variables that persist for the life of the content script:
 
-| Variable | Type | Purpose |
-|----------|------|---------|
-| `apiHeaders` | `Record<string,string> \| null` | Captured auth headers; exported + settable via `setApiHeaders()` |
-| `checkedThisSession` | `Set<string>` | Usernames whose API call was already attempted; prevents duplicate network requests |
-| `pendingMap` | `NormalizedMap<Promise>` | In-flight fetch promises; concurrent hover for same user shares one promise |
-| `rateLimitResetAt` | `number` | `Date.now()` ms until rate limit lifts; 0 when clear |
-| `blockedCountries` | `Set<string>` | Loaded from `chrome.storage.local`; reloaded on storage change |
-| `highlightKeywords` | `Set<string>` | Same; all lowercased |
+| Variable             | Type                            | Purpose                                                                             |
+| -------------------- | ------------------------------- | ----------------------------------------------------------------------------------- |
+| `apiHeaders`         | `Record<string,string> \| null` | Captured auth headers; exported + settable via `setApiHeaders()`                    |
+| `checkedThisSession` | `Set<string>`                   | Usernames whose API call was already attempted; prevents duplicate network requests |
+| `pendingMap`         | `NormalizedMap<Promise>`        | In-flight fetch promises; concurrent hover for same user shares one promise         |
+| `rateLimitResetAt`   | `number`                        | `Date.now()` ms until rate limit lifts; 0 when clear                                |
+| `blockedCountries`   | `Set<string>`                   | Loaded from `chrome.storage.local`; reloaded on storage change                      |
+| `highlightKeywords`  | `Set<string>`                   | Same; all lowercased                                                                |
 
 **`__testResetState()`** is exported for tests only — clears `checkedThisSession` and resets `rateLimitResetAt` to 0.
 
@@ -156,17 +157,20 @@ The IIFE runs at import time, so each test needs a fresh module:
 
 ```typescript
 beforeEach(() => {
-  vi.resetModules();
-  delete (window as any).__X_LOC_INJECTED__;
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 200 })));
-  vi.stubGlobal('XMLHttpRequest', FakeXHR);
-});
-afterEach(() => vi.unstubAllGlobals());
+  vi.resetModules()
+  delete (window as any).__X_LOC_INJECTED__
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(new Response('{}', { status: 200 })),
+  )
+  vi.stubGlobal('XMLHttpRequest', FakeXHR)
+})
+afterEach(() => vi.unstubAllGlobals())
 
 it('...', async () => {
-  await import('./page-script'); // triggers IIFE fresh
+  await import('./page-script') // triggers IIFE fresh
   // window.fetch is now the patched version
-});
+})
 ```
 
 **Window listener accumulation gotcha:** each test import adds a new `'x-loc-request-headers'` listener to `window`. happy-dom reuses `window` within a file. Tests that check `x-loc-headers-captured` events should use `vi.spyOn(window, 'dispatchEvent')` to inspect calls synchronously rather than relying on `addEventListener` to receive only the expected event.
@@ -184,7 +188,7 @@ vi.mock('idb-keyval', () => ({
   set: vi.fn(),
   del: vi.fn(),
   entries: vi.fn(),
-}));
+}))
 ```
 
 Per-test setup uses `vi.mocked(get).mockResolvedValue(...)` etc. The store key `'mock-store'` is the sentinel returned by `createStore` and should appear as the second argument in all `get`/`set`/`del`/`entries` calls.
@@ -195,8 +199,13 @@ Per-test setup uses `vi.mocked(get).mockResolvedValue(...)` etc. The store key `
 
 ```typescript
 vi.hoisted(() => {
-  (globalThis as any).chrome = { storage: { local: { get: vi.fn().mockResolvedValue({}) }, onChanged: { addListener: vi.fn() } } };
-});
+  ;(globalThis as any).chrome = {
+    storage: {
+      local: { get: vi.fn().mockResolvedValue({}) },
+      onChanged: { addListener: vi.fn() },
+    },
+  }
+})
 ```
 
 Call `__testResetState()` in `beforeEach` to avoid `rateLimitResetAt` / `checkedThisSession` leaking between tests.
@@ -206,9 +215,9 @@ Call `__testResetState()` in `beforeEach` to avoid `rateLimitResetAt` / `checked
 ## Chrome storage keys (countries.ts)
 
 ```typescript
-BLOCKED_COUNTRIES_KEY   = 'blockedCountries'
-HIGHLIGHT_KEYWORDS_KEY  = 'highlightKeywords'
-HIGHLIGHT_FLAGS_KEY     = 'highlightFlags'
+BLOCKED_COUNTRIES_KEY = 'blockedCountries'
+HIGHLIGHT_KEYWORDS_KEY = 'highlightKeywords'
+HIGHLIGHT_FLAGS_KEY = 'highlightFlags'
 ```
 
 Default blocked regions set on install (service-worker.ts):  

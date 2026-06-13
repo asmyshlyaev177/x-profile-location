@@ -4,21 +4,11 @@
     "target": "ES2023",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": [
-      "ES2023",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "types": [
-      "@bedframe/core",
-      "jest",
-      "@types/chrome"
-    ],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["@bedframe/core", "jest", "@types/chrome"],
     "skipLibCheck": true,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     },
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -34,11 +24,6 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "src/manifests",
-    "src/_config/bedframe.config.ts"
-  ]
+  "include": ["src"],
+  "exclude": ["src/manifests", "src/_config/bedframe.config.ts"]
 }

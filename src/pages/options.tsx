@@ -1,7 +1,16 @@
 import { render } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
-import { BLOCKED_COUNTRIES_KEY, COUNTRY_FLAGS, HIGHLIGHT_FLAGS_KEY, HIGHLIGHT_KEYWORDS_KEY, REGION_FLAGS, SHOW_LOCATION_IN_FEED_KEY } from '../scripts/countries'
+import {
+  BLOCKED_COUNTRIES_KEY,
+  COUNTRY_FLAGS,
+  HIGHLIGHT_EXCEPTIONS_KEY,
+  HIGHLIGHT_FLAGS_KEY,
+  HIGHLIGHT_KEYWORDS_KEY,
+  REGION_FLAGS,
+  SHOW_EXCEPTION_BUTTON_KEY,
+  SHOW_LOCATION_IN_FEED_KEY,
+} from '../scripts/countries'
 import { isMobile } from '../scripts/device'
 import css from './options.module.css'
 
@@ -9,8 +18,29 @@ const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 const ALL_LOCATIONS = Object.keys(ALL_FLAGS).sort()
 
 const KEYWORD_SUGGESTIONS = [
-  'NAFO', 'Free Palestine', '🏳️‍🌈', '🏳️‍⚧️', '🇵🇸', '🇺🇦', '🇷🇺', '🇮🇳', 'he/him', 'she/her', 'he/them', 'she/them', 'they/them', 'crypto', 'nft', 'trading', 'forex', 'airdrop', 'web3', 'defi',
-  'giveaway', 'investment', 'onlyfans',
+  'NAFO',
+  'Free Palestine',
+  '🏳️‍🌈',
+  '🏳️‍⚧️',
+  '🇵🇸',
+  '🇺🇦',
+  '🇷🇺',
+  '🇮🇳',
+  'he/him',
+  'she/her',
+  'he/them',
+  'she/them',
+  'they/them',
+  'crypto',
+  'nft',
+  'trading',
+  'forex',
+  'airdrop',
+  'web3',
+  'defi',
+  'giveaway',
+  'investment',
+  'onlyfans',
 ].sort((a, b) => a.localeCompare(b))
 
 function Options() {
@@ -20,6 +50,9 @@ function Options() {
   const [flagsThreshold, setFlagsThreshold] = useState(2)
   const [flagsUniqueOnly, setFlagsUniqueOnly] = useState(true)
   const [showLocationInFeed, setShowLocationInFeed] = useState(false)
+  const [exceptions, setExceptions] = useState<string[]>([])
+  const [exceptionFilter, setExceptionFilter] = useState('')
+  const [showExceptionButton, setShowExceptionButton] = useState(true)
   const [cacheCleared, setCacheCleared] = useState(false)
 
   async function handleClearCache() {
@@ -29,15 +62,38 @@ function Options() {
   }
 
   useEffect(() => {
-    chrome.storage.local.get([BLOCKED_COUNTRIES_KEY, HIGHLIGHT_KEYWORDS_KEY, HIGHLIGHT_FLAGS_KEY, SHOW_LOCATION_IN_FEED_KEY]).then((result) => {
-      setBlocked((result[BLOCKED_COUNTRIES_KEY] as string[] | undefined) ?? [])
-      setKeywords((result[HIGHLIGHT_KEYWORDS_KEY] as string[] | undefined) ?? [])
-      const flags = result[HIGHLIGHT_FLAGS_KEY] as { enabled?: boolean; threshold?: number; uniqueOnly?: boolean } | undefined
-      setFlagsEnabled(flags?.enabled ?? false)
-      setFlagsThreshold(flags?.threshold ?? 2)
-      setFlagsUniqueOnly(flags?.uniqueOnly ?? true)
-      setShowLocationInFeed(Boolean(result[SHOW_LOCATION_IN_FEED_KEY]))
-    })
+    chrome.storage.local
+      .get([
+        BLOCKED_COUNTRIES_KEY,
+        HIGHLIGHT_KEYWORDS_KEY,
+        HIGHLIGHT_FLAGS_KEY,
+        SHOW_LOCATION_IN_FEED_KEY,
+        HIGHLIGHT_EXCEPTIONS_KEY,
+        SHOW_EXCEPTION_BUTTON_KEY,
+      ])
+      .then((result) => {
+        setBlocked(
+          (result[BLOCKED_COUNTRIES_KEY] as string[] | undefined) ?? [],
+        )
+        setKeywords(
+          (result[HIGHLIGHT_KEYWORDS_KEY] as string[] | undefined) ?? [],
+        )
+        const flags = result[HIGHLIGHT_FLAGS_KEY] as
+          | { enabled?: boolean; threshold?: number; uniqueOnly?: boolean }
+          | undefined
+        setFlagsEnabled(flags?.enabled ?? false)
+        setFlagsThreshold(flags?.threshold ?? 2)
+        setFlagsUniqueOnly(flags?.uniqueOnly ?? true)
+        setShowLocationInFeed(Boolean(result[SHOW_LOCATION_IN_FEED_KEY]))
+        setExceptions(
+          (result[HIGHLIGHT_EXCEPTIONS_KEY] as string[] | undefined) ?? [],
+        )
+        setShowExceptionButton(
+          SHOW_EXCEPTION_BUTTON_KEY in result
+            ? Boolean(result[SHOW_EXCEPTION_BUTTON_KEY])
+            : true,
+        )
+      })
   }, [])
 
   function addBlocked(country: string) {
@@ -67,12 +123,37 @@ function Options() {
     chrome.storage.local.set({ [HIGHLIGHT_KEYWORDS_KEY]: next })
   }
 
-  function updateFlags(enabled: boolean, threshold: number, uniqueOnly: boolean) {
+  function addException(name: string) {
+    const trimmed = name.trim().replace(/^@+/, '').toLowerCase()
+    if (!trimmed || exceptions.includes(trimmed)) return
+    const next = [...exceptions, trimmed].sort()
+    setExceptions(next)
+    chrome.storage.local.set({ [HIGHLIGHT_EXCEPTIONS_KEY]: next })
+  }
+
+  function removeException(name: string) {
+    const next = exceptions.filter((u) => u !== name)
+    setExceptions(next)
+    chrome.storage.local.set({ [HIGHLIGHT_EXCEPTIONS_KEY]: next })
+  }
+
+  function updateFlags(
+    enabled: boolean,
+    threshold: number,
+    uniqueOnly: boolean,
+  ) {
     setFlagsEnabled(enabled)
     setFlagsThreshold(threshold)
     setFlagsUniqueOnly(uniqueOnly)
-    chrome.storage.local.set({ [HIGHLIGHT_FLAGS_KEY]: { enabled, threshold, uniqueOnly } })
+    chrome.storage.local.set({
+      [HIGHLIGHT_FLAGS_KEY]: { enabled, threshold, uniqueOnly },
+    })
   }
+
+  const exceptionQuery = exceptionFilter.trim().toLowerCase()
+  const shownExceptions = exceptionQuery
+    ? exceptions.filter((u) => u.includes(exceptionQuery))
+    : exceptions
 
   return (
     <div class={css.container}>
@@ -85,7 +166,8 @@ function Options() {
         </summary>
         <div class={css.accordionContent}>
           <p class={css.subtitle}>
-            Highlight tweets from users whose nickname or bio contains any of these keywords.
+            Highlight tweets from users whose nickname or bio contains any of
+            these keywords.
           </p>
 
           {keywords.length > 0 && (
@@ -93,7 +175,11 @@ function Options() {
               {keywords.map((kw) => (
                 <span key={kw} class={`${css.chip} ${css.chipKeyword}`}>
                   {kw}
-                  <button class={css.chipRemove} onClick={() => removeKeyword(kw)} title={`Remove ${kw}`}>
+                  <button
+                    class={css.chipRemove}
+                    onClick={() => removeKeyword(kw)}
+                    title={`Remove ${kw}`}
+                  >
                     ×
                   </button>
                 </span>
@@ -112,7 +198,9 @@ function Options() {
           />
 
           {keywords.length === 0 && (
-            <p class={css.empty}>No keywords set — all comments shown normally.</p>
+            <p class={css.empty}>
+              No keywords set — all comments shown normally.
+            </p>
           )}
         </div>
       </details>
@@ -123,12 +211,20 @@ function Options() {
           <span class={css.accordionArrow}>▾</span>
         </summary>
         <div class={css.accordionContent}>
-          <p class={css.subtitle}>Highlight tweets from users whose bio contains many flags.</p>
+          <p class={css.subtitle}>
+            Highlight tweets from users whose bio contains many flags.
+          </p>
           <label class={css.controlRow}>
             <input
               type="checkbox"
               checked={flagsEnabled}
-              onChange={(e) => updateFlags((e.target as HTMLInputElement).checked, flagsThreshold, flagsUniqueOnly)}
+              onChange={(e) =>
+                updateFlags(
+                  (e.target as HTMLInputElement).checked,
+                  flagsThreshold,
+                  flagsUniqueOnly,
+                )
+              }
             />
             <span>Highlight if bio has more than</span>
             <input
@@ -138,7 +234,13 @@ function Options() {
               min={0}
               max={20}
               disabled={!flagsEnabled}
-              onInput={(e) => updateFlags(flagsEnabled, Math.max(0, Number((e.target as HTMLInputElement).value)), flagsUniqueOnly)}
+              onInput={(e) =>
+                updateFlags(
+                  flagsEnabled,
+                  Math.max(0, Number((e.target as HTMLInputElement).value)),
+                  flagsUniqueOnly,
+                )
+              }
             />
             <span>flags</span>
           </label>
@@ -147,10 +249,101 @@ function Options() {
               type="checkbox"
               checked={flagsUniqueOnly}
               disabled={!flagsEnabled}
-              onChange={(e) => updateFlags(flagsEnabled, flagsThreshold, (e.target as HTMLInputElement).checked)}
+              onChange={(e) =>
+                updateFlags(
+                  flagsEnabled,
+                  flagsThreshold,
+                  (e.target as HTMLInputElement).checked,
+                )
+              }
             />
             <span>Count only unique flags</span>
           </label>
+        </div>
+      </details>
+
+      <details class={css.accordion}>
+        <summary class={css.accordionSummary}>
+          <span>Highlight exceptions 🙈</span>
+          <span class={css.accordionArrow}>▾</span>
+        </summary>
+        <div class={css.accordionContent}>
+          <p class={css.subtitle}>
+            Accounts here are never highlighted, even when they match a keyword
+            or flag rule — useful for accounts that use a keyword sarcastically
+            (e.g. “no NAFO”).
+          </p>
+
+          <label class={css.controlRow}>
+            <input
+              type="checkbox"
+              checked={showExceptionButton}
+              onChange={(e) => {
+                const next = (e.target as HTMLInputElement).checked
+                setShowExceptionButton(next)
+                chrome.storage.local.set({ [SHOW_EXCEPTION_BUTTON_KEY]: next })
+              }}
+            />
+            <span>Show “Don't highlight” button on profile hover cards</span>
+          </label>
+
+          {exceptions.length > 5 && (
+            <input
+              type="search"
+              class={css.searchInput}
+              value={exceptionFilter}
+              onInput={(e) =>
+                setExceptionFilter((e.target as HTMLInputElement).value)
+              }
+              placeholder="Search exceptions..."
+              aria-label="Search exceptions"
+            />
+          )}
+
+          {exceptions.length > 0 && shownExceptions.length === 0 && (
+            <p class={css.empty}>No exceptions match “{exceptionFilter}”.</p>
+          )}
+
+          {shownExceptions.length > 0 && (
+            <div class={`${css.chips} ${css.chipsScroll}`}>
+              {shownExceptions.map((u) => (
+                <span key={u} class={css.chip}>
+                  <a
+                    class={css.chipLink}
+                    href={`https://x.com/${u}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={`Open @${u} on X`}
+                  >
+                    @{u}
+                  </a>
+                  <button
+                    class={css.chipRemove}
+                    onClick={() => removeException(u)}
+                    title={`Remove @${u}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <Autocomplete
+            id="exception"
+            selected={exceptions}
+            allOptions={[]}
+            onSelect={addException}
+            placeholder="Add a username (without @)..."
+            allowFreeInput
+            closeOnSelect={false}
+          />
+
+          {exceptions.length === 0 && (
+            <p class={css.empty}>
+              No exceptions — matching accounts are highlighted normally.
+            </p>
+          )}
         </div>
       </details>
 
@@ -167,7 +360,9 @@ function Options() {
         <span>Show location in feed 📍</span>
       </label>
       {isMobile && (
-        <p class={css.mobileHint}>👉 Swipe right on any tweet to fetch its location</p>
+        <p class={css.mobileHint}>
+          👉 Swipe right on any tweet to fetch its location
+        </p>
       )}
 
       <details class={css.accordion}>
@@ -176,7 +371,9 @@ function Options() {
           <span class={css.accordionArrow}>▾</span>
         </summary>
         <div class={css.accordionContent}>
-          <p class={css.subtitle}>Profiles from selected countries will show ⚠️ instead of their flag.</p>
+          <p class={css.subtitle}>
+            Profiles from selected countries will show ⚠️ instead of their flag.
+          </p>
 
           {blocked.length > 0 && (
             <div class={css.chips}>
@@ -184,7 +381,11 @@ function Options() {
                 <span key={country} class={css.chip}>
                   <span class={css.chipFlag}>{ALL_FLAGS[country] ?? '🌐'}</span>
                   {country}
-                  <button class={css.chipRemove} onClick={() => removeBlocked(country)} title={`Remove ${country}`}>
+                  <button
+                    class={css.chipRemove}
+                    onClick={() => removeBlocked(country)}
+                    title={`Remove ${country}`}
+                  >
                     ×
                   </button>
                 </span>
@@ -207,13 +408,19 @@ function Options() {
           />
 
           {blocked.length === 0 && (
-            <p class={css.empty}>No countries selected — all flags shown as-is.</p>
+            <p class={css.empty}>
+              No countries selected — all flags shown as-is.
+            </p>
           )}
         </div>
       </details>
 
       <div class={css.cacheSection}>
-        <button class={css.clearCacheBtn} onClick={handleClearCache} disabled={cacheCleared}>
+        <button
+          class={css.clearCacheBtn}
+          onClick={handleClearCache}
+          disabled={cacheCleared}
+        >
           {cacheCleared ? 'Cache cleared!' : 'Clear location cache'}
         </button>
       </div>

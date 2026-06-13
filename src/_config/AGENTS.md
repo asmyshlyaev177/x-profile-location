@@ -29,5 +29,3 @@ This folder contains Bedframe's canonical project-definition files.
   - `createBedframe(...)`
   - `createManifest(...)`
   - `types.ts`
-
-

@@ -20,5 +20,3 @@ This folder contains Bedframe HTML entrypoints.
 - Some pages map directly to manifest fields such as popup, options, sidepanel, devtools, or overrides.
 - Additional pages belong in `extension.pages`.
 - When the extension shape changes, re-check `src/_config/bedframe.config.ts`, `src/manifests/*`, and `vite.config.ts`.
-
-

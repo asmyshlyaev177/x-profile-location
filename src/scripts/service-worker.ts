@@ -1,4 +1,3 @@
-
 import { BLOCKED_COUNTRIES_KEY, DEFAULT_BLOCKED_COUNTRIES } from './countries'
 
 chrome.runtime.onInstalled.addListener((details): void => {
@@ -7,7 +6,9 @@ chrome.runtime.onInstalled.addListener((details): void => {
     const existing = (result as Record<string, unknown>)[BLOCKED_COUNTRIES_KEY]
 
     if (!Array.isArray(existing)) {
-      chrome.storage.local.set({ [BLOCKED_COUNTRIES_KEY]: DEFAULT_BLOCKED_COUNTRIES })
+      chrome.storage.local.set({
+        [BLOCKED_COUNTRIES_KEY]: DEFAULT_BLOCKED_COUNTRIES,
+      })
     }
   })
 
@@ -26,18 +27,21 @@ chrome.contextMenus.onClicked.addListener((info) => {
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === 'CLEAR_CACHE') {
-    chrome.tabs.query({ url: ['*://*.x.com/*', '*://x.com/*', '*://*.twitter.com/*', '*://twitter.com/*'] }, (tabs) => {
-      for (const tab of tabs) {
-        if (tab.id != null) chrome.tabs.sendMessage(tab.id, { type: 'CLEAR_CACHE' })
-      }
-    })
+    chrome.tabs.query(
+      {
+        url: [
+          '*://*.x.com/*',
+          '*://x.com/*',
+          '*://*.twitter.com/*',
+          '*://twitter.com/*',
+        ],
+      },
+      (tabs) => {
+        for (const tab of tabs) {
+          if (tab.id != null)
+            chrome.tabs.sendMessage(tab.id, { type: 'CLEAR_CACHE' })
+        }
+      },
+    )
   }
 })
-
-
-
-
-
-
-
-

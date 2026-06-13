@@ -19,5 +19,3 @@ This folder contains the scaffolded Bedframe test surface.
 
 - use the local test script from `package.json`
 - update or add tests when a change materially affects config, pages, components, or runtime behavior
-
-

@@ -14,7 +14,3 @@ const updatedSafariManifest = {
 }
 
 export const safari = createManifest(updatedSafariManifest, 'safari')
-
-
-
-

@@ -7,9 +7,9 @@ import { safari } from '../manifests/safari'
 export default createBedframe({
   browser: [
     chrome.browser,
-brave.browser,
+    brave.browser,
 
-safari.browser
+    safari.browser,
   ],
   extension: {
     type: 'overlay',
@@ -37,12 +37,8 @@ safari.browser
             reportsDirectory: '../coverage',
           },
           watch: false,
-        },  
+        },
       },
     },
   },
 })
-
-
-
-

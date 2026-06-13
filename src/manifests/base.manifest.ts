@@ -71,16 +71,6 @@ export const baseManifest = {
       ],
     },
   ],
-  host_permissions: [
-    '*://*.x.com/*',
-    '*://*.twitter.com/*',
-  ],
-  permissions: [
-    'storage',
-    'contextMenus',
-  ],
+  host_permissions: ['*://*.x.com/*', '*://*.twitter.com/*'],
+  permissions: ['storage', 'contextMenus'],
 } satisfies Manifest
-
-
-
-

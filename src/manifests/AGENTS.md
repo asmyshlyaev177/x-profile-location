@@ -25,5 +25,3 @@ This folder contains Bedframe manifest source files.
 - Root `AGENTS.md`
 - `src/_config/AGENTS.md`
 - `.agents/skills/bedframe`
-
-

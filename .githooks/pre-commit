@@ -1,0 +1,4 @@
+#!/bin/sh
+# Run oxfmt + oxlint on staged files before each commit.
+# Hook path is registered via the "prepare" script (git config core.hooksPath .githooks).
+pnpm exec lint-staged

@@ -16,26 +16,26 @@ This folder contains Bedframe runtime script source files.
 
 ## Script inventory
 
-| File | Context | Role |
-| --- | --- | --- |
-| `page-script.ts` | `world: MAIN` (page JS context) | Wraps `fetch` + `XHR`; captures auth headers; extracts user bios from timeline/tweet API responses |
-| `content.tsx` | Content script | Fetches location via `AboutAccountQuery`; injects DOM rows into hover cards/tweets; cache + highlighting |
-| `extract-users.ts` | Shared utility | Recursively walks GraphQL JSON to find `__typename: 'User'` nodes (depth limit: 20) |
-| `cache.ts` | Shared utility | IndexedDB CRUD via idb-keyval; 7-day TTL; keys are lowercased usernames |
-| `countries.ts` | Shared data | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps; `chrome.storage` key constants |
-| `grapheme.ts` | Shared utility | Grapheme-cluster-aware substring search for keyword highlight matching |
-| `service-worker.ts` | Background script | `chrome.storage.local` init on install; analytics |
-| `analytics.ts` | Shared utility | Thin wrapper for analytics event tracking |
+| File                | Context                         | Role                                                                                                     |
+| ------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `page-script.ts`    | `world: MAIN` (page JS context) | Wraps `fetch` + `XHR`; captures auth headers; extracts user bios from timeline/tweet API responses       |
+| `content.tsx`       | Content script                  | Fetches location via `AboutAccountQuery`; injects DOM rows into hover cards/tweets; cache + highlighting |
+| `extract-users.ts`  | Shared utility                  | Recursively walks GraphQL JSON to find `__typename: 'User'` nodes (depth limit: 20)                      |
+| `cache.ts`          | Shared utility                  | IndexedDB CRUD via idb-keyval; 7-day TTL; keys are lowercased usernames                                  |
+| `countries.ts`      | Shared data                     | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps; `chrome.storage` key constants                      |
+| `grapheme.ts`       | Shared utility                  | Grapheme-cluster-aware substring search for keyword highlight matching                                   |
+| `service-worker.ts` | Background script               | `chrome.storage.local` init on install; analytics                                                        |
+| `analytics.ts`      | Shared utility                  | Thin wrapper for analytics event tracking                                                                |
 
 ## Cross-context communication
 
 `page-script.ts` (`world: MAIN`) and `content.tsx` cannot share module state. They communicate via `window.dispatchEvent(new CustomEvent(...))`:
 
-| Event | Direction | Payload |
-| --- | --- | --- |
-| `x-loc-headers-captured` | page-script → content | `{ headers: Record<string, string> }` |
-| `x-loc-request-headers` | content → page-script | _(empty — triggers re-emit of stored headers)_ |
-| `x-loc-users-data` | page-script → content | `{ users: UserBio[] }` |
+| Event                    | Direction             | Payload                                        |
+| ------------------------ | --------------------- | ---------------------------------------------- |
+| `x-loc-headers-captured` | page-script → content | `{ headers: Record<string, string> }`          |
+| `x-loc-request-headers`  | content → page-script | _(empty — triggers re-emit of stored headers)_ |
+| `x-loc-users-data`       | page-script → content | `{ users: UserBio[] }`                         |
 
 ## Critical constants
 
@@ -53,5 +53,3 @@ Each script has a co-located `*.test.ts`. For test patterns (FakeXHR, `vi.resetM
 - `CLAUDE.md` (architecture, API details, test patterns)
 - `src/manifests/AGENTS.md`
 - `.agents/skills/bedframe`
-
-

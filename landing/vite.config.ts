@@ -20,8 +20,8 @@ export default defineConfig({
   ],
   base: '/',
   build: {
-    minify: 'esbuild',   // JS — esbuild (fast, good compression)
-    cssMinify: true,     // CSS — esbuild
+    minify: 'esbuild', // JS — esbuild (fast, good compression)
+    cssMinify: true, // CSS — esbuild
     cssCodeSplit: false, // single CSS file for a single-page site
   },
 })
