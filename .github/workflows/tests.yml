@@ -32,5 +32,22 @@ jobs:
       - name: Install Playwright browser + OS deps
         run: npx playwright install --with-deps chromium
 
+      # The auth state holds live session cookies, so it is never committed.
+      # Store it as the PLAYWRIGHT_AUTH_STATE repo secret (the JSON contents of
+      # e2e/.auth/state.json) and it is written back into place here.
+      - name: Restore Playwright auth state
+        env:
+          PLAYWRIGHT_AUTH_STATE: ${{ secrets.PLAYWRIGHT_AUTH_STATE }}
+        run: |
+          if [ -z "$PLAYWRIGHT_AUTH_STATE" ]; then
+            echo "::warning::PLAYWRIGHT_AUTH_STATE secret is not set; skipping E2E."
+            echo "skip_e2e=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p e2e/.auth
+          printf '%s' "$PLAYWRIGHT_AUTH_STATE" > e2e/.auth/state.json
+        id: auth
+
       - name: E2E tests
+        if: steps.auth.outputs.skip_e2e != 'true'
         run: pnpm test:e2e

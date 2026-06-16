@@ -36,6 +36,7 @@ test-results
 !.env.example
 
 
-# Auth state (contains session cookies — do not commit)
-e2e/.auth/profile
-!e2e/.auth/state.json
+# Auth state (contains live session cookies — never commit)
+# Generated locally by e2e/auth.setup.ts; provided to CI via the
+# PLAYWRIGHT_AUTH_STATE secret. See .github/workflows/tests.yml.
+e2e/.auth/
