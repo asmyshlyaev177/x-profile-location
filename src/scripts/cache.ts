@@ -14,7 +14,7 @@ interface CachedEntry {
   fetchedAt: number
 }
 
-const CACHE_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
+const CACHE_TTL = 14 * 24 * 60 * 60 * 1000 // 14 days
 
 const locStore = createStore('x-profile-location', 'location-data')
 

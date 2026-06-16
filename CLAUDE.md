@@ -43,7 +43,7 @@ page-script.ts                      content.tsx
 | `src/scripts/page-script.ts`    | Injected into `world: MAIN`. Wraps `fetch` + `XMLHttpRequest`. Captures auth headers; extracts bios from HomeTimeline/TweetDetail.                          |
 | `src/scripts/content.tsx`       | Content script. Listens for events from page-script, calls `AboutAccountQuery`, injects DOM rows, runs MutationObserver, handles keyword/flag highlighting. |
 | `src/scripts/extract-users.ts`  | Recursive GraphQL response walker. Finds `__typename: 'User'` nodes up to depth 20.                                                                         |
-| `src/scripts/cache.ts`          | IndexedDB wrapper (idb-keyval). 7-day TTL. Keys are lowercased usernames.                                                                                   |
+| `src/scripts/cache.ts`          | IndexedDB wrapper (idb-keyval). 14-day TTL. Keys are lowercased usernames.                                                                                   |
 | `src/scripts/countries.ts`      | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps + storage key constants.                                                                                |
 | `src/scripts/grapheme.ts`       | Grapheme-cluster-aware substring search, used for keyword highlight matching.                                                                               |
 | `src/scripts/service-worker.ts` | Background script. Sets `blockedCountries` defaults in `chrome.storage.local` on install.                                                                   |
@@ -109,7 +109,7 @@ interface UserBio {
 }
 ```
 
-`LocationData` is stored in IDB with `{ data: LocationData, fetchedAt: number }`. TTL is 7 days.
+`LocationData` is stored in IDB with `{ data: LocationData, fetchedAt: number }`. TTL is 14 days.
 
 ---
 
