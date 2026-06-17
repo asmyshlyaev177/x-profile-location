@@ -51,9 +51,9 @@ test('VPN warning matches About page', async ({ page }) => {
 })
 
 test('no app store block; location matches About page', async ({ page }) => {
-  const card = await hoverOwnTweet(page, 'PooWorldOrderr')
+  const card = await hoverOwnTweet(page, 'visegrad24')
   const fromCard = await hoverCardLocation(card)
-  const fromPage = await officialAccountLocation(page, 'PooWorldOrderr')
+  const fromPage = await officialAccountLocation(page, 'visegrad24')
 
   expect(fromCard.basedIn).toBe(fromPage.basedIn)
   expect(fromCard.appStoreCountry).toBe(fromPage.appStoreCountry)
@@ -110,7 +110,7 @@ test('tweet detail: hover location shown for second-level reply', async ({
   await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 })
 
   // Click the first reply to open its own detail page; second-level replies appear there.
-  const firstReplyArticle = page.locator('article[data-testid="tweet"]').nth(1)
+  const firstReplyArticle = page.locator('article[data-testid="tweet"]').nth(2)
   const replyStatusLink = firstReplyArticle
     .locator('a[href*="/status/"]')
     .first()
