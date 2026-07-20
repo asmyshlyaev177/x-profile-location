@@ -60,9 +60,13 @@ export const baseManifest = {
       ],
     },
   ],
+  // Only the MAIN-world page-script chunks need to be web-accessible; the build
+  // plugin appends those specific hashed files automatically. We intentionally do
+  // NOT expose pages/* (e.g. options.html) or a broad assets/* wildcard — that
+  // only lets x.com fingerprint / probe the extension without any functional need.
   web_accessible_resources: [
     {
-      resources: ['assets/*', 'pages/*'],
+      resources: [],
       matches: [
         '*://*.x.com/*',
         '*://*.twitter.com/*',

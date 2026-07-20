@@ -9,13 +9,32 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
   let headersCaptured = false
   let storedHeaders: Record<string, string> | null = null
 
+  // Only these (non-secret) headers are forwarded to the content script over the
+  // page-global CustomEvent. The event is observable by the page and any other
+  // extension's content script, so we must never broadcast anything sensitive:
+  //  - x-csrf-token (== the ct0 cookie) is deliberately excluded — the content
+  //    script reads ct0 from document.cookie itself.
+  //  - any other auth/signature header X may attach is dropped by omission, so a
+  //    future X change can't silently start leaking a secret through this event.
+  const FORWARDED_HEADERS = [
+    'authorization',
+    'x-twitter-client-language',
+    'x-twitter-active-user',
+  ] as const
+
   function dispatchHeaders(headers: Record<string, string>) {
     if (headersCaptured) return
     if (!headers['authorization']) return
+    const filtered: Record<string, string> = {}
+    for (const name of FORWARDED_HEADERS) {
+      if (headers[name]) filtered[name] = headers[name]
+    }
     headersCaptured = true
-    storedHeaders = headers
+    storedHeaders = filtered
     window.dispatchEvent(
-      new CustomEvent(EVENTS.HEADERS_CAPTURED, { detail: { headers } }),
+      new CustomEvent(EVENTS.HEADERS_CAPTURED, {
+        detail: { headers: filtered },
+      }),
     )
   }
 

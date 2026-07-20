@@ -89,7 +89,31 @@ describe('fetch — header capture', () => {
 
     const ev = await eventP
     expect(ev.detail.headers.authorization).toBe('Bearer plain')
-    expect(ev.detail.headers['x-csrf-token']).toBe('csrf1')
+    // x-csrf-token must never be broadcast on the page-global event.
+    expect(ev.detail.headers['x-csrf-token']).toBeUndefined()
+  })
+
+  it('forwards only allow-listed non-secret headers, dropping everything else', async () => {
+    await import('./page-script')
+    const eventP = nextWindowEvent<CustomEvent>('x-loc-headers-captured')
+
+    window.fetch('https://x.com/i/api/graphql/test', {
+      headers: {
+        authorization: 'Bearer plain',
+        'x-twitter-client-language': 'en',
+        'x-twitter-active-user': 'yes',
+        'x-csrf-token': 'csrf1',
+        'x-client-transaction-id': 'secret-txn',
+        cookie: 'auth_token=secret',
+      },
+    })
+
+    const ev = await eventP
+    expect(ev.detail.headers).toEqual({
+      authorization: 'Bearer plain',
+      'x-twitter-client-language': 'en',
+      'x-twitter-active-user': 'yes',
+    })
   })
 
   it('dispatches x-loc-headers-captured with Headers-object headers', async () => {
@@ -104,7 +128,7 @@ describe('fetch — header capture', () => {
 
     const ev = await eventP
     expect(ev.detail.headers.authorization).toBe('Bearer headers-obj')
-    expect(ev.detail.headers['x-csrf-token']).toBe('csrf2')
+    expect(ev.detail.headers['x-csrf-token']).toBeUndefined()
   })
 
   it('dispatches x-loc-headers-captured with array headers', async () => {
@@ -518,7 +542,7 @@ describe('XHR — header capture', () => {
 
     const ev = await eventP
     expect(ev.detail.headers.authorization).toBe('Bearer xhrToken')
-    expect(ev.detail.headers['x-csrf-token']).toBe('csrfXhr')
+    expect(ev.detail.headers['x-csrf-token']).toBeUndefined()
   })
 
   it('does NOT dispatch headers for non-graphql XHR URLs', async () => {
