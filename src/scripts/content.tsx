@@ -27,6 +27,7 @@ const SEL_USER_NAME_ALT = '[data-testid="User-Name"] a[href]'
 const SEL_TWEET = 'article[data-testid="tweet"]'
 const SEL_PRIMARY_TWEET = `${SEL_TWEET}[tabindex="-1"]`
 const PRIMARY_TWEET_ATTR = 'data-x-loc-primary-done'
+const QUOTE_HIGHLIGHT_ATTR = 'data-x-loc-quote-highlighted'
 const RESET_DEFAULT = 60 * 5 * 1000
 const RE_SCREEN_NAME_HREF = /^\/([A-Za-z0-9_]{1,50})$/
 const RE_AT_MENTION = /^@[A-Za-z0-9_]{1,50}$/
@@ -493,6 +494,10 @@ article[data-x-loc-highlighted] {
   border-left: 3px solid #f59e0b !important;
   background: rgba(245, 158, 11, 0.05) !important;
 }
+[data-x-loc-quote-highlighted] {
+  border-left: 3px solid #f59e0b !important;
+  background: rgba(245, 158, 11, 0.05) !important;
+}
 .x-loc-exc-btn {
   margin-top: 6px;
   font-size: 12px;
@@ -531,9 +536,37 @@ function getNameEl(el: Element): Element | null {
   )
 }
 
+// The quoted tweet embedded inside an article is rendered as a clickable
+// role="link" container that holds its own User-Name block (the quoted author).
+// Returns that container, or null when the tweet doesn't quote another post.
+function getQuotedTweetEl(article: Element): Element | null {
+  for (const link of Array.from(
+    article.querySelectorAll<Element>('div[role="link"]'),
+  )) {
+    if (getNameEl(link)) return link
+  }
+  return null
+}
+
 function countFlagsInBio(bio: string): number {
   const matches = bio.match(/[\u{1F1E6}-\u{1F1FF}]{2}/gu) ?? []
   return highlightFlagsUniqueOnly ? new Set(matches).size : matches.length
+}
+
+// textContent drops emoji: X renders them as <img alt="🏳️‍⚧️">. Walk the node
+// and substitute each emoji <img> with its alt so keyword matching sees them.
+function textWithEmoji(el: Element): string {
+  let out = ''
+  for (const node of Array.from(el.childNodes)) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      out += node.nodeValue ?? ''
+    } else if (node instanceof HTMLImageElement) {
+      out += node.getAttribute('alt') ?? ''
+    } else if (node instanceof Element) {
+      out += textWithEmoji(node)
+    }
+  }
+  return out
 }
 
 function extractTweetUserInfo(article: Element): {
@@ -551,9 +584,29 @@ function extractTweetUserInfo(article: Element): {
     const m = href.match(RE_SCREEN_NAME_HREF)
     if (!m) continue
     if (!userName) userName = m[1]
-    const text = link.textContent?.trim() ?? ''
+    const text = textWithEmoji(link).trim()
     if (text && !text.startsWith('@') && !displayName) displayName = text
   }
+  return { userName, displayName }
+}
+
+// Quoted posts render the author as plain text, not links (the whole quote is a
+// single role="link"), so the anchor-based extractor above finds nothing. Parse
+// the name block instead: "<displayName>@<handle> · <time>".
+function extractQuotedTweetUserInfo(quote: Element): {
+  userName: string | null
+  displayName: string
+} {
+  const userNameEl = getNameEl(quote)
+  if (!userNameEl) return { userName: null, displayName: '' }
+  const full = textWithEmoji(userNameEl).trim()
+  // The handle is the last @-token (a display name may itself contain '@').
+  const handles = [...full.matchAll(/@([A-Za-z0-9_]{1,50})/g)]
+  const userName = handles.length ? handles[handles.length - 1][1] : null
+  const at = userName
+    ? full.toLowerCase().lastIndexOf(`@${userName.toLowerCase()}`)
+    : -1
+  const displayName = (at > 0 ? full.slice(0, at) : full).trim()
   return { userName, displayName }
 }
 
@@ -585,25 +638,51 @@ function shouldHighlight(
 
 async function tryHighlightArticle(article: Element) {
   if (highlightKeywords.size === 0 && !highlightFlagsEnabled) return
-  if (article.hasAttribute('data-x-loc-highlighted')) return
-  const { userName, displayName } = extractTweetUserInfo(article)
+  if (!article.hasAttribute('data-x-loc-highlighted')) {
+    const { userName, displayName } = extractTweetUserInfo(article)
+    if (userName) {
+      const data = await getCached(userName)
+      if (
+        shouldHighlight(
+          userName,
+          displayName || data?.displayName || '',
+          data?.bio,
+        )
+      ) {
+        article.setAttribute('data-x-loc-highlighted', '1')
+      }
+    }
+  }
+  await tryHighlightQuote(article)
+}
+
+// Highlight the embedded quoted post when its author matches a keyword/flag
+// rule — independent of whether the outer tweet's author matches.
+async function tryHighlightQuote(article: Element) {
+  const quote = getQuotedTweetEl(article)
+  if (!quote || quote.hasAttribute(QUOTE_HIGHLIGHT_ATTR)) return
+  const { userName, displayName } = extractQuotedTweetUserInfo(quote)
   if (!userName) return
   const data = await getCached(userName)
   if (
     shouldHighlight(userName, displayName || data?.displayName || '', data?.bio)
   ) {
-    article.setAttribute('data-x-loc-highlighted', '1')
+    quote.setAttribute(QUOTE_HIGHLIGHT_ATTR, '1')
   }
 }
 
 function rehighlightAll() {
   const articles = Array.from(document.querySelectorAll<Element>(SEL_TWEET))
   if (highlightKeywords.size === 0 && !highlightFlagsEnabled) {
-    articles.forEach((a) => a.removeAttribute('data-x-loc-highlighted'))
+    articles.forEach((a) => {
+      a.removeAttribute('data-x-loc-highlighted')
+      getQuotedTweetEl(a)?.removeAttribute(QUOTE_HIGHLIGHT_ATTR)
+    })
     return
   }
   articles.forEach((a) => {
     a.removeAttribute('data-x-loc-highlighted')
+    getQuotedTweetEl(a)?.removeAttribute(QUOTE_HIGHLIGHT_ATTR)
     tryHighlightArticle(a)
   })
 }
@@ -1054,6 +1133,12 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
         const sn = extractTweetUserInfo(article).userName ?? ''
         if (sn?.toLowerCase() === lc)
           article.setAttribute('data-x-loc-highlighted', '1')
+        const quote = getQuotedTweetEl(article)
+        if (
+          quote &&
+          extractQuotedTweetUserInfo(quote).userName?.toLowerCase() === lc
+        )
+          quote.setAttribute(QUOTE_HIGHLIGHT_ATTR, '1')
       })
     }
   }

@@ -59,6 +59,39 @@ function makeTweetArticle(
   return article
 }
 
+/** An article that quotes another tweet. Mirrors the real X DOM: the quoted
+ *  author is rendered as plain text inside a single role="link" (no anchor for
+ *  the name/handle), and emoji appear as <img alt="…"> (textContent drops them).
+ *  `quotedEmojiAlt` injects such an emoji <img> into the quoted display name. */
+function makeQuoteTweetArticle(
+  outerUser: string,
+  quotedUser: string,
+  quotedDisplay = 'Quoted User',
+  quotedEmojiAlt: string | null = null,
+): HTMLElement {
+  const article = document.createElement('article')
+  article.setAttribute('data-testid', 'tweet')
+  const emojiImg = quotedEmojiAlt
+    ? `<img alt="${quotedEmojiAlt}" draggable="false" src="x.svg">`
+    : ''
+  article.innerHTML = `
+    <div data-testid="User-Name">
+      <a href="/${outerUser}">Outer User</a>
+      <a href="/${outerUser}">@${outerUser}</a>
+    </div>
+    <div>Outer tweet text</div>
+    <div role="link" tabindex="0">
+      <div data-testid="User-Name">
+        <div dir="ltr"><span>${quotedDisplay}</span>${emojiImg}</div>
+        <div dir="ltr"><span>@${quotedUser}</span></div>
+        <span>·</span><time>Jul 18</time>
+      </div>
+      <div>Quoted tweet text</div>
+    </div>
+  `
+  return article
+}
+
 /** Wait for MutationObserver callbacks and any chained microtasks/promises. */
 async function flushAsync() {
   await new Promise<void>((resolve) => setTimeout(resolve, 0))
@@ -680,6 +713,77 @@ describe('x-loc-users-data event', () => {
 
     onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
     onChangedCallback({ highlightExceptions: { newValue: [] } }, 'local')
+  })
+
+  it('highlights the quoted post when the quoted author matches a keyword', () => {
+    onChangedCallback({ highlightKeywords: { newValue: ['crypto'] } }, 'local')
+
+    const article = makeQuoteTweetArticle('normaluser', 'cryptoguy')
+    document.body.appendChild(article)
+
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', {
+        detail: {
+          users: [
+            { userName: 'cryptoguy', displayName: null, bio: 'crypto trader' },
+          ],
+        },
+      }),
+    )
+
+    // Outer author doesn't match → article itself stays unhighlighted, but the
+    // embedded quote block is highlighted.
+    expect(article.getAttribute('data-x-loc-highlighted')).toBeNull()
+    const quote = article.querySelector('div[role="link"]')!
+    expect(quote.getAttribute('data-x-loc-quote-highlighted')).toBe('1')
+
+    onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
+  })
+
+  it('highlights the quote via an emoji keyword in the quoted display name', async () => {
+    // The quoted display name contains 🏳️‍⚧️ only as an <img alt> (textContent
+    // drops it) and the author has no anchor — exercises textWithEmoji + the
+    // handle-from-text parsing. No bio is delivered; the storage-change path
+    // (rehighlightAll → tryHighlightQuote) does the work.
+    const article = makeQuoteTweetArticle(
+      'normaluser',
+      'willowfoxxo',
+      'WillowTheFox',
+      '🏳️‍⚧️',
+    )
+    document.body.appendChild(article)
+
+    onChangedCallback({ highlightKeywords: { newValue: ['🏳️‍⚧️'] } }, 'local')
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-highlighted')).toBeNull()
+    const quote = article.querySelector('div[role="link"]')!
+    expect(quote.getAttribute('data-x-loc-quote-highlighted')).toBe('1')
+
+    onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
+  })
+
+  it('does not highlight the quote when the quoted author does not match', () => {
+    onChangedCallback({ highlightKeywords: { newValue: ['crypto'] } }, 'local')
+
+    const article = makeQuoteTweetArticle('normaluser', 'anotheruser')
+    document.body.appendChild(article)
+
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', {
+        detail: {
+          users: [
+            { userName: 'anotheruser', displayName: null, bio: 'gardening' },
+          ],
+        },
+      }),
+    )
+
+    expect(article.getAttribute('data-x-loc-highlighted')).toBeNull()
+    const quote = article.querySelector('div[role="link"]')!
+    expect(quote.getAttribute('data-x-loc-quote-highlighted')).toBeNull()
+
+    onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
   })
 
   it('handles missing or empty users gracefully', () => {
