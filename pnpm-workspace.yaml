@@ -1,5 +1,6 @@
 packages:
   - landing
+  - server
 
 allowBuilds:
   esbuild: true

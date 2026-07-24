@@ -26,6 +26,14 @@ vi.mock('./cache', () => ({
   clearAllCache: vi.fn().mockResolvedValue(undefined),
 }))
 
+// Isolate content tests from the shared cache (it has a real server URL and is
+// covered by shared-cache.test.ts) — no network, no cross-test async bleed.
+vi.mock('./shared-cache', () => ({
+  sharedBatchLookup: vi.fn().mockResolvedValue([]),
+  contributeLocation: vi.fn(),
+  setSharedCacheEnabled: vi.fn(),
+}))
+
 import { fetchLocationData, setApiHeaders, __testResetState } from './content'
 import { getCached, mergeCached, clearAllCache } from './cache'
 
@@ -628,6 +636,81 @@ describe('x-loc-users-data event', () => {
     onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
   })
 
+  it('highlights a tweet rendered AFTER its bio arrived, with an empty IDB cache', async () => {
+    // Simulates a fresh page load: nothing in IndexedDB yet. The bio is only
+    // available in memory (from the timeline event), and the tweet is rendered
+    // after the event — so the observer must highlight it without reading the
+    // bio back from IDB. Regression for "no highlight until reload".
+    vi.mocked(getCached).mockResolvedValue(undefined)
+    onChangedCallback({ highlightKeywords: { newValue: ['crypto'] } }, 'local')
+
+    // Bio arrives first (keyword is only in the bio, not the handle/name).
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', {
+        detail: {
+          users: [
+            {
+              userName: 'someguy',
+              displayName: 'Some Guy',
+              bio: 'I love crypto',
+            },
+          ],
+        },
+      }),
+    )
+
+    // Tweet renders afterwards → observer highlights from the in-memory bio.
+    const article = makeTweetArticle('someguy', 'Some Guy')
+    document.body.appendChild(article)
+
+    await vi.waitFor(() => {
+      expect(article.getAttribute('data-x-loc-highlighted')).toBe('1')
+    })
+
+    onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
+  })
+
+  it('bounds the in-memory bio cache, evicting the oldest entries', async () => {
+    // Empty IDB, so an evicted bio has no fallback and its match disappears.
+    vi.mocked(getCached).mockResolvedValue(undefined)
+    onChangedCallback({ highlightKeywords: { newValue: ['zzzkw'] } }, 'local')
+
+    const users: Array<{
+      userName: string
+      displayName: string | null
+      bio: string | null
+    }> = [{ userName: 'evictme', displayName: 'AA', bio: 'about zzzkw stuff' }]
+    // Overflow the 2000-entry cap so the first user is pushed out...
+    for (let i = 0; i < 2001; i++) {
+      users.push({ userName: `filler${i}`, displayName: 'FF', bio: 'nope' })
+    }
+    // ...while a user seen last stays in memory.
+    users.push({
+      userName: 'keepme',
+      displayName: 'BB',
+      bio: 'about zzzkw stuff',
+    })
+
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', { detail: { users } }),
+    )
+
+    const evictArticle = makeTweetArticle('evictme', 'AA')
+    const keepArticle = makeTweetArticle('keepme', 'BB')
+    document.body.appendChild(evictArticle)
+    document.body.appendChild(keepArticle)
+
+    // The recent user still has its bio in memory → highlights (also confirms
+    // the observer/async pass has run before we assert on the evicted one).
+    await vi.waitFor(() => {
+      expect(keepArticle.getAttribute('data-x-loc-highlighted')).toBe('1')
+    })
+    // The oldest user was evicted; with an empty IDB its bio is gone → no match.
+    expect(evictArticle.getAttribute('data-x-loc-highlighted')).toBeNull()
+
+    onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
+  })
+
   it('does not highlight articles whose username does not match', () => {
     onChangedCallback({ highlightKeywords: { newValue: ['crypto'] } }, 'local')
 
@@ -960,6 +1043,70 @@ describe('feed location injection', () => {
 
     expect(article.querySelector('.x-loc-feed-row')).not.toBeNull()
     expect(article.querySelector('.x-loc-icon-vpn')).not.toBeNull()
+  })
+
+  it('parks a tweet above the viewport and injects it once scrolled into view', async () => {
+    // Adding the row to a tweet above the fold would shift the scroll (the
+    // back-navigation jump). jsdom returns all-zero rects by default, so drive
+    // the geometry and IntersectionObserver explicitly.
+    const observed: Element[] = []
+    let ioCallback: IntersectionObserverCallback = () => {}
+    class MockIO {
+      constructor(cb: IntersectionObserverCallback) {
+        ioCallback = cb
+      }
+      observe(el: Element) {
+        observed.push(el)
+      }
+      unobserve(el: Element) {
+        const i = observed.indexOf(el)
+        if (i >= 0) observed.splice(i, 1)
+      }
+      disconnect() {
+        observed.length = 0
+      }
+      takeRecords() {
+        return []
+      }
+    }
+    ;(globalThis as unknown as Record<string, unknown>).IntersectionObserver =
+      MockIO
+
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('scrolledpastuser')
+    const nameEl = article.querySelector('[data-testid="User-Name"]')!
+    let bottom = -100 // entirely above the viewport top
+    vi.spyOn(nameEl, 'getBoundingClientRect').mockImplementation(
+      () => ({ bottom }) as unknown as DOMRect,
+    )
+    document.body.appendChild(article)
+    await flushAsync()
+
+    // Above the fold → deferred (parked on the observer), not yet injected.
+    expect(article.querySelector('.x-loc-feed-row')).toBeNull()
+    expect(observed).toContain(article)
+
+    // Scroll it into view and fire the observer → it injects now.
+    bottom = 300
+    ioCallback(
+      [
+        {
+          target: article,
+          isIntersecting: true,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+
+    expect(article.querySelector('.x-loc-feed-row')).not.toBeNull()
+    delete (globalThis as unknown as Record<string, unknown>)
+      .IntersectionObserver
   })
 })
 

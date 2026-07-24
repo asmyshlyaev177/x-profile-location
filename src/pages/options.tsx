@@ -8,10 +8,12 @@ import {
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
   REGION_FLAGS,
+  SHARED_CACHE_KEY,
   SHOW_EXCEPTION_BUTTON_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
 } from '../scripts/countries'
 import { isMobile } from '../scripts/device'
+import { isSharedCacheConfigured } from '../scripts/shared-cache'
 import css from './options.module.css'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
@@ -53,6 +55,7 @@ function Options() {
   const [exceptions, setExceptions] = useState<string[]>([])
   const [exceptionFilter, setExceptionFilter] = useState('')
   const [showExceptionButton, setShowExceptionButton] = useState(true)
+  const [sharedCacheEnabled, setSharedCacheEnabled] = useState(true)
   const [cacheCleared, setCacheCleared] = useState(false)
 
   async function handleClearCache() {
@@ -70,6 +73,7 @@ function Options() {
         SHOW_LOCATION_IN_FEED_KEY,
         HIGHLIGHT_EXCEPTIONS_KEY,
         SHOW_EXCEPTION_BUTTON_KEY,
+        SHARED_CACHE_KEY,
       ])
       .then((result) => {
         setBlocked(
@@ -92,6 +96,9 @@ function Options() {
           SHOW_EXCEPTION_BUTTON_KEY in result
             ? Boolean(result[SHOW_EXCEPTION_BUTTON_KEY])
             : true,
+        )
+        setSharedCacheEnabled(
+          SHARED_CACHE_KEY in result ? Boolean(result[SHARED_CACHE_KEY]) : true,
         )
       })
   }, [])
@@ -363,6 +370,30 @@ function Options() {
         <p class={css.mobileHint}>
           👉 Swipe right on any tweet to fetch its location
         </p>
+      )}
+
+      {isSharedCacheConfigured() && (
+        <>
+          <label class={css.inlineOption}>
+            <input
+              type="checkbox"
+              checked={sharedCacheEnabled}
+              onChange={(e) => {
+                const next = (e.target as HTMLInputElement).checked
+                setSharedCacheEnabled(next)
+                chrome.storage.local.set({ [SHARED_CACHE_KEY]: next })
+              }}
+            />
+            <span>Use shared community location cache 🌍</span>
+          </label>
+          <p class={css.mobileHint}>
+            Shares the public location flags you look up with other users
+            through a community server, so everyone skips repeat lookups. Only
+            public handles and their location flag are sent — no account,
+            cookies, or personal data. Turn off to keep all lookups local to
+            this browser.
+          </p>
+        </>
       )}
 
       <details class={css.accordion}>

@@ -10,11 +10,17 @@ import {
   HIGHLIGHT_KEYWORDS_KEY,
   REGION_ABBR,
   REGION_FLAGS,
+  SHARED_CACHE_KEY,
   SHOW_EXCEPTION_BUTTON_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
 } from './countries'
 import { isMobile } from './device'
 import { EVENTS, X_GRAPHQL_PATH } from './constants'
+import {
+  contributeLocation,
+  setSharedCacheEnabled,
+  sharedBatchLookup,
+} from './shared-cache'
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA'
 const API_BASE = `https://${X_GRAPHQL_PATH}`
@@ -56,6 +62,7 @@ chrome.storage.local
     SHOW_LOCATION_IN_FEED_KEY,
     HIGHLIGHT_EXCEPTIONS_KEY,
     SHOW_EXCEPTION_BUTTON_KEY,
+    SHARED_CACHE_KEY,
   ])
   .then((result) => {
     const r = result as Record<string, unknown>
@@ -90,6 +97,20 @@ chrome.storage.local
       SHOW_EXCEPTION_BUTTON_KEY in r
         ? Boolean(r[SHOW_EXCEPTION_BUTTON_KEY])
         : true
+    // Shared community cache is opt-in and defaults on; inert unless a server
+    // URL is configured (see CACHE_API_BASE in constants.ts).
+    setSharedCacheEnabled(
+      SHARED_CACHE_KEY in r ? Boolean(r[SHARED_CACHE_KEY]) : true,
+    )
+
+    // This settings load is async, so tweets may already be rendered (and their
+    // bios buffered by page-script) before keywords/toggles were known — in
+    // which case nothing was highlighted. Now that settings are loaded, re-scan
+    // what's on screen and replay the buffered bios, so highlighting and feed
+    // locations appear on initial load rather than only after a scroll.
+    rehighlightAll()
+    refreshFeedLocations()
+    window.dispatchEvent(new CustomEvent(EVENTS.REQUEST_USERS))
   })
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -128,6 +149,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
   if (changes[SHOW_EXCEPTION_BUTTON_KEY]) {
     showExceptionButton = Boolean(changes[SHOW_EXCEPTION_BUTTON_KEY].newValue)
+  }
+  if (changes[SHARED_CACHE_KEY]) {
+    setSharedCacheEnabled(Boolean(changes[SHARED_CACHE_KEY].newValue))
   }
 })
 
@@ -182,8 +206,54 @@ const pendingMap = new NormalizedMap<Promise<LocationData | null>>()
 let rateLimitResetAt = 0
 let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null
 
+// Bio/displayName captured from timeline JSON this session, kept in memory so
+// highlighting reads them synchronously the instant they arrive — never waiting
+// on (or racing with) mergeCached's async get→set write to IndexedDB. Without
+// this, on a fresh load (empty IDB) rehighlightAll's getCached can read the
+// record before mergeCached's set lands, so nothing highlights until a reload
+// pre-populates IDB.
+//
+// Bounded (LRU-by-write) so a long-lived X tab can't grow it without limit. It's
+// only a fast path: every bio is also persisted to IDB by mergeCached, so an
+// evicted entry (old enough that its IDB write has long landed — no race) simply
+// falls back to getCached below. Same fallback covers users first seen in a
+// prior session.
+const BIO_CACHE_CAP = 1000
+const bioCache = new Map<
+  string,
+  { bio: string | null; displayName: string | null }
+>()
+
+function rememberBio(
+  userName: string,
+  bio: string | null,
+  displayName: string | null,
+): void {
+  const key = userName.toLowerCase()
+  const prev = bioCache.get(key)
+  bioCache.delete(key) // re-insert to refresh LRU order
+  bioCache.set(key, {
+    bio: bio ?? prev?.bio ?? null,
+    displayName: displayName ?? prev?.displayName ?? null,
+  })
+  if (bioCache.size > BIO_CACHE_CAP) {
+    const oldest = bioCache.keys().next().value
+    if (oldest !== undefined) bioCache.delete(oldest)
+  }
+}
+
+async function getBioInfo(
+  userName: string,
+): Promise<{ bio: string | null; displayName: string | null }> {
+  const mem = bioCache.get(userName.toLowerCase())
+  if (mem) return mem
+  const data = await getCached(userName)
+  return { bio: data?.bio ?? null, displayName: data?.displayName ?? null }
+}
+
 export function __testResetState() {
   checkedThisSession.clear()
+  bioCache.clear()
   rateLimitResetAt = 0
 }
 
@@ -368,6 +438,8 @@ export async function fetchLocationData(
         source: profile.source ?? null,
       }
       await mergeCached(userName, data)
+      // Share this first-hand result so other users can skip the X call.
+      contributeLocation(userName, data)
       return data
     } catch {
       return null
@@ -641,12 +713,12 @@ async function tryHighlightArticle(article: Element) {
   if (!article.hasAttribute('data-x-loc-highlighted')) {
     const { userName, displayName } = extractTweetUserInfo(article)
     if (userName) {
-      const data = await getCached(userName)
+      const info = await getBioInfo(userName)
       if (
         shouldHighlight(
           userName,
-          displayName || data?.displayName || '',
-          data?.bio,
+          displayName || info.displayName || '',
+          info.bio,
         )
       ) {
         article.setAttribute('data-x-loc-highlighted', '1')
@@ -663,9 +735,9 @@ async function tryHighlightQuote(article: Element) {
   if (!quote || quote.hasAttribute(QUOTE_HIGHLIGHT_ATTR)) return
   const { userName, displayName } = extractQuotedTweetUserInfo(quote)
   if (!userName) return
-  const data = await getCached(userName)
+  const info = await getBioInfo(userName)
   if (
-    shouldHighlight(userName, displayName || data?.displayName || '', data?.bio)
+    shouldHighlight(userName, displayName || info.displayName || '', info.bio)
   ) {
     quote.setAttribute(QUOTE_HIGHLIGHT_ATTR, '1')
   }
@@ -689,6 +761,82 @@ function rehighlightAll() {
 
 const FEED_LOCATION_ATTR = 'data-x-loc-feed-done'
 
+// Injecting a feed-location row grows the tweet's height. Doing that to a tweet
+// sitting ABOVE the viewport — e.g. flags that resolve async right after a
+// back-navigation has restored the scroll position — pushes every tweet below it
+// (including the one under the reader's eyes) downward, so the feed appears to
+// jump. X positions each timeline cell absolutely with a JS-computed translateY
+// and re-runs scroll restoration on navigation, which defeats the browser's
+// native scroll anchoring; so we avoid the above-the-fold height change
+// ourselves. Only place the row once the tweet's name line is at or below the
+// viewport top — tweets still above the fold are parked on an IntersectionObserver
+// and injected when scrolled back into view. Injecting into tweets that are
+// on-screen or below the fold is always safe: nothing above the scroll position
+// changes height.
+const pendingFeedRows = new WeakMap<Element, LocationData>()
+let feedRowObserver: IntersectionObserver | null = null
+
+// True when the row's insertion point (just under the name line) sits entirely
+// above the viewport top, i.e. placing the row here would shift the scroll.
+function insertionAboveFold(article: Element): boolean {
+  const anchor = getNameEl(article) ?? article
+  return anchor.getBoundingClientRect().bottom < 0
+}
+
+function placeFeedRow(article: Element, data: LocationData): void {
+  if (!showLocationInFeed) return
+  if (article.querySelector('.x-loc-feed-row')) return
+  const userNameEl = getNameEl(article)
+  if (!userNameEl) return
+  article.setAttribute(FEED_LOCATION_ATTR, '1')
+  const row = buildInfoRow(data)
+  row.classList.add('x-loc-feed-row')
+  userNameEl.insertAdjacentElement('afterend', row)
+}
+
+function getFeedRowObserver(): IntersectionObserver {
+  if (feedRowObserver) return feedRowObserver
+  // Several thresholds so the callback re-fires as a parked tweet scrolls
+  // through the viewport, letting us wait until its name line clears the fold
+  // (rather than injecting the instant its bottom edge peeks in from the top).
+  feedRowObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue
+        const article = entry.target
+        const data = pendingFeedRows.get(article)
+        if (!data || !showLocationInFeed) {
+          pendingFeedRows.delete(article)
+          feedRowObserver!.unobserve(article)
+          continue
+        }
+        if (insertionAboveFold(article)) continue // still above the fold — wait
+        pendingFeedRows.delete(article)
+        feedRowObserver!.unobserve(article)
+        placeFeedRow(article, data)
+      }
+    },
+    { threshold: [0, 0.25, 0.5, 0.75, 1] },
+  )
+  return feedRowObserver
+}
+
+// Place the row now if doing so won't shift the scroll, otherwise park it until
+// the tweet is scrolled into view (see pendingFeedRows / getFeedRowObserver).
+function injectFeedRow(article: Element, data: LocationData): void {
+  if (article.querySelector('.x-loc-feed-row')) return
+  if (pendingFeedRows.has(article)) {
+    pendingFeedRows.set(article, data)
+    return
+  }
+  if (insertionAboveFold(article)) {
+    pendingFeedRows.set(article, data)
+    getFeedRowObserver().observe(article)
+    return
+  }
+  placeFeedRow(article, data)
+}
+
 async function tryInjectFeedLocation(article: Element) {
   if (!showLocationInFeed) return
   if (article.getAttribute(FEED_LOCATION_ATTR)) return
@@ -702,14 +850,7 @@ async function tryInjectFeedLocation(article: Element) {
   const data = await getCached(userName)
   if (!data || (!data.location && data.locationAccurate && !data.source)) return
 
-  const userNameEl = getNameEl(article)
-  if (!userNameEl) return
-
-  if (article.querySelector('.x-loc-feed-row')) return
-
-  const row = buildInfoRow(data)
-  row.classList.add('x-loc-feed-row')
-  userNameEl.insertAdjacentElement('afterend', row)
+  injectFeedRow(article, data)
 }
 
 function injectFeedLocationForUser(userName: string, data: LocationData) {
@@ -719,12 +860,9 @@ function injectFeedLocationForUser(userName: string, data: LocationData) {
   document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
     if (extractTweetUserInfo(article).userName?.toLowerCase() !== lc) return
     if (article.matches(SEL_PRIMARY_TWEET)) return
-    const userNameEl = getNameEl(article)
-    if (!userNameEl || article.querySelector('.x-loc-feed-row')) return
+    if (!getNameEl(article) || article.querySelector('.x-loc-feed-row')) return
     article.setAttribute(FEED_LOCATION_ATTR, '1')
-    const row = buildInfoRow(data)
-    row.classList.add('x-loc-feed-row')
-    userNameEl.insertAdjacentElement('afterend', row)
+    injectFeedRow(article, data)
   })
 }
 
@@ -1114,6 +1252,19 @@ window.addEventListener(EVENTS.HEADERS_CAPTURED, (e: Event) => {
 // ---------------------------------------------------------------------------
 // Listen for user bio data intercepted from timeline/tweet API responses
 // ---------------------------------------------------------------------------
+// Look up locations for a batch of just-loaded usernames in the shared cache and
+// apply any confirmed hits locally — so a flag can show without a per-profile X
+// call. Bios/displayNames are not fetched here; they arrive free with the
+// timeline JSON (merged in the USERS_DATA handler below).
+async function applySharedHits(userNames: string[]) {
+  const hits = await sharedBatchLookup(userNames)
+  for (const hit of hits) {
+    await mergeCached(hit.userName, hit.data)
+    const full = await getCached(hit.userName)
+    if (full) injectFeedLocationForUser(hit.userName, full)
+  }
+}
+
 window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
   const users = (e as CustomEvent).detail?.users as
     | Array<{
@@ -1123,7 +1274,12 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
       }>
     | undefined
   if (!users) return
+  void applySharedHits(users.map((u) => u.userName))
   for (const { userName, displayName, bio } of users) {
+    // Record bio/displayName synchronously so highlighting can read them
+    // immediately — before, and independent of, the async mergeCached write.
+    rememberBio(userName, bio, displayName ?? null)
+
     const patch: Parameters<typeof mergeCached>[1] = { bio: bio ?? null }
     if (displayName) patch.displayName = displayName
     mergeCached(userName, patch)
@@ -1151,5 +1307,8 @@ injectStyles()
 startObserver()
 startSwipeListener()
 cleanupCache()
-// Request headers in case page-script already captured them before document_idle
+// Replay auth headers captured before this content script (document_idle)
+// attached its listener. (The parallel REQUEST_USERS replay for bios is fired
+// from the settings-load callback above instead — it must wait until keywords
+// are loaded, or the replayed bios would be evaluated against empty settings.)
 window.dispatchEvent(new CustomEvent(EVENTS.REQUEST_HEADERS))

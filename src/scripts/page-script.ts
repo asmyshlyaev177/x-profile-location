@@ -53,6 +53,16 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
   // ---------------------------------------------------------------------------
   const BIO_INTERCEPT = ['HomeTimeline', 'TweetDetail']
 
+  // page-script runs at document_start but the content script only attaches its
+  // USERS_DATA listener at document_idle, so the first timeline response can be
+  // dispatched before anyone is listening — dropping the first screen's bios and
+  // leaving bio-based keyword highlighting broken until the next fetch. Buffer
+  // captured users (bounded) and replay them when the content script asks, the
+  // same way headers are replayed via REQUEST_HEADERS.
+  const USER_BUFFER_CAP = 500
+  const userBuffer = new Map<string, UserBio>()
+  let bufferUsers = true
+
   function dispatchUsers(users: UserBio[]) {
     if (users.length === 0) return
     // Deduplicate by userName (keep first occurrence)
@@ -63,10 +73,35 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
       seen.add(key)
       return true
     })
+    if (unique.length === 0) return
+    if (bufferUsers) {
+      for (const u of unique) {
+        const key = u.userName.toLowerCase()
+        userBuffer.delete(key) // keep most-recent value, refresh insertion order
+        userBuffer.set(key, u)
+        if (userBuffer.size > USER_BUFFER_CAP) {
+          userBuffer.delete(userBuffer.keys().next().value as string)
+        }
+      }
+    }
     window.dispatchEvent(
       new CustomEvent(EVENTS.USERS_DATA, { detail: { users: unique } }),
     )
   }
+
+  // Replay users captured before the content script was listening. After the
+  // first request its listener is attached, so live dispatches suffice and we
+  // stop buffering to bound memory.
+  window.addEventListener(EVENTS.REQUEST_USERS, () => {
+    bufferUsers = false
+    if (userBuffer.size === 0) return
+    window.dispatchEvent(
+      new CustomEvent(EVENTS.USERS_DATA, {
+        detail: { users: [...userBuffer.values()] },
+      }),
+    )
+    userBuffer.clear()
+  })
 
   // ---------------------------------------------------------------------------
   // Wrap fetch

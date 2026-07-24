@@ -526,6 +526,78 @@ describe('x-loc-request-headers event', () => {
 })
 
 // ---------------------------------------------------------------------------
+// x-loc-request-users re-dispatch (replay buffered bios on load)
+// ---------------------------------------------------------------------------
+describe('x-loc-request-users event', () => {
+  it('replays users captured before the content script was listening', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify(homeTimelineResponse('bufuser', 'buf bio')),
+            { status: 200 },
+          ),
+        ),
+    )
+    await import('./page-script')
+
+    // Capture a user into the buffer (live dispatch has no listener yet in the
+    // real world — here we await it just to know buffering has happened).
+    const firstDispatch = nextWindowEvent<CustomEvent>('x-loc-users-data')
+    window.fetch('https://x.com/i/api/graphql/HomeTimeline', {})
+    await firstDispatch
+
+    const spy = vi.spyOn(window, 'dispatchEvent')
+    window.dispatchEvent(new CustomEvent('x-loc-request-users'))
+
+    const replayed = spy.mock.calls
+      .map(([e]) => e as CustomEvent)
+      .filter((e) => e.type === 'x-loc-users-data')
+      .flatMap(
+        (e) => e.detail.users as Array<{ userName: string; bio: string }>,
+      )
+
+    expect(
+      replayed.some((u) => u.userName === 'bufuser' && u.bio === 'buf bio'),
+    ).toBe(true)
+    spy.mockRestore()
+  })
+
+  it('drains the buffer after replaying so a second request does not re-emit it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(homeTimelineResponse('once', 'bio')), {
+          status: 200,
+        }),
+      ),
+    )
+    await import('./page-script')
+
+    const firstDispatch = nextWindowEvent<CustomEvent>('x-loc-users-data')
+    window.fetch('https://x.com/i/api/graphql/HomeTimeline', {})
+    await firstDispatch
+
+    window.dispatchEvent(new CustomEvent('x-loc-request-users')) // drains buffer
+
+    const spy = vi.spyOn(window, 'dispatchEvent')
+    window.dispatchEvent(new CustomEvent('x-loc-request-users'))
+
+    const replayedNames = spy.mock.calls
+      .map(([e]) => e as CustomEvent)
+      .filter((e) => e.type === 'x-loc-users-data')
+      .flatMap((e) =>
+        (e.detail.users as Array<{ userName: string }>).map((u) => u.userName),
+      )
+
+    expect(replayedNames).not.toContain('once')
+    spy.mockRestore()
+  })
+})
+
+// ---------------------------------------------------------------------------
 // XHR — header capture
 // ---------------------------------------------------------------------------
 describe('XHR — header capture', () => {

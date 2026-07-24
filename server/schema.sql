@@ -1,0 +1,36 @@
+-- Shared location cache — D1 (SQLite) schema.
+--
+-- Two tables:
+--   profiles       — the consensus-resolved answer served to clients (one row/user)
+--   location_votes — one vote per (username, client_id); consensus is recomputed
+--                    from these on every contribution.
+--
+-- Only the AboutAccountQuery-derived fields live here (location / source /
+-- location_accurate). Bio and displayName are intentionally NOT stored: clients
+-- get those for free from the timeline JSON, so there is nothing to share.
+
+CREATE TABLE IF NOT EXISTS profiles (
+  username            TEXT    PRIMARY KEY,        -- lowercased handle
+  location            TEXT,                       -- e.g. "JP", "EUR", or NULL
+  source              TEXT,                       -- e.g. "Japan Android App" or NULL
+  location_accurate   INTEGER NOT NULL DEFAULT 1, -- 0/1; X's "location may be inaccurate" flag
+  location_confidence INTEGER NOT NULL DEFAULT 0, -- distinct clients backing the winning tuple
+  updated_at          INTEGER NOT NULL DEFAULT 0  -- ms epoch of last consensus update
+);
+
+CREATE TABLE IF NOT EXISTS location_votes (
+  username          TEXT    NOT NULL,             -- lowercased handle
+  client_id         TEXT    NOT NULL,             -- anonymous per-install id
+  location          TEXT,
+  source            TEXT,
+  location_accurate INTEGER NOT NULL DEFAULT 1,
+  seen_at           INTEGER NOT NULL DEFAULT 0,   -- ms epoch this client last observed the value
+  PRIMARY KEY (username, client_id)               -- one (latest) vote per client per user
+);
+
+-- No secondary indexes on location_votes, deliberately:
+--   * a username index would just duplicate the primary key — SQLite already uses
+--     the PK (username, client_id) leading column for every `WHERE username IN (…)`.
+--   * a seen_at index has no query that drives off it (`seen_at` is only ever a
+--     residual `AND seen_at > ?` filter, never a sort or range scan), so it would
+--     only add write cost. Add one back if/when a retention-cleanup DELETE lands.

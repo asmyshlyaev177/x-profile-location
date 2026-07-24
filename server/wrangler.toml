@@ -1,0 +1,17 @@
+# Cloudflare Worker config for the shared location cache.
+#
+# First-time setup:
+#   1. cd server && pnpm install   (or npm install)
+#   2. pnpm db:create              -> prints a database_id; paste it below
+#   3. pnpm db:init                -> applies schema.sql to the remote D1
+#   4. pnpm deploy                 -> prints the Worker URL
+#   5. put that URL in src/scripts/constants.ts -> CACHE_API_BASE
+name = "x-loc-cache"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Free-plan friendly: no cron, no queues, no durable objects needed.
+[[d1_databases]]
+binding = "DB"
+database_name = "x-loc-cache"
+database_id = "b4afee9f-c8b4-4496-b3a5-6431e48c2ffd"

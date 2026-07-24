@@ -244,6 +244,10 @@ export const SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed'
 export const HIGHLIGHT_EXCEPTIONS_KEY = 'highlightExceptions'
 // Whether to show the "Don't highlight" toggle button on profile hover cards.
 export const SHOW_EXCEPTION_BUTTON_KEY = 'showExceptionButton'
+// Whether to use the shared community location cache (query it on load and
+// contribute AboutAccountQuery results back). Opt-in; inert unless the server
+// URL (CACHE_API_BASE in constants.ts) is configured.
+export const SHARED_CACHE_KEY = 'sharedCacheEnabled'
 
 export const DEFAULT_BLOCKED_COUNTRIES = [
   'Africa',
