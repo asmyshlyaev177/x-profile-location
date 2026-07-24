@@ -19,6 +19,13 @@ export function SeeItInAction() {
         {/* 2×3 grid */}
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Card
+            title="Community Location Cache"
+            description="Flags looked up by you and other users are pooled in a privacy-first community cache, so most profiles show their country instantly — no repeat lookups. Only public handles and their flag are ever shared, never personal data."
+            accentColor="#2dd4bf"
+            preview={<CommunityCachePreview />}
+            wide
+          />
+          <Card
             title="Country Flag on Hover"
             description="See the real country flag directly in hover cards — no clicks needed."
             accentColor="#6b9e7a"
@@ -74,15 +81,19 @@ function Card({
   description,
   accentColor,
   preview,
+  wide = false,
 }: {
   title: string
   description: string
   accentColor: string
   preview: preact.ComponentChildren
+  wide?: boolean
 }) {
   return (
     <div
-      class="border-border overflow-hidden rounded-2xl border transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-white/20"
+      class={`border-border overflow-hidden rounded-2xl border transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-white/20${
+        wide ? ' sm:col-span-2' : ''
+      }`}
       style={`background: #252830; border-top: 2px solid ${accentColor};`}
     >
       {/* Preview area */}
@@ -128,6 +139,72 @@ function HoverCard({ children }: { children: preact.ComponentChildren }) {
 // ---------------------------------------------------------------------------
 // Per-card previews
 // ---------------------------------------------------------------------------
+function CommunityCachePreview() {
+  const teal = '#2dd4bf'
+  const contributor = (flag: string) => (
+    <div class="relative h-7 w-7 rounded-full bg-white/15">
+      <span class="absolute -right-1 -bottom-1 text-[10px] leading-none">
+        {flag}
+      </span>
+    </div>
+  )
+  const arrow = (
+    <span class="text-lg text-white/25" aria-hidden="true">
+      →
+    </span>
+  )
+  return (
+    <div
+      class="flex items-center gap-3"
+      style="transform: scale(0.9); transform-origin: center;"
+    >
+      {/* Contributors share what they look up */}
+      <div class="flex shrink-0 flex-col items-center gap-1.5">
+        <div class="flex gap-1">
+          {contributor('🇯🇵')}
+          {contributor('🇩🇪')}
+          {contributor('🇧🇷')}
+        </div>
+        <span class="text-[9px] font-medium text-white/40">contributors</span>
+      </div>
+
+      {arrow}
+
+      {/* The shared cache */}
+      <div class="flex shrink-0 flex-col items-center gap-1">
+        <div
+          class="flex h-12 w-12 items-center justify-center rounded-full text-xl"
+          style={`background: rgba(45,212,191,0.12); border: 1px solid ${teal}80;`}
+        >
+          🌍
+        </div>
+        <span class="text-[9px] font-semibold" style={`color: ${teal};`}>
+          community cache
+        </span>
+      </div>
+
+      {arrow}
+
+      {/* You get an instant, cached result */}
+      <div class="border-border bg-dark-card w-28 shrink-0 space-y-1.5 rounded-xl border p-2.5">
+        <div class="flex items-center gap-1.5">
+          <div class="h-5 w-5 shrink-0 rounded-full bg-white/15" />
+          <div class="h-2 w-12 rounded bg-white/35" />
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-sm leading-none">🇯🇵</span>
+          <span
+            class="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold"
+            style={`background: rgba(45,212,191,0.14); color: ${teal}; border: 1px solid ${teal}66;`}
+          >
+            ⚡ instant
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CountryFlagPreview() {
   return (
     <HoverCard>
