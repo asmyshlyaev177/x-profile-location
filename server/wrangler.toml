@@ -10,8 +10,16 @@ name = "x-loc-cache"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
-# Free-plan friendly: no cron, no queues, no durable objects needed.
+# Free-plan friendly: no queues, no durable objects. One cron trigger (below)
+# for retention cleanup — cron triggers are included on the Workers free plan.
 [[d1_databases]]
 binding = "DB"
 database_name = "x-loc-cache"
 database_id = "b4afee9f-c8b4-4496-b3a5-6431e48c2ffd"
+
+# Weekly (Monday 03:00 UTC): delete location_votes older than 60 days so the
+# table doesn't grow unbounded (D1 has no auto-eviction). Weekly rather than
+# daily keeps the cleanup's full-table scan off the read budget most days.
+# See scheduled() in src/index.ts.
+[triggers]
+crons = ["0 3 * * 1"]

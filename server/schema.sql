@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS location_votes (
 -- No secondary indexes on location_votes, deliberately:
 --   * a username index would just duplicate the primary key — SQLite already uses
 --     the PK (username, client_id) leading column for every `WHERE username IN (…)`.
---   * a seen_at index has no query that drives off it (`seen_at` is only ever a
---     residual `AND seen_at > ?` filter, never a sort or range scan), so it would
---     only add write cost. Add one back if/when a retention-cleanup DELETE lands.
+--   * a seen_at index is still not worth it, even though the retention cleanup
+--     (`DELETE ... WHERE seen_at < ?`, see scheduled() in src/index.ts) scans on
+--     seen_at: that DELETE runs weekly and spends the abundant read budget,
+--     whereas an index would add a write to every vote INSERT — taxing D1's ~50x
+--     scarcer write budget on the hot path to speed up a cold one. The weekly
+--     full-table scan is the cheaper trade.

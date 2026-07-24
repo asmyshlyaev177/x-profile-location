@@ -164,15 +164,20 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
     ),
   )
 
-  // 2. Recompute consensus for every affected username from its live votes.
+  // 2. Recompute consensus for every affected username from all its votes.
+  //    No date filter here: the scheduled() retention job physically deletes
+  //    votes older than VOTE_RETENTION_MS, so every row still in the table is
+  //    within the window by construction. That makes deletion the single source
+  //    of truth for the 60-day bound (rather than a filter here *and* a delete)
+  //    and lets the query ride the (username, client_id) primary key directly.
   const affectedList = [...affected]
   const ph = affectedList.map(() => '?').join(',')
   const { results } = await env.DB.prepare(
     `SELECT username, location, source, location_accurate, seen_at
        FROM location_votes
-      WHERE username IN (${ph}) AND seen_at > ?`,
+      WHERE username IN (${ph})`,
   )
-    .bind(...affectedList, now - VOTE_RETENTION_MS)
+    .bind(...affectedList)
     .all<VoteRow>()
 
   const byUser = new Map<string, LocationVote[]>()
@@ -262,5 +267,22 @@ export default {
     } catch {
       return json({ error: 'internal' }, 500)
     }
+  },
+
+  // Retention cleanup. D1 never evicts data on its own, so location_votes would
+  // grow without bound. This physically deletes votes older than
+  // VOTE_RETENTION_MS and is now the *only* thing that ages votes out — the
+  // consensus recompute above reads whatever remains. Runs on the cron schedule
+  // in wrangler.toml. One DELETE is issued; the table has no seen_at index, so
+  // it's a full scan that spends the abundant read budget — deliberately traded
+  // against not taxing every insert's ~50x scarcer write budget with an index.
+  async scheduled(
+    _controller: ScheduledController,
+    env: Env,
+    _ctx: ExecutionContext,
+  ): Promise<void> {
+    await env.DB.prepare('DELETE FROM location_votes WHERE seen_at < ?')
+      .bind(Date.now() - VOTE_RETENTION_MS)
+      .run()
   },
 }
