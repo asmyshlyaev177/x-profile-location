@@ -240,6 +240,21 @@ pnpm dev         # watch build for Chrome (default)
 pnpm build       # production build all browsers → dist/<browser>/
 pnpm test        # vitest run --coverage  (happy-dom, Istanbul)
 pnpm fix         # oxfmt + oxlint --fix
+pnpm e2e:profile # seed a real-browser profile for the e2e suite (see below)
+pnpm test:e2e    # playwright under xvfb
 ```
 
 Test environment: **Vitest 4 + happy-dom**. Globals enabled (`describe`, `it`, `expect`, `vi` — no imports needed). Coverage via Istanbul to `coverage/`.
+
+### E2E browser profile
+
+X blocks Playwright's bundled Chromium, so `e2e/scripts/seed-profile.mjs` launches a **real** Brave/Chromium on its own profile dir (`e2e/.auth/seed-profile`), you log in manually, and closing the window copies the profile to `e2e/.auth/profile` + writes `e2e/.auth/profile.json` (`{ browser, executablePath, profileDir, seededAt }`).
+
+`fixtures.ts` reads that manifest: present → clone the profile to a temp dir and launch **that binary** via `executablePath` (no `state.json` cookie replay); absent → the old bundled-Chromium + `state.json` path. `E2E_SEED_PROFILE=0` forces the old path for one run.
+
+Gotchas:
+
+- Seeding must launch with `--password-store=basic` — Playwright always does, and cookies encrypted against the OS keyring can't be decrypted without it.
+- Cookies are only committed to SQLite on clean shutdown (or a ~30 s timer), so the browser must be **closed**, not killed.
+- Branded Google Chrome ≥ M137 ignores `--load-extension`; the extension silently never loads. Use Brave or Chromium.
+- Anti-detection args in the fixture: `--disable-blink-features=AutomationControlled` + `ignoreDefaultArgs: ['--enable-automation']` → `navigator.webdriver === false`.

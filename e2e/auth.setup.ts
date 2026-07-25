@@ -5,18 +5,21 @@
  * then click Resume in the Playwright Inspector to save the session.
  *
  * Skipped entirely in replay mode — the recorded HAR contains the full session.
+ * Also skipped when `pnpm e2e:profile` has seeded a real browser profile, which
+ * carries its own session; prefer that route, X blocks this one more often.
  */
 import path from 'path'
 import { mkdir, access } from 'fs/promises'
 import { test as setup } from '@playwright/test'
 import { chromium } from 'playwright-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
-import { EXTENSION_PATH, AUTH_FILE, MODE } from './fixtures'
+import { EXTENSION_PATH, AUTH_FILE, MODE, readSeededProfile } from './fixtures'
 
 chromium.use(StealthPlugin())
 
 setup('authenticate with X', async () => {
   if (MODE === 'replay') return
+  if (await readSeededProfile()) return
 
   // Skip if a saved session already exists.
   const hasState = await access(AUTH_FILE)

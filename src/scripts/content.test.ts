@@ -1182,6 +1182,105 @@ describe('hover card exception button', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Exception button on the primary tweet of a status page (no hover card there)
+// ---------------------------------------------------------------------------
+describe('primary tweet exception button', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setApiHeaders(null) // avoid network in fetchLocationData
+    __testResetState()
+    document.body.innerHTML = ''
+    history.pushState({}, '', '/sarcasticuser/status/123')
+  })
+
+  afterEach(() => {
+    onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
+    onChangedCallback({ highlightExceptions: { newValue: [] } }, 'local')
+    history.pushState({}, '', '/')
+  })
+
+  async function addPrimaryTweet(userName: string): Promise<HTMLElement> {
+    const article = makeTweetArticle(userName, 'Sarcastic User', true)
+    document.body.appendChild(article)
+    await flushAsync()
+    return article
+  }
+
+  it('appears once the account starts matching a keyword rule', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'no NAFO here',
+    })
+
+    const article = await addPrimaryTweet('sarcasticuser')
+    // Keyword added after the page settled — the button has to catch up.
+    expect(article.querySelector('.x-loc-exc-btn')).toBeNull()
+
+    onChangedCallback({ highlightKeywords: { newValue: ['nafo'] } }, 'local')
+    await flushAsync()
+
+    expect(article.querySelector('.x-loc-exc-btn')).not.toBeNull()
+  })
+
+  it('goes away again when the keyword is removed', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'no NAFO here',
+    })
+
+    const article = await addPrimaryTweet('sarcasticuser')
+    onChangedCallback({ highlightKeywords: { newValue: ['nafo'] } }, 'local')
+    await flushAsync()
+    expect(article.querySelector('.x-loc-exc-btn')).not.toBeNull()
+
+    onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
+    await flushAsync()
+
+    expect(article.querySelector('.x-loc-exc-btn')).toBeNull()
+  })
+
+  it('stays for an excluded account so the exception can be undone', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'just a normal bio',
+    })
+
+    const article = await addPrimaryTweet('sarcasticuser')
+    onChangedCallback(
+      { highlightExceptions: { newValue: ['sarcasticuser'] } },
+      'local',
+    )
+    await flushAsync()
+
+    const btn = article.querySelector('.x-loc-exc-btn')
+    expect(btn).not.toBeNull()
+    expect(btn?.classList.contains('x-loc-exc-active')).toBe(true)
+  })
+
+  it('is not added on a timeline page', async () => {
+    history.pushState({}, '', '/home')
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'no NAFO here',
+    })
+
+    const article = await addPrimaryTweet('sarcasticuser')
+    onChangedCallback({ highlightKeywords: { newValue: ['nafo'] } }, 'local')
+    await flushAsync()
+
+    expect(article.querySelector('.x-loc-exc-btn')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
 // injectFeedLocationForUser — triggered via hover card (processCard)
 // ---------------------------------------------------------------------------
 describe('injectFeedLocationForUser — via hover card fetch', () => {

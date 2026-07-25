@@ -13,6 +13,10 @@ export default defineConfig({
   use: {
     headless: false,
     trace: 'on-first-retry',
+    // Playwright's default is unlimited, which turns a single element that never
+    // settles — routine on X's virtualised timeline — into a test that hangs
+    // until the 60s test timeout and reports the wrong step as the culprit.
+    actionTimeout: 15_000,
   },
   projects: [
     {

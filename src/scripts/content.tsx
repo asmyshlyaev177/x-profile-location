@@ -894,6 +894,11 @@ async function tryHighlightQuote(article: Element) {
 }
 
 function rehighlightAll() {
+  // The primary tweet's exception button follows the same rules, so it is
+  // re-evaluated on every rule change — including the clearing branch below,
+  // where it has to disappear.
+  void syncPrimaryExceptionButton()
+
   const articles = Array.from(document.querySelectorAll<Element>(SEL_TWEET))
   if (highlightKeywords.size === 0 && !highlightFlagsEnabled) {
     articles.forEach((a) => {
@@ -1348,24 +1353,72 @@ async function processCard(card: Element) {
 // ---------------------------------------------------------------------------
 // Process primary tweet author on status pages
 // ---------------------------------------------------------------------------
-async function processPrimaryTweet() {
-  if (!/\/status\/\d+/.test(location.pathname)) return
+/** The account a status page is about, or null when this isn't one. */
+function primaryTweetTarget(): {
+  tweet: Element
+  userNameEl: Element
+  userName: string
+} | null {
+  if (!/\/status\/\d+/.test(location.pathname)) return null
 
   const tweet = document.querySelector(SEL_PRIMARY_TWEET)
-  if (!tweet || tweet.getAttribute(PRIMARY_TWEET_ATTR)) return
+  if (!tweet) return null
 
   const userNameEl = getNameEl(tweet)
-  if (!userNameEl) return
+  if (!userNameEl) return null
 
-  const link = userNameEl.querySelector('a[href]')
-  if (!link) return
-
-  const href = link.getAttribute('href') ?? ''
+  const href = userNameEl.querySelector('a[href]')?.getAttribute('href') ?? ''
   const m = href.match(RE_SCREEN_NAME_HREF)
-  if (!m) return
+  if (!m) return null
 
-  const userName = m[1]
+  return { tweet, userNameEl, userName: m[1] }
+}
+
+// The hover card is the usual home for the exception toggle, but X opens no
+// hover card for the account a status page is *about* — so on that one tweet the
+// same button goes inline, under the name line next to the location row.
+// Synced rather than injected once: the keyword that makes it relevant is often
+// added long after the page settled, and removing that keyword must take the
+// button with it.
+async function syncPrimaryExceptionButton(): Promise<void> {
+  const target = primaryTweetTarget()
+  if (!target) return
+  const { userNameEl, userName } = target
+
+  const existing = userNameEl.querySelector('.x-loc-exc-btn')
+
+  // getBioInfo, not getCached: it reads the same in-memory bio that decided the
+  // highlight, so the button can never disagree with the highlight it undoes.
+  const { bio, displayName } = await getBioInfo(userName)
+  const wanted =
+    showExceptionButton &&
+    (highlightExceptions.has(userName.toLowerCase()) ||
+      matchesHighlightRule(userName, displayName ?? '', bio))
+
+  if (!wanted) {
+    existing?.remove()
+    return
+  }
+
+  // Rebuild instead of leaving it: the label carries the current exception
+  // state, which the hover card for the same account can flip behind our back.
+  existing?.remove()
+  const anchor =
+    userNameEl.querySelector('.x-loc-info') ?? userNameEl.children[1]
+  const btn = buildExceptionButton(userName)
+  if (anchor) anchor.insertAdjacentElement('afterend', btn)
+  else userNameEl.appendChild(btn)
+}
+
+async function processPrimaryTweet() {
+  const target = primaryTweetTarget()
+  if (!target) return
+
+  const { tweet, userNameEl, userName } = target
+  if (tweet.getAttribute(PRIMARY_TWEET_ATTR)) return
   tweet.setAttribute(PRIMARY_TWEET_ATTR, '1')
+
+  void syncPrimaryExceptionButton()
 
   const data = await fetchLocationData(userName)
 
@@ -1378,10 +1431,12 @@ async function processPrimaryTweet() {
 
   if (!row) return
 
-  // Guard against double-injection if React re-renders before await resolves
-  const handleDiv = userNameEl.children[1] as Element | undefined
-  if (handleDiv?.nextElementSibling?.classList.contains('x-loc-info')) return
+  // Guard against double-injection if React re-renders before await resolves.
+  // Searched rather than read off handleDiv.nextElementSibling: the exception
+  // button can already sit between the two.
+  if (userNameEl.querySelector('.x-loc-info')) return
 
+  const handleDiv = userNameEl.children[1] as Element | undefined
   ;(row as HTMLElement).style.marginTop = '2px'
   if (handleDiv) {
     handleDiv.insertAdjacentElement('afterend', row)
@@ -1603,6 +1658,10 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
       })
     }
   }
+
+  // Bios land here, so this is the first moment the primary tweet's account can
+  // be known to match a rule — processPrimaryTweet usually runs before it.
+  void syncPrimaryExceptionButton()
 })
 
 // ---------------------------------------------------------------------------

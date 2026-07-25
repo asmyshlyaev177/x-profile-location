@@ -70,6 +70,20 @@ pnpm zip       # package extension ZIPs for store submission
 
 Built output goes to `dist/<browser>/`.
 
+## E2E tests
+
+```bash
+pnpm e2e:profile   # one-time: log in to X in a real browser, hand the profile to Playwright
+pnpm test:e2e      # run the suite (xvfb, replay mode by default)
+```
+
+X flags Playwright's bundled Chromium, so the suite runs on a profile you log
+into by hand. `pnpm e2e:profile` opens Brave (or `--browser=chromium|chrome|<path>`)
+on its own profile under `e2e/.auth/`; log in, close the window, and it copies the
+profile plus a note of which binary made it. From then on the tests launch that
+same browser with a clone of that profile. Re-run it when X invalidates the
+session. Nothing under `e2e/.auth/` is committed — it holds a live session.
+
 ## Tech stack
 
 | Concern         | Tool                             |

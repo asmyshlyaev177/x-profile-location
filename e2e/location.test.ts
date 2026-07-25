@@ -3,14 +3,26 @@
  * All x.com traffic is recorded/replayed via HAR (see fixtures.ts).
  *
  * Archetypes:
- *   sotaproject    — accurate location, app-store source (📱 + flag)
- *   zgldz          — VPN detected (locationAccurate: false → ⚠ VPN badge)
- *   PooWorldOrderr — web-only source (flag only, no store block)
+ *   svtv_news       — accurate location, app-store source (📱 + flag)
+ *   zgldz           — VPN detected (locationAccurate: false → ⚠ VPN badge)
+ *   TheCriticalDri2 — accurate, web-only source (flag only, no store block)
+ *   sotaproject     — any account with a location; used by the cache tests
+ *
+ * An account's VPN status is X's call and can change under us: sotaproject and
+ * visegrad24 held the first and third slots until X flagged both as inaccurate
+ * in July 2026. Each test therefore asserts agreement with the account's own
+ * About page (the real contract) *and* the archetype it was picked for — so a
+ * flagged account fails loudly, saying it needs replacing rather than pretending
+ * the extension is wrong.
  */
 import { test, expect, pinExtension } from './fixtures'
 import {
+  hoverAnyReplyForLocation,
   hoverCardLocation,
+  hoverForLocationRow,
   hoverOwnTweet,
+  mockLocationApis,
+  mockSharedCache,
   navigateToTweetDetail,
   officialAccountLocation,
   readIdb,
@@ -25,18 +37,31 @@ test.beforeEach(async ({ context, extensionId }) => {
 // ---------------------------------------------------------------------------
 
 test('accurate location matches About page', async ({ page }) => {
-  const card = await hoverOwnTweet(page, 'sotaproject')
+  // X's own answer is the subject here, but the community cache must not be:
+  // a live Worker hit would satisfy the lookup and the card would show its
+  // value instead of the one the About page is about to be read for.
+  await mockSharedCache(page, null)
+
+  const card = await hoverOwnTweet(page, 'svtv_news')
   const fromCard = await hoverCardLocation(card)
-  const fromPage = await officialAccountLocation(page, 'sotaproject')
+  const fromPage = await officialAccountLocation(page, 'svtv_news')
 
   // basedIn and appStoreCountry are visible on the About page — compare directly.
   expect(fromCard.basedIn).toBe(fromPage.basedIn)
   expect(fromCard.appStoreCountry).toBe(fromPage.appStoreCountry)
-  // isVpn is not shown on the About page; assert the archetype expectation only.
+  expect(fromCard.isVpn).toBe(fromPage.isVpn)
+  // The archetype: accurate location, app-store source. If X starts flagging
+  // this account, swap in another accurate one rather than relaxing this.
   expect(fromCard.isVpn).toBe(false)
+  expect(fromCard.appStoreCountry).not.toBeNull()
 })
 
 test('VPN warning matches About page', async ({ page }) => {
+  // X's own answer is the subject here, but the community cache must not be:
+  // a live Worker hit would satisfy the lookup and the card would show its
+  // value instead of the one the About page is about to be read for.
+  await mockSharedCache(page, null)
+
   const card = await hoverOwnTweet(page, 'zgldz')
   const fromCard = await hoverCardLocation(card)
   const fromPage = await officialAccountLocation(page, 'zgldz')
@@ -51,13 +76,20 @@ test('VPN warning matches About page', async ({ page }) => {
 })
 
 test('no app store block; location matches About page', async ({ page }) => {
-  const card = await hoverOwnTweet(page, 'visegrad24')
+  // X's own answer is the subject here, but the community cache must not be:
+  // a live Worker hit would satisfy the lookup and the card would show its
+  // value instead of the one the About page is about to be read for.
+  await mockSharedCache(page, null)
+
+  const card = await hoverOwnTweet(page, 'TheCriticalDri2')
   const fromCard = await hoverCardLocation(card)
-  const fromPage = await officialAccountLocation(page, 'visegrad24')
+  const fromPage = await officialAccountLocation(page, 'TheCriticalDri2')
 
   expect(fromCard.basedIn).toBe(fromPage.basedIn)
   expect(fromCard.appStoreCountry).toBe(fromPage.appStoreCountry)
-  // isVpn is not shown on the About page; assert the archetype expectation only.
+  expect(fromCard.isVpn).toBe(fromPage.isVpn)
+  // The archetype: a web-only source, so no 📱 block at all — and accurate, so
+  // the flag stands alone.
   expect(fromCard.appStoreCountry).toBeNull()
   expect(fromCard.isVpn).toBe(false)
 })
@@ -65,6 +97,8 @@ test('no app store block; location matches About page', async ({ page }) => {
 test('tweet detail: inline location for author, hover location for first reply', async ({
   page,
 }) => {
+  await mockLocationApis(page, { account_based_in: 'Germany' })
+
   // Navigate to elonmusk's profile to discover the first tweet URL dynamically
   // so the test works with whatever tweet is at the top at recording time.
   const tweetPath = await navigateToTweetDetail(page, 'elonmusk')
@@ -82,21 +116,10 @@ test('tweet detail: inline location for author, hover location for first reply',
   const authorLocation = await hoverCardLocation(authorArticle)
   expect(authorLocation.basedIn).not.toBeNull()
 
-  // Hover the first reply's username to trigger a location fetch for that user.
-  const firstReplyArticle = page.locator('article[data-testid="tweet"]').nth(1)
-  const replyLink = firstReplyArticle
-    .locator('[data-testid="User-Name"] a[href^="/"]')
-    .first()
-  await replyLink.waitFor({ timeout: 15_000 })
-
-  const replyQueryDone = page.waitForResponse(/AboutAccountQuery/, {
-    timeout: 15_000,
-  })
-  await replyLink.hover()
-  await replyQueryDone
-
-  const replyCard = page.locator('[data-testid="HoverCard"]')
-  await replyCard.locator('.x-loc-info').waitFor({ timeout: 10_000 })
+  // Hover a reply's username to trigger a location fetch for that account. Which
+  // reply doesn't matter — and can't be pinned down anyway, since X recycles the
+  // rows while the page settles. This was the flakiest step in the suite.
+  const replyCard = await hoverAnyReplyForLocation(page)
   const replyLocation = await hoverCardLocation(replyCard)
   expect(replyLocation.basedIn).not.toBeNull()
 })
@@ -104,6 +127,8 @@ test('tweet detail: inline location for author, hover location for first reply',
 test('tweet detail: hover location shown for second-level reply', async ({
   page,
 }) => {
+  await mockLocationApis(page, { account_based_in: 'Germany' })
+
   const tweetPath = await navigateToTweetDetail(page, 'elonmusk')
 
   await page.goto(`https://x.com${tweetPath}`)
@@ -118,23 +143,8 @@ test('tweet detail: hover location shown for second-level reply', async ({
   await replyStatusLink.click()
   await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 })
 
-  // On the reply's detail page, hover the first reply (= second-level reply).
-  const secondLevelReplyArticle = page
-    .locator('article[data-testid="tweet"]')
-    .nth(1)
-  const secondLevelLink = secondLevelReplyArticle
-    .locator('[data-testid="User-Name"] a[href^="/"]')
-    .first()
-  await secondLevelLink.waitFor({ timeout: 15_000 })
-
-  const replyQueryDone = page.waitForResponse(/AboutAccountQuery/, {
-    timeout: 15_000,
-  })
-  await secondLevelLink.hover()
-  await replyQueryDone
-
-  const replyCard = page.locator('[data-testid="HoverCard"]')
-  await replyCard.locator('.x-loc-info').waitFor({ timeout: 10_000 })
+  // On the reply's detail page, hover a reply (= a second-level reply).
+  const replyCard = await hoverAnyReplyForLocation(page)
   const replyLocation = await hoverCardLocation(replyCard)
   expect(replyLocation.basedIn).not.toBeNull()
 })
@@ -142,6 +152,11 @@ test('tweet detail: hover location shown for second-level reply', async ({
 test('rate limit: toast shown on 429, badge in hover card, no further API calls', async ({
   page,
 }) => {
+  // Every lookup has to reach X for the 429 to mean anything — a community-cache
+  // hit would satisfy some of them without a request. What X answers before the
+  // 429 route goes up is irrelevant, so it is canned too.
+  await mockLocationApis(page, { account_based_in: 'Germany' })
+
   await page.goto('https://x.com/NASAArtemis/status/2052108727839285751')
   await page.waitForTimeout(2_000)
 
@@ -153,21 +168,12 @@ test('rate limit: toast shown on 429, badge in hover card, no further API calls'
       .first()
 
   // Hover replies 1–3 with real API calls so location data is cached in IDB.
+  // A rendered location icon is proof the lookup completed; hoverForLocationRow
+  // re-hovers if X swallowed the first one, which used to make this test flaky.
   for (let i = 1; i <= 3; i++) {
     const link = replyLink(i)
     await link.waitFor({ timeout: 15_000 })
-    const queryDone = page.waitForResponse(/AboutAccountQuery/, {
-      timeout: 15_000,
-    })
-    await link.hover()
-    await queryDone
-    const card = page.locator('[data-testid="HoverCard"]')
-    await card
-      .locator('.x-loc-icon-flag, .x-loc-store-block, .x-loc-icon-vpn')
-      .first()
-      .waitFor({ timeout: 10_000 })
-    await page.mouse.move(400, 30)
-    await page.waitForTimeout(300)
+    await hoverForLocationRow(page, link)
   }
 
   // Install 429 mock. Any subsequent API call gets a rate-limit response with a
@@ -220,6 +226,8 @@ test('clear cache button empties IDB and forces fresh API call on re-hover', asy
   context,
   extensionId,
 }) => {
+  await mockLocationApis(page, { account_based_in: 'Germany' })
+
   // Hover to populate IDB for sotaproject.
   await hoverOwnTweet(page, 'sotaproject')
 
@@ -269,6 +277,8 @@ test('clear cache button empties IDB and forces fresh API call on re-hover', asy
 test('second hover uses checkedThisSession cache — no repeat API call', async ({
   page,
 }) => {
+  await mockLocationApis(page, { account_based_in: 'Germany' })
+
   // First hover: populates checkedThisSession and IDB for this username.
   await hoverOwnTweet(page, 'sotaproject')
 

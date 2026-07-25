@@ -6,10 +6,15 @@
  *   OldRoberts953 — "nft" only appears inside a longer word → must NOT highlight
  *                   (regression test for the word-boundary false-positive bug)
  *
+ * The last test covers the per-account escape hatch: the "🚫 Don't highlight"
+ * button on the hover card, which adds the account to HIGHLIGHT_EXCEPTIONS_KEY
+ * so shouldHighlight() returns false even while the keyword still matches.
+ *
  * All x.com traffic is recorded/replayed via HAR (see fixtures.ts).
  */
-import type { BrowserContext } from '@playwright/test'
+import type { BrowserContext, Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
+import { readCachedBio } from './helpers'
 
 const MRNFT_TWEET = 'https://x.com/MRNFT_X/status/2053116341926629624'
 const OLD_ROBERTS_TWEET =
@@ -59,9 +64,133 @@ test('keyword does not highlight when it only appears inside a longer word (regr
   await expect(authorArticle).not.toHaveAttribute('data-x-loc-highlighted')
 })
 
+test('highlight exception button un-highlights the account, and undoes cleanly', async ({
+  page,
+  context,
+  extensionId,
+}) => {
+  await page.goto(MRNFT_TWEET)
+  await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 })
+
+  const authorArticle = page.locator(
+    'article[data-testid="tweet"][tabindex="-1"]',
+  )
+  await authorArticle.waitFor({ timeout: 10_000 })
+
+  // Keyword comes from whatever bio the recording captured — any word in it
+  // highlights, and a literal would rot the day the account edits its bio.
+  const bio = await readCachedBio(page, 'MRNFT_X')
+  const keyword = pickBioWord(bio)
+  if (!keyword) throw new Error(`no usable word in @MRNFT_X's bio: ${bio}`)
+
+  await addKeyword(context, extensionId, keyword)
+  await expect(authorArticle).toHaveAttribute('data-x-loc-highlighted', {
+    timeout: 5_000,
+  })
+
+  // X opens no hover card for the account the page is about, so the button is
+  // injected inline under the name line instead (syncPrimaryExceptionButton).
+  const excBtn = authorArticle.locator('.x-loc-exc-btn')
+  await expect(excBtn).toBeVisible({ timeout: 10_000 })
+  await expect(excBtn).toHaveText("🚫 Don't highlight")
+
+  // Excepted: the keyword still matches, the account is just spared.
+  await excBtn.click()
+  await expect(authorArticle).not.toHaveAttribute('data-x-loc-highlighted', {
+    timeout: 5_000,
+  })
+  await expect(excBtn).toHaveText('✓ Highlight exception (undo)')
+
+  // Same button undoes it — the exception is a toggle, not a one-way door.
+  await excBtn.click()
+  await expect(authorArticle).toHaveAttribute('data-x-loc-highlighted', {
+    timeout: 5_000,
+  })
+})
+
+test('highlight exception button works the same from a reply hover card', async ({
+  page,
+  context,
+  extensionId,
+}) => {
+  await page.goto(MRNFT_TWEET)
+  await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 })
+
+  // Replies keep the original path honest: they get a real hover card, so the
+  // button comes from processCard() rather than the inline injection above.
+  const target = await pickHighlightableReply(page)
+
+  await addKeyword(context, extensionId, target.keyword)
+  await expect(target.article).toHaveAttribute('data-x-loc-highlighted', {
+    timeout: 5_000,
+  })
+
+  // processCard() only builds the button for accounts that match a rule, so its
+  // presence already says the hover card agreed the keyword hit.
+  await target.link.hover()
+  const excBtn = page.locator('[data-testid="HoverCard"] .x-loc-exc-btn')
+  await expect(excBtn).toBeVisible({ timeout: 10_000 })
+  await expect(excBtn).toHaveText("🚫 Don't highlight")
+
+  await excBtn.click()
+  await expect(target.article).not.toHaveAttribute('data-x-loc-highlighted', {
+    timeout: 5_000,
+  })
+  await expect(excBtn).toHaveText('✓ Highlight exception (undo)')
+
+  await excBtn.click()
+  await expect(target.article).toHaveAttribute('data-x-loc-highlighted', {
+    timeout: 5_000,
+  })
+})
+
 // ---------------------------------------------------------------------------
-// Options-page helpers
+// Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Any reply whose author the extension has a bio for, plus a keyword taken from
+ * that bio. Which reply that is shifts between recordings — and a reply with no
+ * bio can't be highlighted — so it is discovered rather than pinned to an index.
+ */
+async function pickHighlightableReply(page: Page): Promise<{
+  article: Locator
+  link: Locator
+  keyword: string
+}> {
+  const articles = page.locator('article[data-testid="tweet"]')
+  await articles.nth(1).waitFor({ timeout: 15_000 })
+
+  const count = await articles.count()
+  for (let i = 0; i < Math.min(count, 6); i++) {
+    const article = articles.nth(i)
+    // Skip the tweet the page is about — it has no hover card.
+    if ((await article.getAttribute('tabindex')) === '-1') continue
+
+    const link = article
+      .locator('[data-testid="User-Name"] a[href^="/"]:not([href*="/status/"])')
+      .first()
+    if ((await link.count()) === 0) continue
+
+    const href = (await link.getAttribute('href')) ?? ''
+    const screenName = href.replace(/^\//, '').split('/')[0]
+    if (!screenName) continue
+
+    const keyword = pickBioWord(await readCachedBio(page, screenName))
+    if (keyword) return { article, link, keyword }
+  }
+  throw new Error('no reply with a cached bio in this recording')
+}
+
+/**
+ * Longest run of letters in the bio — longest so the keyword is distinctive, and
+ * letters-only so it can't land on an emoji or a fragment of a URL. Grapheme-aware
+ * matching in the extension treats it as a standalone word either way.
+ */
+function pickBioWord(bio: string | null): string | undefined {
+  const words = bio?.toLowerCase().match(/\p{L}{3,}/gu) ?? []
+  return words.sort((a, b) => b.length - a.length)[0]
+}
 
 async function addKeyword(
   context: BrowserContext,
