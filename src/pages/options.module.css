@@ -182,6 +182,22 @@
   cursor: not-allowed;
 }
 
+.modeSelect {
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+  font-family: inherit;
+  color: #111;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+}
+
+.modeSelect:focus {
+  border-color: #93c5fd;
+}
+
 .empty {
   color: #9ca3af;
   font-size: 12px;

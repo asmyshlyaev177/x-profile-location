@@ -3,8 +3,12 @@ import { cleanupCache, clearAllCache, getCached, mergeCached } from './cache'
 import { matchesAnyKeyword, setKeywords } from './keywords'
 import type { LocationData } from './cache'
 import {
+  BACKGROUND_PREFETCH_KEY,
   BLOCKED_COUNTRIES_KEY,
   COUNTRY_FLAGS,
+  HIDE_BLOCKED_LOCATIONS_KEY,
+  type HideBlockedMode,
+  normalizeHideBlockedMode,
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
@@ -14,13 +18,14 @@ import {
   SHOW_EXCEPTION_BUTTON_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
 } from './countries'
-import { isMobile } from './device'
 import { EVENTS, X_GRAPHQL_PATH } from './constants'
 import {
   contributeLocation,
+  flushContributions,
   setSharedCacheEnabled,
   sharedBatchLookup,
 } from './shared-cache'
+import { BackgroundPrefetcher } from './prefetch-queue'
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA'
 const API_BASE = `https://${X_GRAPHQL_PATH}`
@@ -34,6 +39,11 @@ const SEL_TWEET = 'article[data-testid="tweet"]'
 const SEL_PRIMARY_TWEET = `${SEL_TWEET}[tabindex="-1"]`
 const PRIMARY_TWEET_ATTR = 'data-x-loc-primary-done'
 const QUOTE_HIGHLIGHT_ATTR = 'data-x-loc-quote-highlighted'
+// Set on tweets collapsed by the "hide blocked locations" feature; a user "Show"
+// click swaps it for HIDDEN_REVEALED_ATTR so the tweet is never re-hidden.
+const HIDDEN_ATTR = 'data-x-loc-hidden'
+const HIDDEN_REVEALED_ATTR = 'data-x-loc-revealed'
+const HIDDEN_PLACEHOLDER_CLASS = 'x-loc-hidden-ph'
 const RESET_DEFAULT = 60 * 5 * 1000
 const RE_SCREEN_NAME_HREF = /^\/([A-Za-z0-9_]{1,50})$/
 const RE_AT_MENTION = /^@[A-Za-z0-9_]{1,50}$/
@@ -49,10 +59,17 @@ let highlightFlagsEnabled = false
 let highlightFlagsThreshold = 2
 let highlightFlagsUniqueOnly = false
 let showLocationInFeed = false
+// How to treat tweets whose author's location is on the blocked list. Starts
+// 'off' only as a pre-load placeholder (so nothing is hidden on a guess before
+// settings arrive); the persisted default is 'collapse' — see
+// normalizeHideBlockedMode, applied on the storage load below.
+let hideMode: HideBlockedMode = 'off'
 // Lowercased usernames excluded from keyword/flag highlighting.
 let highlightExceptions = new Set<string>()
 // Whether to render the "Don't highlight" toggle on hover cards.
 let showExceptionButton = true
+// Whether background location prefetching runs (options toggle; default on).
+let prefetchEnabled = true
 
 chrome.storage.local
   .get([
@@ -63,6 +80,8 @@ chrome.storage.local
     HIGHLIGHT_EXCEPTIONS_KEY,
     SHOW_EXCEPTION_BUTTON_KEY,
     SHARED_CACHE_KEY,
+    HIDE_BLOCKED_LOCATIONS_KEY,
+    BACKGROUND_PREFETCH_KEY,
   ])
   .then((result) => {
     const r = result as Record<string, unknown>
@@ -83,11 +102,9 @@ chrome.storage.local
     highlightFlagsEnabled = flags?.enabled ?? false
     highlightFlagsThreshold = flags?.threshold ?? 2
     highlightFlagsUniqueOnly = flags?.uniqueOnly ?? false
-    // Default to true on mobile when the user hasn't explicitly set the preference yet
-    showLocationInFeed =
-      SHOW_LOCATION_IN_FEED_KEY in r
-        ? Boolean(r[SHOW_LOCATION_IN_FEED_KEY])
-        : isMobile
+    // Off by default — the user opts in from the options page. (Mobile users can
+    // still swipe-right on any tweet to reveal a location without this enabled.)
+    showLocationInFeed = Boolean(r[SHOW_LOCATION_IN_FEED_KEY])
     highlightExceptions = new Set<string>(
       Array.isArray(r[HIGHLIGHT_EXCEPTIONS_KEY])
         ? (r[HIGHLIGHT_EXCEPTIONS_KEY] as string[]).map((u) => u.toLowerCase())
@@ -97,6 +114,9 @@ chrome.storage.local
       SHOW_EXCEPTION_BUTTON_KEY in r
         ? Boolean(r[SHOW_EXCEPTION_BUTTON_KEY])
         : true
+    hideMode = normalizeHideBlockedMode(r[HIDE_BLOCKED_LOCATIONS_KEY])
+    prefetchEnabled =
+      BACKGROUND_PREFETCH_KEY in r ? Boolean(r[BACKGROUND_PREFETCH_KEY]) : true
     // Shared community cache is opt-in and defaults on; inert unless a server
     // URL is configured (see CACHE_API_BASE in constants.ts).
     setSharedCacheEnabled(
@@ -110,6 +130,8 @@ chrome.storage.local
     // locations appear on initial load rather than only after a scroll.
     rehighlightAll()
     refreshFeedLocations()
+    refreshHiddenTweets()
+    syncPrefetcher()
     window.dispatchEvent(new CustomEvent(EVENTS.REQUEST_USERS))
   })
 
@@ -118,6 +140,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes[BLOCKED_COUNTRIES_KEY]) {
     const next = changes[BLOCKED_COUNTRIES_KEY].newValue
     blockedCountries = new Set<string>(Array.isArray(next) ? next : [])
+    // Editing the list can newly block (or unblock) locations already on screen.
+    refreshHiddenTweets()
   }
   if (changes[HIGHLIGHT_KEYWORDS_KEY]) {
     const next = changes[HIGHLIGHT_KEYWORDS_KEY].newValue
@@ -139,6 +163,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes[SHOW_LOCATION_IN_FEED_KEY]) {
     showLocationInFeed = Boolean(changes[SHOW_LOCATION_IN_FEED_KEY].newValue)
     refreshFeedLocations()
+    syncPrefetcher()
   }
   if (changes[HIGHLIGHT_EXCEPTIONS_KEY]) {
     const next = changes[HIGHLIGHT_EXCEPTIONS_KEY].newValue
@@ -152,6 +177,17 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
   if (changes[SHARED_CACHE_KEY]) {
     setSharedCacheEnabled(Boolean(changes[SHARED_CACHE_KEY].newValue))
+  }
+  if (changes[BACKGROUND_PREFETCH_KEY]) {
+    prefetchEnabled = Boolean(changes[BACKGROUND_PREFETCH_KEY].newValue)
+    syncPrefetcher()
+  }
+  if (changes[HIDE_BLOCKED_LOCATIONS_KEY]) {
+    hideMode = normalizeHideBlockedMode(
+      changes[HIDE_BLOCKED_LOCATIONS_KEY].newValue,
+    )
+    refreshHiddenTweets()
+    syncPrefetcher()
   }
 })
 
@@ -169,6 +205,25 @@ function getLocationDisplay(loc: string): {
       : { emoji: REGION_FLAGS[loc], label: loc }
   }
   return { emoji: '🌐', label: loc }
+}
+
+// Which blocked location (if any) a profile should be hidden for, or null.
+// The App Store / Play Store country is the primary signal — the store region is
+// hard to fake, so it's trusted over the stated account location. When there's no
+// store signal, fall back to `account_based_in`, but only when it isn't flagged
+// as inaccurate (VPN), since a VPN-masked location can't be trusted either way.
+function effectiveBlockedLocation(data: LocationData): string | null {
+  const mobileSource = RE_MOBILE_SOURCE.test(data.source ?? '')
+  const sourceCountry = mobileSource
+    ? data.source?.replace(RE_MOBILE_SOURCE_STRIP, '').trim() || null
+    : null
+  if (sourceCountry) {
+    return blockedCountries.has(sourceCountry) ? sourceCountry : null
+  }
+  if (data.location && data.locationAccurate !== false) {
+    return blockedCountries.has(data.location) ? data.location : null
+  }
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -205,6 +260,60 @@ const checkedThisSession = new Set<string>()
 const pendingMap = new NormalizedMap<Promise<LocationData | null>>()
 let rateLimitResetAt = 0
 let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null
+
+// Live AboutAccountQuery budget. Seeded at the limit and decremented on EVERY
+// network request — manual hover, primary tweet, swipe, OR background prefetch —
+// via noteRequestSent, then corrected from the authoritative x-rate-limit-*
+// response headers. Tracking *all* usage (not just prefetch) is what lets the
+// prefetcher stop before it eats into the user's reserved half of the window.
+let rateWindowLimit = 50
+let rateWindowRemaining = 50
+let rateWindowResetAt = 0
+
+// Once X's reset time has passed, the window has rolled and the budget is full.
+function rollRateWindowIfElapsed(): void {
+  if (rateWindowResetAt !== 0 && Date.now() >= rateWindowResetAt) {
+    rateWindowRemaining = rateWindowLimit
+    rateWindowResetAt = 0
+  }
+}
+
+// Single choke point, called just before every network AboutAccountQuery, so
+// in-flight usage is counted optimistically; readRateHeaders makes it exact once
+// the response lands.
+function noteRequestSent(): void {
+  rollRateWindowIfElapsed()
+  if (rateWindowRemaining > 0) rateWindowRemaining -= 1
+}
+
+function readRateHeaders(resp: Response): void {
+  const lim = resp.headers.get('x-rate-limit-limit')
+  const rem = resp.headers.get('x-rate-limit-remaining')
+  const rst = resp.headers.get('x-rate-limit-reset')
+  if (lim) {
+    const n = parseInt(lim)
+    if (n > 0) rateWindowLimit = n
+  }
+  if (rem !== null) {
+    const n = parseInt(rem)
+    if (!Number.isNaN(n)) rateWindowRemaining = n
+  }
+  if (rst) {
+    const n = parseInt(rst)
+    if (n > 0) rateWindowResetAt = n * 1000
+  }
+}
+
+// Snapshot for the prefetcher's budget.
+function currentRateState() {
+  rollRateWindowIfElapsed()
+  return {
+    remaining: rateWindowRemaining,
+    limit: rateWindowLimit,
+    resetAt: rateLimitResetAt,
+    windowResetAt: rateWindowResetAt,
+  }
+}
 
 // Bio/displayName captured from timeline JSON this session, kept in memory so
 // highlighting reads them synchronously the instant they arrive — never waiting
@@ -406,11 +515,13 @@ export async function fetchLocationData(
         if (ct0) headers['x-csrf-token'] = ct0
       }
 
+      noteRequestSent()
       const resp = await fetch(url, {
         method: 'GET',
         headers,
         credentials: 'include',
       })
+      readRateHeaders(resp)
 
       if (resp.status === 429) {
         const reset = resp.headers.get('x-rate-limit-reset')
@@ -592,6 +703,45 @@ article[data-x-loc-highlighted] {
   color: rgb(0, 150, 80);
   border-color: rgba(0, 150, 80, 0.5);
   background: rgba(0, 150, 80, 0.08);
+}
+article[${HIDDEN_ATTR}='hide'] {
+  display: none !important;
+}
+article[${HIDDEN_ATTR}='collapse'] > :not(.${HIDDEN_PLACEHOLDER_CLASS}) {
+  display: none !important;
+}
+.${HIDDEN_PLACEHOLDER_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: rgb(113, 118, 123);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+}
+.x-loc-hidden-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.x-loc-hidden-show {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.2;
+  color: rgb(29, 155, 240);
+  background: transparent;
+  border: 1px solid rgba(29, 155, 240, 0.5);
+  border-radius: 9999px;
+  padding: 3px 12px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.x-loc-hidden-show:hover {
+  background: rgba(29, 155, 240, 0.1);
 }
 `
   ;(document.head || document.documentElement).appendChild(style)
@@ -882,6 +1032,112 @@ function refreshFeedLocations() {
 }
 
 // ---------------------------------------------------------------------------
+// Hide tweets from blocked locations
+// ---------------------------------------------------------------------------
+// Collapse the tweet behind a slim placeholder rather than removing it: keeps a
+// visible, reversible trace and avoids fighting X's virtualised timeline (React
+// owns the tweet nodes; a foreign data-attribute + CSS survives its re-renders,
+// same approach as highlighting).
+function buildHiddenPlaceholder(article: Element, label: string): HTMLElement {
+  const ph = document.createElement('div')
+  ph.className = HIDDEN_PLACEHOLDER_CLASS
+
+  const flag = COUNTRY_FLAGS[label] ?? REGION_FLAGS[label] ?? '🌐'
+  const labelEl = document.createElement('span')
+  labelEl.className = 'x-loc-hidden-label'
+  labelEl.textContent = `🚫 Hidden · ${flag} ${label}`
+
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.className = 'x-loc-hidden-show'
+  btn.textContent = 'Show'
+  btn.title = `Reveal this tweet from ${label}`
+  btn.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    revealArticle(article)
+  })
+
+  ph.appendChild(labelEl)
+  ph.appendChild(btn)
+  return ph
+}
+
+function hideArticle(article: Element, label: string): void {
+  if (article.hasAttribute(HIDDEN_REVEALED_ATTR)) return
+
+  if (hideMode === 'hide') {
+    // Silent: CSS collapses the whole article, no placeholder.
+    article.setAttribute(HIDDEN_ATTR, 'hide')
+    return
+  }
+
+  // collapse: re-inject the placeholder if a React re-render dropped it but left
+  // our attr; otherwise mark and inject once.
+  if (article.getAttribute(HIDDEN_ATTR) === 'collapse') {
+    if (!article.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)) {
+      article.appendChild(buildHiddenPlaceholder(article, label))
+    }
+    return
+  }
+  article.setAttribute(HIDDEN_ATTR, 'collapse')
+  article.appendChild(buildHiddenPlaceholder(article, label))
+}
+
+// User clicked "Show" on a collapsed tweet: reveal it and never re-hide it (the
+// marker lives only as long as this DOM node, which X recycles on scroll).
+function revealArticle(article: Element): void {
+  article.removeAttribute(HIDDEN_ATTR)
+  article.setAttribute(HIDDEN_REVEALED_ATTR, '1')
+  article.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
+}
+
+async function tryHideArticle(article: Element) {
+  if (hideMode === 'off') return
+  if (article.matches(SEL_PRIMARY_TWEET)) return
+  if (article.hasAttribute(HIDDEN_REVEALED_ATTR)) return
+  if (article.hasAttribute(HIDDEN_ATTR)) return
+
+  const { userName } = extractTweetUserInfo(article)
+  if (!userName) return
+
+  const data = await getCached(userName)
+  const label = data ? effectiveBlockedLocation(data) : null
+  if (label) hideArticle(article, label)
+}
+
+// Hide every on-screen tweet by this user once their location is known (e.g. a
+// shared-cache hit or a hover lookup resolved it), mirroring
+// injectFeedLocationForUser.
+function hideTweetsForUser(userName: string, data: LocationData): void {
+  if (hideMode === 'off') return
+  const label = effectiveBlockedLocation(data)
+  if (!label) return
+  const lc = userName.toLowerCase()
+  document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
+    if (article.matches(SEL_PRIMARY_TWEET)) return
+    if (article.hasAttribute(HIDDEN_REVEALED_ATTR)) return
+    if (article.hasAttribute(HIDDEN_ATTR)) return
+    if (extractTweetUserInfo(article).userName?.toLowerCase() !== lc) return
+    hideArticle(article, label)
+  })
+}
+
+// Re-evaluate every on-screen tweet: unhide first (the mode changed, or a
+// location was removed from the list), then re-hide if still applicable.
+// User-revealed tweets are left alone.
+function refreshHiddenTweets() {
+  const articles = Array.from(document.querySelectorAll<Element>(SEL_TWEET))
+  articles.forEach((a) => {
+    if (a.hasAttribute(HIDDEN_ATTR)) {
+      a.removeAttribute(HIDDEN_ATTR)
+      a.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
+    }
+    if (hideMode !== 'off') void tryHideArticle(a)
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Extract screen name from hover card
 // ---------------------------------------------------------------------------
 function extractScreenName(card: Element): string | null {
@@ -1086,6 +1342,7 @@ async function processCard(card: Element) {
   const row = buildInfoRow(data)
   insertIntoCard(card, userName, row)
   injectFeedLocationForUser(userName, data)
+  hideTweetsForUser(userName, data)
 }
 
 // ---------------------------------------------------------------------------
@@ -1158,10 +1415,12 @@ function startObserver() {
       if (node.matches(SEL_TWEET)) {
         tryHighlightArticle(node)
         tryInjectFeedLocation(node)
+        tryHideArticle(node)
       } else {
         node.querySelectorAll<Element>(SEL_TWEET).forEach((t) => {
           tryHighlightArticle(t)
           tryInjectFeedLocation(t)
+          tryHideArticle(t)
         })
       }
     }
@@ -1246,6 +1505,8 @@ window.addEventListener(EVENTS.HEADERS_CAPTURED, (e: Event) => {
   const headers = (e as CustomEvent).detail?.headers
   if (headers?.authorization) {
     apiHeaders = headers
+    // Auth just became available — a wanted prefetcher can start now.
+    syncPrefetcher()
   }
 })
 
@@ -1261,8 +1522,44 @@ async function applySharedHits(userNames: string[]) {
   for (const hit of hits) {
     await mergeCached(hit.userName, hit.data)
     const full = await getCached(hit.userName)
-    if (full) injectFeedLocationForUser(hit.userName, full)
+    if (full) {
+      injectFeedLocationForUser(hit.userName, full)
+      hideTweetsForUser(hit.userName, full)
+    }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Background location prefetcher
+// ---------------------------------------------------------------------------
+// Trickle location lookups for on-screen accounts (most-followed first) using at
+// most half the rate-limit window, so feed-location display and hide-by-location
+// fill in without the user hovering every profile. See prefetch-queue.ts.
+const prefetcher = new BackgroundPrefetcher({
+  fetch: async (userName) => {
+    const data = await fetchLocationData(userName)
+    if (data) {
+      injectFeedLocationForUser(userName, data)
+      hideTweetsForUser(userName, data)
+    }
+  },
+  isKnown: async (userName) => {
+    if (checkedThisSession.has(userName.toLowerCase())) return true
+    const cached = await getCached(userName)
+    return Boolean(cached && (cached.location || cached.source))
+  },
+  rateState: currentRateState,
+})
+
+// Runs whenever enabled (options toggle, default on) and auth headers exist —
+// independent of feed display, because a key purpose is warming the shared
+// community cache so everyone sees flags without a per-profile X call.
+function prefetchWanted(): boolean {
+  return prefetchEnabled && apiHeaders !== null
+}
+function syncPrefetcher(): void {
+  if (prefetchWanted()) prefetcher.start()
+  else prefetcher.stop()
 }
 
 window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
@@ -1271,10 +1568,18 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
         userName: string
         displayName: string | null
         bio: string | null
+        followers?: number
       }>
     | undefined
   if (!users) return
   void applySharedHits(users.map((u) => u.userName))
+  // Queue whenever prefetch is enabled (even before auth headers arrive); the
+  // prefetcher only starts draining once syncPrefetcher() sees headers.
+  if (prefetchEnabled) {
+    prefetcher.enqueue(
+      users.map((u) => ({ userName: u.userName, followers: u.followers ?? 0 })),
+    )
+  }
   for (const { userName, displayName, bio } of users) {
     // Record bio/displayName synchronously so highlighting can read them
     // immediately — before, and independent of, the async mergeCached write.
@@ -1307,6 +1612,12 @@ injectStyles()
 startObserver()
 startSwipeListener()
 cleanupCache()
+// Send any buffered community-cache contributions before the tab goes away, so
+// the long 30s batching window doesn't strand a batch until the next session.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushContributions()
+})
+window.addEventListener('pagehide', () => flushContributions())
 // Replay auth headers captured before this content script (document_idle)
 // attached its listener. (The parallel REQUEST_USERS replay for bios is fired
 // from the settings-load callback above instead — it must wait until keywords

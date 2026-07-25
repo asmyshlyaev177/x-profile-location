@@ -32,6 +32,7 @@ vi.mock('./shared-cache', () => ({
   sharedBatchLookup: vi.fn().mockResolvedValue([]),
   contributeLocation: vi.fn(),
   setSharedCacheEnabled: vi.fn(),
+  flushContributions: vi.fn(),
 }))
 
 import { fetchLocationData, setApiHeaders, __testResetState } from './content'
@@ -1261,5 +1262,195 @@ describe('injectFeedLocationForUser — via hover card fetch', () => {
     await flushAsync()
 
     expect(article.querySelectorAll('.x-loc-feed-row')).toHaveLength(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Hide tweets from blocked locations
+// ---------------------------------------------------------------------------
+function setBlockedCountries(list: string[]) {
+  onChangedCallback({ blockedCountries: { newValue: list } }, 'local')
+}
+function setHideMode(mode: 'off' | 'collapse' | 'hide') {
+  onChangedCallback({ hideBlockedLocations: { newValue: mode } }, 'local')
+}
+
+describe('hide tweets by blocked location', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    __testResetState()
+    document.body.innerHTML = ''
+    setBlockedCountries(['India', 'Nigeria', 'Africa'])
+    setHideMode('collapse')
+    await flushAsync()
+  })
+
+  afterEach(() => {
+    setHideMode('off')
+    setBlockedCountries([])
+  })
+
+  it('collapses a tweet whose cached location is blocked', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('inuser')
+    document.body.appendChild(article)
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    const ph = article.querySelector('.x-loc-hidden-ph')
+    expect(ph).not.toBeNull()
+    expect(ph?.textContent).toContain('India')
+    expect(article.querySelector('.x-loc-hidden-show')).not.toBeNull()
+  })
+
+  it('does not hide when the location is not on the blocked list', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Germany',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('deuser')
+    document.body.appendChild(article)
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+    expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
+  })
+
+  it('uses App Store country as the primary signal over the stated location', async () => {
+    // Account claims United States, but the store region (India) is blocked.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'United States',
+      locationAccurate: true,
+      source: 'India App Store',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('vpnuser')
+    document.body.appendChild(article)
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    expect(article.querySelector('.x-loc-hidden-ph')?.textContent).toContain(
+      'India',
+    )
+  })
+
+  it('does not hide on a VPN-inaccurate location with no store signal', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: false,
+      source: null,
+      bio: null,
+    })
+
+    const article = makeTweetArticle('vpnindia')
+    document.body.appendChild(article)
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+  })
+
+  it('does not hide the primary tweet on a status page', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('inuser', 'In User', true)
+    document.body.appendChild(article)
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+  })
+
+  it('does not hide in "off" mode', async () => {
+    setHideMode('off')
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('inuser2')
+    document.body.appendChild(article)
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+  })
+
+  it('"hide" mode collapses the whole article with no placeholder', async () => {
+    setHideMode('hide')
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Nigeria',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('nguser')
+    document.body.appendChild(article)
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('hide')
+    expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
+  })
+
+  it('"Show" reveals the tweet and it is never re-hidden', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('revealme')
+    document.body.appendChild(article)
+    await flushAsync()
+
+    const showBtn =
+      article.querySelector<HTMLButtonElement>('.x-loc-hidden-show')
+    expect(showBtn).not.toBeNull()
+    showBtn!.click()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+    expect(article.getAttribute('data-x-loc-revealed')).toBe('1')
+    expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
+
+    // A subsequent re-scan (e.g. mode re-applied) must not re-hide it.
+    setHideMode('collapse')
+    await flushAsync()
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+  })
+
+  it('unhides everything when the mode is switched off', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('toggleoff')
+    document.body.appendChild(article)
+    await flushAsync()
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+
+    setHideMode('off')
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+    expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
   })
 })

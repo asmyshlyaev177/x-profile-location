@@ -26,7 +26,12 @@ export const MIN_CONFIDENCE = 1
 
 const NEG_TTL_MS = 60 * 60 * 1000 // remember "server had nothing" for 1h
 const QUERIED_TTL_MS = 15 * 60 * 1000 // don't re-query the same name within 15m
-const FLUSH_DELAY_MS = 2000
+// Contributions are buffered and sent as one batched POST. A long window keeps the
+// request count low even while the background prefetcher trickles in dozens of
+// results over a session — they ride out together (or sooner if MAX_CONTRIB is
+// hit, or the tab is hidden; see flushContributions). Sharing is best-effort, so a
+// 30s delay before a result reaches the server is harmless.
+export const FLUSH_DELAY_MS = 30_000
 const MAX_CONTRIB = 50
 const MAX_LOOKUP = 100
 const CLIENT_ID_KEY = 'sharedCacheClientId'
@@ -255,6 +260,8 @@ async function flush(): Promise<void> {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ clientId, entries }),
       credentials: 'omit',
+      // Let a flush triggered as the tab unloads still reach the server.
+      keepalive: true,
     })
     if (!resp.ok) {
       noteFailure()
@@ -265,6 +272,15 @@ async function flush(): Promise<void> {
     // best-effort; drop on failure
     noteFailure()
   }
+}
+
+/**
+ * Force any buffered contributions out now (best-effort). Called when the tab is
+ * being hidden or closed, so the long batching window (FLUSH_DELAY_MS) doesn't
+ * strand a batch until the next session. No-op when the buffer is empty.
+ */
+export function flushContributions(): void {
+  void flush()
 }
 
 /** Test-only: reset in-memory caches/buffers. */

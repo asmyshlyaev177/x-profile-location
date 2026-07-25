@@ -2,8 +2,12 @@ import { render } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import {
+  BACKGROUND_PREFETCH_KEY,
   BLOCKED_COUNTRIES_KEY,
   COUNTRY_FLAGS,
+  HIDE_BLOCKED_LOCATIONS_KEY,
+  type HideBlockedMode,
+  normalizeHideBlockedMode,
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
@@ -56,6 +60,8 @@ function Options() {
   const [exceptionFilter, setExceptionFilter] = useState('')
   const [showExceptionButton, setShowExceptionButton] = useState(true)
   const [sharedCacheEnabled, setSharedCacheEnabled] = useState(true)
+  const [prefetchEnabled, setPrefetchEnabled] = useState(true)
+  const [hideMode, setHideMode] = useState<HideBlockedMode>('off')
   const [cacheCleared, setCacheCleared] = useState(false)
 
   async function handleClearCache() {
@@ -74,6 +80,8 @@ function Options() {
         HIGHLIGHT_EXCEPTIONS_KEY,
         SHOW_EXCEPTION_BUTTON_KEY,
         SHARED_CACHE_KEY,
+        HIDE_BLOCKED_LOCATIONS_KEY,
+        BACKGROUND_PREFETCH_KEY,
       ])
       .then((result) => {
         setBlocked(
@@ -99,6 +107,14 @@ function Options() {
         )
         setSharedCacheEnabled(
           SHARED_CACHE_KEY in result ? Boolean(result[SHARED_CACHE_KEY]) : true,
+        )
+        setPrefetchEnabled(
+          BACKGROUND_PREFETCH_KEY in result
+            ? Boolean(result[BACKGROUND_PREFETCH_KEY])
+            : true,
+        )
+        setHideMode(
+          normalizeHideBlockedMode(result[HIDE_BLOCKED_LOCATIONS_KEY]),
         )
       })
   }, [])
@@ -142,6 +158,11 @@ function Options() {
     const next = exceptions.filter((u) => u !== name)
     setExceptions(next)
     chrome.storage.local.set({ [HIGHLIGHT_EXCEPTIONS_KEY]: next })
+  }
+
+  function updateHideMode(mode: HideBlockedMode) {
+    setHideMode(mode)
+    chrome.storage.local.set({ [HIDE_BLOCKED_LOCATIONS_KEY]: mode })
   }
 
   function updateFlags(
@@ -372,6 +393,25 @@ function Options() {
         </p>
       )}
 
+      <label class={css.inlineOption}>
+        <input
+          type="checkbox"
+          checked={prefetchEnabled}
+          onChange={(e) => {
+            const next = (e.target as HTMLInputElement).checked
+            setPrefetchEnabled(next)
+            chrome.storage.local.set({ [BACKGROUND_PREFETCH_KEY]: next })
+          }}
+        />
+        <span>Prefetch locations in the background ⚡</span>
+      </label>
+      <p class={css.mobileHint}>
+        Quietly looks up locations for accounts in your feed — most-followed
+        first — so flags appear without hovering. Uses at most half the lookup
+        limit, always leaving room for your own hovers. Turn off to only look up
+        a location when you hover or swipe.
+      </p>
+
       {isSharedCacheConfigured() && (
         <>
           <label class={css.inlineOption}>
@@ -398,12 +438,38 @@ function Options() {
 
       <details class={css.accordion}>
         <summary class={css.accordionSummary}>
-          <span>Replace flags with ⚠️</span>
+          <span>Blocked locations 🚫</span>
           <span class={css.accordionArrow}>▾</span>
         </summary>
         <div class={css.accordionContent}>
           <p class={css.subtitle}>
-            Profiles from selected countries will show ⚠️ instead of their flag.
+            Profiles from selected countries show ⚠️ instead of their flag. You
+            can also collapse or hide their tweets in the feed.
+          </p>
+
+          <label class={css.controlRow}>
+            <span>Tweets from these locations:</span>
+            <select
+              class={css.modeSelect}
+              value={hideMode}
+              onChange={(e) =>
+                updateHideMode(
+                  normalizeHideBlockedMode(
+                    (e.target as HTMLSelectElement).value,
+                  ),
+                )
+              }
+            >
+              <option value="off">Show normally</option>
+              <option value="collapse">Collapse (“Show” to open)</option>
+              <option value="hide">Hide completely</option>
+            </select>
+          </label>
+          <p class={css.mobileHint}>
+            Uses the most reliable location signal — the App Store / Play Store
+            country, or the account location when it isn't flagged as VPN.
+            Applies to feed tweets whose location is already known (e.g. from
+            the community cache), never the tweet you opened.
           </p>
 
           {blocked.length > 0 && (

@@ -2,6 +2,11 @@ export interface UserBio {
   userName: string
   displayName: string | null
   bio: string | null
+  // Follower count from `legacy.followers_count`, when present. Used to
+  // prioritize background location prefetching toward more-popular accounts.
+  // Omitted (not null) when the User node carries no count, so consumers can
+  // treat a missing value as 0 and existing extract shapes stay unchanged.
+  followers?: number
 }
 
 export function extractUsers(_obj: unknown, depth = 0): UserBio[] {
@@ -21,7 +26,10 @@ export function extractUsers(_obj: unknown, depth = 0): UserBio[] {
         core?.description ??
         legacy?.description ??
         null) as string | null
-      return [{ userName, displayName, bio }]
+      const user: UserBio = { userName, displayName, bio }
+      const followers = legacy?.followers_count
+      if (typeof followers === 'number') user.followers = followers
+      return [user]
     }
     return []
   }

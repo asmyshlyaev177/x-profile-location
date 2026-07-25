@@ -244,10 +244,31 @@ export const SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed'
 export const HIGHLIGHT_EXCEPTIONS_KEY = 'highlightExceptions'
 // Whether to show the "Don't highlight" toggle button on profile hover cards.
 export const SHOW_EXCEPTION_BUTTON_KEY = 'showExceptionButton'
+// How to treat tweets whose author's location is on the blocked list (reuses
+// BLOCKED_COUNTRIES_KEY). Stores a HideBlockedMode; 'collapse' by default.
+//   'off'      — show normally
+//   'collapse' — replace with a slim placeholder that can be expanded ("Show")
+//   'hide'     — remove silently (display:none), no trace
+export const HIDE_BLOCKED_LOCATIONS_KEY = 'hideBlockedLocations'
+
+export type HideBlockedMode = 'off' | 'collapse' | 'hide'
+
+// Defaults to 'collapse' when nothing is stored. An explicitly-chosen 'off' is
+// preserved (recognized here), so the user can still fully disable hiding.
+export function normalizeHideBlockedMode(value: unknown): HideBlockedMode {
+  return value === 'off' || value === 'collapse' || value === 'hide'
+    ? value
+    : 'collapse'
+}
 // Whether to use the shared community location cache (query it on load and
 // contribute AboutAccountQuery results back). Opt-in; inert unless the server
 // URL (CACHE_API_BASE in constants.ts) is configured.
 export const SHARED_CACHE_KEY = 'sharedCacheEnabled'
+
+// Whether to prefetch locations in the background for on-screen accounts
+// (most-followed first), warming the local + community caches so flags appear
+// without hovering. Uses at most half the rate-limit window; defaults on.
+export const BACKGROUND_PREFETCH_KEY = 'backgroundPrefetch'
 
 export const DEFAULT_BLOCKED_COUNTRIES = [
   'Africa',

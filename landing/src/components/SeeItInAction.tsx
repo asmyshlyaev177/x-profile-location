@@ -62,6 +62,12 @@ export function SeeItInAction() {
             preview={<HighlightedTweetPreview />}
           />
           <Card
+            title="Hide Tweets by Location"
+            description="Collapse or fully hide tweets from blocked countries. Collapsed tweets leave a slim placeholder with a “Show” button, so nothing is silently lost. Uses the most reliable signal — app-store region, or a non-VPN location."
+            accentColor="#ef4444"
+            preview={<HiddenTweetPreview />}
+          />
+          <Card
             title="Mobile Swipe to Reveal"
             description="On touch screens, swipe right on any tweet to instantly fetch the author's location. A brief overlay confirms the country."
             accentColor="#7c3aed"
@@ -408,6 +414,54 @@ function HighlightedTweetPreview() {
             />
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function HiddenTweetPreview() {
+  return (
+    <div class="w-56 space-y-2">
+      {/* normal tweet */}
+      <div
+        class="rounded-lg border p-3"
+        style="background:#1c1e24;border-color:rgba(255,255,255,0.1);"
+      >
+        <div class="flex gap-2">
+          <div
+            class="h-6 w-6 shrink-0 rounded-full"
+            style="background:rgba(255,255,255,0.15);"
+          />
+          <div class="flex-1 space-y-1.5">
+            <div
+              class="h-2 w-20 rounded"
+              style="background:rgba(255,255,255,0.4);"
+            />
+            <div
+              class="h-1.5 w-full rounded"
+              style="background:rgba(255,255,255,0.1);"
+            />
+            <div
+              class="h-1.5 w-3/4 rounded"
+              style="background:rgba(255,255,255,0.07);"
+            />
+          </div>
+        </div>
+      </div>
+      {/* collapsed placeholder — mirrors the in-app .x-loc-hidden-ph row */}
+      <div
+        class="flex items-center gap-2 rounded-lg border px-3 py-2.5"
+        style="background:#1c1e24;border-color:rgba(255,255,255,0.1);"
+      >
+        <span class="text-sm font-semibold" style="color:rgb(113,118,123);">
+          🚫 Hidden · 🇮🇳 India
+        </span>
+        <span
+          class="ml-auto rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+          style="color:rgb(29,155,240);border:1px solid rgba(29,155,240,0.5);"
+        >
+          Show
+        </span>
       </div>
     </div>
   )

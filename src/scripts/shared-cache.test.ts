@@ -23,6 +23,7 @@ vi.hoisted(() => {
 import {
   __resetSharedCache,
   contributeLocation,
+  FLUSH_DELAY_MS,
   MIN_CONFIDENCE,
   setSharedCacheEnabled,
   sharedBatchLookup,
@@ -195,7 +196,7 @@ describe('resilience: failures, timeout, circuit breaker', () => {
     vi.stubGlobal('fetch', fetchFn)
 
     contributeLocation('dave', JP)
-    await vi.advanceTimersByTimeAsync(2000) // flush runs on the timer
+    await vi.advanceTimersByTimeAsync(FLUSH_DELAY_MS) // flush runs on the timer
 
     expect(fetchFn).toHaveBeenCalledTimes(1) // it tried, and swallowed the failure
   })
@@ -207,7 +208,7 @@ describe('contributeLocation', () => {
     const fetchFn = mockFetchJson({ ok: true })
 
     contributeLocation('Alice', JP)
-    await vi.advanceTimersByTimeAsync(2000)
+    await vi.advanceTimersByTimeAsync(FLUSH_DELAY_MS)
 
     expect(fetchFn).toHaveBeenCalledTimes(1)
     const [url, opts] = fetchFn.mock.calls[0]
@@ -225,7 +226,7 @@ describe('contributeLocation', () => {
 
     contributeLocation('alice', JP)
     contributeLocation('alice', JP)
-    await vi.advanceTimersByTimeAsync(2000)
+    await vi.advanceTimersByTimeAsync(FLUSH_DELAY_MS)
 
     expect(fetchFn).toHaveBeenCalledTimes(1)
     const body = JSON.parse(
@@ -234,13 +235,40 @@ describe('contributeLocation', () => {
     expect(body.entries).toHaveLength(1)
   })
 
+  it('batches many contributions across the window into a single POST', async () => {
+    vi.useFakeTimers()
+    const fetchFn = mockFetchJson({ ok: true })
+
+    // Mimics the prefetcher trickling results in over the batching window.
+    contributeLocation('alice', JP)
+    await vi.advanceTimersByTimeAsync(FLUSH_DELAY_MS / 3)
+    contributeLocation('bob', {
+      location: 'US',
+      locationAccurate: true,
+      source: null,
+    })
+    contributeLocation('carol', {
+      location: 'DE',
+      locationAccurate: true,
+      source: null,
+    })
+    await vi.advanceTimersByTimeAsync(FLUSH_DELAY_MS)
+
+    expect(fetchFn).toHaveBeenCalledTimes(1)
+    const body = JSON.parse(
+      (fetchFn.mock.calls[0][1] as RequestInit).body as string,
+    )
+    expect(body.entries).toHaveLength(3)
+    expect((fetchFn.mock.calls[0][1] as RequestInit).keepalive).toBe(true)
+  })
+
   it('makes no request when disabled', async () => {
     vi.useFakeTimers()
     const fetchFn = mockFetchJson({ ok: true })
     setSharedCacheEnabled(false)
 
     contributeLocation('alice', JP)
-    await vi.advanceTimersByTimeAsync(2000)
+    await vi.advanceTimersByTimeAsync(FLUSH_DELAY_MS)
 
     expect(fetchFn).not.toHaveBeenCalled()
   })

@@ -38,17 +38,18 @@ page-script.ts                      content.tsx
 
 ## Key files
 
-| File                            | Purpose                                                                                                                                                     |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/scripts/page-script.ts`    | Injected into `world: MAIN`. Wraps `fetch` + `XMLHttpRequest`. Captures auth headers; extracts bios from HomeTimeline/TweetDetail.                          |
-| `src/scripts/content.tsx`       | Content script. Listens for events from page-script, calls `AboutAccountQuery`, injects DOM rows, runs MutationObserver, handles keyword/flag highlighting. |
-| `src/scripts/extract-users.ts`  | Recursive GraphQL response walker. Finds `__typename: 'User'` nodes up to depth 20.                                                                         |
-| `src/scripts/cache.ts`          | IndexedDB wrapper (idb-keyval). 14-day TTL. Keys are lowercased usernames.                                                                                  |
-| `src/scripts/countries.ts`      | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps + storage key constants.                                                                                |
-| `src/scripts/grapheme.ts`       | Grapheme-cluster-aware substring search, used for keyword highlight matching.                                                                               |
-| `src/scripts/service-worker.ts` | Background script. Sets `blockedCountries` defaults in `chrome.storage.local` on install.                                                                   |
-| `src/pages/options.tsx`         | Preact options page: blocked countries, keyword highlights, flag-count threshold.                                                                           |
-| `src/components/Autocomplete/`  | Reusable Preact autocomplete used in the options page.                                                                                                      |
+| File                            | Purpose                                                                                                                                                                                 |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/scripts/page-script.ts`    | Injected into `world: MAIN`. Wraps `fetch` + `XMLHttpRequest`. Captures auth headers; extracts bios from HomeTimeline/TweetDetail.                                                      |
+| `src/scripts/content.tsx`       | Content script. Listens for events from page-script, calls `AboutAccountQuery`, injects DOM rows, runs MutationObserver, handles keyword/flag highlighting.                             |
+| `src/scripts/extract-users.ts`  | Recursive GraphQL response walker. Finds `__typename: 'User'` nodes up to depth 20.                                                                                                     |
+| `src/scripts/cache.ts`          | IndexedDB wrapper (idb-keyval). 14-day TTL. Keys are lowercased usernames.                                                                                                              |
+| `src/scripts/prefetch-queue.ts` | `BackgroundPrefetcher`: trickles background location lookups for on-screen accounts, most-followed first, capped at half the rate-limit window. DOM-free + unit-tested via `runOnce()`. |
+| `src/scripts/countries.ts`      | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps + storage key constants.                                                                                                            |
+| `src/scripts/grapheme.ts`       | Grapheme-cluster-aware substring search, used for keyword highlight matching.                                                                                                           |
+| `src/scripts/service-worker.ts` | Background script. Sets `blockedCountries` defaults in `chrome.storage.local` on install.                                                                                               |
+| `src/pages/options.tsx`         | Preact options page: blocked countries, keyword highlights, flag-count threshold.                                                                                                       |
+| `src/components/Autocomplete/`  | Reusable Preact autocomplete used in the options page.                                                                                                                                  |
 
 ---
 
@@ -86,6 +87,8 @@ Headers (captured from page's own requests):
 
 `source` can be `"web"`, `"Japan Android App"`, `"India App Store"`, or `null`.  
 Rate-limit response: **HTTP 429** + `x-rate-limit-reset` header (Unix seconds).
+
+**Rate limit: 50 requests / 15-minute window** (per-user, per-endpoint; measured live 2026-07-25). X returns `x-rate-limit-limit` / `x-rate-limit-remaining` / `x-rate-limit-reset` on **every** response, not just 429s — `content.tsx` reads these on each call (`readRateHeaders`) and decrements a live `rateWindowRemaining` on every request via `noteRequestSent`, so the budget reflects hovers + swipes + background prefetch together. The `BackgroundPrefetcher` uses at most **half** (25) of the window, stopping once `remaining` reaches the user's reserved share.
 
 ---
 
@@ -218,6 +221,10 @@ Call `__testResetState()` in `beforeEach` to avoid `rateLimitResetAt` / `checked
 BLOCKED_COUNTRIES_KEY = 'blockedCountries'
 HIGHLIGHT_KEYWORDS_KEY = 'highlightKeywords'
 HIGHLIGHT_FLAGS_KEY = 'highlightFlags'
+SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed' // default OFF
+HIDE_BLOCKED_LOCATIONS_KEY = 'hideBlockedLocations' // 'off' | 'collapse' | 'hide'; default 'collapse'
+BACKGROUND_PREFETCH_KEY = 'backgroundPrefetch' // default ON
+SHARED_CACHE_KEY = 'sharedCacheEnabled' // default ON (inert without CACHE_API_BASE)
 ```
 
 Default blocked regions set on install (service-worker.ts):  

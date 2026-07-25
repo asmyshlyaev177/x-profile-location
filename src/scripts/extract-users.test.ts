@@ -401,6 +401,49 @@ describe('HomeTimeline-like shape', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// followers count (used to prioritize background prefetch)
+// ---------------------------------------------------------------------------
+describe('followers count', () => {
+  it('extracts legacy.followers_count when present', () => {
+    const user = {
+      __typename: 'User',
+      core: { screen_name: 'popular' },
+      legacy: { followers_count: 322122 },
+    }
+    expect(extractUsers(user)).toEqual([
+      { userName: 'popular', displayName: null, bio: null, followers: 322122 },
+    ])
+  })
+
+  it('omits followers (not null) when the User has no count', () => {
+    const user = makeUser('nofollowers')
+    const [result] = extractUsers(user)
+    expect('followers' in result).toBe(false)
+  })
+
+  it('ignores a non-numeric followers_count', () => {
+    const user = {
+      __typename: 'User',
+      core: { screen_name: 'weird' },
+      legacy: { followers_count: '1000' },
+    }
+    const [result] = extractUsers(user)
+    expect('followers' in result).toBe(false)
+  })
+
+  it('extracts a zero follower count', () => {
+    const user = {
+      __typename: 'User',
+      core: { screen_name: 'brandnew' },
+      legacy: { followers_count: 0 },
+    }
+    expect(extractUsers(user)).toEqual([
+      { userName: 'brandnew', displayName: null, bio: null, followers: 0 },
+    ])
+  })
+})
+
 describe('TweetDetail-like shape (replies)', () => {
   it('extracts both the primary tweet author and a reply author', () => {
     const payload = {
