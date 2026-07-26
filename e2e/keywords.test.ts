@@ -14,7 +14,14 @@
  */
 import type { BrowserContext, Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
-import { readCachedBio } from './helpers'
+import {
+  openOptionsPage,
+  PRIMARY_TWEET,
+  readCachedBio,
+  setSectionOpen,
+  tweetArticles,
+  waitForReplies,
+} from './helpers'
 
 const MRNFT_TWEET = 'https://x.com/MRNFT_X/status/2053116341926629624'
 const OLD_ROBERTS_TWEET =
@@ -31,7 +38,7 @@ test('keyword highlights article when bio contains it as a standalone word, remo
   // location data are both merged into IDB — safe to trigger rehighlightAll now.
   await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 })
 
-  const authorArticle = page.locator('article[data-testid="tweet"]').first()
+  const authorArticle = tweetArticles(page).first()
   await authorArticle.waitFor({ timeout: 10_000 })
 
   await addKeyword(context, extensionId, 'nft')
@@ -54,7 +61,7 @@ test('keyword does not highlight when it only appears inside a longer word (regr
 
   await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 })
 
-  const authorArticle = page.locator('article[data-testid="tweet"]').first()
+  const authorArticle = tweetArticles(page).first()
   await authorArticle.waitFor({ timeout: 10_000 })
 
   await addKeyword(context, extensionId, 'nft')
@@ -72,9 +79,7 @@ test('highlight exception button un-highlights the account, and undoes cleanly',
   await page.goto(MRNFT_TWEET)
   await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 })
 
-  const authorArticle = page.locator(
-    'article[data-testid="tweet"][tabindex="-1"]',
-  )
+  const authorArticle = page.locator(PRIMARY_TWEET)
   await authorArticle.waitFor({ timeout: 10_000 })
 
   // Keyword comes from whatever bio the recording captured — any word in it
@@ -158,8 +163,8 @@ async function pickHighlightableReply(page: Page): Promise<{
   link: Locator
   keyword: string
 }> {
-  const articles = page.locator('article[data-testid="tweet"]')
-  await articles.nth(1).waitFor({ timeout: 15_000 })
+  const articles = tweetArticles(page)
+  await waitForReplies(page)
 
   const count = await articles.count()
   for (let i = 0; i < Math.min(count, 6); i++) {
@@ -197,8 +202,9 @@ async function addKeyword(
   extensionId: string,
   keyword: string,
 ): Promise<void> {
-  const optPage = await context.newPage()
-  await optPage.goto(`chrome-extension://${extensionId}/pages/options.html`)
+  const optPage = await openOptionsPage(context, extensionId)
+  // The input lives inside an accordion whose open/closed state persists.
+  await setSectionOpen(optPage, 'keywords', true)
 
   const input = optPage.getByPlaceholder(
     'Type a keyword or pick a suggestion...',
@@ -219,8 +225,8 @@ async function removeKeyword(
   extensionId: string,
   keyword: string,
 ): Promise<void> {
-  const optPage = await context.newPage()
-  await optPage.goto(`chrome-extension://${extensionId}/pages/options.html`)
+  const optPage = await openOptionsPage(context, extensionId)
+  await setSectionOpen(optPage, 'keywords', true)
 
   await optPage.locator(`button[title="Remove ${keyword}"]`).click()
 

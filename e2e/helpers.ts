@@ -5,6 +5,7 @@ import {
   type Page,
 } from '@playwright/test'
 import { CACHE_API_BASE } from '../src/scripts/constants'
+import { OPTIONS_SECTIONS_KEY } from '../src/scripts/countries'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -14,6 +15,56 @@ export type LocationInfo = {
   basedIn: string | null
   appStoreCountry: string | null
   isVpn: boolean
+}
+
+// ---------------------------------------------------------------------------
+// Tweet articles
+// ---------------------------------------------------------------------------
+
+/** X's tweet article — the row unit of every timeline and thread. */
+export const TWEET_ARTICLE = 'article[data-testid="tweet"]'
+/** The tweet a status page is *about*. X gives only this one tabindex="-1". */
+export const PRIMARY_TWEET = `${TWEET_ARTICLE}[tabindex="-1"]`
+
+export function tweetArticles(page: Page): Locator {
+  return page.locator(TWEET_ARTICLE)
+}
+
+/** Resolves once a second article exists, i.e. replies have rendered. */
+export async function waitForReplies(page: Page): Promise<void> {
+  await tweetArticles(page).nth(1).waitFor({ timeout: 15_000 })
+}
+
+/** tabindex, or null if the row was recycled out from under us mid-read. */
+async function tabindexOf(article: Locator): Promise<string | null> {
+  return article.getAttribute('tabindex', { timeout: 5_000 }).catch(() => null)
+}
+
+/**
+ * The nth reply (1-based) below the tweet the page is about.
+ *
+ * Counts *replies*, not articles: indexing the article list is an off-by-one
+ * trap, because a page whose own tweet is a reply renders the parent above it.
+ * Which reply a test wants is usually pinned by its HAR recording — say why at
+ * the call site.
+ */
+export async function nthReply(page: Page, n: number): Promise<Locator> {
+  const articles = tweetArticles(page)
+  // Attached, not visible: all we do here is read tabindex off each row, and a
+  // reply below the fold is in the DOM before it has a box.
+  await articles.nth(1).waitFor({ state: 'attached', timeout: 15_000 })
+
+  const count = await articles.count()
+  let seenPrimary = false
+  let replies = 0
+  for (let i = 0; i < count; i++) {
+    if ((await tabindexOf(articles.nth(i))) === '-1') {
+      seenPrimary = true
+      continue
+    }
+    if (seenPrimary && ++replies === n) return articles.nth(i)
+  }
+  throw new Error(`fewer than ${n} replies below the primary tweet`)
 }
 
 // ---------------------------------------------------------------------------
@@ -110,7 +161,7 @@ export async function navigateToTweetDetail(
 ): Promise<string> {
   await page.goto(`https://x.com/${screenName}`)
   const link = page
-    .locator(`article[data-testid="tweet"] a[href*="/${screenName}/status/" i]`)
+    .locator(`${TWEET_ARTICLE} a[href*="/${screenName}/status/" i]`)
     .first()
   await link.waitFor({ timeout: 15_000 })
   const href = await link.getAttribute('href')
@@ -178,10 +229,7 @@ export async function sortRepliesByLikes(page: Page): Promise<void> {
   await trigger.click()
   await page.getByRole('menuitem', { name: 'Likes', exact: true }).click()
   await expect(trigger).toHaveText('Likes', { timeout: 10_000 })
-  await page
-    .locator('article[data-testid="tweet"]')
-    .nth(1)
-    .waitFor({ timeout: 15_000 })
+  await waitForReplies(page)
 }
 
 /**
@@ -201,8 +249,8 @@ export async function mostLikedReply(page: Page): Promise<{
   link: Locator
   screenName: string
 }> {
-  const articles = page.locator('article[data-testid="tweet"]')
-  await articles.nth(1).waitFor({ timeout: 15_000 })
+  const articles = tweetArticles(page)
+  await waitForReplies(page)
   await sortRepliesByLikes(page)
 
   const count = await articles.count()
@@ -212,11 +260,7 @@ export async function mostLikedReply(page: Page): Promise<{
     // Every read here is bounded and forgiving: X's virtualised timeline recycles
     // rows constantly, so an article counted a moment ago may be gone by the time
     // it is read. Without a timeout such a row hangs the whole test.
-    const tabindex = await articles
-      .nth(i)
-      .getAttribute('tabindex', { timeout: 5_000 })
-      .catch(() => null)
-    if (tabindex === '-1') continue
+    if ((await tabindexOf(articles.nth(i))) === '-1') continue
 
     const href =
       (await articles
@@ -239,7 +283,7 @@ export async function mostLikedReply(page: Page): Promise<{
   // pointing at a different tweet as soon as X re-renders the list.
   const article = page
     .locator(
-      `article[data-testid="tweet"]:has([data-testid="User-Name"] a[href="/${best.screenName}" i])`,
+      `${TWEET_ARTICLE}:has([data-testid="User-Name"] a[href="/${best.screenName}" i])`,
     )
     .first()
   const link = article
@@ -271,6 +315,95 @@ export async function hoverForLocationRow(
   return card
 }
 
+/** Opens the extension's options page in its own tab. Callers close it again. */
+export async function openOptionsPage(
+  context: BrowserContext,
+  extensionId: string,
+): Promise<Page> {
+  const optPage = await context.newPage()
+  await optPage.goto(`chrome-extension://${extensionId}/pages/options.html`)
+  await optPage.locator('details').first().waitFor({ timeout: 5_000 })
+  return optPage
+}
+
+const SECTION_LABELS = {
+  keywords: 'Highlight tweets by keyword',
+  flags: 'Highlight tweets by flags',
+  exceptions: 'Highlight exceptions',
+  prefetch: 'Background lookups',
+  blocked: 'Blocked locations',
+} as const
+
+export type OptionsSection = keyof typeof SECTION_LABELS
+
+/** The <details> accordion for one options-page section. */
+export function optionsSection(page: Page, section: OptionsSection): Locator {
+  return page.locator(
+    `details:has(summary:has-text("${SECTION_LABELS[section]}"))`,
+  )
+}
+
+export async function expectSectionOpen(
+  page: Page,
+  section: OptionsSection,
+  open: boolean,
+): Promise<void> {
+  const details = optionsSection(page, section)
+  if (open)
+    await expect(details).toHaveAttribute('open', '', { timeout: 5_000 })
+  else
+    await expect(details).not.toHaveAttribute('open', /.*/, { timeout: 5000 })
+}
+
+/**
+ * Expands or collapses a section, clicking only when it isn't already that way.
+ * The state is persisted (OPTIONS_SECTIONS_KEY) and restored on load, so a blind
+ * click closes what the caller meant to open as soon as a previous test — or the
+ * default — left it open.
+ */
+export async function setSectionOpen(
+  page: Page,
+  section: OptionsSection,
+  open: boolean,
+): Promise<void> {
+  const details = optionsSection(page, section)
+  await details.waitFor({ timeout: 5_000 })
+  const isOpen = await details.evaluate((el) => (el as HTMLDetailsElement).open)
+  if (isOpen === open) return
+
+  await details.locator('summary').click()
+  await expectSectionOpen(page, section, open)
+  // <details> flips itself on click and the storage write trails the toggle
+  // handler, so returning on the DOM alone would leave a caller that reads
+  // storage — or reopens the page — racing that write.
+  await expect
+    .poll(async () => (await readStoredSections(page))?.[section], {
+      timeout: 5_000,
+    })
+    .toBe(open)
+}
+
+/** Raw OPTIONS_SECTIONS_KEY value, straight out of chrome.storage.local. */
+export async function readStoredSections(
+  page: Page,
+): Promise<Record<string, boolean> | undefined> {
+  return page.evaluate(async (key) => {
+    const result = await chrome.storage.local.get(key)
+    return result[key] as Record<string, boolean> | undefined
+  }, OPTIONS_SECTIONS_KEY)
+}
+
+/** Seeds OPTIONS_SECTIONS_KEY. The page reads it on load, so reload afterwards. */
+export async function writeStoredSections(
+  page: Page,
+  sections: Record<string, boolean>,
+): Promise<void> {
+  await page.evaluate(
+    ({ key, value }) => chrome.storage.local.set({ [key]: value }),
+    { key: OPTIONS_SECTIONS_KEY, value: sections },
+  )
+}
+
 /**
  * Flips one of the options page's checkbox settings. The page is opened and
  * closed again, which backgrounds the x.com tab briefly — locators that have to
@@ -288,7 +421,14 @@ export async function setCheckboxOption(
   const toggle = optPage
     .locator(`label:has-text("${labelText}") input[type="checkbox"]`)
     .first()
-  await toggle.waitFor({ timeout: 5_000 })
+  await toggle.waitFor({ state: 'attached', timeout: 5_000 })
+  // Settings inside a collapsed accordion are display:none and can't be clicked.
+  // Flipping `open` fires `toggle` exactly as a click does, so the page persists
+  // the section as opened — same end state as a user expanding it by hand.
+  await toggle.evaluate((el) => {
+    const details = el.closest('details')
+    if (details && !details.open) details.open = true
+  })
   await toggle.setChecked(enabled)
   // The checkbox is bound to the state the onChange writes to storage, so it
   // only reads back as `enabled` once chrome.storage.local.set has been called.
@@ -518,7 +658,7 @@ export async function hoverOwnTweet(
   // Exact href (not prefix) skips retweet attribution links.
   const usernameLink = page
     .locator(
-      `article[data-testid="tweet"] [data-testid="User-Name"] a[href="/${screenName}" i]`,
+      `${TWEET_ARTICLE} [data-testid="User-Name"] a[href="/${screenName}" i]`,
     )
     .first()
   await usernameLink.waitFor({ timeout: 15_000 })

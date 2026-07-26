@@ -55,6 +55,11 @@ export function isSharedCacheConfigured(): boolean {
   return CACHE_API_BASE.length > 0
 }
 
+/** Whether sharing is actually live — opted in *and* a server configured. */
+export function isSharedCacheEnabled(): boolean {
+  return enabled
+}
+
 // --- anonymous, per-install client id (only sent with contributions) ---------
 let clientIdPromise: Promise<string> | null = null
 function getClientId(): Promise<string> {

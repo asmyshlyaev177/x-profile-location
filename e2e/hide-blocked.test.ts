@@ -13,7 +13,14 @@
  */
 import type { BrowserContext } from '@playwright/test'
 import { test, expect } from './fixtures'
-import { mockAboutAccount, mockSharedCache, mostLikedReply } from './helpers'
+import {
+  mockAboutAccount,
+  mockSharedCache,
+  mostLikedReply,
+  openOptionsPage,
+  optionsSection,
+  setSectionOpen,
+} from './helpers'
 import { CACHE_API_BASE } from '../src/scripts/constants'
 
 const NASA_TWEET = 'https://x.com/NASAArtemis/status/2052108727839285751'
@@ -101,13 +108,16 @@ async function setHideMode(
   extensionId: string,
   mode: 'off' | 'collapse' | 'hide',
 ): Promise<void> {
-  const optPage = await context.newPage()
-  await optPage.goto(`chrome-extension://${extensionId}/pages/options.html`)
+  const optPage = await openOptionsPage(context, extensionId)
 
-  // The control sits in a collapsed <details>; a closed one can't be selected in.
-  await optPage.locator('summary:has-text("Blocked locations")').click()
+  // The control sits in a <details>; a closed one can't be selected in. Opening
+  // it via the helper rather than a bare click, because the section may already
+  // be open — by default or from stored state — and a click would close it.
+  await setSectionOpen(optPage, 'blocked', true)
 
-  const select = optPage.locator('select')
+  // Scoped to the section: the options page has more than one <select>, and a
+  // bare locator('select') breaks the day another is added.
+  const select = optionsSection(optPage, 'blocked').locator('select')
   await select.selectOption(mode)
   // The value is bound to the state the onChange writes to storage, so it only
   // reads back as `mode` once chrome.storage.local.set has been called.

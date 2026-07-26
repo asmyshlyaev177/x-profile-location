@@ -198,6 +198,17 @@
   border-color: #93c5fd;
 }
 
+.modeSelect:disabled {
+  cursor: not-allowed;
+}
+
+/* A row switched off by another setting. The control keeps its own :disabled
+   cursor; the opacity lives here so label and value dim together (and don't
+   compound into near-invisibility). */
+.optionDisabled {
+  opacity: 0.5;
+}
+
 .empty {
   color: #9ca3af;
   font-size: 12px;

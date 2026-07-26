@@ -1,5 +1,6 @@
 import { extractUsers } from './extract-users'
 import type { UserBio } from './extract-users'
+import type { PrefetchPriority } from './prefetch-queue'
 import { EVENTS, X_GRAPHQL_PATH } from './constants'
 
 ;(function () {
@@ -51,7 +52,23 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
   // ---------------------------------------------------------------------------
   // Bio extraction from timeline/tweet API responses
   // ---------------------------------------------------------------------------
-  const BIO_INTERCEPT = ['HomeTimeline', 'TweetDetail']
+  // Which GraphQL operations carry user bios, and how urgently their accounts
+  // want a location. HomeTimeline is the feed being scrolled; TweetDetail is a
+  // thread, i.e. mostly replies — many of them, mostly scrolled past. The tweet
+  // the user actually opened doesn't depend on this: content.tsx looks that one
+  // up directly (processPrimaryTweet).
+  const BIO_INTERCEPT: Array<[operation: string, priority: PrefetchPriority]> =
+    [
+      ['HomeTimeline', 'high'],
+      ['TweetDetail', 'low'],
+    ]
+
+  function interceptPriority(url: string): PrefetchPriority | null {
+    for (const [operation, priority] of BIO_INTERCEPT) {
+      if (url.includes(operation)) return priority
+    }
+    return null
+  }
 
   // page-script runs at document_start but the content script only attaches its
   // USERS_DATA listener at document_idle, so the first timeline response can be
@@ -60,25 +77,32 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
   // captured users (bounded) and replay them when the content script asks, the
   // same way headers are replayed via REQUEST_HEADERS.
   const USER_BUFFER_CAP = 500
-  const userBuffer = new Map<string, UserBio>()
+  // Users are dispatched (and buffered) carrying the priority of the response
+  // they came from, so the content script can queue each one accordingly.
+  type PrefetchUser = UserBio & { priority: PrefetchPriority }
+  const userBuffer = new Map<string, PrefetchUser>()
   let bufferUsers = true
 
-  function dispatchUsers(users: UserBio[]) {
+  function dispatchUsers(users: UserBio[], priority: PrefetchPriority) {
     if (users.length === 0) return
     // Deduplicate by userName (keep first occurrence)
     const seen = new Set<string>()
-    const unique = users.filter((u) => {
+    const unique: PrefetchUser[] = []
+    for (const u of users) {
       const key = u.userName.toLowerCase()
-      if (seen.has(key)) return false
+      if (seen.has(key)) continue
       seen.add(key)
-      return true
-    })
+      unique.push({ ...u, priority })
+    }
     if (unique.length === 0) return
     if (bufferUsers) {
       for (const u of unique) {
         const key = u.userName.toLowerCase()
+        // Whoever the account is in the feed, they stay 'high' — a later thread
+        // response must not bury them behind its replies.
+        const wasHigh = userBuffer.get(key)?.priority === 'high'
         userBuffer.delete(key) // keep most-recent value, refresh insertion order
-        userBuffer.set(key, u)
+        userBuffer.set(key, wasHigh ? { ...u, priority: 'high' } : u)
         if (userBuffer.size > USER_BUFFER_CAP) {
           userBuffer.delete(userBuffer.keys().next().value as string)
         }
@@ -106,53 +130,61 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
   // ---------------------------------------------------------------------------
   // Wrap fetch
   // ---------------------------------------------------------------------------
+
+  /** The URL of a fetch() argument, in whichever of its three forms it arrived. */
+  function requestUrl(input: RequestInfo | URL): string {
+    if (typeof input === 'string') return input
+    if (input instanceof URL) return input.href
+    return (input as Request).url
+  }
+
+  function lowercasedRecord(
+    entries: Iterable<[string, string]>,
+  ): Record<string, string> {
+    const headers: Record<string, string> = {}
+    for (const [name, value] of entries) headers[name.toLowerCase()] = value
+    return headers
+  }
+
+  /**
+   * The request's headers as lowercased name → value. fetch() takes them as a
+   * Headers, an array of pairs, or a plain object, and either on the init or
+   * (when called with a Request) on the input — so every shape lands here.
+   */
+  function requestHeaders(
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Record<string, string> {
+    const raw =
+      init?.headers ?? (input instanceof Request ? input.headers : undefined)
+    if (!raw) return {}
+    if (raw instanceof Headers) return lowercasedRecord(raw.entries())
+    if (Array.isArray(raw)) return lowercasedRecord(raw as [string, string][])
+    return lowercasedRecord(Object.entries(raw as Record<string, string>))
+  }
+
   const originalFetch = window.fetch.bind(window)
   ;(window as any).fetch = function (
     input: RequestInfo | URL,
     init?: RequestInit,
   ) {
-    const url =
-      typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.href
-          : (input as Request).url
+    const url = requestUrl(input)
 
     if (url.includes(X_GRAPHQL_PATH) && !headersCaptured) {
-      const headers: Record<string, string> = {}
-      const rawHeaders =
-        init?.headers ?? (input instanceof Request ? input.headers : undefined)
-      if (rawHeaders) {
-        if (rawHeaders instanceof Headers) {
-          rawHeaders.forEach((value: string, key: string) => {
-            headers[key.toLowerCase()] = value
-          })
-        } else if (Array.isArray(rawHeaders)) {
-          for (const [k, v] of rawHeaders) {
-            headers[(k as string).toLowerCase()] = v as string
-          }
-        } else {
-          for (const [k, v] of Object.entries(
-            rawHeaders as Record<string, string>,
-          )) {
-            headers[k.toLowerCase()] = v
-          }
-        }
-      }
-      dispatchHeaders(headers)
+      dispatchHeaders(requestHeaders(input, init))
     }
 
-    const shouldIntercept = BIO_INTERCEPT.some((p) => url.includes(p))
+    const priority = interceptPriority(url)
     const promise = originalFetch(input, init)
 
-    if (shouldIntercept) {
+    if (priority) {
       promise
         .then((response) => {
           const cloned = response.clone()
           cloned
             .json()
             .then((json: unknown) => {
-              dispatchUsers(extractUsers(json))
+              dispatchUsers(extractUsers(json), priority)
             })
             .catch(() => {})
         })
@@ -196,11 +228,12 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
       if (_url.includes(X_GRAPHQL_PATH) && !headersCaptured) {
         dispatchHeaders(_headers)
       }
-      if (BIO_INTERCEPT.some((p) => _url.includes(p))) {
+      const priority = interceptPriority(_url)
+      if (priority) {
         xhr.addEventListener('load', () => {
           try {
             const json = JSON.parse(xhr.responseText)
-            dispatchUsers(extractUsers(json))
+            dispatchUsers(extractUsers(json), priority)
           } catch {}
         })
       }

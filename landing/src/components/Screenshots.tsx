@@ -1,280 +1,276 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 
 const SCREENSHOTS = [
   {
     src: '/Hover_screenshot-x-profile-location.png',
-    label: 'Country Flag',
-    alt: 'Country flag shown in X hover card',
+    label: 'Flag on hover',
+    alt: 'An X hover card with a German flag and the word Germany added below the handle',
   },
   {
     src: '/VPN_screenshot-x-profile-location.png',
-    label: 'VPN Detection',
-    alt: 'VPN warning badge next to location flag',
-  },
-  {
-    src: '/Highlight_screenshot-x-profile-location.png',
-    label: 'Highlight',
-    alt: 'Highlight tweets by keywords in bio',
-  },
-  {
-    src: '/Warning-screenshot-x-profile-location.png',
-    label: 'Warnings',
-    alt: 'Warnings instead of selected country flags',
+    label: 'VPN warning',
+    alt: 'A hover card showing a US flag next to a red ⚠ VPN badge',
   },
   {
     src: '/Flags_screenshot-x-profile-location.png',
-    label: 'Inline flags',
-    alt: 'Inline flags',
+    label: 'Flags in the feed',
+    alt: 'A timeline where every author carries their country flag inline, without hovering',
+  },
+  {
+    src: '/Warning-screenshot-x-profile-location.png',
+    label: 'Blocked countries',
+    alt: 'Profiles from blocked locations reading as a warning sign instead of a flag',
+  },
+  {
+    src: '/Highlight_screenshot-x-profile-location.png',
+    label: 'Keyword highlight',
+    alt: 'A tweet highlighted in amber because the author bio matched a saved keyword',
   },
   {
     src: '/Highlight2_screenshot-x-profile-location.png',
-    label: 'Highlight flags',
-    alt: 'Highlight flags',
+    label: 'Flag-stuffed bios',
+    alt: 'An account flagged for packing several country flags into its bio',
   },
   {
     src: '/swipe_right.png',
-    label: 'Swipe right (mobile)',
-    alt: 'Swipe right (mobile)',
+    label: 'Swipe on mobile',
+    alt: 'A phone-width timeline with a swipe-right gesture revealing the author country as an overlay',
   },
 ]
 
+type Shot = (typeof SCREENSHOTS)[number]
+
+/**
+ * Screenshots live in public/ and so are not content-hashed by Vite. The
+ * version stamp is what lets `_headers` cache them for a year: replace a
+ * screenshot, bump the extension version, and every browser refetches.
+ */
+const v = `?v=${__EXT_VERSION__}`
+const png = (src: string) => src + v
+const webp = (src: string) => src.replace(/\.png$/, '.webp') + v
+const thumbWebp = (src: string) => src.replace(/\.png$/, '-thumb.webp') + v
+
+/** 320w WebP for a rail that renders around 128px wide. */
+function Thumb({ shot, class: cls }: { shot: Shot; class?: string }) {
+  return (
+    <picture>
+      <source srcSet={thumbWebp(shot.src)} type="image/webp" />
+      <img
+        src={png(shot.src)}
+        alt=""
+        width="160"
+        height="64"
+        class={`bg-ink-1 h-16 w-full object-cover object-top ${cls ?? ''}`}
+        loading="lazy"
+        decoding="async"
+      />
+    </picture>
+  )
+}
+
 export function Screenshots() {
   const [active, setActive] = useState(0)
-  const [lightbox, setLightbox] = useState(false)
+  const [open, setOpen] = useState(false)
+  const dialogRef = useRef<HTMLDialogElement>(null)
 
   const prev = () =>
     setActive((i) => (i - 1 + SCREENSHOTS.length) % SCREENSHOTS.length)
   const next = () => setActive((i) => (i + 1) % SCREENSHOTS.length)
 
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (!lightbox) return
-    if (e.key === 'ArrowLeft') prev()
-    if (e.key === 'ArrowRight') next()
-    if (e.key === 'Escape') setLightbox(false)
-  }
+  // <dialog> earns its keep here: top-layer rendering, a focus trap and Escape
+  // handling all come for free, and no z-index can clip it.
+  useEffect(() => {
+    const el = dialogRef.current
+    if (!el) return
+    if (open && !el.open) el.showModal()
+    if (!open && el.open) el.close()
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') prev()
+      if (e.key === 'ArrowRight') next()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open])
 
   const shot = SCREENSHOTS[active]
 
   return (
-    <section class="bg-dark border-border border-t py-24">
-      <div class="mx-auto max-w-6xl px-6 lg:px-8">
-        {/* Header */}
-        <div class="mb-12 text-center">
-          <span class="text-teal mb-4 inline-block text-xs font-semibold tracking-widest uppercase">
-            See It in Action
-          </span>
-          <h2 class="mb-4 text-4xl font-extrabold tracking-tight text-white">
-            Screenshots
-          </h2>
-          <p class="mx-auto max-w-lg text-lg text-[#a0a3ab]">
-            Screenshots of the extension running inside X.
-          </p>
-        </div>
+    <section id="proof" class="band-tight relative scroll-mt-24">
+      <div class="shell">
+        {/* This band sits narrower than the rest of the page: the source crops
+            run from 298×361 to 891×438, and a full-width panel would mat a
+            300px screenshot in half a metre of empty background. */}
+        <div class="mx-auto w-full max-w-4xl">
+          <header class="mb-10 flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
+            <h2 class="t-h2 reveal max-w-[22ch]">
+              This is it, running inside X.
+            </h2>
+            <p class="t-body reveal max-w-[34ch] text-balance">
+              Screenshots from an ordinary timeline. Pick one to see it working.
+            </p>
+          </header>
 
-        {/* Featured image */}
-        <div
-          class="border-border relative mb-4 flex items-center justify-center overflow-hidden rounded-2xl border bg-[#0d0d12]"
-          style="height:560px;box-shadow: 0 24px 80px -16px rgba(0,0,0,0.6);"
-        >
-          <img
-            key={shot.src}
-            src={shot.src}
-            alt={shot.alt}
-            class="max-h-full max-w-full object-contain"
-            loading="eager"
-            decoding="async"
-          />
-
-          {/* Caption bar */}
           <div
-            class="absolute right-0 bottom-0 left-0 flex items-center justify-between px-5 py-3"
-            style="background:linear-gradient(to top,rgba(0,0,0,0.75) 0%,transparent 100%);"
+            id={`shot-panel-${active}`}
+            role="tabpanel"
+            aria-labelledby={`shot-tab-${active}`}
+            class="bg-ink-1 border-hair relative grid h-[clamp(19rem,44vw,27rem)] place-items-center overflow-hidden rounded-2xl border p-4 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] sm:p-8"
           >
-            <span class="text-sm font-medium text-white/80">{shot.label}</span>
+            <div class="graticule opacity-40" aria-hidden="true" />
+
+            <picture key={shot.src}>
+              <source srcSet={webp(shot.src)} type="image/webp" />
+              <img
+                src={png(shot.src)}
+                alt={shot.alt}
+                width="891"
+                height="676"
+                class="border-hair/70 relative max-h-full w-auto rounded-lg border object-contain shadow-[0_18px_50px_-24px_rgba(0,0,0,0.9)]"
+                loading="lazy"
+                decoding="async"
+              />
+            </picture>
+
             <button
               type="button"
-              class="flex items-center gap-1.5 text-xs text-white/60 transition-colors hover:text-white"
-              onClick={() => setLightbox(true)}
-              aria-label="Expand screenshot"
+              class="text-faint hover:text-text bg-void/70 border-hair hover:border-hair-strong absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.75rem] font-semibold backdrop-blur-sm transition-colors"
+              onClick={() => setOpen(true)}
             >
               <svg
-                width="14"
-                height="14"
+                width="12"
+                height="12"
                 viewBox="0 0 16 16"
                 fill="currentColor"
               >
                 <path d="M1.5 1h5a.5.5 0 0 1 0 1H2v4.5a.5.5 0 0 1-1 0v-5A.5.5 0 0 1 1.5 1zm13 0a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V2h-4.5a.5.5 0 0 1 0-1h5zM1 9.5a.5.5 0 0 1 1 0V14h4.5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5v-5zm14 0v5a.5.5 0 0 1-.5.5h-5a.5.5 0 0 1 0-1H14V9.5a.5.5 0 0 1 1 0z" />
               </svg>
-              Expand
+              Full size
             </button>
+
+            <Arrow dir="prev" onClick={prev} />
+            <Arrow dir="next" onClick={next} />
           </div>
 
-          {/* Prev/next on featured */}
-          <button
-            type="button"
-            class="absolute top-1/2 left-3 -translate-y-1/2 rounded-full p-2 text-white/60 transition-all hover:bg-white/10 hover:text-white"
-            onClick={prev}
-            aria-label="Previous screenshot"
+          {/* One rail at every width: seven fit exactly on desktop, and the
+              min-width turns it into a snap-scroller on phones. */}
+          <div
+            role="tablist"
+            aria-label="Screenshots"
+            class="scrollbar-none mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1"
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            class="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-2 text-white/60 transition-all hover:bg-white/10 hover:text-white"
-            onClick={next}
-            aria-label="Next screenshot"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Thumbnail strip */}
-        <div class="grid grid-cols-5 gap-2">
-          {SCREENSHOTS.map((s, i) => (
-            <button
-              key={s.src}
-              type="button"
-              class="relative overflow-hidden rounded-lg border transition-all duration-150 focus:outline-none"
-              style={`border-color:${i === active ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.08)'};opacity:${i === active ? '1' : '0.5'};`}
-              onClick={() => setActive(i)}
-              aria-label={s.label}
-              aria-pressed={i === active}
-            >
-              <img
-                src={s.src}
-                alt={s.alt}
-                class="w-full object-contain"
-                style="height:72px;"
-                loading="lazy"
-                decoding="async"
-              />
-              <div
-                class="absolute inset-x-0 bottom-0 py-1 text-center"
-                style="background:rgba(0,0,0,0.55);"
-              >
-                <span class="text-[10px] font-medium text-white/80">
-                  {s.label}
-                </span>
-              </div>
-            </button>
-          ))}
+            {SCREENSHOTS.map((s, i) => {
+              const on = i === active
+              return (
+                <button
+                  key={s.src}
+                  type="button"
+                  id={`shot-tab-${i}`}
+                  role="tab"
+                  aria-selected={on}
+                  aria-controls={`shot-panel-${i}`}
+                  tabIndex={on ? 0 : -1}
+                  onClick={() => setActive(i)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowRight') next()
+                    if (e.key === 'ArrowLeft') prev()
+                  }}
+                  class={`group relative min-w-28 shrink-0 basis-[calc((100%-3rem)/7)] snap-start overflow-hidden rounded-lg border transition-[border-color] duration-200 ease-out ${
+                    on
+                      ? 'border-signal/70'
+                      : 'border-hair hover:border-hair-strong'
+                  }`}
+                >
+                  {/* Dimming belongs on the image, not the button: container
+                      opacity drags the caption down with it, which is what put
+                      the inactive labels at 3.6:1. */}
+                  <Thumb
+                    shot={s}
+                    class={`transition-opacity duration-200 ease-out ${on ? 'opacity-100' : 'opacity-50 group-hover:opacity-80'}`}
+                  />
+                  <span
+                    class={`block px-1.5 py-1.5 text-center text-[0.625rem] leading-tight font-semibold ${on ? 'bg-signal text-void' : 'bg-ink-2 text-body'}`}
+                  >
+                    {s.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
 
       {/* Lightbox */}
-      {lightbox && (
-        <div
-          class="fixed inset-0 z-50 flex items-center justify-center"
-          style="background:rgba(0,0,0,0.92);"
-          onClick={() => setLightbox(false)}
-          onKeyDown={onKeyDown}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Screenshot viewer"
-          tabIndex={-1}
-          ref={(el) => el?.focus()}
+      <dialog
+        ref={dialogRef}
+        class="lightbox"
+        onClose={() => setOpen(false)}
+        onClick={(e) => {
+          if (e.target === dialogRef.current) setOpen(false)
+        }}
+        aria-label="Screenshot viewer"
+      >
+        <figure class="grid max-h-[88vh] max-w-[92vw] place-items-center gap-4">
+          <picture>
+            <source srcSet={webp(shot.src)} type="image/webp" />
+            <img
+              src={png(shot.src)}
+              alt={shot.alt}
+              class="max-h-[80vh] w-auto"
+            />
+          </picture>
+          <figcaption class="t-data text-body">
+            {shot.label} · {active + 1} / {SCREENSHOTS.length}
+          </figcaption>
+        </figure>
+
+        <button
+          type="button"
+          class="text-faint hover:text-text absolute top-4 right-5 text-2xl leading-none"
+          onClick={() => setOpen(false)}
+          aria-label="Close"
         >
-          <button
-            type="button"
-            class="absolute top-5 right-5 text-xl leading-none text-white/50 transition-colors hover:text-white"
-            onClick={() => setLightbox(false)}
-            aria-label="Close"
-          >
-            ✕
-          </button>
-
-          <button
-            type="button"
-            class="absolute top-1/2 left-5 -translate-y-1/2 p-2 text-white/50 transition-colors hover:text-white"
-            onClick={(e) => {
-              e.stopPropagation()
-              prev()
-            }}
-            aria-label="Previous"
-          >
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-
-          <img
-            src={shot.src}
-            alt={shot.alt}
-            class="max-h-screen w-screen object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-
-          <button
-            type="button"
-            class="absolute top-1/2 right-5 -translate-y-1/2 p-2 text-white/50 transition-colors hover:text-white"
-            onClick={(e) => {
-              e.stopPropagation()
-              next()
-            }}
-            aria-label="Next"
-          >
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-
-          <div class="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2">
-            {SCREENSHOTS.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                class="h-1.5 rounded-full transition-all duration-200"
-                style={`width:${i === active ? '20px' : '6px'};background:${i === active ? '#fff' : 'rgba(255,255,255,0.3)'};`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setActive(i)
-                }}
-                aria-label={`Screenshot ${i + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+          ✕
+        </button>
+        <Arrow dir="prev" onClick={prev} />
+        <Arrow dir="next" onClick={next} />
+      </dialog>
     </section>
+  )
+}
+
+function Arrow({
+  dir,
+  onClick,
+}: {
+  dir: 'prev' | 'next'
+  onClick: () => void
+}) {
+  const isPrev = dir === 'prev'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={isPrev ? 'Previous screenshot' : 'Next screenshot'}
+      class={`text-faint hover:text-text bg-void/70 border-hair hover:border-hair-strong absolute top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border backdrop-blur-sm transition-colors ${
+        isPrev ? 'left-2 sm:left-3' : 'right-2 sm:right-3'
+      }`}
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.25"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <polyline points={isPrev ? '15 18 9 12 15 6' : '9 18 15 12 9 6'} />
+      </svg>
+    </button>
   )
 }

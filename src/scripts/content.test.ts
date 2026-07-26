@@ -28,15 +28,47 @@ vi.mock('./cache', () => ({
 
 // Isolate content tests from the shared cache (it has a real server URL and is
 // covered by shared-cache.test.ts) — no network, no cross-test async bleed.
+// Configured + opted in by default, which is what ships — so background
+// prefetch is allowed unless a test says otherwise.
 vi.mock('./shared-cache', () => ({
   sharedBatchLookup: vi.fn().mockResolvedValue([]),
   contributeLocation: vi.fn(),
   setSharedCacheEnabled: vi.fn(),
   flushContributions: vi.fn(),
+  isSharedCacheConfigured: vi.fn(() => true),
+  isSharedCacheEnabled: vi.fn(() => true),
 }))
 
-import { fetchLocationData, setApiHeaders, __testResetState } from './content'
+// Stub the prefetcher. content.tsx's job is only to *drive* it — settings in,
+// candidates in — and its own scheduling is covered by prefetch-queue.test.ts.
+// Stubbing also keeps its background timers (and the lookups they'd trigger)
+// out of every other test in this file.
+const prefetcher = vi.hoisted(() => ({
+  enqueue: vi.fn(),
+  start: vi.fn(),
+  stop: vi.fn(),
+  setReserveFraction: vi.fn(),
+  setPacing: vi.fn(),
+}))
+vi.mock('./prefetch-queue', () => ({
+  BackgroundPrefetcher: class {
+    enqueue = prefetcher.enqueue
+    start = prefetcher.start
+    stop = prefetcher.stop
+    setReserveFraction = prefetcher.setReserveFraction
+    setPacing = prefetcher.setPacing
+  },
+}))
+
+import {
+  fetchLocationData,
+  isCommittedSwipe,
+  locationSummaryText,
+  setApiHeaders,
+  __testResetState,
+} from './content'
 import { getCached, mergeCached, clearAllCache } from './cache'
+import { isSharedCacheConfigured, isSharedCacheEnabled } from './shared-cache'
 
 // Capture listeners registered at module load time before any vi.clearAllMocks() runs.
 const chromeGlobal = (globalThis as any).chrome
@@ -1551,5 +1583,495 @@ describe('hide tweets by blocked location', () => {
 
     expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
     expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Background prefetcher wiring
+// ---------------------------------------------------------------------------
+// content.tsx owns the translation from stored settings / captured users into
+// prefetcher calls. The prefetcher itself is stubbed above.
+describe('prefetcher wiring', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    __testResetState()
+    document.body.innerHTML = ''
+  })
+
+  it('pushes a changed share through, as a number', () => {
+    onChangedCallback({ prefetchShare: { newValue: 0.3 } }, 'local')
+    expect(prefetcher.setReserveFraction).toHaveBeenCalledWith(0.3)
+  })
+
+  it('pushes a changed pacing mode through', () => {
+    onChangedCallback({ prefetchPacing: { newValue: 'instant' } }, 'local')
+    expect(prefetcher.setPacing).toHaveBeenCalledWith('instant')
+  })
+
+  it('normalizes junk in storage instead of forwarding it', () => {
+    onChangedCallback({ prefetchShare: { newValue: 'nonsense' } }, 'local')
+    onChangedCallback({ prefetchPacing: { newValue: 42 } }, 'local')
+    expect(prefetcher.setReserveFraction).toHaveBeenCalledWith(0.7)
+    expect(prefetcher.setPacing).toHaveBeenCalledWith('spread')
+  })
+
+  it('ignores changes from another storage area', () => {
+    onChangedCallback({ prefetchShare: { newValue: 0.3 } }, 'sync')
+    expect(prefetcher.setReserveFraction).not.toHaveBeenCalled()
+  })
+
+  it('queues feed users high and reply users low, keeping follower counts', () => {
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', {
+        detail: {
+          users: [
+            {
+              userName: 'feeduser',
+              displayName: null,
+              bio: null,
+              followers: 900,
+              priority: 'high',
+            },
+            {
+              userName: 'replyuser',
+              displayName: null,
+              bio: null,
+              followers: 5,
+              priority: 'low',
+            },
+          ],
+        },
+      }),
+    )
+
+    expect(prefetcher.enqueue).toHaveBeenCalledWith([
+      { userName: 'feeduser', followers: 900, priority: 'high' },
+      { userName: 'replyuser', followers: 5, priority: 'low' },
+    ])
+  })
+
+  it('defaults an untagged user to the high queue and 0 followers', () => {
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', {
+        detail: {
+          users: [{ userName: 'untagged', displayName: null, bio: null }],
+        },
+      }),
+    )
+
+    expect(prefetcher.enqueue).toHaveBeenCalledWith([
+      { userName: 'untagged', followers: 0, priority: 'high' },
+    ])
+  })
+
+  it('queues nothing while background prefetch is switched off', () => {
+    onChangedCallback({ backgroundPrefetch: { newValue: false } }, 'local')
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', {
+        detail: {
+          users: [{ userName: 'ignored', displayName: null, bio: null }],
+        },
+      }),
+    )
+
+    expect(prefetcher.enqueue).not.toHaveBeenCalled()
+    expect(prefetcher.stop).toHaveBeenCalled()
+    onChangedCallback({ backgroundPrefetch: { newValue: true } }, 'local')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// locationSummaryText — the swipe overlay's one-liner
+// ---------------------------------------------------------------------------
+describe('locationSummaryText', () => {
+  const base = { location: null, locationAccurate: true, source: null } as const
+
+  it('shows the flag and country for a plain web account', () => {
+    expect(
+      locationSummaryText({
+        ...base,
+        location: 'United States',
+        source: 'web',
+      }),
+    ).toBe('🇺🇸 United States')
+  })
+
+  it('prefers the store country over the stated location', () => {
+    expect(
+      locationSummaryText({
+        ...base,
+        location: 'United States',
+        source: 'Japan Android App',
+      }),
+    ).toBe('🇯🇵 Japan')
+  })
+
+  it('appends a VPN warning when the location is flagged inaccurate', () => {
+    expect(
+      locationSummaryText({
+        location: 'United States',
+        locationAccurate: false,
+        source: 'web',
+      }),
+    ).toBe('🇺🇸 United States · ⚠ VPN')
+  })
+
+  it('drops the VPN warning when the store country corroborates the location', () => {
+    expect(
+      locationSummaryText({
+        location: 'Japan',
+        locationAccurate: false,
+        source: 'Japan App Store',
+      }),
+    ).toBe('🇯🇵 Japan')
+  })
+
+  it('keeps the VPN warning when the store country contradicts the location', () => {
+    expect(
+      locationSummaryText({
+        location: 'United States',
+        locationAccurate: false,
+        source: 'Japan App Store',
+      }),
+    ).toBe('🇯🇵 Japan · ⚠ VPN')
+  })
+
+  it('warns about the VPN even with no country at all', () => {
+    expect(locationSummaryText({ ...base, locationAccurate: false })).toBe(
+      '⚠ VPN',
+    )
+  })
+
+  it('returns empty when there is nothing to show, so no toast appears', () => {
+    expect(locationSummaryText({ ...base })).toBe('')
+  })
+
+  it('falls back to a globe for an unmapped country', () => {
+    expect(locationSummaryText({ ...base, location: 'Atlantis' })).toBe(
+      '🌐 Atlantis',
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Swipe-right on a tweet (mobile)
+// ---------------------------------------------------------------------------
+describe('isCommittedSwipe', () => {
+  it('accepts a clean rightward drag', () => {
+    expect(isCommittedSwipe(60, 4)).toBe(true)
+  })
+
+  it('rejects a tap and any drag short of the threshold', () => {
+    expect(isCommittedSwipe(0, 0)).toBe(false)
+    expect(isCommittedSwipe(39, 0)).toBe(false)
+  })
+
+  it('rejects a leftward drag', () => {
+    expect(isCommittedSwipe(-80, 2)).toBe(false)
+  })
+
+  it('rejects a vertical scroll that drifts sideways', () => {
+    expect(isCommittedSwipe(45, 120)).toBe(false)
+  })
+
+  // Mid-drag this is the case that matters: a fling that starts diagonally can
+  // clear both raw thresholds long before it is recognisably horizontal.
+  it('rejects a diagonal that clears both thresholds but is not dominant', () => {
+    expect(isCommittedSwipe(45, 40)).toBe(false)
+  })
+
+  it('accepts drift either side of the axis', () => {
+    expect(isCommittedSwipe(60, 20)).toBe(true)
+    expect(isCommittedSwipe(60, -20)).toBe(true)
+  })
+})
+
+describe('swipe-right gesture', () => {
+  const HEADERS = { authorization: 'Bearer t', 'x-csrf-token': 'c' }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setApiHeaders(HEADERS)
+    __testResetState()
+    document.body.innerHTML = ''
+    document.getElementById('x-loc-location-toast')?.remove()
+  })
+
+  function touch(type: string, target: Element, x: number, y: number) {
+    const point = { clientX: x, clientY: y } as Touch
+    target.dispatchEvent(
+      new TouchEvent(type, {
+        bubbles: true,
+        touches: [point],
+        changedTouches: [point],
+      }),
+    )
+  }
+
+  function toast() {
+    return document.getElementById('x-loc-location-toast')
+  }
+
+  /** A tweet already in the DOM, with its author's location cached. */
+  function swipeableTweet(userName: string) {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+    const article = makeTweetArticle(userName)
+    document.body.appendChild(article)
+    return article
+  }
+
+  it('fires mid-drag, without waiting for the finger to lift', async () => {
+    const article = swipeableTweet('midrag')
+
+    touch('touchstart', article, 10, 100)
+    touch('touchmove', article, 90, 104)
+    await flushAsync()
+
+    expect(toast()?.textContent).toBe('🇯🇵 Japan')
+    expect(article.querySelector('.x-loc-feed-row')).not.toBeNull()
+  })
+
+  it('acknowledges the swipe before the lookup resolves', async () => {
+    let release: (v: undefined) => void = () => {}
+    vi.mocked(getCached).mockReturnValue(
+      new Promise((resolve) => {
+        release = resolve as (v: undefined) => void
+      }),
+    )
+    const article = makeTweetArticle('pending')
+    document.body.appendChild(article)
+
+    touch('touchstart', article, 10, 100)
+    touch('touchmove', article, 90, 100)
+    await flushAsync()
+
+    // Still in flight: the user has feedback, and it is not auto-dismissing.
+    expect(toast()?.textContent).toBe('@pending …')
+    expect(toast()?.dataset.pending).toBe('1')
+
+    release(undefined)
+  })
+
+  it('resolves the pending toast when the author has no location', async () => {
+    vi.mocked(getCached).mockResolvedValue(undefined)
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            user_result_by_screen_name: { result: { about_profile: null } },
+          },
+        }),
+        { status: 200 },
+      ),
+    )
+    const article = makeTweetArticle('unknown')
+    document.body.appendChild(article)
+
+    touch('touchstart', article, 10, 100)
+    touch('touchmove', article, 90, 100)
+    await flushAsync()
+
+    expect(toast()?.textContent).toBe('No location')
+    expect(toast()?.dataset.pending).toBeUndefined()
+  })
+
+  // Both toasts are pinned to the same corner, so the vaguer one must yield.
+  it('leaves the rate-limit toast alone instead of stacking on it', async () => {
+    vi.mocked(getCached).mockResolvedValue(undefined)
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('', {
+        status: 429,
+        headers: {
+          'x-rate-limit-reset': String(Math.ceil(Date.now() / 1000) + 300),
+        },
+      }),
+    )
+    const article = makeTweetArticle('limited')
+    document.body.appendChild(article)
+
+    touch('touchstart', article, 10, 100)
+    touch('touchmove', article, 90, 100)
+    await flushAsync()
+
+    expect(toast()).toBeNull()
+    expect(document.getElementById('x-loc-rate-toast')).not.toBeNull()
+  })
+
+  it('stays quiet when the session headers have not been captured yet', async () => {
+    setApiHeaders(null)
+    vi.mocked(getCached).mockResolvedValue(undefined)
+    const article = makeTweetArticle('tooearly')
+    document.body.appendChild(article)
+
+    touch('touchstart', article, 10, 100)
+    touch('touchmove', article, 90, 100)
+    await flushAsync()
+
+    expect(toast()).toBeNull()
+  })
+
+  it('acts once per gesture, however many moves it takes', async () => {
+    const article = swipeableTweet('once')
+
+    touch('touchstart', article, 10, 100)
+    touch('touchmove', article, 90, 100)
+    touch('touchmove', article, 160, 100)
+    touch('touchend', article, 220, 100)
+    await flushAsync()
+
+    expect(document.querySelectorAll('.x-loc-feed-row')).toHaveLength(1)
+  })
+
+  // Coalesced touchmove during a fast flick can skip the threshold entirely.
+  it('still fires on touchend when no move crossed the threshold', async () => {
+    const article = swipeableTweet('flick')
+
+    touch('touchstart', article, 10, 100)
+    touch('touchend', article, 120, 100)
+    await flushAsync()
+
+    expect(toast()?.textContent).toBe('🇯🇵 Japan')
+  })
+
+  it('ignores a vertical scroll', async () => {
+    const article = swipeableTweet('scroller')
+
+    touch('touchstart', article, 10, 300)
+    touch('touchmove', article, 18, 120)
+    touch('touchend', article, 20, 40)
+    await flushAsync()
+
+    expect(toast()).toBeNull()
+    expect(article.querySelector('.x-loc-feed-row')).toBeNull()
+  })
+
+  it('ignores a swipe that starts outside a tweet', async () => {
+    swipeableTweet('offtarget')
+    const elsewhere = document.createElement('nav')
+    document.body.appendChild(elsewhere)
+
+    touch('touchstart', elsewhere, 10, 100)
+    touch('touchmove', elsewhere, 90, 100)
+    await flushAsync()
+
+    expect(toast()).toBeNull()
+  })
+
+  // The finger can leave the article mid-drag; the tweet it started on is the
+  // one the user meant.
+  it('uses the tweet the gesture started on', async () => {
+    const article = swipeableTweet('origin')
+    const outside = document.createElement('div')
+    document.body.appendChild(outside)
+
+    touch('touchstart', article, 10, 100)
+    touch('touchmove', outside, 120, 100)
+    await flushAsync()
+
+    expect(article.querySelector('.x-loc-feed-row')).not.toBeNull()
+  })
+
+  it('abandons the gesture when a second finger lands', async () => {
+    const article = swipeableTweet('pinched')
+    const point = { clientX: 10, clientY: 100 } as Touch
+
+    touch('touchstart', article, 10, 100)
+    article.dispatchEvent(
+      new TouchEvent('touchstart', {
+        bubbles: true,
+        touches: [point, { clientX: 200, clientY: 300 } as Touch],
+        changedTouches: [point],
+      }),
+    )
+    touch('touchmove', article, 120, 100)
+    touch('touchend', article, 160, 100)
+    await flushAsync()
+
+    expect(toast()).toBeNull()
+  })
+
+  it('abandons the gesture on touchcancel', async () => {
+    const article = swipeableTweet('cancelled')
+
+    touch('touchstart', article, 10, 100)
+    article.dispatchEvent(new TouchEvent('touchcancel', { bubbles: true }))
+    touch('touchend', article, 120, 100)
+    await flushAsync()
+
+    expect(toast()).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The community cache gates background prefetch
+// ---------------------------------------------------------------------------
+// Prefetch exists to warm the shared cache, so opting out of the cache stops it.
+describe('community cache gating', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    __testResetState()
+    vi.mocked(isSharedCacheConfigured).mockReturnValue(true)
+    vi.mocked(isSharedCacheEnabled).mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    vi.mocked(isSharedCacheConfigured).mockReturnValue(true)
+    vi.mocked(isSharedCacheEnabled).mockReturnValue(true)
+    onChangedCallback({ sharedCacheEnabled: { newValue: true } }, 'local')
+  })
+
+  function usersEvent() {
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', {
+        detail: {
+          users: [{ userName: 'someone', displayName: null, bio: null }],
+        },
+      }),
+    )
+  }
+
+  it('stops the prefetcher when the cache is switched off', () => {
+    vi.mocked(isSharedCacheEnabled).mockReturnValue(false)
+    onChangedCallback({ sharedCacheEnabled: { newValue: false } }, 'local')
+    expect(prefetcher.stop).toHaveBeenCalled()
+    expect(prefetcher.start).not.toHaveBeenCalled()
+  })
+
+  it('queues nothing while the cache is off', () => {
+    vi.mocked(isSharedCacheEnabled).mockReturnValue(false)
+    onChangedCallback({ sharedCacheEnabled: { newValue: false } }, 'local')
+    usersEvent()
+    expect(prefetcher.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('restarts the prefetcher when the cache is switched back on', () => {
+    setApiHeaders({ authorization: 'Bearer t' })
+    vi.mocked(isSharedCacheEnabled).mockReturnValue(false)
+    onChangedCallback({ sharedCacheEnabled: { newValue: false } }, 'local')
+    vi.mocked(prefetcher.start).mockClear()
+
+    vi.mocked(isSharedCacheEnabled).mockReturnValue(true)
+    onChangedCallback({ sharedCacheEnabled: { newValue: true } }, 'local')
+    expect(prefetcher.start).toHaveBeenCalled()
+    usersEvent()
+    expect(prefetcher.enqueue).toHaveBeenCalled()
+  })
+
+  // A build with no cache server can't be opted out of, so it must not gate.
+  it('keeps prefetching when no cache server is configured', () => {
+    setApiHeaders({ authorization: 'Bearer t' })
+    vi.mocked(isSharedCacheConfigured).mockReturnValue(false)
+    vi.mocked(isSharedCacheEnabled).mockReturnValue(false)
+    onChangedCallback({ sharedCacheEnabled: { newValue: false } }, 'local')
+
+    expect(prefetcher.start).toHaveBeenCalled()
+    expect(prefetcher.stop).not.toHaveBeenCalled()
+    usersEvent()
+    expect(prefetcher.enqueue).toHaveBeenCalled()
   })
 })

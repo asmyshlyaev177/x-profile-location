@@ -14,7 +14,14 @@
  */
 import type { BrowserContext } from '@playwright/test'
 import { test, expect } from './fixtures'
-import { hoverCardLocation, hoverOwnTweet, mockLocationApis } from './helpers'
+import {
+  hoverCardLocation,
+  hoverOwnTweet,
+  mockLocationApis,
+  PRIMARY_TWEET,
+  TWEET_ARTICLE,
+  tweetArticles,
+} from './helpers'
 
 const NASA_TWEET = 'https://x.com/NASAArtemis/status/2052108727839285751'
 
@@ -45,9 +52,7 @@ test('feed rows appear for cached authors when the setting is switched on, and a
   await setShowLocationInFeed(context, extensionId, true)
 
   // refreshFeedLocations() reads IDB only — no second API call for a known author.
-  const feedRow = page
-    .locator(`article[data-testid="tweet"] ${FEED_ROW}`)
-    .first()
+  const feedRow = page.locator(`${TWEET_ARTICLE} ${FEED_ROW}`).first()
   await expect(feedRow).toBeVisible({ timeout: 10_000 })
 
   // Same data as the hover card: both rows come from buildInfoRow(), so the flag
@@ -78,7 +83,7 @@ test('feed row lands on the replying author, not the primary tweet, when a hover
   // location data for rather than trusting a fixed index to be interesting.
   let checked = false
   for (let i = 1; i <= 3 && !checked; i++) {
-    const reply = page.locator('article[data-testid="tweet"]').nth(i)
+    const reply = tweetArticles(page).nth(i)
     const replyLink = reply
       .locator('[data-testid="User-Name"] a[href^="/"]:not([href*="/status/"])')
       .first()
@@ -112,9 +117,7 @@ test('feed row lands on the replying author, not the primary tweet, when a hover
 
   // The primary tweet is served by the inline row (.x-loc-info without the feed
   // class), so a feed row there would mean a duplicate.
-  await expect(
-    page.locator(`article[data-testid="tweet"][tabindex="-1"] ${FEED_ROW}`),
-  ).toHaveCount(0)
+  await expect(page.locator(`${PRIMARY_TWEET} ${FEED_ROW}`)).toHaveCount(0)
 })
 
 // ---------------------------------------------------------------------------

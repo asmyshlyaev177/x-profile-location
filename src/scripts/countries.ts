@@ -267,8 +267,96 @@ export const SHARED_CACHE_KEY = 'sharedCacheEnabled'
 
 // Whether to prefetch locations in the background for on-screen accounts
 // (most-followed first), warming the local + community caches so flags appear
-// without hovering. Uses at most half the rate-limit window; defaults on.
+// without hovering. Defaults on; spends at most PREFETCH_SHARE_KEY of the
+// rate-limit window.
 export const BACKGROUND_PREFETCH_KEY = 'backgroundPrefetch'
+
+// AboutAccountQuery lookups X allows per window, and how long that window is
+// (measured live). Only a starting assumption and figures to quote in the UI —
+// the live budget comes from the x-rate-limit-* response headers.
+export const LOOKUP_LIMIT_PER_WINDOW = 50
+export const LOOKUP_WINDOW_MINUTES = 15
+
+// How much of the AboutAccountQuery rate-limit window background prefetch may
+// spend, as a fraction — 0.7 → 70% (35 of 50), leaving the rest for the user's
+// own hovers. Feeds BackgroundPrefetcher's reserveFraction.
+export const PREFETCH_SHARE_KEY = 'prefetchShare'
+
+export const DEFAULT_PREFETCH_SHARE = 0.7
+
+/** The shares the options page offers, as fractions. */
+export const PREFETCH_SHARE_CHOICES = [0.3, 0.5, 0.7, 0.9] as const
+
+// Numbers come from storage, numeric strings from the options-page <select>.
+// Everything else — null, '', objects — counts as nothing stored, hence the
+// hand-rolled parse: bare Number() turns all three into 0.
+function finiteNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value !== 'string' || value.trim() === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+// Snapped to the nearest offered choice (ties go to the smaller, more
+// conservative share) so storage, the options page and the content script never
+// disagree — and so anything else in storage still leaves room for hovers.
+export function normalizePrefetchShare(value: unknown): number {
+  const n = finiteNumber(value)
+  if (n === null) return DEFAULT_PREFETCH_SHARE
+  // Compared in whole percent: in fractions |0.3 - 0.4| > |0.5 - 0.4| by a float
+  // hair, which would silently hand exact ties to the *larger* share.
+  const pct = Math.round(n * 100)
+  const distance = (choice: number) => Math.abs(Math.round(choice * 100) - pct)
+  return PREFETCH_SHARE_CHOICES.reduce((best, choice) =>
+    distance(choice) < distance(best) ? choice : best,
+  )
+}
+
+// How background prefetch spends its share of the window.
+//   'spread'  — trickle evenly over the time left in the window (default)
+//   'instant' — as fast as allowed until the share runs out, then wait it out
+export const PREFETCH_PACING_KEY = 'prefetchPacing'
+
+export type PrefetchPacing = 'spread' | 'instant'
+
+// Defaults to 'spread'; an explicitly-chosen 'instant' is preserved.
+export function normalizePrefetchPacing(value: unknown): PrefetchPacing {
+  return value === 'instant' ? 'instant' : 'spread'
+}
+
+// Which options-page accordions are expanded, keyed by section id. Pure UI
+// state for the options page — the content script ignores this key.
+export const OPTIONS_SECTIONS_KEY = 'optionsSections'
+
+export type OptionsSectionId =
+  | 'keywords'
+  | 'flags'
+  | 'exceptions'
+  | 'prefetch'
+  | 'blocked'
+
+export const DEFAULT_OPTIONS_SECTIONS: Record<OptionsSectionId, boolean> = {
+  keywords: true,
+  flags: false,
+  exceptions: false,
+  prefetch: false,
+  blocked: true,
+}
+
+// Keeps only known section ids so a renamed/removed section can't resurrect a
+// stale entry, and falls back to the defaults for anything not stored yet.
+export function normalizeOptionsSections(
+  value: unknown,
+): Record<OptionsSectionId, boolean> {
+  const stored = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+  const next = { ...DEFAULT_OPTIONS_SECTIONS }
+  for (const id of Object.keys(next) as OptionsSectionId[]) {
+    if (id in stored) next[id] = Boolean(stored[id])
+  }
+  return next
+}
 
 export const DEFAULT_BLOCKED_COUNTRIES = [
   'Africa',

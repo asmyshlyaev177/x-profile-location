@@ -8,20 +8,52 @@
 // while never letting *total* usage (background + the user's own hovers) pass a
 // reserved share of the window, so a manual hover is never starved by prefetch.
 //
+// Candidates are split across two queues by PrefetchPriority: the feed the user
+// is scrolling ('high') is drained entirely before a thread's replies ('low').
+// Within each, most-followed goes first.
+//
 // Budget is driven entirely by the live remaining count the content script keeps
 // in sync from the x-rate-limit-* headers (which every AboutAccountQuery — manual
 // or background — decrements). The prefetcher stops as soon as remaining drops to
-// the user's reserved share, i.e. once the window is half spent.
+// the user's reserved share, i.e. once 70% of the window is spent — the last 15
+// of 50 are held back for hovers.
+//
+// Default pacing spreads that budget *evenly over the time left in the window*
+// rather than spending it back-to-back and then idling until the window rolls.
+// Before each lookup the gap is recomputed as `msLeftInWindow / budget` (see
+// nextDelayMs), so with the measured 50/15min limit and a 70% share that
+// settles around one lookup every ~26s. The recompute is self-correcting: user
+// hovers eat the shared budget and stretch the gap, a refilled window shrinks it
+// back. Practical upshot — locations keep trickling in for the whole window, and
+// a user who starts hovering mid-window still finds budget left. Both the share
+// and the pacing are user-settable (options page); 'instant' pacing spends the
+// same share at minSpacingMs and then waits out the window.
 //
 // It is deliberately decoupled from the DOM and the content script: all effects
 // (the fetch, the "already known?" check, the live rate-limit snapshot) are
-// injected, so the scheduling/budget logic is unit-testable via runOnce() without
-// timers or a browser.
+// injected, so the scheduling/budget logic is unit-testable via runOnce() and
+// nextDelayMs() without timers or a browser.
+
+// Type-only, so this module keeps its runtime independence from everything else.
+import type { PrefetchPacing } from './countries'
+
+/**
+ * Which of the two queues a candidate lands in. 'high' is drained to exhaustion
+ * before 'low' gets a single lookup — see takeNext().
+ *
+ * 'high' is the feed the user is scrolling (HomeTimeline); 'low' is a thread's
+ * replies (TweetDetail), which are many and mostly scrolled past. The tweet the
+ * user actually opened never comes through here — processPrimaryTweet() looks it
+ * up directly — so nothing the user is looking at waits behind the low queue.
+ */
+export type PrefetchPriority = 'high' | 'low'
 
 export interface PrefetchCandidate {
   userName: string
   /** From `legacy.followers_count`; higher = fetched sooner. Missing → 0. */
   followers: number
+  /** Defaults to 'high' — an unlabelled candidate is never buried. */
+  priority?: PrefetchPriority
 }
 
 export interface RateState {
@@ -55,22 +87,45 @@ export interface PrefetcherDeps {
 export interface PrefetcherOptions {
   /**
    * Fraction of the window the prefetcher may consume; the remainder is reserved
-   * for the user's own hovers. 0.5 → prefetch stops once the window is half spent.
+   * for the user's own hovers. 0.7 → prefetch stops once 70% of the window is
+   * spent, leaving 30% (15 of 50) for hovers. User-configurable on the options
+   * page, applied live via setReserveFraction().
    */
   reserveFraction?: number
-  /** Minimum gap between background lookups, so we trickle rather than burst. */
-  spacingMs?: number
-  /** Fallback retry cadence when out of budget and no reset time is known. */
+  /**
+   * 'spread' (default) trickles the share evenly over the time left in the
+   * window; 'instant' spends it at minSpacingMs until it runs out, then waits
+   * for the window to roll. Either way the share itself is the same — this only
+   * changes how quickly it is used up. Live-settable via setPacing().
+   */
+  pacing?: PrefetchPacing
+  /**
+   * Floor on the paced gap, and the whole gap under 'instant' pacing. In
+   * 'spread' it only binds when the window is nearly over and the budget is
+   * still large (spread → 0), keeping the tail a trickle, not a burst.
+   */
+  minSpacingMs?: number
+  /**
+   * Ceiling on the paced gap, so a stale window reset or a budget of 1 can't
+   * park the prefetcher for a whole window when there is work to do.
+   */
+  maxSpacingMs?: number
+  /** Window length assumed when X hasn't told us when the budget rolls over. */
   windowMs?: number
-  /** Max candidates kept queued; lowest-priority overflow is dropped. */
+  /**
+   * Max candidates kept queued across both queues. Overflow is dropped from the
+   * bottom of the low queue first, and only then from the bottom of the high one.
+   */
   maxQueue?: number
 }
 
 export type RunStatus = 'fetched' | 'empty' | 'budget' | 'paused'
 
 const DEFAULTS: Required<PrefetcherOptions> = {
-  reserveFraction: 0.5,
-  spacingMs: 1500,
+  reserveFraction: 0.7,
+  pacing: 'spread',
+  minSpacingMs: 1500,
+  maxSpacingMs: 2 * 60 * 1000,
   windowMs: 15 * 60 * 1000,
   maxQueue: 300,
 }
@@ -82,14 +137,21 @@ export class BackgroundPrefetcher {
   private readonly setTimer: (fn: () => void, ms: number) => unknown
   private readonly clearTimer: (handle: unknown) => void
 
-  // Priority queue, kept sorted most-followed first.
-  private queue: PrefetchCandidate[] = []
-  private queued = new Set<string>() // lowercased names currently queued
+  // Two queues, each kept sorted most-followed first. `high` drains completely
+  // before `low` is touched, so a thread full of replies can never push the feed
+  // the user is scrolling out of the way.
+  private high: PrefetchCandidate[] = []
+  private low: PrefetchCandidate[] = []
+  // Lowercased name → the queue it currently sits in.
+  private queued = new Map<string, PrefetchPriority>()
   private fetchedCount = 0 // lifetime, for introspection only
 
   private running = false
   private ticking = false
   private timer: unknown = null
+  // Epoch ms of the last issued lookup; -Infinity until the first one, so the
+  // very first candidate goes out immediately instead of waiting a full gap.
+  private lastFetchAt = Number.NEGATIVE_INFINITY
 
   constructor(deps: PrefetcherDeps, opts: PrefetcherOptions = {}) {
     this.deps = deps
@@ -101,29 +163,101 @@ export class BackgroundPrefetcher {
       ((h) => clearTimeout(h as ReturnType<typeof setTimeout>))
   }
 
-  /** Add on-screen candidates; dedups against what's already queued. */
+  /**
+   * Add on-screen candidates, each into the queue its priority names; dedups
+   * against what's already queued. A name already queued as 'low' that turns up
+   * as 'high' is *promoted* (a reply author who also appears in the feed); the
+   * reverse never demotes.
+   */
   enqueue(candidates: PrefetchCandidate[]): void {
-    let added = false
+    let addedHigh = false
+    let addedLow = false
+
     for (const c of candidates) {
       const key = c.userName.toLowerCase()
-      if (this.queued.has(key)) continue
-      this.queued.add(key)
-      this.queue.push({
+      const priority = c.priority ?? 'high'
+      const existing = this.queued.get(key)
+      // Already queued at this priority, or already ahead of it — leave it be.
+      if (existing === priority || existing === 'high') continue
+      if (existing === 'low') {
+        // Promoting (priority can only be 'high' here): drop the low-queue copy,
+        // it is re-added to `high` below. Filtering keeps the rest in order, so
+        // only the high queue needs re-sorting.
+        this.low = this.low.filter((q) => q.userName.toLowerCase() !== key)
+      }
+
+      this.queued.set(key, priority)
+      const entry: PrefetchCandidate = {
         userName: c.userName,
         followers: Number.isFinite(c.followers) ? c.followers : 0,
-      })
-      added = true
-    }
-    if (!added) return
-
-    this.queue.sort((a, b) => b.followers - a.followers)
-    if (this.queue.length > this.opts.maxQueue) {
-      for (const dropped of this.queue.splice(this.opts.maxQueue)) {
-        this.queued.delete(dropped.userName.toLowerCase())
+        priority,
+      }
+      if (priority === 'high') {
+        this.high.push(entry)
+        addedHigh = true
+      } else {
+        this.low.push(entry)
+        addedLow = true
       }
     }
-    // Wake the loop if it went idle waiting for candidates.
-    if (this.running && !this.ticking) this.scheduleTick(0)
+    if (!addedHigh && !addedLow) return
+
+    const byFollowers = (a: PrefetchCandidate, b: PrefetchCandidate) =>
+      b.followers - a.followers
+    if (addedHigh) this.high.sort(byFollowers)
+    if (addedLow) this.low.sort(byFollowers)
+    this.trimToMaxQueue()
+
+    // Wake the loop if it went idle waiting for candidates — respecting the pace,
+    // so a scroll that queues a fresh batch can't skip ahead of the schedule.
+    if (this.running && !this.ticking)
+      this.scheduleTick(this.delayFromLastFetch())
+  }
+
+  /** Drop overflow, least-followed low-priority candidates first. */
+  private trimToMaxQueue(): void {
+    let overflow = this.high.length + this.low.length - this.opts.maxQueue
+    if (overflow <= 0) return
+    for (const queue of [this.low, this.high]) {
+      if (overflow <= 0) break
+      const drop = Math.min(overflow, queue.length)
+      for (const c of queue.splice(queue.length - drop, drop)) {
+        this.queued.delete(c.userName.toLowerCase())
+      }
+      overflow -= drop
+    }
+  }
+
+  /**
+   * Change the share of the window prefetch may spend (options page). Takes
+   * effect on the next lookup *and* re-times the pending one, so widening the
+   * share speeds the trickle up right away instead of after the current sleep.
+   * Non-finite values are ignored; the rest is clamped to [0.05, 1].
+   */
+  setReserveFraction(fraction: number): void {
+    if (!Number.isFinite(fraction)) return
+    const next = Math.min(1, Math.max(0.05, fraction))
+    if (next === this.opts.reserveFraction) return
+    this.opts.reserveFraction = next
+    if (this.running && this.ticking) {
+      this.scheduleTick(this.delayFromLastFetch())
+    }
+  }
+
+  /** Switch between evenly-spread and as-fast-as-allowed pacing (options page). */
+  setPacing(pacing: PrefetchPacing): void {
+    if (pacing === this.opts.pacing) return
+    this.opts.pacing = pacing
+    if (this.running && this.ticking) {
+      this.scheduleTick(this.delayFromLastFetch())
+    }
+  }
+
+  /** Ms until the window rolls over; falls back to a full window when unknown. */
+  private msLeftInWindow(now: number): number {
+    const { windowResetAt } = this.deps.rateState()
+    if (!windowResetAt || windowResetAt <= now) return this.opts.windowMs
+    return Math.min(windowResetAt - now, this.opts.windowMs)
   }
 
   /**
@@ -139,9 +273,12 @@ export class BackgroundPrefetcher {
     return Math.max(0, remaining - reservedForUser)
   }
 
-  /** Highest-priority queued candidate (removed), or null when the queue is empty. */
+  /**
+   * Next candidate to look up (removed), or null when both queues are empty.
+   * The whole high queue goes before the first low one.
+   */
   private takeNext(): PrefetchCandidate | null {
-    const c = this.queue.shift() ?? null
+    const c = this.high.shift() ?? this.low.shift() ?? null
     if (c) this.queued.delete(c.userName.toLowerCase())
     return c
   }
@@ -151,7 +288,7 @@ export class BackgroundPrefetcher {
    * and the unit tests.
    *  - 'fetched' — a lookup was issued
    *  - 'empty'   — nothing left to fetch
-   *  - 'budget'  — window half spent; the rest is reserved for the user
+   *  - 'budget'  — prefetch share spent; the rest is reserved for the user
    *  - 'paused'  — a hard rate-limit backoff is in effect
    */
   async runOnce(): Promise<RunStatus> {
@@ -178,7 +315,9 @@ export class BackgroundPrefetcher {
   start(): void {
     if (this.running) return
     this.running = true
-    this.scheduleTick(0)
+    // First ever start fires immediately (lastFetchAt is -Infinity); a restart
+    // after a stop() resumes on the existing schedule rather than jumping the gun.
+    this.scheduleTick(this.delayFromLastFetch())
   }
 
   stop(): void {
@@ -202,35 +341,60 @@ export class BackgroundPrefetcher {
     }, ms)
   }
 
+  /**
+   * How long to wait before the next background lookup.
+   *
+   *  - hard backoff (429) → until it lifts
+   *  - no budget left     → until the window rolls over and refills it
+   *  - otherwise          → the remaining window divided by the remaining
+   *    budget, so the allowance is spread evenly over the time we have for it
+   *    (clamped to [minSpacingMs, maxSpacingMs])
+   */
+  nextDelayMs(now: number = this.now()): number {
+    const { resetAt } = this.deps.rateState()
+    if (resetAt > now) return Math.min(resetAt - now + 500, this.opts.windowMs)
+
+    const msLeft = this.msLeftInWindow(now)
+    const budget = this.budget(now)
+    // Out of budget: nothing to pace, just wait for the refill.
+    if (budget <= 0) return msLeft + 500
+    // 'instant': spend the share as fast as the floor allows.
+    if (this.opts.pacing === 'instant') return this.opts.minSpacingMs
+
+    return Math.min(
+      Math.max(msLeft / budget, this.opts.minSpacingMs),
+      this.opts.maxSpacingMs,
+    )
+  }
+
+  /** nextDelayMs, less the time already elapsed since the last lookup. */
+  private delayFromLastFetch(): number {
+    const now = this.now()
+    return Math.max(0, this.nextDelayMs(now) - (now - this.lastFetchAt))
+  }
+
   private async tick(): Promise<void> {
     if (!this.running) return
     const status = await this.runOnce()
     if (!this.running) return
 
-    if (status === 'fetched') {
-      this.scheduleTick(this.opts.spacingMs)
-      return
-    }
+    if (status === 'fetched') this.lastFetchAt = this.now()
     if (status === 'empty') {
       // Go idle; the next enqueue() wakes us.
       this.ticking = false
       return
     }
-    // 'budget' / 'paused' — wait until the backoff or window reset likely cleared.
-    const now = this.now()
-    const { resetAt, windowResetAt } = this.deps.rateState()
-    let wait = this.opts.windowMs
-    if (resetAt > now) wait = resetAt - now + 500
-    else if (windowResetAt && windowResetAt > now)
-      wait = windowResetAt - now + 500
-    this.scheduleTick(Math.min(wait, this.opts.windowMs))
+    this.scheduleTick(this.nextDelayMs())
   }
 
-  /** Test-only introspection. */
+  /** Test-only introspection. `order` is the order lookups will actually go out. */
   __state() {
+    const names = (queue: PrefetchCandidate[]) => queue.map((c) => c.userName)
     return {
-      queueLength: this.queue.length,
-      order: this.queue.map((c) => c.userName),
+      queueLength: this.high.length + this.low.length,
+      order: [...names(this.high), ...names(this.low)],
+      highOrder: names(this.high),
+      lowOrder: names(this.low),
       fetchedCount: this.fetchedCount,
       running: this.running,
     }

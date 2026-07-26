@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Mock idb-keyval — the cache module calls createStore at module level,
@@ -16,7 +16,7 @@ import { del, entries, get, set } from 'idb-keyval'
 import { cleanupCache, getCached, mergeCached, setCached } from './cache'
 import type { LocationData } from './cache'
 
-const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
 // Convenience — a minimal valid LocationData value
 const loc = (location: string): LocationData => ({
@@ -24,6 +24,12 @@ const loc = (location: string): LocationData => ({
   locationAccurate: true,
   source: 'web',
 })
+
+// Several tests pin an entry exactly on the 30-day boundary, where the answer
+// flips if a single millisecond elapses between building the fixture and the
+// Date.now() inside cache.ts. Freeze the clock so the boundary is a boundary.
+beforeEach(() => vi.useFakeTimers())
+afterEach(() => vi.useRealTimers())
 
 // ---------------------------------------------------------------------------
 // getCached
@@ -36,7 +42,7 @@ describe('getCached', () => {
     expect(await getCached('alice')).toBeUndefined()
   })
 
-  it('returns the stored data when the entry is within the 14-day TTL', async () => {
+  it('returns the stored data when the entry is within the 30-day TTL', async () => {
     const data = loc('Japan')
     vi.mocked(get).mockResolvedValue({ data, fetchedAt: Date.now() - 1_000 })
     expect(await getCached('alice')).toEqual(data)
@@ -46,17 +52,17 @@ describe('getCached', () => {
     const data = loc('Japan')
     vi.mocked(get).mockResolvedValue({
       data,
-      fetchedAt: Date.now() - FOURTEEN_DAYS_MS - 1,
+      fetchedAt: Date.now() - THIRTY_DAYS_MS - 1,
     })
     expect(await getCached('alice')).toBeUndefined()
   })
 
   it('returns the data when the entry is exactly at the TTL boundary (not yet expired)', async () => {
-    // fetchedAt = now - FOURTEEN_DAYS_MS → age === TTL → not expired
+    // fetchedAt = now - THIRTY_DAYS_MS → age === TTL → not expired
     const data = loc('Japan')
     vi.mocked(get).mockResolvedValue({
       data,
-      fetchedAt: Date.now() - FOURTEEN_DAYS_MS,
+      fetchedAt: Date.now() - THIRTY_DAYS_MS,
     })
     expect(await getCached('alice')).toEqual(data)
   })
@@ -255,7 +261,7 @@ describe('cleanupCache', () => {
     const now = Date.now()
     vi.mocked(entries).mockResolvedValue([
       ['user1', makeEntry(now - 1_000)],
-      ['user2', makeEntry(now - FOURTEEN_DAYS_MS)], // exactly at boundary — not expired
+      ['user2', makeEntry(now - THIRTY_DAYS_MS)], // exactly at boundary — not expired
     ])
     await cleanupCache()
     expect(vi.mocked(del)).not.toHaveBeenCalled()
@@ -264,7 +270,7 @@ describe('cleanupCache', () => {
   it('deletes a single expired entry', async () => {
     const now = Date.now()
     vi.mocked(entries).mockResolvedValue([
-      ['olduser', makeEntry(now - FOURTEEN_DAYS_MS - 1)],
+      ['olduser', makeEntry(now - THIRTY_DAYS_MS - 1)],
     ])
     await cleanupCache()
     expect(vi.mocked(del)).toHaveBeenCalledOnce()
@@ -274,9 +280,9 @@ describe('cleanupCache', () => {
   it('deletes multiple expired entries in one pass', async () => {
     const now = Date.now()
     vi.mocked(entries).mockResolvedValue([
-      ['expired1', makeEntry(now - FOURTEEN_DAYS_MS - 100)],
-      ['expired2', makeEntry(now - FOURTEEN_DAYS_MS - 200)],
-      ['expired3', makeEntry(now - FOURTEEN_DAYS_MS - 86_400_000)], // 15 days old
+      ['expired1', makeEntry(now - THIRTY_DAYS_MS - 100)],
+      ['expired2', makeEntry(now - THIRTY_DAYS_MS - 200)],
+      ['expired3', makeEntry(now - THIRTY_DAYS_MS - 86_400_000)], // 31 days old
     ])
     await cleanupCache()
     expect(vi.mocked(del)).toHaveBeenCalledTimes(3)
@@ -285,9 +291,9 @@ describe('cleanupCache', () => {
   it('deletes only expired entries when fresh and stale entries are mixed', async () => {
     const now = Date.now()
     vi.mocked(entries).mockResolvedValue([
-      ['expired1', makeEntry(now - FOURTEEN_DAYS_MS - 1)],
+      ['expired1', makeEntry(now - THIRTY_DAYS_MS - 1)],
       ['fresh1', makeEntry(now - 1_000)],
-      ['expired2', makeEntry(now - FOURTEEN_DAYS_MS - 999)],
+      ['expired2', makeEntry(now - THIRTY_DAYS_MS - 999)],
       ['fresh2', makeEntry(now - 500)],
     ])
     await cleanupCache()
@@ -299,12 +305,12 @@ describe('cleanupCache', () => {
   })
 
   it('treats an entry at exactly 1 ms past the TTL as expired', async () => {
-    // cutoff = Date.now() - FOURTEEN_DAYS_MS
+    // cutoff = Date.now() - THIRTY_DAYS_MS
     // condition: fetchedAt < cutoff  →  expired
-    // fetchedAt = cutoff - 1 (= now - FOURTEEN_DAYS_MS - 1) → fetchedAt < cutoff → expired ✓
+    // fetchedAt = cutoff - 1 (= now - THIRTY_DAYS_MS - 1) → fetchedAt < cutoff → expired ✓
     const now = Date.now()
     vi.mocked(entries).mockResolvedValue([
-      ['boundary', makeEntry(now - FOURTEEN_DAYS_MS - 1)],
+      ['boundary', makeEntry(now - THIRTY_DAYS_MS - 1)],
     ])
     await cleanupCache()
     expect(vi.mocked(del)).toHaveBeenCalledWith('boundary', 'mock-store')
@@ -313,7 +319,7 @@ describe('cleanupCache', () => {
   it('passes the correct store reference to idb-keyval del', async () => {
     const now = Date.now()
     vi.mocked(entries).mockResolvedValue([
-      ['victim', makeEntry(now - FOURTEEN_DAYS_MS - 1)],
+      ['victim', makeEntry(now - THIRTY_DAYS_MS - 1)],
     ])
     await cleanupCache()
     expect(vi.mocked(del).mock.calls[0][1]).toBe('mock-store')

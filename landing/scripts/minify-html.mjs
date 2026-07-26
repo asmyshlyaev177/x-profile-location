@@ -1,3 +1,12 @@
+/**
+ * Post-build HTML minification.
+ *
+ * Note on inlining the stylesheet: it was tried and measured worse. Inlining
+ * removes a render-blocking round trip but grows every document by ~9 kB
+ * gzipped, and Lighthouse scored the inlined build 99 against 100 for the
+ * external sheet (FCP 1.2s vs 1.1s). Chrome discovers the sheet early enough
+ * that the smaller document wins. Leave the <link> alone.
+ */
 import { minify } from 'html-minifier-terser'
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'

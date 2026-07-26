@@ -30,7 +30,7 @@ export async function prerender({ url }: PrerenderData = {}) {
         { type: 'link', props: { rel: 'canonical', href: canonical } },
         { type: 'meta', props: { name: 'robots', content: 'noindex' } },
       ])
-    : buildHeadElements()
+    : buildHeadElements(__EXT_VERSION__)
 
   const html = renderToString(<App url={path} />)
   return {
@@ -43,5 +43,16 @@ export async function prerender({ url }: PrerenderData = {}) {
 }
 
 if (typeof window !== 'undefined') {
-  render(<App />, document.getElementById('app')!)
+  const mount = () => render(<App />, document.getElementById('app')!)
+
+  // Every page is prerendered and every control in the markup already works
+  // without JS: the install link is a real <a href>, the anchors are anchors.
+  // So hydration buys the carousel, the lightbox and the Brave check — none of
+  // which anyone can reach in the first second. Running it on idle instead of
+  // immediately keeps ~150 ms of scripting off the critical path.
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(mount, { timeout: 1500 })
+  } else {
+    setTimeout(mount, 1)
+  }
 }

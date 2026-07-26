@@ -4,9 +4,14 @@
  *   public/favicon.svg       → public/apple-touch-icon.png   (180×180, iOS home screen)
  *   public/promo-small.svg   → extension_store/promo-small.png   (440×280, Chrome store small tile)
  *   public/promo-marquee.svg → extension_store/promo-marquee.png (1400×560, Chrome store marquee tile)
+ *
+ * …and derivatives of the hand-taken screenshots in public/:
+ *   <shot>.png → <shot>.webp        (same size, ~75% smaller)
+ *   <shot>.png → <shot>-thumb.webp  (320w, for the 128px-wide gallery rail)
+ * The rail was pulling ~800 KiB of full-resolution PNG to fill seven thumbnails.
  */
 import sharp from 'sharp'
-import { readFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, mkdirSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -63,3 +68,36 @@ await generate(
   560,
   { noAlpha: true },
 )
+
+/** The hand-taken screenshots shown in the gallery, by filename in public/. */
+const SHOTS = [
+  'Hover_screenshot-x-profile-location.png',
+  'VPN_screenshot-x-profile-location.png',
+  'Flags_screenshot-x-profile-location.png',
+  'Warning-screenshot-x-profile-location.png',
+  'Highlight_screenshot-x-profile-location.png',
+  'Highlight2_screenshot-x-profile-location.png',
+  'swipe_right.png',
+]
+
+const kb = (n) => `${Math.round(n / 1024)} kB`
+
+for (const file of SHOTS) {
+  const src = join(publicDir, file)
+  const base = file.replace(/\.png$/, '')
+  const before = statSync(src).size
+
+  await sharp(src)
+    .webp({ quality: 82, effort: 6 })
+    .toFile(join(publicDir, `${base}.webp`))
+  await sharp(src)
+    .resize({ width: 320, withoutEnlargement: true })
+    .webp({ quality: 74, effort: 6 })
+    .toFile(join(publicDir, `${base}-thumb.webp`))
+
+  const full = statSync(join(publicDir, `${base}.webp`)).size
+  const thumb = statSync(join(publicDir, `${base}-thumb.webp`)).size
+  console.log(
+    `✓ ${base}: png ${kb(before)} → webp ${kb(full)}, thumb ${kb(thumb)}`,
+  )
+}

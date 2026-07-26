@@ -3,24 +3,49 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="X Profile Location — Browse X/Twitter profiles with a beautiful reading mode and smart curation dashboard."
-    />
+    <meta name="theme-color" content="#0b0b12" />
+    <!-- description / keywords / OG / Twitter / canonical all come from
+         src/seo.ts via the prerender plugin. Declaring a description here too
+         put two <meta name="description"> tags in every built page. -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-    <title>X Profile Location — See Where Every X Profile Is From</title>
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=%VITE_GA_MEASUREMENT_ID%"
-    ></script>
+    <link
+      rel="preload"
+      href="/fonts/archivo-latin-var.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <title>X Profile Location — see the country of any X profile</title>
     <script>
-      window.dataLayer = window.dataLayer || []
-      function gtag() {
-        dataLayer.push(arguments)
+      // gtag is ~87 kB, two thirds of it unused, and it blocks nothing that
+      // matters — so it waits for idle rather than competing with the font and
+      // the stylesheet for bandwidth during first paint.
+      //
+      // The id guard matters: with VITE_GA_MEASUREMENT_ID unset (every local
+      // build, since landing/.env leaves it empty) this used to request
+      // `gtag/js?id=` and pull the whole payload down for a property that does
+      // not exist.
+      var GA_ID = '%VITE_GA_MEASUREMENT_ID%'
+      if (GA_ID && GA_ID.indexOf('VITE_') === -1) {
+        window.dataLayer = window.dataLayer || []
+        window.gtag = function () {
+          dataLayer.push(arguments)
+        }
+        gtag('js', new Date())
+        gtag('config', GA_ID)
+        addEventListener('load', function () {
+          var load = function () {
+            var s = document.createElement('script')
+            s.async = true
+            s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID
+            document.head.appendChild(s)
+          }
+          'requestIdleCallback' in window
+            ? requestIdleCallback(load, { timeout: 4000 })
+            : setTimeout(load, 2000)
+        })
       }
-      gtag('js', new Date())
-      gtag('config', '%VITE_GA_MEASUREMENT_ID%')
     </script>
   </head>
   <body>

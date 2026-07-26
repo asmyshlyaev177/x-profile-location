@@ -1,0 +1,30 @@
+# Cloudflare Pages / Netlify header rules.
+#
+# Everything under /assets/ and /fonts/ is either content-hashed by Vite or a
+# font that only changes when it is replaced outright, so both are safe to cache
+# for a year. Without this, Pages serves them with a short TTL and every repeat
+# visit re-fetches ~250 kB it already has.
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Screenshots are not content-hashed, so the markup requests them with
+# `?v=<extension version>` (see Screenshots.tsx). That makes a year safe: a
+# replaced screenshot ships with the next version bump and busts the cache.
+/*.webp
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.png
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.svg
+  Cache-Control: public, max-age=31536000, immutable
+
+# HTML is prerendered at build time; revalidate so a deploy is picked up at once.
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

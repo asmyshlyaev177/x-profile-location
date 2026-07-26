@@ -12,6 +12,11 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  LOOKUP_LIMIT_PER_WINDOW,
+  normalizePrefetchPacing,
+  normalizePrefetchShare,
+  PREFETCH_PACING_KEY,
+  PREFETCH_SHARE_KEY,
   REGION_ABBR,
   REGION_FLAGS,
   SHARED_CACHE_KEY,
@@ -22,10 +27,13 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
 import {
   contributeLocation,
   flushContributions,
+  isSharedCacheConfigured,
+  isSharedCacheEnabled,
   setSharedCacheEnabled,
   sharedBatchLookup,
 } from './shared-cache'
 import { BackgroundPrefetcher } from './prefetch-queue'
+import type { PrefetchPriority } from './prefetch-queue'
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA'
 const API_BASE = `https://${X_GRAPHQL_PATH}`
@@ -82,6 +90,8 @@ chrome.storage.local
     SHARED_CACHE_KEY,
     HIDE_BLOCKED_LOCATIONS_KEY,
     BACKGROUND_PREFETCH_KEY,
+    PREFETCH_SHARE_KEY,
+    PREFETCH_PACING_KEY,
   ])
   .then((result) => {
     const r = result as Record<string, unknown>
@@ -117,6 +127,8 @@ chrome.storage.local
     hideMode = normalizeHideBlockedMode(r[HIDE_BLOCKED_LOCATIONS_KEY])
     prefetchEnabled =
       BACKGROUND_PREFETCH_KEY in r ? Boolean(r[BACKGROUND_PREFETCH_KEY]) : true
+    prefetcher.setReserveFraction(normalizePrefetchShare(r[PREFETCH_SHARE_KEY]))
+    prefetcher.setPacing(normalizePrefetchPacing(r[PREFETCH_PACING_KEY]))
     // Shared community cache is opt-in and defaults on; inert unless a server
     // URL is configured (see CACHE_API_BASE in constants.ts).
     setSharedCacheEnabled(
@@ -177,10 +189,23 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
   if (changes[SHARED_CACHE_KEY]) {
     setSharedCacheEnabled(Boolean(changes[SHARED_CACHE_KEY].newValue))
+    // Opting out of the community cache also stops background prefetch, which
+    // exists to warm it — and opting back in restarts it.
+    syncPrefetcher()
   }
   if (changes[BACKGROUND_PREFETCH_KEY]) {
     prefetchEnabled = Boolean(changes[BACKGROUND_PREFETCH_KEY].newValue)
     syncPrefetcher()
+  }
+  if (changes[PREFETCH_SHARE_KEY]) {
+    prefetcher.setReserveFraction(
+      normalizePrefetchShare(changes[PREFETCH_SHARE_KEY].newValue),
+    )
+  }
+  if (changes[PREFETCH_PACING_KEY]) {
+    prefetcher.setPacing(
+      normalizePrefetchPacing(changes[PREFETCH_PACING_KEY].newValue),
+    )
   }
   if (changes[HIDE_BLOCKED_LOCATIONS_KEY]) {
     hideMode = normalizeHideBlockedMode(
@@ -265,9 +290,9 @@ let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null
 // network request — manual hover, primary tweet, swipe, OR background prefetch —
 // via noteRequestSent, then corrected from the authoritative x-rate-limit-*
 // response headers. Tracking *all* usage (not just prefetch) is what lets the
-// prefetcher stop before it eats into the user's reserved half of the window.
-let rateWindowLimit = 50
-let rateWindowRemaining = 50
+// prefetcher stop before it eats into the user's reserved share of the window.
+let rateWindowLimit = LOOKUP_LIMIT_PER_WINDOW
+let rateWindowRemaining = LOOKUP_LIMIT_PER_WINDOW
 let rateWindowResetAt = 0
 
 // Once X's reset time has passed, the window has rolled and the budget is full.
@@ -422,46 +447,64 @@ function showRateLimitToast() {
 // ---------------------------------------------------------------------------
 // Location overlay toast (mobile swipe feedback)
 // ---------------------------------------------------------------------------
+const LOCATION_TOAST_MS = 2500
+
 let locationToastTimer: ReturnType<typeof setTimeout> | null = null
 
-function showLocationOverlay(data: LocationData) {
-  const existing = document.getElementById('x-loc-location-toast')
-  existing?.remove()
-  if (locationToastTimer) clearTimeout(locationToastTimer)
-
+/**
+ * One-line summary for the swipe overlay, or '' when there is nothing to say.
+ *
+ * The App Store / Play Store country outranks the stated location (a store
+ * region is hard to fake), and a store country that *matches* the stated
+ * location corroborates it — so that pairing drops the VPN warning even when X
+ * flagged the location as inaccurate. Exported for tests.
+ */
+export function locationSummaryText(data: LocationData): string {
   const mobileSource = RE_MOBILE_SOURCE.test(data.source ?? '')
   const sourceCountry = mobileSource
     ? data.source?.replace(RE_MOBILE_SOURCE_STRIP, '').trim() || null
     : null
-  const vpn = data.locationAccurate === false
+  const corroborated = sourceCountry !== null && sourceCountry === data.location
+  const country = sourceCountry ?? data.location
 
-  let text = ''
-  if (sourceCountry) {
-    if (sourceCountry === data.location) {
-      // AppStore and location agree — reliable, no VPN badge needed
-      const { emoji } = getLocationDisplay(sourceCountry)
-      text = `${emoji} ${sourceCountry}`
-    } else {
-      // AppStore and location differ — show AppStore country as more reliable signal
-      const { emoji } = getLocationDisplay(sourceCountry)
-      text = `${emoji} ${sourceCountry}`
-      if (vpn) text += ' · ⚠ VPN'
-    }
-  } else {
-    if (data.location) {
-      const { emoji } = getLocationDisplay(data.location)
-      text = `${emoji} ${data.location}`
-    }
-    if (vpn) text += (text ? ' · ' : '') + '⚠ VPN'
-  }
-  if (!text) return
+  const parts: string[] = []
+  if (country) parts.push(`${getLocationDisplay(country).emoji} ${country}`)
+  if (data.locationAccurate === false && !corroborated) parts.push('⚠ VPN')
+  return parts.join(' · ')
+}
+
+/**
+ * Render (or replace) the swipe overlay.
+ *
+ * `pending` keeps the toast up indefinitely instead of auto-dismissing — the
+ * lookup is still in flight and a later call will overwrite the text. Every
+ * pending toast must therefore be resolved by a second call, or it never goes
+ * away.
+ */
+function dismissLocationToast() {
+  document.getElementById('x-loc-location-toast')?.remove()
+  if (locationToastTimer) clearTimeout(locationToastTimer)
+  locationToastTimer = null
+}
+
+function renderLocationToast(text: string, pending = false) {
+  dismissLocationToast()
 
   const toast = document.createElement('div')
   toast.id = 'x-loc-location-toast'
   toast.textContent = text
+  if (pending) toast.dataset.pending = '1'
   document.body.appendChild(toast)
 
-  locationToastTimer = setTimeout(() => toast.remove(), 2500)
+  if (!pending) {
+    locationToastTimer = setTimeout(() => toast.remove(), LOCATION_TOAST_MS)
+  }
+}
+
+function showLocationOverlay(data: LocationData) {
+  const text = locationSummaryText(data)
+  if (!text) return
+  renderLocationToast(text)
 }
 
 // ---------------------------------------------------------------------------
@@ -508,12 +551,11 @@ export async function fetchLocationData(
           capturedHeaders['x-twitter-active-user'] ?? 'yes',
       }
 
-      if (capturedHeaders['x-csrf-token']) {
-        headers['x-csrf-token'] = capturedHeaders['x-csrf-token']
-      } else {
-        const ct0 = getCookie('ct0')
-        if (ct0) headers['x-csrf-token'] = ct0
-      }
+      // page-script deliberately never forwards the csrf token, so in practice
+      // this always comes from the ct0 cookie; the header is only used when a
+      // caller (a test, say) supplied one directly.
+      const csrf = capturedHeaders['x-csrf-token'] || getCookie('ct0')
+      if (csrf) headers['x-csrf-token'] = csrf
 
       noteRequestSent()
       const resp = await fetch(url, {
@@ -672,6 +714,10 @@ function injectStyles() {
   pointer-events: none;
   white-space: nowrap;
   border: 1px solid rgba(29, 155, 240, 0.55);
+}
+#x-loc-location-toast[data-pending] {
+  color: rgba(255, 255, 255, 0.75);
+  border-color: rgba(29, 155, 240, 0.28);
 }
 article[data-x-loc-highlighted] {
   border-left: 3px solid #f59e0b !important;
@@ -860,22 +906,20 @@ function shouldHighlight(
 
 async function tryHighlightArticle(article: Element) {
   if (highlightKeywords.size === 0 && !highlightFlagsEnabled) return
-  if (!article.hasAttribute('data-x-loc-highlighted')) {
-    const { userName, displayName } = extractTweetUserInfo(article)
-    if (userName) {
-      const info = await getBioInfo(userName)
-      if (
-        shouldHighlight(
-          userName,
-          displayName || info.displayName || '',
-          info.bio,
-        )
-      ) {
-        article.setAttribute('data-x-loc-highlighted', '1')
-      }
-    }
-  }
+  // The tweet's own author and the author of anything it quotes are judged
+  // independently — either, both, or neither can match.
+  await tryHighlightTweet(article)
   await tryHighlightQuote(article)
+}
+
+async function tryHighlightTweet(article: Element) {
+  if (article.hasAttribute('data-x-loc-highlighted')) return
+  const { userName, displayName } = extractTweetUserInfo(article)
+  if (!userName) return
+  const info = await getBioInfo(userName)
+  const name = displayName || info.displayName || ''
+  if (!shouldHighlight(userName, name, info.bio)) return
+  article.setAttribute('data-x-loc-highlighted', '1')
 }
 
 // Highlight the embedded quoted post when its author matches a keyword/flag
@@ -912,6 +956,25 @@ function rehighlightAll() {
     getQuotedTweetEl(a)?.removeAttribute(QUOTE_HIGHLIGHT_ATTR)
     tryHighlightArticle(a)
   })
+}
+
+/**
+ * Mark every tweet on screen written by this account — and every quoted tweet
+ * quoting them. Used when a bio arrives and turns out to match a rule, after
+ * the tweets themselves have already been rendered.
+ */
+function markHighlightedArticles(userName: string) {
+  const lc = userName.toLowerCase()
+  for (const article of document.querySelectorAll<Element>(SEL_TWEET)) {
+    if (extractTweetUserInfo(article).userName?.toLowerCase() === lc) {
+      article.setAttribute('data-x-loc-highlighted', '1')
+    }
+    const quote = getQuotedTweetEl(article)
+    const quoted = quote && extractQuotedTweetUserInfo(quote).userName
+    if (quote && quoted?.toLowerCase() === lc) {
+      quote.setAttribute(QUOTE_HIGHLIGHT_ATTR, '1')
+    }
+  }
 }
 
 const FEED_LOCATION_ATTR = 'data-x-loc-feed-done'
@@ -1501,53 +1564,133 @@ function startObserver() {
 // ---------------------------------------------------------------------------
 // Swipe-right on a tweet to fetch location (mobile)
 // ---------------------------------------------------------------------------
+const SWIPE_MIN_X = 40 // px of rightward travel before the gesture commits
+const SWIPE_MAX_Y = 50 // px of vertical drift still counted as horizontal
+const SWIPE_X_DOMINANCE = 1.5 // dx must beat dy by this factor
+
+/**
+ * Has the finger travelled far enough, and straight enough, to be a deliberate
+ * rightward swipe rather than a tap or a scroll?
+ *
+ * The dominance ratio matters more here than it did when this only ran on
+ * touchend: mid-drag, a vertical fling that starts with a slight diagonal can
+ * briefly satisfy the raw distance thresholds. Exported for tests.
+ */
+export function isCommittedSwipe(dx: number, dy: number): boolean {
+  const drift = Math.abs(dy)
+  if (dx < SWIPE_MIN_X || drift > SWIPE_MAX_Y) return false
+  return dx >= drift * SWIPE_X_DOMINANCE
+}
+
+function tweetFromTouch(e: TouchEvent): Element | null {
+  const target = e.target
+  return target instanceof Element ? target.closest<Element>(SEL_TWEET) : null
+}
+
+/** Look up the swiped tweet's author and show the result. */
+async function revealLocationForSwipe(article: Element) {
+  const { userName } = extractTweetUserInfo(article)
+  if (!userName) return
+
+  // Acknowledge the gesture now; the lookup may take a network round trip and
+  // a swipe that appears to do nothing invites the user to swipe again.
+  renderLocationToast(`@${userName} …`, true)
+
+  const data = await fetchLocationData(userName)
+  if (!data || !locationSummaryText(data)) {
+    // Separate "X knows nothing about this account" from "we couldn't ask":
+    // the rate-limit toast owns the same corner and explains itself, and a
+    // swipe before the session headers land is transient.
+    const couldNotAsk = rateLimitResetAt > Date.now() || apiHeaders === null
+    if (couldNotAsk) dismissLocationToast()
+    else renderLocationToast('No location')
+    return
+  }
+
+  // Inject below username even if showLocationInFeed is off — user explicitly swiped
+  if (!article.querySelector('.x-loc-feed-row')) {
+    const userNameEl = getNameEl(article)
+    if (userNameEl) {
+      article.setAttribute(FEED_LOCATION_ATTR, '1')
+      const row = buildInfoRow(data)
+      row.classList.add('x-loc-feed-row')
+      userNameEl.insertAdjacentElement('afterend', row)
+    }
+  }
+
+  showLocationOverlay(data)
+}
+
+/**
+ * The gesture commits mid-drag rather than on touchend. Waiting for the lift
+ * spent the whole remainder of the swipe — usually longer than the lookup
+ * itself — before anything started. touchend stays on as a backstop for flicks
+ * short enough that no touchmove ever crossed the threshold.
+ */
 function startSwipeListener() {
   let startX = 0
   let startY = 0
+  let article: Element | null = null
+  let handled = true
 
   document.body.addEventListener(
     'touchstart',
     (e: TouchEvent) => {
-      startX = e.touches[0].clientX
-      startY = e.touches[0].clientY
+      // A second finger is a pinch or a two-finger scroll, never a swipe — and
+      // it would otherwise re-origin the gesture already in progress.
+      if (e.touches.length > 1) {
+        handled = true
+        article = null
+        return
+      }
+      const touch = e.touches[0]
+      if (!touch) return
+      startX = touch.clientX
+      startY = touch.clientY
+      article = tweetFromTouch(e)
+      handled = false
+    },
+    { passive: true },
+  )
+
+  document.body.addEventListener(
+    'touchmove',
+    (e: TouchEvent) => {
+      if (handled || !article) return
+      const touch = e.touches[0]
+      if (!touch) return
+      if (!isCommittedSwipe(touch.clientX - startX, touch.clientY - startY)) {
+        return
+      }
+      handled = true
+      void revealLocationForSwipe(article)
     },
     { passive: true },
   )
 
   document.body.addEventListener(
     'touchend',
-    async (e: TouchEvent) => {
-      const dx = e.changedTouches[0].clientX - startX
-      const dy = Math.abs(e.changedTouches[0].clientY - startY)
+    (e: TouchEvent) => {
+      const swiped = article
+      article = null
+      if (handled || !swiped) return
+      handled = true
 
-      // Require a clear rightward swipe, not a vertical scroll or tap
-      if (dx < 40 || dy > 50) return
-
-      const article = (e.target as Element).closest<Element>(SEL_TWEET)
-      if (!article) return
-
-      const { userName } = extractTweetUserInfo(article)
-      if (!userName) return
-
-      const data = await fetchLocationData(userName)
-      if (
-        !data ||
-        (!data.location && data.locationAccurate !== false && !data.source)
-      )
+      const touch = e.changedTouches[0]
+      if (!touch) return
+      if (!isCommittedSwipe(touch.clientX - startX, touch.clientY - startY)) {
         return
-
-      // Inject below username even if showLocationInFeed is off — user explicitly swiped
-      if (!article.querySelector('.x-loc-feed-row')) {
-        const userNameEl = getNameEl(article)
-        if (userNameEl) {
-          article.setAttribute(FEED_LOCATION_ATTR, '1')
-          const row = buildInfoRow(data)
-          row.classList.add('x-loc-feed-row')
-          userNameEl.insertAdjacentElement('afterend', row)
-        }
       }
+      void revealLocationForSwipe(swiped)
+    },
+    { passive: true },
+  )
 
-      showLocationOverlay(data)
+  document.body.addEventListener(
+    'touchcancel',
+    () => {
+      handled = true
+      article = null
     },
     { passive: true },
   )
@@ -1587,9 +1730,10 @@ async function applySharedHits(userNames: string[]) {
 // ---------------------------------------------------------------------------
 // Background location prefetcher
 // ---------------------------------------------------------------------------
-// Trickle location lookups for on-screen accounts (most-followed first) using at
-// most half the rate-limit window, so feed-location display and hide-by-location
-// fill in without the user hovering every profile. See prefetch-queue.ts.
+// Trickle location lookups for on-screen accounts (most-followed first), paced
+// across the rate-limit window and using at most 70% of it, so feed-location
+// display and hide-by-location fill in without the user hovering every profile.
+// See prefetch-queue.ts.
 const prefetcher = new BackgroundPrefetcher({
   fetch: async (userName) => {
     const data = await fetchLocationData(userName)
@@ -1606,11 +1750,21 @@ const prefetcher = new BackgroundPrefetcher({
   rateState: currentRateState,
 })
 
-// Runs whenever enabled (options toggle, default on) and auth headers exist —
-// independent of feed display, because a key purpose is warming the shared
-// community cache so everyone sees flags without a per-profile X call.
+// Prefetch exists first and foremost to warm the shared community cache, so
+// opting out of that switches it off too — no point spending the user's lookup
+// budget on accounts they aren't scrolling past. A build with no cache server
+// configured can't be opted out of (the toggle isn't even shown), so there the
+// setting never gates anything.
+//
+// Settings-level answer only; prefetchWanted() adds the runtime requirement of
+// captured auth headers. Independent of feed display, since warming the cache
+// is worthwhile whether or not locations are shown in the feed.
+function prefetchAllowedBySettings(): boolean {
+  if (!prefetchEnabled) return false
+  return !isSharedCacheConfigured() || isSharedCacheEnabled()
+}
 function prefetchWanted(): boolean {
-  return prefetchEnabled && apiHeaders !== null
+  return prefetchAllowedBySettings() && apiHeaders !== null
 }
 function syncPrefetcher(): void {
   if (prefetchWanted()) prefetcher.start()
@@ -1624,15 +1778,22 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
         displayName: string | null
         bio: string | null
         followers?: number
+        priority?: PrefetchPriority
       }>
     | undefined
   if (!users) return
   void applySharedHits(users.map((u) => u.userName))
-  // Queue whenever prefetch is enabled (even before auth headers arrive); the
-  // prefetcher only starts draining once syncPrefetcher() sees headers.
-  if (prefetchEnabled) {
+  // Queue whenever the settings allow prefetch (even before auth headers
+  // arrive); the prefetcher only starts draining once syncPrefetcher() sees
+  // headers. page-script tags each user by where they came from: feed tweets go
+  // to the high queue, a thread's replies to the low one.
+  if (prefetchAllowedBySettings()) {
     prefetcher.enqueue(
-      users.map((u) => ({ userName: u.userName, followers: u.followers ?? 0 })),
+      users.map((u) => ({
+        userName: u.userName,
+        followers: u.followers ?? 0,
+        priority: u.priority ?? 'high',
+      })),
     )
   }
   for (const { userName, displayName, bio } of users) {
@@ -1644,18 +1805,7 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
     if (displayName) patch.displayName = displayName
     mergeCached(userName, patch)
     if (shouldHighlight(userName, displayName ?? '', bio)) {
-      const lc = userName.toLowerCase()
-      document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
-        const sn = extractTweetUserInfo(article).userName ?? ''
-        if (sn?.toLowerCase() === lc)
-          article.setAttribute('data-x-loc-highlighted', '1')
-        const quote = getQuotedTweetEl(article)
-        if (
-          quote &&
-          extractQuotedTweetUserInfo(quote).userName?.toLowerCase() === lc
-        )
-          quote.setAttribute(QUOTE_HIGHLIGHT_ATTR, '1')
-      })
+      markHighlightedArticles(userName)
     }
   }
 

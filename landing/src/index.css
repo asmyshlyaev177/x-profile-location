@@ -1,30 +1,404 @@
 @import 'tailwindcss';
 
+/* ───────────────────────────────────────────────────────────────────────────
+   Typefaces
+
+   Archivo (Omnibus-Type) — one family, carrying display and body. Display
+   contrast comes from the weight axis alone: 850 against a 400 body.
+
+   The wdth axis is deliberately absent. Google's variable Archivo with wdth is
+   88 kB against 34 kB without, and the 54 kB sat on the critical path for a
+   headline 12% wider — it cost about a second of mobile LCP. Weight buys the
+   same presence for free, so there is no `font-stretch` anywhere below.
+
+   Azeret Mono — scoped strictly to data readouts: country names, counts,
+   limits, badge labels. Never body, never headings.
+
+   Latin-only variable subsets, self-hosted (no third-party font request).
+   ─────────────────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Archivo';
+  src: url('/fonts/archivo-latin-var.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Azeret Mono';
+  src: url('/fonts/azeret-mono-latin-var.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
-  --color-dark: #000000;
-  --color-dark-card: #18191d;
-  --color-teal: #1d9bf0;
-  --color-teal-dark: #1a8cd8;
-  --color-surface: #18191d;
-  --color-border: #32353a;
-  --color-secondary: #7a7d85;
-  --color-amber: #c9a461;
-  --color-sage: #6b9e7a;
-  --color-rose: #d4736e;
-  --font-family-sans:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
-    sans-serif;
+  /* Surfaces — near-black with a cool tint toward the mark's hue, matching
+     the favicon / store tiles (#0b0b12) rather than X's pure black. */
+  --color-void: oklch(15.3% 0.015 284.5);
+  --color-ink-1: oklch(18.7% 0.018 284.5);
+  --color-ink-2: oklch(21.4% 0.022 284.4);
+  --color-ink-3: oklch(24.1% 0.025 284.4);
+  --color-hair: oklch(28.7% 0.025 284.7);
+  --color-hair-strong: oklch(35.6% 0.031 284.7);
+
+  /* Text — all ≥ 5.9:1 on every surface above */
+  --color-text: oklch(97.4% 0.005 275);
+  --color-body: oklch(79.9% 0.017 271.2);
+  --color-faint: oklch(67.3% 0.025 269.3);
+
+  /* Signal — the extension's own mark colour (#00d4c0). Carries the brand.
+     Deliberately NOT X's blue: cyan is our layer, blue is X's chrome. */
+  --color-signal: oklch(78.1% 0.139 183);
+  --color-signal-deep: oklch(65.8% 0.115 184.4);
+
+  /* Meaning colours. Three, each with one job:
+     x-blue = X's own UI inside a mockup · attention = highlight · alarm = blocked/VPN */
+  --color-xblue: oklch(66.7% 0.161 245.5);
+  --color-attention: oklch(81% 0.158 78.9);
+  --color-alarm: oklch(71% 0.182 26.2);
+
+  --font-sans:
+    'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
+  --font-mono:
+    'Azeret Mono', ui-monospace, SFMono-Regular, Menlo, monospace,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @layer base {
+  :root {
+    /* Semantic stacking order. Nothing here uses a bare number. */
+    --z-sticky: 30;
+    --z-backdrop: 60;
+    --z-modal: 70;
+    --z-toast: 80;
+
+    --shell: min(88rem, 100%);
+    --gutter: clamp(1.25rem, 4vw, 3.5rem);
+    /* Sticky header height — anchors scroll-padding so deep links land right */
+    --header-h: 3.75rem;
+    color-scheme: dark;
+  }
+
   html {
-    scroll-behavior: smooth;
+    scroll-padding-top: calc(var(--header-h) + 1.5rem);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 
   body {
-    font-family: var(--font-family-sans);
-    background-color: var(--color-dark);
-    color: white;
+    background-color: var(--color-void);
+    color: var(--color-body);
+    font-family: var(--font-sans);
+    font-synthesis-weight: none;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--color-signal) 30%, transparent);
+    color: var(--color-text);
+  }
+
+  /* One focus treatment, everywhere. Never removed without a replacement. */
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--color-text);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  img {
+    max-width: 100%;
+  }
+}
+
+@layer components {
+  /* ── Layout shell ─────────────────────────────────────────────────────── */
+  .shell {
+    width: var(--shell);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+
+  .shell-narrow {
+    width: min(64rem, 100%);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+
+  /* Section rhythm deliberately varies: bands that carry an argument breathe,
+     bands that carry evidence sit tighter. */
+  .band {
+    padding-block: clamp(4.5rem, 9vw, 8.5rem);
+  }
+
+  .band-tight {
+    padding-block: clamp(3.5rem, 6vw, 5.5rem);
+  }
+
+  /* ── Type ─────────────────────────────────────────────────────────────── */
+  .t-display {
+    font-size: clamp(2.5rem, 5.4vw, 4.5rem);
+    font-weight: 850;
+    line-height: 0.96;
+    letter-spacing: -0.03em;
+  }
+
+  .t-h2 {
+    font-size: clamp(1.875rem, 3.6vw, 3rem);
+    font-weight: 800;
+    line-height: 1.04;
+    letter-spacing: -0.026em;
+  }
+
+  .t-h3 {
+    font-size: clamp(1.0625rem, 1.4vw, 1.1875rem);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.012em;
+    color: var(--color-text);
+  }
+
+  .t-lead {
+    font-size: clamp(1.0625rem, 1.5vw, 1.3125rem);
+    line-height: 1.6;
+    color: var(--color-body);
+    max-width: 46ch;
+  }
+
+  .t-body {
+    font-size: 0.9375rem;
+    line-height: 1.68;
+    color: var(--color-body);
+    max-width: 68ch;
+  }
+
+  /* Data readout. Mono earns its place here and only here. */
+  .t-data {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+  }
+
+  /* Long-form legal prose. One place, so the policy page needs no per-element
+     classes and stays readable at 65–75ch. */
+  .policy {
+    font-size: 1rem;
+    line-height: 1.72;
+    color: var(--color-body);
+  }
+
+  .policy p,
+  .policy li {
+    max-width: 72ch;
+  }
+
+  .policy ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+
+  .policy li::marker {
+    color: var(--color-hair-strong);
+  }
+
+  .policy code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    background: var(--color-ink-2);
+    border: 1px solid var(--color-hair);
+    border-radius: 0.25rem;
+    padding: 0.1em 0.35em;
+    color: var(--color-text);
+  }
+
+  /* ── Surfaces ─────────────────────────────────────────────────────────── */
+  .hairline {
+    border-top: 1px solid var(--color-hair);
+  }
+
+  /* Graticule: a fine dot lattice under a coarse lat/long grid, both faded
+     from the centre. The page is about *where* — the backdrop should say so. */
+  .graticule {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(
+        color-mix(in oklch, var(--color-signal) 34%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to right,
+        color-mix(in oklch, var(--color-hair-strong) 70%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklch, var(--color-hair-strong) 70%, transparent) 1px,
+        transparent 1px
+      );
+    background-size:
+      28px 28px,
+      112px 112px,
+      112px 112px;
+    -webkit-mask-image: radial-gradient(
+      120% 90% at 30% 40%,
+      #000 0%,
+      transparent 72%
+    );
+    mask-image: radial-gradient(120% 90% at 30% 40%, #000 0%, transparent 72%);
+    opacity: 0.7;
+  }
+
+  /* Native <dialog>: top layer, so no stacking context can clip it, and the
+     focus trap + Escape handling come from the platform. */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    display: none;
+    place-items: center;
+    max-width: 100vw;
+    max-height: 100vh;
+    width: 100vw;
+    height: 100vh;
+    padding: clamp(1rem, 4vw, 3rem);
+    background: transparent;
+    border: 0;
+  }
+
+  .lightbox[open] {
+    display: grid;
+  }
+
+  /* <dialog> does not lock background scroll on its own. */
+  html:has(dialog[open]) {
+    overflow: hidden;
+  }
+
+  .lightbox::backdrop {
+    background: color-mix(in oklch, var(--color-void) 92%, transparent);
+    backdrop-filter: blur(6px);
+  }
+
+  .lightbox img {
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-hair);
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ── Motion ───────────────────────────────────────────────────────────── */
+  /* The hero entrance moves but never fades. Fading in from `opacity: 0` with a
+     `backwards` fill made the hero paragraph invisible for its whole delay, and
+     LCP is only recorded once an element is actually visible — that one property
+     was 88% of a 3.7s LCP. Transform is ignored by LCP, so the choreography
+     survives and the text paints on the first frame. */
+  .rise {
+    animation: rise-hero 0.8s var(--ease-out-quint);
+  }
+
+  @keyframes rise-hero {
+    from {
+      transform: translate3d(0, 1.5rem, 0);
+    }
+  }
+
+  /* Scroll reveals ride the native view timeline — no observer, no JS gate,
+     and browsers without support simply show the finished state.
+
+     `forwards`, never `both`: backwards fill would hold every element below
+     the fold at opacity 0, so any render that does not scroll (a full-page
+     screenshot, a headless capture, print) would ship the page blank. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        animation: rise 1s var(--ease-out-quint) forwards;
+        animation-timeline: view();
+        animation-range: entry 10% cover 30%;
+      }
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 1.25rem, 0);
+    }
+  }
+
+  /* Deliberately never touches opacity: an entrance that hides its element
+     during the delay is an entrance that can ship the row invisible. The flash
+     reads as "this just arrived" without the row ever being absent. */
+  @keyframes flash-in {
+    0% {
+      transform: translate3d(-0.4rem, 0, 0);
+      background-color: color-mix(
+        in oklch,
+        var(--color-signal) 30%,
+        transparent
+      );
+      box-shadow: 0 0 0 1px
+        color-mix(in oklch, var(--color-signal) 60%, transparent);
+    }
+    55% {
+      transform: none;
+      background-color: color-mix(
+        in oklch,
+        var(--color-signal) 22%,
+        transparent
+      );
+      box-shadow: 0 0 0 1px
+        color-mix(in oklch, var(--color-signal) 45%, transparent);
+    }
+  }
+
+  /* The one narrative beat on the page: the row the extension injects lands a
+     moment after the card around it, flashes, then settles. */
+  .injected {
+    animation: flash-in 1.4s var(--ease-out-expo) 0.55s;
+    border-radius: 0.375rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

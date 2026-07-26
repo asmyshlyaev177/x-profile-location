@@ -5,12 +5,25 @@ import {
   BACKGROUND_PREFETCH_KEY,
   BLOCKED_COUNTRIES_KEY,
   COUNTRY_FLAGS,
+  DEFAULT_OPTIONS_SECTIONS,
+  DEFAULT_PREFETCH_SHARE,
   HIDE_BLOCKED_LOCATIONS_KEY,
   type HideBlockedMode,
   normalizeHideBlockedMode,
+  normalizeOptionsSections,
+  normalizePrefetchPacing,
+  normalizePrefetchShare,
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  LOOKUP_LIMIT_PER_WINDOW,
+  LOOKUP_WINDOW_MINUTES,
+  OPTIONS_SECTIONS_KEY,
+  type OptionsSectionId,
+  PREFETCH_PACING_KEY,
+  PREFETCH_SHARE_CHOICES,
+  PREFETCH_SHARE_KEY,
+  type PrefetchPacing,
   REGION_FLAGS,
   SHARED_CACHE_KEY,
   SHOW_EXCEPTION_BUTTON_KEY,
@@ -49,7 +62,7 @@ const KEYWORD_SUGGESTIONS = [
   'onlyfans',
 ].sort((a, b) => a.localeCompare(b))
 
-function Options() {
+export function Options() {
   const [blocked, setBlocked] = useState<string[]>([])
   const [keywords, setKeywords] = useState<string[]>([])
   const [flagsEnabled, setFlagsEnabled] = useState(false)
@@ -61,8 +74,11 @@ function Options() {
   const [showExceptionButton, setShowExceptionButton] = useState(true)
   const [sharedCacheEnabled, setSharedCacheEnabled] = useState(true)
   const [prefetchEnabled, setPrefetchEnabled] = useState(true)
+  const [prefetchShare, setPrefetchShare] = useState(DEFAULT_PREFETCH_SHARE)
+  const [pacing, setPacing] = useState<PrefetchPacing>('spread')
   const [hideMode, setHideMode] = useState<HideBlockedMode>('off')
   const [cacheCleared, setCacheCleared] = useState(false)
+  const [sections, setSections] = useState(DEFAULT_OPTIONS_SECTIONS)
 
   async function handleClearCache() {
     await chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' })
@@ -82,6 +98,9 @@ function Options() {
         SHARED_CACHE_KEY,
         HIDE_BLOCKED_LOCATIONS_KEY,
         BACKGROUND_PREFETCH_KEY,
+        PREFETCH_SHARE_KEY,
+        PREFETCH_PACING_KEY,
+        OPTIONS_SECTIONS_KEY,
       ])
       .then((result) => {
         setBlocked(
@@ -113,9 +132,12 @@ function Options() {
             ? Boolean(result[BACKGROUND_PREFETCH_KEY])
             : true,
         )
+        setPrefetchShare(normalizePrefetchShare(result[PREFETCH_SHARE_KEY]))
+        setPacing(normalizePrefetchPacing(result[PREFETCH_PACING_KEY]))
         setHideMode(
           normalizeHideBlockedMode(result[HIDE_BLOCKED_LOCATIONS_KEY]),
         )
+        setSections(normalizeOptionsSections(result[OPTIONS_SECTIONS_KEY]))
       })
   }, [])
 
@@ -160,6 +182,45 @@ function Options() {
     chrome.storage.local.set({ [HIGHLIGHT_EXCEPTIONS_KEY]: next })
   }
 
+  // Restoring stored state flips `open` programmatically, which also fires
+  // `toggle` — so the update has to be functional: that event can arrive with a
+  // stale `sections`, which would otherwise clobber the freshly loaded values.
+  function toggleSection(id: OptionsSectionId, open: boolean) {
+    setSections((prev) => {
+      if (prev[id] === open) return prev
+      const next = { ...prev, [id]: open }
+      chrome.storage.local.set({ [OPTIONS_SECTIONS_KEY]: next })
+      return next
+    })
+  }
+
+  // <details> flips itself, so this only records the result.
+  function sectionProps(id: OptionsSectionId) {
+    return {
+      class: css.accordion,
+      open: sections[id],
+      onToggle: (e: Event) =>
+        toggleSection(id, (e.currentTarget as HTMLDetailsElement).open),
+    }
+  }
+
+  /** Dims a row whose controls are disabled, so the reason reads as deliberate. */
+  function rowClass(base: string, disabled: boolean) {
+    return disabled ? `${base} ${css.optionDisabled}` : base
+  }
+
+  // Comes off a <select>, so it arrives as a string.
+  function updatePrefetchShare(value: string) {
+    const share = normalizePrefetchShare(value)
+    setPrefetchShare(share)
+    chrome.storage.local.set({ [PREFETCH_SHARE_KEY]: share })
+  }
+
+  function updatePacing(next: PrefetchPacing) {
+    setPacing(next)
+    chrome.storage.local.set({ [PREFETCH_PACING_KEY]: next })
+  }
+
   function updateHideMode(mode: HideBlockedMode) {
     setHideMode(mode)
     chrome.storage.local.set({ [HIDE_BLOCKED_LOCATIONS_KEY]: mode })
@@ -178,6 +239,18 @@ function Options() {
     })
   }
 
+  // Background prefetch feeds the community cache, so opting out of the cache
+  // switches the rest of the section off. Without a server configured the
+  // toggle isn't rendered at all and so can't gate anything.
+  const cacheOff = isSharedCacheConfigured() && !sharedCacheEnabled
+
+  // Spell the share out in lookups, which is what users actually feel.
+  const shareLookups = Math.floor(LOOKUP_LIMIT_PER_WINDOW * prefetchShare)
+  // What "spread" works out to: the window split across that many lookups.
+  const spreadSeconds = Math.round(
+    (LOOKUP_WINDOW_MINUTES * 60) / Math.max(1, shareLookups),
+  )
+
   const exceptionQuery = exceptionFilter.trim().toLowerCase()
   const shownExceptions = exceptionQuery
     ? exceptions.filter((u) => u.includes(exceptionQuery))
@@ -187,15 +260,14 @@ function Options() {
     <div class={css.container}>
       <h1 class={css.title}>Options</h1>
 
-      <details class={css.accordion} open>
+      <details {...sectionProps('keywords')}>
         <summary class={css.accordionSummary}>
           <span>Highlight tweets by keyword 🔍</span>
           <span class={css.accordionArrow}>▾</span>
         </summary>
         <div class={css.accordionContent}>
           <p class={css.subtitle}>
-            Highlight tweets from users whose nickname or bio contains any of
-            these keywords.
+            Highlights tweets whose author's name or bio contains any of these.
           </p>
 
           {keywords.length > 0 && (
@@ -233,14 +305,14 @@ function Options() {
         </div>
       </details>
 
-      <details class={css.accordion}>
+      <details {...sectionProps('flags')}>
         <summary class={css.accordionSummary}>
           <span>Highlight tweets by flags 🏴</span>
           <span class={css.accordionArrow}>▾</span>
         </summary>
         <div class={css.accordionContent}>
           <p class={css.subtitle}>
-            Highlight tweets from users whose bio contains many flags.
+            Highlights tweets whose author's bio is full of flags.
           </p>
           <label class={css.controlRow}>
             <input
@@ -290,16 +362,15 @@ function Options() {
         </div>
       </details>
 
-      <details class={css.accordion}>
+      <details {...sectionProps('exceptions')}>
         <summary class={css.accordionSummary}>
           <span>Highlight exceptions 🙈</span>
           <span class={css.accordionArrow}>▾</span>
         </summary>
         <div class={css.accordionContent}>
           <p class={css.subtitle}>
-            Accounts here are never highlighted, even when they match a keyword
-            or flag rule — useful for accounts that use a keyword sarcastically
-            (e.g. “no NAFO”).
+            Never highlighted, even when they match a rule — for accounts using
+            a keyword sarcastically (e.g. “no NAFO”).
           </p>
 
           <label class={css.controlRow}>
@@ -393,58 +464,105 @@ function Options() {
         </p>
       )}
 
-      <label class={css.inlineOption}>
-        <input
-          type="checkbox"
-          checked={prefetchEnabled}
-          onChange={(e) => {
-            const next = (e.target as HTMLInputElement).checked
-            setPrefetchEnabled(next)
-            chrome.storage.local.set({ [BACKGROUND_PREFETCH_KEY]: next })
-          }}
-        />
-        <span>Prefetch locations in the background ⚡</span>
-      </label>
-      <p class={css.mobileHint}>
-        Quietly looks up locations for accounts in your feed — most-followed
-        first — so flags appear without hovering. Uses at most half the lookup
-        limit, always leaving room for your own hovers. Turn off to only look up
-        a location when you hover or swipe.
-      </p>
+      <details {...sectionProps('prefetch')}>
+        <summary class={css.accordionSummary}>
+          <span>Background lookups ⚡</span>
+          <span class={css.accordionArrow}>▾</span>
+        </summary>
+        <div class={css.accordionContent}>
+          {isSharedCacheConfigured() && (
+            <>
+              <label class={css.inlineOption}>
+                <input
+                  type="checkbox"
+                  checked={sharedCacheEnabled}
+                  onChange={(e) => {
+                    const next = (e.target as HTMLInputElement).checked
+                    setSharedCacheEnabled(next)
+                    chrome.storage.local.set({ [SHARED_CACHE_KEY]: next })
+                  }}
+                />
+                <span>Use shared community location cache 🌍</span>
+              </label>
+              <p class={css.mobileHint}>
+                Shares the flags you look up so everyone skips repeat lookups.
+                Only public handles and their flag are sent — no account or
+                personal data.
+              </p>
+            </>
+          )}
 
-      {isSharedCacheConfigured() && (
-        <>
-          <label class={css.inlineOption}>
+          <label class={rowClass(css.inlineOption, cacheOff)}>
             <input
               type="checkbox"
-              checked={sharedCacheEnabled}
+              checked={prefetchEnabled}
+              disabled={cacheOff}
               onChange={(e) => {
                 const next = (e.target as HTMLInputElement).checked
-                setSharedCacheEnabled(next)
-                chrome.storage.local.set({ [SHARED_CACHE_KEY]: next })
+                setPrefetchEnabled(next)
+                chrome.storage.local.set({ [BACKGROUND_PREFETCH_KEY]: next })
               }}
             />
-            <span>Use shared community location cache 🌍</span>
+            <span>Prefetch locations in the background</span>
           </label>
           <p class={css.mobileHint}>
-            Shares the public location flags you look up with other users
-            through a community server, so everyone skips repeat lookups. Only
-            public handles and their location flag are sent — no account,
-            cookies, or personal data. Turn off to keep all lookups local to
-            this browser.
+            Looks up accounts in your feed, most-followed first, so flags appear
+            without hovering.
           </p>
-        </>
-      )}
 
-      <details class={css.accordion}>
+          <label class={rowClass(css.controlRow, cacheOff || !prefetchEnabled)}>
+            <span>Share of the lookup limit it may use:</span>
+            <select
+              class={css.modeSelect}
+              value={String(prefetchShare)}
+              disabled={cacheOff || !prefetchEnabled}
+              onChange={(e) =>
+                updatePrefetchShare((e.target as HTMLSelectElement).value)
+              }
+            >
+              {PREFETCH_SHARE_CHOICES.map((share) => (
+                <option key={share} value={String(share)}>
+                  {Math.round(share * 100)}%
+                </option>
+              ))}
+            </select>
+          </label>
+          <p class={css.mobileHint}>
+            X allows ~{LOOKUP_LIMIT_PER_WINDOW} lookups per{' '}
+            {LOOKUP_WINDOW_MINUTES} min: {shareLookups} for prefetching,{' '}
+            {LOOKUP_LIMIT_PER_WINDOW - shareLookups} left for your own hovers.
+          </p>
+
+          <label class={rowClass(css.controlRow, cacheOff || !prefetchEnabled)}>
+            <input
+              type="checkbox"
+              checked={pacing === 'spread'}
+              disabled={cacheOff || !prefetchEnabled}
+              onChange={(e) =>
+                updatePacing(
+                  (e.target as HTMLInputElement).checked ? 'spread' : 'instant',
+                )
+              }
+            />
+            <span>
+              Spread lookups over the whole {LOOKUP_WINDOW_MINUTES} minutes
+            </span>
+          </label>
+          <p class={css.mobileHint}>
+            About one lookup every {spreadSeconds}s, instead of all at once.
+          </p>
+        </div>
+      </details>
+
+      <details {...sectionProps('blocked')}>
         <summary class={css.accordionSummary}>
           <span>Blocked locations 🚫</span>
           <span class={css.accordionArrow}>▾</span>
         </summary>
         <div class={css.accordionContent}>
           <p class={css.subtitle}>
-            Profiles from selected countries show ⚠️ instead of their flag. You
-            can also collapse or hide their tweets in the feed.
+            These countries show ⚠️ instead of their flag, and their tweets can
+            be collapsed or hidden.
           </p>
 
           <label class={css.controlRow}>
@@ -466,10 +584,8 @@ function Options() {
             </select>
           </label>
           <p class={css.mobileHint}>
-            Uses the most reliable location signal — the App Store / Play Store
-            country, or the account location when it isn't flagged as VPN.
-            Applies to feed tweets whose location is already known (e.g. from
-            the community cache), never the tweet you opened.
+            Goes by the store country, or the account location when it isn't
+            flagged as VPN. Never applies to the tweet you opened.
           </p>
 
           {blocked.length > 0 && (

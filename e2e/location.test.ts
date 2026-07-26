@@ -24,8 +24,11 @@ import {
   mockLocationApis,
   mockSharedCache,
   navigateToTweetDetail,
+  nthReply,
   officialAccountLocation,
   readIdb,
+  TWEET_ARTICLE,
+  tweetArticles,
 } from './helpers'
 
 test.beforeEach(async ({ context, extensionId }) => {
@@ -111,7 +114,7 @@ test('tweet detail: inline location for author, hover location for first reply',
   await authorQueryDone
 
   // Author's location is injected inline into the first article on the detail page.
-  const authorArticle = page.locator('article[data-testid="tweet"]').first()
+  const authorArticle = tweetArticles(page).first()
   await authorArticle.locator('.x-loc-info').waitFor({ timeout: 10_000 })
   const authorLocation = await hoverCardLocation(authorArticle)
   expect(authorLocation.basedIn).not.toBeNull()
@@ -134,9 +137,11 @@ test('tweet detail: hover location shown for second-level reply', async ({
   await page.goto(`https://x.com${tweetPath}`)
   await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 })
 
-  // Click the first reply to open its own detail page; second-level replies appear there.
-  const firstReplyArticle = page.locator('article[data-testid="tweet"]').nth(2)
-  const replyStatusLink = firstReplyArticle
+  // Open a reply's own detail page — second-level replies live there. The second
+  // reply specifically: it is the one with replies of its own, and the recording
+  // has its page. (The first reply's page has no replies, so the hover below
+  // would find nothing to hover.)
+  const replyStatusLink = (await nthReply(page, 2))
     .locator('a[href*="/status/"]')
     .first()
   await replyStatusLink.waitFor({ timeout: 15_000 })
@@ -162,7 +167,7 @@ test('rate limit: toast shown on 429, badge in hover card, no further API calls'
 
   const replyLink = (n: number) =>
     page
-      .locator('article[data-testid="tweet"]')
+      .locator(TWEET_ARTICLE)
       .nth(n)
       .locator('[data-testid="User-Name"] a[href^="/"]:not([href*="/status/"])')
       .first()
@@ -266,7 +271,7 @@ test('clear cache button empties IDB and forces fresh API call on re-hover', asy
 
   const usernameLink = page
     .locator(
-      'article[data-testid="tweet"] [data-testid="User-Name"] a[href="/sotaproject" i]',
+      `${TWEET_ARTICLE} [data-testid="User-Name"] a[href="/sotaproject" i]`,
     )
     .first()
   await usernameLink.hover()
@@ -295,7 +300,7 @@ test('second hover uses checkedThisSession cache — no repeat API call', async 
   // Hover the same username again.
   const usernameLink = page
     .locator(
-      'article[data-testid="tweet"] [data-testid="User-Name"] a[href="/sotaproject" i]',
+      `${TWEET_ARTICLE} [data-testid="User-Name"] a[href="/sotaproject" i]`,
     )
     .first()
   await usernameLink.hover()

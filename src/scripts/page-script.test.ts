@@ -146,6 +146,34 @@ describe('fetch — header capture', () => {
     expect(ev.detail.headers.authorization).toBe('Bearer array')
   })
 
+  // X calls fetch(new Request(...)) in places, where both the URL and the
+  // headers hang off the input rather than the init.
+  it('reads url and headers off a Request input', async () => {
+    await import('./page-script')
+    const eventP = nextWindowEvent<CustomEvent>('x-loc-headers-captured')
+
+    window.fetch(
+      new Request('https://x.com/i/api/graphql/test', {
+        headers: { Authorization: 'Bearer from-request' },
+      }),
+    )
+
+    const ev = await eventP
+    expect(ev.detail.headers.authorization).toBe('Bearer from-request')
+  })
+
+  it('accepts a URL-object input', async () => {
+    await import('./page-script')
+    const eventP = nextWindowEvent<CustomEvent>('x-loc-headers-captured')
+
+    window.fetch(new URL('https://x.com/i/api/graphql/test'), {
+      headers: { authorization: 'Bearer from-url-object' },
+    })
+
+    const ev = await eventP
+    expect(ev.detail.headers.authorization).toBe('Bearer from-url-object')
+  })
+
   it('does NOT capture headers when authorization is missing', async () => {
     await import('./page-script')
     let fired = false
@@ -304,6 +332,8 @@ describe('fetch — bio extraction', () => {
     expect(ev.detail.users).toHaveLength(1)
     expect(ev.detail.users[0].userName).toBe('tweetuser')
     expect(ev.detail.users[0].bio).toBe('my bio')
+    // The feed is what the user is scrolling — looked up before any reply.
+    expect(ev.detail.users[0].priority).toBe('high')
   })
 
   it('dispatches x-loc-users-data for TweetDetail response', async () => {
@@ -327,6 +357,9 @@ describe('fetch — bio extraction', () => {
     const ev = await eventP
     expect(ev.detail.users).toHaveLength(1)
     expect(ev.detail.users[0].userName).toBe('detailuser')
+    // A thread is mostly replies; the tweet the user opened is fetched directly
+    // by content.tsx, so nothing on screen waits behind this queue.
+    expect(ev.detail.users[0].priority).toBe('low')
   })
 
   it('extracts profile_bio.description over legacy.description', async () => {
@@ -595,6 +628,51 @@ describe('x-loc-request-users event', () => {
     expect(replayedNames).not.toContain('once')
     spy.mockRestore()
   })
+
+  it('keeps a buffered feed account high when a thread mentions it again', async () => {
+    const shared = 'inboth'
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(homeTimelineResponse(shared, 'bio')), {
+            status: 200,
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(tweetDetailResponse(shared, 'bio')), {
+            status: 200,
+          }),
+        ),
+    )
+    await import('./page-script')
+
+    // Seen in the feed first, then again as a reply in a thread. The buffer
+    // keeps the most recent record — but must not let 'low' overwrite 'high',
+    // or replaying it would bury a feed account behind the reply queue.
+    const first = nextWindowEvent<CustomEvent>('x-loc-users-data')
+    window.fetch('https://x.com/i/api/graphql/HomeTimeline', {})
+    await first
+    const second = nextWindowEvent<CustomEvent>('x-loc-users-data')
+    window.fetch('https://x.com/i/api/graphql/TweetDetail', {})
+    await second
+
+    const spy = vi.spyOn(window, 'dispatchEvent')
+    window.dispatchEvent(new CustomEvent('x-loc-request-users'))
+
+    const replayed = spy.mock.calls
+      .map(([e]) => e as CustomEvent)
+      .filter((e) => e.type === 'x-loc-users-data')
+      .flatMap(
+        (e) => e.detail.users as Array<{ userName: string; priority: string }>,
+      )
+      .filter((u) => u.userName === shared)
+
+    expect(replayed).toHaveLength(1)
+    expect(replayed[0].priority).toBe('high')
+    spy.mockRestore()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -659,6 +737,7 @@ describe('XHR — bio extraction', () => {
     expect(ev.detail.users).toHaveLength(1)
     expect(ev.detail.users[0].userName).toBe('xhruser')
     expect(ev.detail.users[0].bio).toBe('xhr bio')
+    expect(ev.detail.users[0].priority).toBe('high')
   })
 
   it('dispatches x-loc-users-data from TweetDetail XHR load event', async () => {
@@ -674,6 +753,7 @@ describe('XHR — bio extraction', () => {
 
     const ev = await eventP
     expect(ev.detail.users[0].userName).toBe('xhrdetail')
+    expect(ev.detail.users[0].priority).toBe('low')
   })
 
   it('does NOT dispatch x-loc-users-data for non-intercepted XHR URLs', async () => {

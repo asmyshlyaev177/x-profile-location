@@ -1,15 +1,66 @@
+import { CHROME_STORE_URL } from '../utils/constants'
+import { Wordmark } from './Wordmark'
+
+const LINKS: { heading: string; items: { label: string; href: string }[] }[] = [
+  {
+    heading: 'The extension',
+    items: [
+      { label: 'Screenshots', href: '/#proof' },
+      { label: 'How it works', href: '/#how' },
+      { label: 'Features', href: '/#features' },
+      { label: 'Chrome Web Store', href: CHROME_STORE_URL },
+    ],
+  },
+  {
+    heading: 'Small print',
+    items: [
+      { label: 'Privacy policy', href: '/privacy-policy' },
+      { label: 'What is not collected', href: '/#privacy' },
+      { label: 'Contact', href: 'mailto:asmyshlyaev177+x-ext@gmail.com' },
+    ],
+  },
+]
+
 export function Footer() {
   return (
-    <footer class="bg-dark border-border border-t py-8">
-      <div class="text-secondary mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 text-sm sm:flex-row lg:px-8">
-        <p>
-          © {new Date().getFullYear()} X Profile Location. All rights reserved.
+    <footer class="border-hair border-t">
+      <div class="shell grid gap-10 py-14 sm:grid-cols-[1.4fr_1fr_1fr]">
+        <div>
+          <Wordmark />
+          <p class="text-faint mt-4 max-w-[34ch] text-[0.8125rem] leading-relaxed">
+            A country flag on every X profile, taken from X’s own data. Built by
+            one person, with no company behind it.
+          </p>
+          <p class="t-data mt-5">Version {__EXT_VERSION__}</p>
+        </div>
+
+        {LINKS.map((group) => (
+          <nav key={group.heading} aria-label={group.heading}>
+            <h2 class="t-data">{group.heading}</h2>
+            <ul class="mt-4 space-y-2.5">
+              {group.items.map((l) => (
+                <li key={l.label}>
+                  <a
+                    href={l.href}
+                    class="text-body hover:text-signal text-[0.875rem] transition-colors duration-150"
+                  >
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))}
+      </div>
+
+      <div class="shell border-hair flex flex-col gap-3 border-t py-6 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-faint text-[0.8125rem]">
+          © {new Date().getFullYear()} X Profile Location
         </p>
-        <nav class="flex gap-6">
-          <a href="/privacy-policy" class="transition-colors hover:text-white">
-            Privacy Policy
-          </a>
-        </nav>
+        <p class="text-faint text-[0.8125rem]">
+          Not affiliated with X Corp. Location data comes from X’s own public
+          endpoints.
+        </p>
       </div>
     </footer>
   )
