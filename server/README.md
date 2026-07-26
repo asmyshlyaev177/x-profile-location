@@ -229,14 +229,32 @@ Now clone and install:
 
 ```bash
 sudo useradd --system --home /opt/x-loc-cache --shell /usr/sbin/nologin xloc
-sudo git clone git@github.com-xloc:asmyshlyaev177/x-profile-location.git /opt/x-loc-cache
-cd /opt/x-loc-cache/server
+
+# Sparse + partial clone: the server only ever reads server/, while the repo also
+# carries ~345 MB of Playwright HAR recordings under e2e/. A plain clone drags all
+# of it onto the box and re-materialises it on every pull.
+sudo git clone --filter=blob:none --sparse \
+  git@github.com-xloc:asmyshlyaev177/x-profile-location.git /opt/x-loc-cache
+cd /opt/x-loc-cache
+sudo git sparse-checkout set server
+
+cd server
 # Explicit PATH so npm binds the native module to /usr/bin/node, whatever the
 # shell's own `node` resolves to.
 sudo env PATH=/usr/bin:/bin /usr/bin/npm install --omit=dev
+du -sh /opt/x-loc-cache        # ~25 MB, vs ~410 MB for a full clone
 ```
 
-(For a public repo, skip the key and clone the `https://` URL.)
+(For a public repo, skip the key and use the `https://` URL.)
+
+An existing full clone converts in place — no re-clone needed, though `.git`
+keeps the blobs it already fetched:
+
+```bash
+cd /opt/x-loc-cache
+sudo git sparse-checkout init --cone
+sudo git sparse-checkout set server
+```
 
 The tree stays **root-owned on purpose** — do not `chown` it to `xloc`. A root
 clone is world-readable (755/644), which is all the service needs, and it means

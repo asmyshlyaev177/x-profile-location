@@ -207,7 +207,8 @@ describe('sqlite backend — retention', () => {
     vi.setSystemTime(new Date('2026-04-01T00:00:00Z')) // > 60 days later
     await contribute('new-client', [{ u: 'fresh', loc: 'Chile', src: 'web' }])
 
-    await worker.scheduled(null, env)
+    // The real driver's count, not a mocked one — this is what gets logged.
+    expect(await worker.scheduled(null, env)).toBe(1)
 
     expect(voteCount('stale')).toBe(0)
     expect(voteCount('fresh')).toBe(1)

@@ -114,6 +114,23 @@ function toLocationVote(r: VoteRow): LocationVote {
   }
 }
 
+/**
+ * Rows affected by a `run()`, across both backends. The two drivers report it
+ * differently — better-sqlite3 returns `{ changes }`, D1 nests it as
+ * `{ meta: { changes } }` — and db-types.ts deliberately types `run()` as
+ * `unknown` rather than committing the shared handlers to either shape. Returns
+ * 0 for anything unrecognised, so a driver change degrades the log line rather
+ * than the cleanup.
+ */
+function rowsChanged(result: unknown): number {
+  if (typeof result !== 'object' || result === null) return 0
+  const direct = (result as { changes?: unknown }).changes
+  if (typeof direct === 'number') return direct
+  const meta = (result as { meta?: { changes?: unknown } }).meta
+  if (typeof meta?.changes === 'number') return meta.changes
+  return 0
+}
+
 function toServed(r: ProfileRow): Served {
   const served: Served = {
     u: r.username,
@@ -329,13 +346,19 @@ export default {
   // `_controller` / `_ctx` are typed loosely rather than as Cloudflare's
   // ScheduledController / ExecutionContext so this file needs no workers-types;
   // both are unused, and node-server.ts calls it with nothing.
+  //
+  // Returns the number of votes deleted, which node-server.ts logs. Workers
+  // ignores a scheduled() return value, so this costs the Worker build nothing.
   async scheduled(
     _controller: unknown,
     env: Env,
     _ctx?: unknown,
-  ): Promise<void> {
-    await env.DB.prepare('DELETE FROM location_votes WHERE seen_at < ?')
+  ): Promise<number> {
+    const result = await env.DB.prepare(
+      'DELETE FROM location_votes WHERE seen_at < ?',
+    )
       .bind(Date.now() - VOTE_RETENTION_MS)
       .run()
+    return rowsChanged(result)
   },
 }

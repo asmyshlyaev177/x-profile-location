@@ -250,10 +250,18 @@ server.headersTimeout = 65_000
 // still prunes. unref() keeps it from holding the process open on shutdown.
 const retentionMs = config.retentionHours * 60 * 60 * 1000
 async function runRetention(): Promise<void> {
+  const startedAt = Date.now()
   try {
-    await worker.scheduled(null, env)
+    const deleted = await worker.scheduled(null, env)
     sweepBuckets(Date.now())
     db.raw.pragma('wal_checkpoint(TRUNCATE)')
+    // Logged unconditionally, including the common `deleted 0` case: this runs
+    // once a day, and without a success line an absent log is indistinguishable
+    // from a timer that never fired. `journalctl -u x-loc-cache | grep retention`
+    // is then a real answer to "is cleanup running".
+    console.log(
+      `[x-loc-cache] retention: deleted ${deleted} vote(s) in ${Date.now() - startedAt}ms`,
+    )
   } catch (err) {
     console.error('[x-loc-cache] retention failed:', err)
   }

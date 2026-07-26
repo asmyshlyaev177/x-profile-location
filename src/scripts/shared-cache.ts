@@ -21,7 +21,22 @@ import { CACHE_API_BASE } from './constants'
 
 // A location is only trusted once this many distinct clients agree (matches the
 // server's consensus model; see server/README.md).
-// TODO: set to 2 for production
+//
+// Still 1, deliberately. Confidence only accrues when two installs independently
+// look up the same handle, and at the current user count feeds barely overlap:
+// measured 2026-07-27 on the live server, 52 of 4242 profiles had reached 2.
+// Raising the bar today would drop what the cache can answer by ~99% — and the
+// cache exists to spare X's 50-lookups-per-15-minutes budget, so a threshold
+// that empties it costs more than it protects.
+//
+// The protection is also narrower than it looks: VOTE_CAP (server/src/index.ts)
+// keeps only the 10 newest votes per handle, so anyone able to mint 10 client ids
+// can evict the honest ones and satisfy any small threshold. A value of 2 guards
+// against a single honest-but-wrong client, not a deliberate poisoner.
+//
+// Flip to 2 when the overlap is actually there — re-run:
+// sqlite3 /var/lib/x-loc-cache/x-loc-cache.db   'SELECT COUNT(*) AS profiles, SUM(location_confidence >= 2) AS ready FROM profiles;'
+// and switch once the second figure is a majority of the first.
 export const MIN_CONFIDENCE = 1
 
 const NEG_TTL_MS = 60 * 60 * 1000 // remember "server had nothing" for 1h
