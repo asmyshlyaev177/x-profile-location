@@ -1,0 +1,64 @@
+#  /etc/systemd/system/x-loc-cache.service
+#
+#  Assumes Node is installed system-wide at /usr/bin/node (NodeSource apt
+#  package). With nvm instead, three things change:
+#    * ExecStart must be the absolute interpreter path — systemd does not expand
+#      variables or $PATH there. Get it with: readlink -f "$(which node)"
+#    * that path is under /home, so ProtectHome=yes below would hide it. Set
+#      ProtectHome=no, or install Node system-wide and keep the hardening.
+#    * better-sqlite3 is a native module, so `npm install` must run under the
+#      *same* Node that ExecStart names. Installing under nvm and then running
+#      /usr/bin/node fails at startup with ERR_DLOPEN_FAILED / NODE_MODULE_VERSION.
+#  See README.md ("Deploy: Node + SQLite on a VPS").
+
+[Unit]
+Description=x-loc-cache — shared location cache for the X Profile Location extension
+Documentation=https://github.com/asmyshlyaev177/x-profile-location
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xloc
+Group=xloc
+WorkingDirectory=/opt/x-loc-cache/server
+# --experimental-strip-types is what lets Node execute the .ts sources with no
+# build step. It is required on Node 22.6–22.17 and harmless (accepted, silent)
+# on 22.18+ and 24+, where stripping is already the default — so this one command
+# line works across every supported version. Verified on 22.12.0 and 24.10.0.
+ExecStart=/usr/bin/node --experimental-strip-types src/node-server.ts
+EnvironmentFile=/etc/x-loc-cache.env
+
+# The server closes the listener, checkpoints WAL and exits on SIGTERM; give it
+# room to finish rather than being killed mid-write.
+KillSignal=SIGTERM
+TimeoutStopSec=15
+Restart=always
+RestartSec=2
+
+# systemd creates and chowns /var/lib/x-loc-cache — point XLOC_DB inside it.
+StateDirectory=x-loc-cache
+
+# Memory ceiling. Budget on a 1 GB box: ~80 MB Node baseline + XLOC_CACHE_MB of
+# SQLite page cache (256 MB by default) + request buffers. Raise this and
+# XLOC_CACHE_MB together, never one alone. XLOC_MMAP_MB is not part of this
+# budget in practice — those pages are file-backed and the kernel reclaims them
+# under pressure.
+MemoryMax=640M
+
+# Hardening. Nothing here needs privileges: one listening socket on loopback and
+# one directory to write.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

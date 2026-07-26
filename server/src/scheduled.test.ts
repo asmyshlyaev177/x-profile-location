@@ -16,11 +16,7 @@ describe('scheduled — retention cleanup', () => {
     const { env, prepare, bind, run } = mockDb()
     const before = Date.now()
 
-    await worker.scheduled(
-      {} as ScheduledController,
-      env,
-      {} as ExecutionContext,
-    )
+    await worker.scheduled(null, env)
 
     // A single DELETE against location_votes, filtered on seen_at.
     expect(prepare).toHaveBeenCalledTimes(1)
@@ -37,11 +33,7 @@ describe('scheduled — retention cleanup', () => {
 
   it('never deletes rows within the retention window (cutoff is strictly in the past)', async () => {
     const { env, bind } = mockDb()
-    await worker.scheduled(
-      {} as ScheduledController,
-      env,
-      {} as ExecutionContext,
-    )
+    await worker.scheduled(null, env)
     const cutoff = bind.mock.calls[0][0] as number
     // A vote seen "now" is well above the cutoff, so it survives.
     expect(cutoff).toBeLessThan(Date.now())

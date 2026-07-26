@@ -1,0 +1,29 @@
+# /etc/caddy/Caddyfile
+#
+# Caddy obtains and renews the certificate itself — there is nothing to run on a
+# timer and no cert paths to configure. It needs :80 and :443 free; if something
+# already holds them (`sudo ss -tlnp | grep -E ':80|:443'`), stop that first or
+# put this vhost into the existing server instead.
+
+xloc.vmirrormanv.xyz {
+	# Responses are JSON and highly repetitive — a full 100-profile lookup
+	# compresses roughly 5:1, which is the single biggest lever on egress.
+	encode zstd gzip
+
+	reverse_proxy 127.0.0.1:8787 {
+		# Replace rather than append. Caddy's default is to append the peer to
+		# whatever X-Forwarded-For the client sent, which leaves a forged value
+		# in the header for the backend to sift through. The Node server defends
+		# itself anyway (it reads the last hop, not the first), but a header that
+		# only ever contains one address is easier to reason about.
+		header_up X-Forwarded-For {remote_host}
+	}
+
+	log {
+		output file /var/log/caddy/xloc.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+		format json
+	}
+}

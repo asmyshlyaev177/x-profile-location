@@ -1,0 +1,296 @@
+// Node entry point for the SQLite backend.
+//
+// Adapts node:http to the fetch-style handler exported by index.ts, so the
+// request logic is byte-identical to what runs on the Cloudflare Worker. Also
+// owns the things the Workers platform used to provide for free: the cron
+// trigger (retention), a body-size limit, and a per-IP rate limit — a bare VPS
+// origin has no edge in front of it absorbing abuse.
+//
+// Run it directly, no build step (Node >= 22.6):
+//   node --experimental-strip-types src/node-server.ts
+// The flag is required below 22.18 and accepted, silently, at or above it.
+//
+// Everything is configured by XLOC_* environment variables; see README.md.
+
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from 'node:http'
+import { mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import worker, { type Env } from './index.ts'
+import { DEFAULT_SQLITE_CONFIG, openDatabase, type SqliteDb } from './sqlite.ts'
+
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+function num(name: string, fallback: number): number {
+  const raw = process.env[name]
+  if (raw === undefined || raw.trim() === '') return fallback
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error(
+      `${name} must be a non-negative number, got ${JSON.stringify(raw)}`,
+    )
+  }
+  return n
+}
+
+function bool(name: string, fallback: boolean): boolean {
+  const raw = process.env[name]
+  if (raw === undefined || raw.trim() === '') return fallback
+  return raw === '1' || raw.toLowerCase() === 'true'
+}
+
+const config = {
+  host: process.env.XLOC_HOST ?? '127.0.0.1',
+  port: num('XLOC_PORT', 8787),
+  dbPath: resolve(process.env.XLOC_DB ?? './data/x-loc-cache.db'),
+  cacheMb: num('XLOC_CACHE_MB', DEFAULT_SQLITE_CONFIG.cacheMb),
+  mmapMb: num('XLOC_MMAP_MB', DEFAULT_SQLITE_CONFIG.mmapMb),
+  retentionHours: num('XLOC_RETENTION_INTERVAL_HOURS', 24),
+  maxBodyBytes: num('XLOC_MAX_BODY_KB', 256) * 1024,
+  rateLimit: num('XLOC_RATE_LIMIT', 600), // requests per window per IP; 0 = off
+  rateWindowMs: num('XLOC_RATE_WINDOW_S', 60) * 1000,
+  // Client IP comes from X-Forwarded-For when a reverse proxy terminates TLS,
+  // which is the documented deployment. Only honour it when told to — a
+  // directly-exposed server must not let clients forge their own identity.
+  trustProxy: bool('XLOC_TRUST_PROXY', true),
+}
+
+// ---------------------------------------------------------------------------
+// Rate limiting — fixed window per IP
+// ---------------------------------------------------------------------------
+// Deliberately crude: an in-memory counter with no coordination, sized to stop a
+// single host from saturating one vCPU rather than to enforce fair use.
+//
+// The default is generous on purpose, because one IP is not one user. Offices,
+// universities and CGNAT put many installs behind a single address, and a false
+// positive is expensive: shared-cache.ts counts a 429 as a failure, and three
+// consecutive failures open its circuit breaker for ten minutes — so clipping a
+// legitimate burst costs that user the shared cache far longer than the burst
+// lasted. Against a real flood the ceiling still bites (10 req/s from one host),
+// and against a distributed one no per-IP limit would have helped anyway.
+//
+// Budget: a heavy scroller bursts ~20-30 req/min (lookups are batched 100
+// usernames at a time and deduped for 15 minutes; contributions are buffered for
+// 30s), so 600/min leaves room for ~20 simultaneously-active users on one IP,
+// and many more typical ones. Raise XLOC_RATE_LIMIT if you know you have a
+// large NAT population, or set it to 0 and let the reverse proxy own this.
+const buckets = new Map<string, { count: number; resetAt: number }>()
+
+/** Returns 0 when allowed, else the seconds until the window rolls (Retry-After). */
+function rateLimited(ip: string, now: number): number {
+  if (config.rateLimit === 0) return 0
+  const b = buckets.get(ip)
+  if (!b || now >= b.resetAt) {
+    buckets.set(ip, { count: 1, resetAt: now + config.rateWindowMs })
+    return 0
+  }
+  b.count += 1
+  if (b.count <= config.rateLimit) return 0
+  return Math.max(1, Math.ceil((b.resetAt - now) / 1000))
+}
+
+/** Drop expired buckets so a spray of distinct source IPs can't grow the map. */
+function sweepBuckets(now: number): void {
+  for (const [ip, b] of buckets) {
+    if (now >= b.resetAt) buckets.delete(ip)
+  }
+}
+
+function clientIp(req: IncomingMessage): string {
+  if (config.trustProxy) {
+    const raw = req.headers['x-forwarded-for']
+    const xff = Array.isArray(raw) ? raw.join(',') : raw
+    // The *last* entry, not the first. Caddy (and nginx's proxy_add_x_forwarded_for)
+    // append the peer address to whatever the client sent, so the first entry is
+    // attacker-controlled — a client sending `X-Forwarded-For: 1.2.3.4` would
+    // otherwise get a fresh rate-limit bucket per request. The entry our own
+    // proxy appended is the one that can be trusted.
+    const hops = xff?.split(',') ?? []
+    const last = hops[hops.length - 1]?.trim()
+    if (last) return last
+  }
+  return req.socket.remoteAddress ?? 'unknown'
+}
+
+// ---------------------------------------------------------------------------
+// node:http <-> fetch adapter
+// ---------------------------------------------------------------------------
+const BODYLESS = new Set(['GET', 'HEAD', 'OPTIONS', 'DELETE'])
+
+/** Cheap pre-check: reject on the declared length before reading a byte. */
+function declaredTooLarge(req: IncomingMessage, limit: number): boolean {
+  const len = Number(req.headers['content-length'])
+  return Number.isFinite(len) && len > limit
+}
+
+async function readBody(
+  req: IncomingMessage,
+  limit: number,
+): Promise<string | null> {
+  const chunks: Buffer[] = []
+  let size = 0
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length
+    if (size > limit) {
+      req.pause() // stop reading, but leave the socket alive to answer on
+      return null // signals 413
+    }
+    chunks.push(chunk as Buffer)
+  }
+  return Buffer.concat(chunks).toString('utf8')
+}
+
+function toRequest(req: IncomingMessage, body: string | null): Request {
+  const headers = new Headers()
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (Array.isArray(value)) for (const v of value) headers.append(key, v)
+    else if (value !== undefined) headers.set(key, value)
+  }
+  // The handlers only read `url.pathname`, so the authority is cosmetic — but it
+  // has to parse, and req.headers.host is attacker-controlled.
+  const url = new URL(req.url ?? '/', 'http://localhost')
+  return new Request(url, {
+    method: req.method,
+    headers,
+    body: body === null || body === '' ? undefined : body,
+  })
+}
+
+async function send(res: ServerResponse, response: Response): Promise<void> {
+  const headers: Record<string, string> = {}
+  response.headers.forEach((value, key) => {
+    headers[key] = value
+  })
+  const body = Buffer.from(await response.arrayBuffer())
+  res.writeHead(response.status, headers)
+  res.end(body)
+}
+
+function plain(
+  res: ServerResponse,
+  status: number,
+  text: string,
+  extra?: Record<string, string>,
+): void {
+  res.writeHead(status, {
+    'content-type': 'text/plain; charset=utf-8',
+    'access-control-allow-origin': '*',
+    ...extra,
+  })
+  res.end(text)
+}
+
+/**
+ * Answer 413 without reading the rest of the upload. The response has to flush
+ * before the socket goes away, so the request is only destroyed once the
+ * response is on the wire — destroying it first turns the 413 into a connection
+ * reset the client can't distinguish from a crash.
+ */
+function rejectTooLarge(req: IncomingMessage, res: ServerResponse): void {
+  res.once('finish', () => req.destroy())
+  plain(res, 413, 'Payload Too Large', { connection: 'close' })
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+mkdirSync(dirname(config.dbPath), { recursive: true })
+const db: SqliteDb = openDatabase({
+  path: config.dbPath,
+  cacheMb: config.cacheMb,
+  mmapMb: config.mmapMb,
+})
+const env: Env = { DB: db }
+
+const server = createServer((req, res) => {
+  void (async () => {
+    try {
+      // Cheap liveness probe for systemd/Caddy. Not part of the Worker's routes,
+      // so it lives here rather than in the shared handler.
+      if (req.method === 'GET' && req.url === '/healthz') {
+        return plain(res, 200, 'ok')
+      }
+      // Retry-After is not just politeness: without it a limited client keeps
+      // retrying into the window and burns through shared-cache.ts's three-strike
+      // circuit breaker, losing the cache for ten minutes over a one-second spike.
+      const retryAfter = rateLimited(clientIp(req), Date.now())
+      if (retryAfter > 0) {
+        return plain(res, 429, 'Too Many Requests', {
+          'retry-after': String(retryAfter),
+        })
+      }
+      if (declaredTooLarge(req, config.maxBodyBytes)) {
+        return rejectTooLarge(req, res)
+      }
+      const body = BODYLESS.has(req.method ?? 'GET')
+        ? ''
+        : await readBody(req, config.maxBodyBytes)
+      if (body === null) return rejectTooLarge(req, res)
+
+      await send(res, await worker.fetch(toRequest(req, body), env))
+    } catch (err) {
+      console.error('[x-loc-cache] request failed:', err)
+      if (!res.headersSent) plain(res, 500, 'Internal Server Error')
+      else res.end()
+    }
+  })()
+})
+
+// Sitting behind a reverse proxy, keep-alive should outlive the proxy's own idle
+// timeout so it is the proxy that closes idle connections, not us mid-request.
+server.keepAliveTimeout = 61_000
+server.headersTimeout = 65_000
+
+// Retention. The Worker gets this from a cron trigger in wrangler.toml; here it
+// is just an interval, run once shortly after boot so a box that reboots daily
+// still prunes. unref() keeps it from holding the process open on shutdown.
+const retentionMs = config.retentionHours * 60 * 60 * 1000
+async function runRetention(): Promise<void> {
+  try {
+    await worker.scheduled(null, env)
+    sweepBuckets(Date.now())
+    db.raw.pragma('wal_checkpoint(TRUNCATE)')
+  } catch (err) {
+    console.error('[x-loc-cache] retention failed:', err)
+  }
+}
+const retentionTimer = setInterval(() => void runRetention(), retentionMs)
+retentionTimer.unref()
+const bootTimer = setTimeout(() => void runRetention(), 60_000)
+bootTimer.unref()
+// Buckets are also swept between retention runs; the map is small but the sweep
+// is O(n) and there is no reason to let it sit for a whole day.
+const sweepTimer = setInterval(
+  () => sweepBuckets(Date.now()),
+  config.rateWindowMs * 10,
+)
+sweepTimer.unref()
+
+server.listen(config.port, config.host, () => {
+  console.log(
+    `[x-loc-cache] listening on http://${config.host}:${config.port} — db ${config.dbPath} ` +
+      `(cache ${config.cacheMb}MB, mmap ${config.mmapMb}MB)`,
+  )
+})
+
+let closing = false
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.on(signal, () => {
+    if (closing) return
+    closing = true
+    console.log(`[x-loc-cache] ${signal} — draining`)
+    server.close(() => {
+      db.close()
+      process.exit(0)
+    })
+    // Don't let a hung keep-alive connection block the restart.
+    setTimeout(() => {
+      db.close()
+      process.exit(0)
+    }, 5000).unref()
+  })
+}

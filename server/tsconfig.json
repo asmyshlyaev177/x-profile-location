@@ -4,7 +4,16 @@
     "module": "ES2022",
     "moduleResolution": "Bundler",
     "lib": ["ES2022"],
-    "types": ["@cloudflare/workers-types"],
+    // @types/node only. @cloudflare/workers-types cannot be listed alongside it
+    // — both declare global fetch/Request/Response — and is no longer needed:
+    // index.ts reaches the database through db-types.ts, so nothing in src/
+    // references a Cloudflare-specific type. @types/node supplies the same web
+    // globals (fetch, Request, Response, URL) plus node:http for node-server.ts.
+    "types": ["node"],
+    // Runtime entry points import each other with explicit .ts specifiers so
+    // Node can execute the sources directly (native type stripping — no build
+    // step on the VPS). esbuild, and therefore wrangler, resolves them too.
+    "allowImportingTsExtensions": true,
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,

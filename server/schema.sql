@@ -37,3 +37,11 @@ CREATE TABLE IF NOT EXISTS location_votes (
 --     whereas an index would add a write to every vote INSERT — taxing D1's ~50x
 --     scarcer write budget on the hot path to speed up a cold one. The weekly
 --     full-table scan is the cheaper trade.
+--
+-- The second point was re-measured on the SQLite backend, where the write-budget
+-- argument does not apply, and it still holds — for a different reason. Adding
+-- the seen_at index made a realistic daily retention pass over 5M rows *slower*
+-- (1492ms vs 1138ms) as well as inserts 171% slower and the file 20% larger: the
+-- scan was never the cost, deleting the rows was, and a second index is one more
+-- structure each delete has to update. See "Indexes: don't add any" in README.md
+-- for the full numbers. Do not add one without re-running that measurement.

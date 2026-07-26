@@ -3,11 +3,13 @@ packages:
   - server
 
 allowBuilds:
+  better-sqlite3: true
   esbuild: true
   sharp: true
   workerd: true
 
 onlyBuiltDependencies:
+  - better-sqlite3
   - esbuild
   - sharp
   - workerd

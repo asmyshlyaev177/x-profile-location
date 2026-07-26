@@ -1,4 +1,4 @@
-// Shared location cache — Cloudflare Worker + D1.
+// Shared location cache — request handlers, backend-agnostic.
 //
 // The server never talks to X. Clients fetch location from X's AboutAccountQuery
 // themselves (rate-limited, on hover) and contribute the result here; other
@@ -8,11 +8,17 @@
 // Endpoints (all CORS-open, no credentials):
 //   POST /v1/loc/batch  { usernames: string[] }        -> { profiles: Served[] }
 //   POST /v1/loc        { clientId, entries: Vote[] }   -> { ok: true }
+//
+// This module runs unmodified on two backends — Cloudflare Workers + D1
+// (wrangler.toml) and Node + SQLite on a VPS (node-server.ts) — because it only
+// ever touches `Env.DB` through the minimal interface in db-types.ts, which both
+// satisfy. Keep it that way: no Worker globals, no node: imports.
 
-import { pickConsensus, type LocationVote } from './consensus'
+import { pickConsensus, type LocationVote } from './consensus.ts'
+import type { Db, DbBoundStatement } from './db-types.ts'
 
 export interface Env {
-  DB: D1Database
+  DB: Db
 }
 
 const MAX_BATCH = 100
@@ -20,6 +26,26 @@ const VOTE_RETENTION_MS = 60 * 24 * 60 * 60 * 1000 // 60 days
 const REVALIDATE_RATE = 0.05 // ~5% of served rows ask the client to re-verify
 const USERNAME_RE = /^[a-z0-9_]{1,50}$/
 const MAX_FIELD_LEN = 60
+
+// Per-username vote cap. location_votes is keyed (username, client_id), so
+// without a cap it grows as users × profiles-each-user-sees — the only
+// superlinear term in the system, and the first thing that would exhaust a small
+// VPS disk. Capping bounds it at distinct-profiles × VOTE_CAP instead, flat in
+// user count.
+//
+// Pruning is not done at exactly VOTE_CAP: once a popular handle sits on the cap,
+// every further contribution would evict one row, doubling writes on the hot path
+// forever. Instead rows are allowed to pile up to VOTE_CAP + VOTE_CAP_SLACK and
+// then pruned back to VOTE_CAP in one go, amortising the delete over SLACK votes.
+//
+// Eviction is oldest-first, which is also the behaviour you want on merit: the
+// surviving window is the most recent observers, so a relocation propagates
+// instead of being outvoted forever by stale votes. The cost is that poisoning
+// gets cheaper — a flood of forged client ids only has to fill the window rather
+// than out-number every honest vote ever cast. MIN_CONFIDENCE on the client is
+// the backstop there.
+const VOTE_CAP = 10
+const VOTE_CAP_SLACK = 5
 
 interface Served {
   u: string
@@ -40,6 +66,7 @@ interface ProfileRow {
 
 interface VoteRow {
   username: string
+  client_id: string
   location: string | null
   source: string | null
   location_accurate: number
@@ -76,6 +103,15 @@ function sanitizeField(v: unknown): string | null {
   if (typeof v !== 'string') return null
   const s = v.trim()
   return s ? s.slice(0, MAX_FIELD_LEN) : null
+}
+
+function toLocationVote(r: VoteRow): LocationVote {
+  return {
+    location: r.location,
+    source: r.source,
+    locationAccurate: r.location_accurate !== 0,
+    seenAt: r.seen_at,
+  }
 }
 
 function toServed(r: ProfileRow): Served {
@@ -173,23 +209,29 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
   const affectedList = [...affected]
   const ph = affectedList.map(() => '?').join(',')
   const { results } = await env.DB.prepare(
-    `SELECT username, location, source, location_accurate, seen_at
+    `SELECT username, client_id, location, source, location_accurate, seen_at
        FROM location_votes
       WHERE username IN (${ph})`,
   )
     .bind(...affectedList)
     .all<VoteRow>()
 
-  const byUser = new Map<string, LocationVote[]>()
+  const byUser = new Map<string, VoteRow[]>()
   for (const r of results ?? []) {
     const arr = byUser.get(r.username) ?? []
-    arr.push({
-      location: r.location,
-      source: r.source,
-      locationAccurate: r.location_accurate !== 0,
-      seenAt: r.seen_at,
-    })
+    arr.push(r)
     byUser.set(r.username, arr)
+  }
+
+  // 2a. Enforce the per-username cap (see VOTE_CAP). Rows to drop are computed
+  //     from the votes we just read — no extra SELECT — and consensus below is
+  //     then taken over what *survives*, so the served profile always reflects
+  //     the rows that remain in the table.
+  const evictions: VoteRow[] = []
+  for (const list of byUser.values()) {
+    if (list.length <= VOTE_CAP + VOTE_CAP_SLACK) continue
+    list.sort((a, b) => b.seen_at - a.seen_at) // newest first
+    evictions.push(...list.splice(VOTE_CAP)) // splice mutates the mapped array
   }
 
   // 3. Current consensus for the affected users, so we can skip rewriting a
@@ -207,9 +249,17 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
   const current = new Map<string, ProfileRow>()
   for (const r of curRows ?? []) current.set(r.username, r)
 
-  const profileStmts: D1PreparedStatement[] = []
+  const writes: DbBoundStatement[] = []
+  for (const ev of evictions) {
+    writes.push(
+      env.DB.prepare(
+        'DELETE FROM location_votes WHERE username = ? AND client_id = ?',
+      ).bind(ev.username, ev.client_id),
+    )
+  }
+
   for (const u of affectedList) {
-    const c = pickConsensus(byUser.get(u) ?? [])
+    const c = pickConsensus((byUser.get(u) ?? []).map(toLocationVote))
     if (!c) continue
     const cur = current.get(u)
     if (
@@ -221,7 +271,7 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
     ) {
       continue // unchanged consensus — no write needed
     }
-    profileStmts.push(
+    writes.push(
       env.DB.prepare(
         `INSERT INTO profiles
            (username, location, source, location_accurate, location_confidence, updated_at)
@@ -242,7 +292,7 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
       ),
     )
   }
-  if (profileStmts.length > 0) await env.DB.batch(profileStmts)
+  if (writes.length > 0) await env.DB.batch(writes)
 
   return json({ ok: true })
 }
@@ -276,10 +326,13 @@ export default {
   // in wrangler.toml. One DELETE is issued; the table has no seen_at index, so
   // it's a full scan that spends the abundant read budget — deliberately traded
   // against not taxing every insert's ~50x scarcer write budget with an index.
+  // `_controller` / `_ctx` are typed loosely rather than as Cloudflare's
+  // ScheduledController / ExecutionContext so this file needs no workers-types;
+  // both are unused, and node-server.ts calls it with nothing.
   async scheduled(
-    _controller: ScheduledController,
+    _controller: unknown,
     env: Env,
-    _ctx: ExecutionContext,
+    _ctx?: unknown,
   ): Promise<void> {
     await env.DB.prepare('DELETE FROM location_votes WHERE seen_at < ?')
       .bind(Date.now() - VOTE_RETENTION_MS)
