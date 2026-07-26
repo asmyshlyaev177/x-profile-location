@@ -312,3 +312,28 @@ Gotchas:
 - Cookies are only committed to SQLite on clean shutdown (or a ~30 s timer), so the browser must be **closed**, not killed.
 - Branded Google Chrome ≥ M137 ignores `--load-extension`; the extension silently never loads. Use Brave or Chromium.
 - Anti-detection args in the fixture: `--disable-blink-features=AutomationControlled` + `ignoreDefaultArgs: ['--enable-automation']` → `navigator.webdriver === false`.
+
+### Firefox is checked by hand, not by Playwright
+
+`pnpm dev:firefox` builds the Firefox target and hands it to `web-ext run` on a
+persistent profile under `e2e/.auth/firefox-profile` (gitignored — it holds a live X
+session), starting at x.com. Log in once and the profile carries it forward. Firefox
+MV3 treats `host_permissions` as **user-granted**, so on the first run the extension
+does nothing until you allow x.com from the extensions button — that is the platform's
+model, not a bug, and it applies to real users too.
+
+**Do not try to point the Playwright suite at Firefox.** Verified against Playwright
+1.59.1 / Firefox 148, in this order:
+
+- Playwright has no API to install a Firefox extension — not in the main surface, not
+  in its BiDi path.
+- Sideloading an XPI into `<profile>/extensions/` is silently ignored (Firefox removed
+  that in 74). The profile's `extensions.json` comes back holding only Mozilla built-ins.
+- Installing over the remote debugging protocol (`installTemporaryAddon`, what web-ext
+  uses) **does** work, and `extensions.webextensions.uuids` pins the `moz-extension`
+  UUID so the options URL is predictable.
+- But Playwright cannot navigate to `moz-extension://` pages at all — `page.goto` never
+  commits and the target closes, under `load`/`domcontentloaded`/`commit`, headless and
+  headed alike. That kills it: `openOptionsPage()` drives four of the six spec files,
+  `extensionId` scrapes `chrome://extensions/`, and `pinExtension()` needs
+  `chrome.developerPrivate`.

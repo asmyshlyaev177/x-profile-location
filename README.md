@@ -37,6 +37,7 @@ src/
 │   ├── base.manifest.ts
 │   ├── chrome.ts
 │   ├── brave.ts
+│   ├── firefox.ts
 │   └── safari.ts
 ├── pages/
 │   ├── main.html            # Overlay entry point (unused UI shell)
@@ -61,7 +62,7 @@ landing/                     # Separate Vite + Preact landing page (see landing/
 ```bash
 pnpm install
 
-pnpm dev       # build + watch for Chrome/Brave/Safari
+pnpm dev       # build + watch for Chrome/Brave/Firefox/Safari
 pnpm build     # production build (all browsers)
 pnpm test      # vitest run --coverage
 pnpm fix       # oxfmt + oxlint --fix
@@ -98,4 +99,22 @@ session. Nothing under `e2e/.auth/` is committed — it holds a live session.
 
 ## Browsers
 
-Chrome, Brave, Safari. (Firefox manifest exists but is not included in the active Bedframe config.)
+Chrome, Brave, Firefox, Safari.
+
+Firefox needs Gecko 128+ (`content_scripts[].world: "MAIN"`) and runs the background
+module as `background.scripts` rather than a service worker, which Firefox doesn't
+implement. `vite.config.ts` passes `browser: 'firefox'` to crxjs on that build mode so
+the emitted loader and `web_accessible_resources` match. Before a first AMO submission,
+the manifest still needs a `browser_specific_settings.gecko.data_collection_permissions`
+declaration.
+
+The Playwright suite is Chrome-only — Playwright cannot install a Firefox extension or
+open `moz-extension://` pages. Check Firefox by hand instead:
+
+```bash
+pnpm dev:firefox   # builds dist/firefox, runs it in Firefox via web-ext, opens x.com
+```
+
+It keeps a profile at `e2e/.auth/firefox-profile`, so you log in to X once. Firefox MV3
+treats host permissions as user-granted, so allow x.com from the extensions button on
+the first run — real users have to do this too.

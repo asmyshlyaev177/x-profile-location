@@ -1,6 +1,7 @@
 import { createBedframe } from '@bedframe/core'
 import { chrome } from '../manifests/chrome'
 import { brave } from '../manifests/brave'
+import { firefox } from '../manifests/firefox'
 
 import { safari } from '../manifests/safari'
 
@@ -8,13 +9,14 @@ export default createBedframe({
   browser: [
     chrome.browser,
     brave.browser,
+    firefox.browser,
 
     safari.browser,
   ],
   extension: {
     type: 'overlay',
     options: 'embedded',
-    manifest: [chrome, brave, safari],
+    manifest: [chrome, brave, firefox, safari],
     pages: {
       overlay: 'src/pages/main.html',
       options: 'src/pages/options.html',
