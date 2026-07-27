@@ -1,0 +1,60 @@
+# x-loc-cache — SQLite backend.
+#
+#   docker compose up -d --build
+#   docker compose logs -f
+#   docker compose down          # data survives in the named volume
+#
+# TLS and the public hostname stay outside this file: Caddy on the host
+# terminates HTTPS and proxies to 127.0.0.1:8787, exactly as in the bare-metal
+# deploy. See "Deploy: Docker" in README.md.
+
+services:
+  x-loc-cache:
+    build: .
+    image: x-loc-cache:latest
+    container_name: x-loc-cache
+    restart: unless-stopped
+
+    # Bound to loopback deliberately. A bare `8787:8787` would publish the
+    # service on every interface, and Docker writes its own iptables rules —
+    # which UFW does not filter — so the port would be reachable from the
+    # internet regardless of the firewall. Caddy is the only client.
+    ports:
+      - '127.0.0.1:8787:8787'
+
+    volumes:
+      - x-loc-data:/data
+
+    environment:
+      # SQLite page-cache ceiling; raise with mem_limit below, never alone.
+      XLOC_CACHE_MB: '256'
+      # Address space, not resident memory — safe above free RAM.
+      XLOC_MMAP_MB: '512'
+      # Per-IP requests per minute. Generous because one IP is not one user
+      # (CGNAT, offices); see the rationale in src/node-server.ts.
+      XLOC_RATE_LIMIT: '600'
+      # Caddy sets X-Forwarded-For. Set to false if nothing fronts this.
+      XLOC_TRUST_PROXY: 'true'
+
+    # ~80 MB Node baseline + XLOC_CACHE_MB + request buffers. Matches
+    # MemoryMax in deploy/x-loc-cache.service.
+    mem_limit: 640m
+
+    # Our SIGTERM handler drains, checkpoints WAL and exits, with a 5s internal
+    # backstop. 15s here mirrors TimeoutStopSec in the systemd unit.
+    stop_grace_period: 15s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+volumes:
+  x-loc-data:
+    # Pinned, because compose would otherwise prefix it with the project name
+    # (`server_x-loc-data`, taken from this directory). An explicit name keeps
+    # the `docker run` example, the backup command and the D1 import in
+    # README.md all referring to the same volume as compose does — a mismatch
+    # there silently creates a second, empty database instead of failing.
+    name: x-loc-data

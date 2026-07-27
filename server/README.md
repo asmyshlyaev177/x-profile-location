@@ -9,6 +9,10 @@ set of request handlers:
 | **Cloudflare Worker + D1**    | `wrangler.toml` → `src/index.ts` | Default. $0, no ops, but the free plan's 100k rows written/day caps it |
 | **Node + SQLite** (self-host) | `src/node-server.ts`             | Past that ceiling, or to own the data. Runs on a 1 vCPU / 1 GB VPS     |
 
+The second row has two deploy shapes for the same code — a systemd unit
+([Deploy: Node + SQLite on a VPS](#deploy-node--sqlite-on-a-vps)) or a container
+([Deploy: Docker](#deploy-docker)). Pick either; they differ only in packaging.
+
 [`src/index.ts`](src/index.ts) is shared verbatim: it reaches the database only
 through the small interface in [`src/db-types.ts`](src/db-types.ts), which D1
 and the better-sqlite3 adapter in [`src/sqlite.ts`](src/sqlite.ts) both satisfy.
@@ -106,9 +110,10 @@ $5/mo and lifts it to 50M rows written/month.
 
 ## Deploy: Node + SQLite on a VPS
 
-Sized for the smallest boxes: one process, one file, no build step, no
-container. Storage is the first ceiling and lands around **10k users** with the
-vote cap in place; 1 TB/month of bandwidth covers roughly 50k.
+Sized for the smallest boxes: one process, one file, no build step. Storage is
+the first ceiling and lands around **10k users** with the vote cap in place;
+1 TB/month of bandwidth covers roughly 50k. (Prefer a container? Skip to
+[Deploy: Docker](#deploy-docker) — steps 1, 2 and 7 still apply.)
 
 **Requirements:** Node **≥ 22.6** and a domain pointed at the box. The server
 runs its TypeScript sources directly — nothing to compile, nothing to bundle —
@@ -498,6 +503,83 @@ exits. Re-run `npm install` after a pull only if `server/package.json` changed,
 and re-run it always after a Node **major** upgrade (see the ABI note in step 4).
 
 ---
+
+## Deploy: Docker
+
+The same SQLite backend, packaged. Use this instead of steps 3–6 above when you
+would rather not install Node on the host or manage a unit file; steps 1, 2 and 7
+(DNS, firewall, Caddy) are unchanged, because the container listens on loopback
+and Caddy still terminates TLS in front of it.
+
+```bash
+cd server
+docker compose up -d --build
+curl -s localhost:8787/healthz     # → ok
+```
+
+That is the whole deploy. [`compose.yaml`](compose.yaml) publishes to
+`127.0.0.1:8787`, keeps the database in a named volume, and sets the same limits
+as the systemd unit (`mem_limit: 640m`, `stop_grace_period: 15s`).
+
+Without compose:
+
+```bash
+docker build -t x-loc-cache .
+docker run -d --name x-loc-cache \
+  -p 127.0.0.1:8787:8787 \
+  -v x-loc-data:/data \
+  --restart unless-stopped \
+  x-loc-cache
+```
+
+**What the image changes**, versus running the process directly:
+
+| | Bare metal | Container |
+| --- | --- | --- |
+| `XLOC_HOST` | `127.0.0.1` | `0.0.0.0` — loopback inside a network namespace reaches nothing; Docker's port mapping does the confining instead |
+| `XLOC_DB` | `/var/lib/x-loc-cache/…` | `/data/x-loc-cache.db` |
+| Node | installed on the host, ABI must match `npm install` | pinned by the base image; `better-sqlite3` is compiled in a builder stage on the same base, so the ABI can't drift |
+| Restart / logs | `systemctl`, `journalctl` | `restart: unless-stopped`, `docker compose logs` (capped at 3 × 10 MB) |
+
+Everything else is the same `XLOC_*` set — put overrides in `environment:`.
+
+A few details that are easy to get wrong:
+
+- **Publish to `127.0.0.1`, not `0.0.0.0`.** Docker writes its own iptables rules,
+  and **UFW does not filter them** — a bare `-p 8787:8787` is reachable from the
+  internet no matter what step 2 says. The explicit loopback bind in
+  `compose.yaml` is what keeps Caddy the only client.
+- **Named volume, not a bind mount**, unless you chown first. The image creates
+  `/data` owned by `node` (uid 1000) before dropping privileges, and a named
+  volume inherits that; a bind mount keeps the host directory's owner, so
+  `-v /srv/xloc:/data` needs `sudo chown 1000:1000 /srv/xloc` or the container
+  can't write.
+- **`docker stop` is graceful.** The exec-form `CMD` makes node PID 1, so it gets
+  SIGTERM directly and runs its own drain + WAL checkpoint — no `tini` needed.
+- **Upgrades** are `git pull && docker compose up -d --build`. The volume is
+  untouched.
+
+Migrating a D1 dump into the container (step 9's SQLite half):
+
+```bash
+docker compose stop
+docker run --rm -i -v x-loc-data:/data alpine \
+  sh -c 'apk add -q sqlite && sqlite3 /data/x-loc-cache.db' < dump.sql
+docker compose start
+```
+
+Backing it up, which does **not** need a stop — `.backup` takes a consistent
+snapshot of a live WAL database, where copying the file would not:
+
+```bash
+docker run --rm -v x-loc-data:/data -v "$PWD":/out alpine \
+  sh -c 'apk add -q sqlite && sqlite3 /data/x-loc-cache.db ".backup /out/x-loc-cache.bak"'
+```
+
+The volume is named `x-loc-data` in both deploy shapes because `compose.yaml`
+pins it — compose would otherwise call it `server_x-loc-data` after the project
+directory, and every command above would quietly address a different, empty
+database.
 
 ## Dev / test
 

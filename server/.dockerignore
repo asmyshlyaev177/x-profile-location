@@ -1,0 +1,22 @@
+# Native module built for the host's Node ABI — must be rebuilt in the image.
+node_modules
+
+# Local databases; the container's lives in the /data volume.
+data
+*.db
+*.db-wal
+*.db-shm
+
+# Secrets and host-specific config.
+.env
+.env.*
+
+# Not used at runtime.
+src/*.test.ts
+vitest.config.ts
+tsconfig.json
+wrangler.toml
+deploy
+README.md
+Dockerfile
+compose.yaml
