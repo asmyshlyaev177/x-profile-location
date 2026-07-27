@@ -76,6 +76,19 @@ so relocations propagate without every client hammering the API.
 
 ## Pointing the extension at a backend
 
+Which backend a build talks to is a build-time variable, never a source edit:
+
+```bash
+pnpm build         # self-hosted Node+SQLite  (the default)
+pnpm build:worker  # the Cloudflare Worker
+pnpm build:nocache # shared cache compiled out entirely
+VITE_CACHE_API_BASE=http://127.0.0.1:8787 pnpm build   # a local server
+```
+
+The default is the self-hosted deployment; D1's free plan caps out around 150
+users on rows-written/day, which is the ceiling that motivated the move. The
+Worker path stays supported and one command away.
+
 `CACHE_API_BASE` is a **build-time** value, not a source edit
 ([`../src/scripts/constants.ts`](../src/scripts/constants.ts)):
 
@@ -501,6 +514,129 @@ sudo systemctl restart x-loc-cache
 Shutdown is graceful — the listener closes, WAL is checkpointed, then the process
 exits. Re-run `npm install` after a pull only if `server/package.json` changed,
 and re-run it always after a Node **major** upgrade (see the ABI note in step 4).
+
+### Performance at 10k users
+
+`pnpm bench` builds a database the size a ~10k-user deployment reaches and times
+every operation the server performs against it. Defaults: **2M profiles / 5.4M
+votes / 603 MB**, 10k distinct installs. Sizing rationale is in
+[`bench/load.ts`](bench/load.ts) — profiles grow far slower than users because
+timelines overlap heavily, and votes are capped at 10 per handle.
+
+Measured on Node 24.10, `cache_size` 256 MB, `mmap` 512 MB. The numbers that
+matter are the **single-core** column — a Ryzen 7 7735HS pinned to one core with
+`taskset -c 0` under a 640 MB cgroup, standing in for a 1 vCPU VPS:
+
+| Operation | 1 core p50 | 1 core p99 | 16 cores p50 |
+| --- | --- | --- | --- |
+| lookup, 100 names, all hits | 0.45 ms | 9.46 ms | 0.40 ms |
+| lookup, 100 names, 50% miss | 0.26 ms | 1.16 ms | 0.25 ms |
+| contribute, 50 entries | 3.32 ms | 8.26 ms | 1.80 ms |
+| `COUNT(*)` both tables (stats) | 7.82 ms | — | 6.88 ms |
+| `COUNT(DISTINCT client_id)` (stats) | 252 ms | 1005 ms | 217 ms |
+| retention pass, one day's votes | 1469 ms | — | 199 ms |
+
+Over HTTP, that single core sustained, with **zero errors**:
+
+| Load | Throughput | p50 | p99 |
+| --- | --- | --- | --- |
+| lookups, 16 concurrent | 1411 req/s | 9.4 ms | 28.4 ms |
+| lookups, 64 concurrent | 1700 req/s | 35.3 ms | 74.6 ms |
+| 75/25 read/write, 64 concurrent | 916 req/s | 67.8 ms | 149.7 ms |
+
+The request path barely moves between 50k profiles and 2M, or between 1 core and
+16 — both handlers are primary-key seeks, so they scale with the batch size, not
+the table.
+
+For scale: 10k users generate on the order of **5–10 req/s** averaged and tens at
+peak, since lookups are batched 100 at a time and deduped for 15 minutes while
+contributions are buffered 30 s. Against ~900 req/s of measured write-heavy
+capacity that is **two orders of magnitude of headroom on one vCPU**. CPU is
+nowhere near the binding constraint; storage is, as in the sizing note above.
+
+**How long the daily stats line takes.** Measured on one core at 10k-user scale
+(5.4M votes): **~530 ms total** — `users24h` 228 ms + `users7d` 298 ms + the two
+`COUNT(*)`s 7 ms (626 ms on the first run, before the page cache is warm). It
+scales linearly with the votes table, so at the few-thousand-vote scale a new
+deployment starts at, it is under a millisecond.
+
+Because better-sqlite3 is synchronous, that time is a stall rather than a slow
+query. Under a realistic 10 req/s load the effect is contained: p50 stayed
+2.6 ms, and the worst request that landed inside the tick took **525 ms** —
+nowhere near the client's 5 s timeout, and a timeout would degrade to "no data"
+and a direct X call anyway. Once a day, this is a fine trade.
+
+Two slow operations, both once a day and both deliberate:
+
+- **`COUNT(DISTINCT client_id)`** backs `users24h` / `users7d`. There is no index
+  on `seen_at` (see `schema.sql`), so it is a full scan that grows linearly with
+  the votes table. better-sqlite3 is synchronous, so 217 ms is an event-loop
+  stall — every in-flight request waits. Fine daily; **do not shorten
+  `XLOC_STATS_INTERVAL_HOURS` to minutes without dropping these two fields** and
+  keeping the free per-window `users` count, which is derived from the clientId
+  already on the wire and costs nothing.
+- **The retention pass** at 199 ms, for the same reason and with the same
+  verdict.
+
+**Memory holds.** With a 603 MB database, RSS reads ~900 MB, which looks alarming
+against `MemoryMax=640M` — but the run completes unharmed under exactly that
+cgroup limit, with latencies unchanged. Most of that RSS is `mmap`'d file pages,
+which are file-backed and reclaimed under pressure rather than counted against an
+OOM. The 256 MB `cache_size` is the part that is genuinely anonymous. Raise the
+two together or not at all.
+
+### Usage stats
+
+D1's dashboard is not there once you self-host, so the server reports its own —
+one JSON line per window (daily by default, `XLOC_STATS_INTERVAL_HOURS`), plus
+one on shutdown so a restart doesn't discard the partial window.
+
+```bash
+sudo journalctl -u x-loc-cache | grep 'stats ' | sed 's/.*stats //' | jq .
+# containers: docker compose logs | grep 'stats ' | sed 's/.*stats //' | jq .
+```
+
+```json
+{
+  "reason": "interval", "since": "2026-07-27T00:00:00.000Z", "windowS": 86400,
+  "lookups": 2140, "lookupNames": 51203, "lookupHits": 40655, "hitRate": 0.794,
+  "contributions": 388, "contributedEntries": 9012, "other": 6,
+  "users": 34, "rateLimited": 0, "tooLarge": 0, "errors": 0,
+  "avgMs": 2.6, "maxMs": 41, "users24h": 37, "users7d": 112,
+  "profiles": 44210, "votes": 91884, "dbMb": 19.4, "rssMb": 128
+}
+```
+
+| Field | |
+| --- | --- |
+| `lookups` / `contributions` | **reads / writes** — request counts for `/v1/loc/batch` and `/v1/loc` |
+| `lookupNames` / `lookupHits` | usernames asked about, and how many the cache could answer |
+| `hitRate` | `lookupHits / lookupNames` — the number that says whether any of this is working. `null` when nothing was asked, so an idle night doesn't read as an outage |
+| `users` | distinct anonymous installs that contributed **during this window** — counted in-process from the clientId already on the wire, so it costs nothing |
+| `users24h` / `users7d` | the same figure over a trailing 24h / 7d, from SQL. Survives restarts and is independent of the log cadence, but costs a full scan — see Performance above |
+| `usersCapped` | present only if the in-process set hit its 50k ceiling, meaning `users` is a floor |
+| `profiles` / `votes` / `dbMb` | current totals, not window deltas |
+| `rateLimited` / `tooLarge` / `errors` | rejections; these never reached a handler, so they're excluded from the request counts above |
+
+Counters are per-window and reset when logged. `/healthz` is deliberately not
+counted — at one probe every 30 s it would be most of the traffic.
+
+**What `users24h` actually measures.** Contributions carry an anonymous
+per-install `clientId`, already stored in `location_votes`, so this is a query
+against existing data — it adds no tracking. It counts installs that
+_contributed_, which is a **floor** on active users: a session served entirely
+from the cache contributes nothing and is invisible here.
+
+Counting readers instead would mean having clients send an identifier on
+lookups, and that is the one change that would let this server correlate an
+install with the handles it viewed — the thing the design promises not to do.
+The undercount is what buys that guarantee, so it is deliberate rather than a
+gap to close later.
+
+Nothing here is written to disk beyond the log line, and journald/`docker
+compose logs` rotation is what bounds it (the compose file caps logs at
+3 × 10 MB). For history, `grep` the lines into a file — one line a day is
+nothing — rather than reaching for a metrics stack.
 
 ---
 

@@ -5,7 +5,8 @@
 #   2. pnpm db:create              -> prints a database_id; paste it below
 #   3. pnpm db:init                -> applies schema.sql to the remote D1
 #   4. pnpm deploy                 -> prints the Worker URL
-#   5. put that URL in src/scripts/constants.ts -> CACHE_API_BASE
+#   5. point the extension at it — a build-time variable, not a source edit:
+#      VITE_CACHE_API_BASE=<that URL> pnpm build   (see pnpm build:worker)
 name = "x-loc-cache"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"

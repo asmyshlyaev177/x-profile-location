@@ -17,10 +17,11 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from 'node:http'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import worker, { type Env } from './index.ts'
 import { DEFAULT_SQLITE_CONFIG, openDatabase, type SqliteDb } from './sqlite.ts'
+import { Stats } from './stats.ts'
 
 // ---------------------------------------------------------------------------
 // Config
@@ -53,6 +54,7 @@ const config = {
   maxBodyBytes: num('XLOC_MAX_BODY_KB', 256) * 1024,
   rateLimit: num('XLOC_RATE_LIMIT', 600), // requests per window per IP; 0 = off
   rateWindowMs: num('XLOC_RATE_WINDOW_S', 60) * 1000,
+  statsIntervalHours: num('XLOC_STATS_INTERVAL_HOURS', 24), // 0 = never log stats
   // Client IP comes from X-Forwarded-For when a reverse proxy terminates TLS,
   // which is the documented deployment. Only honour it when told to — a
   // directly-exposed server must not let clients forge their own identity.
@@ -160,7 +162,8 @@ function toRequest(req: IncomingMessage, body: string | null): Request {
   })
 }
 
-async function send(res: ServerResponse, response: Response): Promise<void> {
+/** Returns the serialised body, which the caller feeds to the stats counters. */
+async function send(res: ServerResponse, response: Response): Promise<string> {
   const headers: Record<string, string> = {}
   response.headers.forEach((value, key) => {
     headers[key] = value
@@ -168,6 +171,7 @@ async function send(res: ServerResponse, response: Response): Promise<void> {
   const body = Buffer.from(await response.arrayBuffer())
   res.writeHead(response.status, headers)
   res.end(body)
+  return body.toString('utf8')
 }
 
 function plain(
@@ -205,12 +209,99 @@ const db: SqliteDb = openDatabase({
   mmapMb: config.mmapMb,
 })
 const env: Env = { DB: db }
+const stats = new Stats()
+
+// ---------------------------------------------------------------------------
+// Usage reporting
+// ---------------------------------------------------------------------------
+/**
+ * Distinct anonymous installs that contributed in the last `hours`.
+ *
+ * This needs no new tracking: location_votes already stores an anonymous
+ * per-install client_id alongside seen_at, so the figure falls out of a query.
+ * Unlike the window count in stats.ts it survives restarts and is independent
+ * of the logging cadence, which is what it is here for.
+ *
+ * It is also the expensive half of a stats line. There is no index on seen_at
+ * (deliberately — see schema.sql), so this is a full scan: ~230ms over 5.4M
+ * votes, measured in bench/load.ts, growing linearly from there. better-sqlite3
+ * is synchronous, so that time is an event-loop stall, not just a slow query.
+ * Acceptable once a day; do not move it onto a request path, and if the stats
+ * interval is ever shortened to minutes, drop these two fields and keep the
+ * free per-window `users` count instead.
+ *
+ * It counts *contributors*, which is a floor on active users rather than an
+ * exact count — a session served entirely from the cache makes no contribution
+ * and so is invisible here. Counting readers instead would mean having clients
+ * send an identifier on lookups too, which is precisely what would let this
+ * server correlate an install with the handles it viewed. The undercount is the
+ * price of not being able to do that.
+ */
+async function activeUsers(hours: number): Promise<number> {
+  const { results } = await db
+    .prepare(
+      'SELECT COUNT(DISTINCT client_id) AS n FROM location_votes WHERE seen_at >= ?',
+    )
+    .bind(Date.now() - hours * 60 * 60 * 1000)
+    .all<{ n: number }>()
+  return results?.[0]?.n ?? 0
+}
+
+/** Bytes on disk, main file plus the WAL that has not been checkpointed yet. */
+function dbBytes(): number {
+  let total = 0
+  for (const suffix of ['', '-wal']) {
+    try {
+      total += statSync(config.dbPath + suffix).size
+    } catch {
+      // -wal is absent between checkpoints; the main file cannot be.
+    }
+  }
+  return total
+}
+
+/**
+ * One JSON line per window, greppable and jq-able:
+ *   journalctl -u x-loc-cache | grep 'stats ' | sed 's/.*stats //' | jq .
+ *
+ * Counters are drained (reset) here, so each line describes its own window
+ * rather than everything since boot.
+ */
+async function logStats(reason: 'interval' | 'shutdown'): Promise<void> {
+  try {
+    const counters = stats.drain()
+    const { results } = await db
+      .prepare(
+        'SELECT (SELECT COUNT(*) FROM profiles) AS profiles,' +
+          ' (SELECT COUNT(*) FROM location_votes) AS votes',
+      )
+      .all<{ profiles: number; votes: number }>()
+    const totals = results?.[0]
+    console.log(
+      `[x-loc-cache] stats ${JSON.stringify({
+        reason,
+        ...counters,
+        users24h: await activeUsers(24),
+        users7d: await activeUsers(24 * 7),
+        profiles: totals?.profiles ?? 0,
+        votes: totals?.votes ?? 0,
+        dbMb: Math.round((dbBytes() / (1024 * 1024)) * 100) / 100,
+        rssMb: Math.round(process.memoryUsage().rss / (1024 * 1024)),
+      })}`,
+    )
+  } catch (err) {
+    console.error('[x-loc-cache] stats failed:', err)
+  }
+}
 
 const server = createServer((req, res) => {
   void (async () => {
+    const startedAt = Date.now()
     try {
       // Cheap liveness probe for systemd/Caddy. Not part of the Worker's routes,
-      // so it lives here rather than in the shared handler.
+      // so it lives here rather than in the shared handler. Deliberately not
+      // counted: at one probe every 30s it would be most of the traffic and
+      // would drown the numbers that matter.
       if (req.method === 'GET' && req.url === '/healthz') {
         return plain(res, 200, 'ok')
       }
@@ -219,20 +310,35 @@ const server = createServer((req, res) => {
       // circuit breaker, losing the cache for ten minutes over a one-second spike.
       const retryAfter = rateLimited(clientIp(req), Date.now())
       if (retryAfter > 0) {
+        stats.noteRateLimited()
         return plain(res, 429, 'Too Many Requests', {
           'retry-after': String(retryAfter),
         })
       }
       if (declaredTooLarge(req, config.maxBodyBytes)) {
+        stats.noteTooLarge()
         return rejectTooLarge(req, res)
       }
       const body = BODYLESS.has(req.method ?? 'GET')
         ? ''
         : await readBody(req, config.maxBodyBytes)
-      if (body === null) return rejectTooLarge(req, res)
+      if (body === null) {
+        stats.noteTooLarge()
+        return rejectTooLarge(req, res)
+      }
 
-      await send(res, await worker.fetch(toRequest(req, body), env))
+      const responseBody = await send(
+        res,
+        await worker.fetch(toRequest(req, body), env),
+      )
+      stats.noteRequest(
+        (req.url ?? '/').split('?')[0]!,
+        body,
+        responseBody,
+        Date.now() - startedAt,
+      )
     } catch (err) {
+      stats.noteError()
       console.error('[x-loc-cache] request failed:', err)
       if (!res.headersSent) plain(res, 500, 'Internal Server Error')
       else res.end()
@@ -278,6 +384,16 @@ const sweepTimer = setInterval(
 )
 sweepTimer.unref()
 
+// Usage stats, on their own interval so the reporting cadence can be changed
+// without touching how often data is pruned.
+if (config.statsIntervalHours > 0) {
+  const statsTimer = setInterval(
+    () => void logStats('interval'),
+    config.statsIntervalHours * 60 * 60 * 1000,
+  )
+  statsTimer.unref()
+}
+
 server.listen(config.port, config.host, () => {
   console.log(
     `[x-loc-cache] listening on http://${config.host}:${config.port} — db ${config.dbPath} ` +
@@ -292,8 +408,13 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     closing = true
     console.log(`[x-loc-cache] ${signal} — draining`)
     server.close(() => {
-      db.close()
-      process.exit(0)
+      // Flush the partial window before it is lost. Without this a box that
+      // restarts daily would reset the counters just before the interval that
+      // would have logged them, and they would never be seen at all.
+      void logStats('shutdown').finally(() => {
+        db.close()
+        process.exit(0)
+      })
     })
     // Don't let a hung keep-alive connection block the restart.
     setTimeout(() => {
