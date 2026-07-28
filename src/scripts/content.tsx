@@ -5,6 +5,7 @@ import type { LocationData } from './cache'
 import {
   BACKGROUND_PREFETCH_KEY,
   BLOCKED_COUNTRIES_KEY,
+  canonicalLocation,
   COUNTRY_FLAGS,
   HIDE_BLOCKED_LOCATIONS_KEY,
   type HideBlockedMode,
@@ -62,6 +63,20 @@ const RE_MOBILE_SOURCE_STRIP = /\s*(android\s+app|app\s+store)/i
 // Blocked countries (loaded from chrome.storage.local, set via options page)
 // ---------------------------------------------------------------------------
 let blockedCountries = new Set<string>()
+
+// Held canonicalised, and every location is canonicalised before it's tested
+// against the set — so a list saved as "USA" or "Czech Republic" still blocks
+// the "United States" / "Czechia" X reports, and vice versa.
+function toBlockedSet(stored: unknown): Set<string> {
+  return new Set<string>(
+    Array.isArray(stored) ? (stored as string[]).map(canonicalLocation) : [],
+  )
+}
+
+function isBlockedLocation(loc: string): boolean {
+  return blockedCountries.has(canonicalLocation(loc))
+}
+
 let highlightKeywords = new Set<string>()
 let highlightFlagsEnabled = false
 let highlightFlagsThreshold = 2
@@ -95,11 +110,7 @@ chrome.storage.local
   ])
   .then((result) => {
     const r = result as Record<string, unknown>
-    blockedCountries = new Set<string>(
-      Array.isArray(r[BLOCKED_COUNTRIES_KEY])
-        ? (r[BLOCKED_COUNTRIES_KEY] as string[])
-        : [],
-    )
+    blockedCountries = toBlockedSet(r[BLOCKED_COUNTRIES_KEY])
     highlightKeywords = new Set<string>(
       Array.isArray(r[HIGHLIGHT_KEYWORDS_KEY])
         ? (r[HIGHLIGHT_KEYWORDS_KEY] as string[]).map((k) => k.toLowerCase())
@@ -150,8 +161,7 @@ chrome.storage.local
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return
   if (changes[BLOCKED_COUNTRIES_KEY]) {
-    const next = changes[BLOCKED_COUNTRIES_KEY].newValue
-    blockedCountries = new Set<string>(Array.isArray(next) ? next : [])
+    blockedCountries = toBlockedSet(changes[BLOCKED_COUNTRIES_KEY].newValue)
     // Editing the list can newly block (or unblock) locations already on screen.
     refreshHiddenTweets()
   }
@@ -221,13 +231,17 @@ function getLocationDisplay(loc: string): {
   label: string
   isText?: boolean
 } {
-  if (blockedCountries.has(loc)) return { emoji: '⚠️', label: loc }
-  if (COUNTRY_FLAGS[loc]) return { emoji: COUNTRY_FLAGS[loc], label: loc }
-  if (REGION_FLAGS[loc]) {
-    const abbr = REGION_ABBR[loc]
+  if (isBlockedLocation(loc)) return { emoji: '⚠️', label: loc }
+  // Flags are looked up by canonical name, so an alias X hasn't used before
+  // ("Russia", "Vietnam") still gets its flag instead of the 🌐 fallback. The
+  // label stays whatever X actually said.
+  const key = canonicalLocation(loc)
+  if (COUNTRY_FLAGS[key]) return { emoji: COUNTRY_FLAGS[key], label: loc }
+  if (REGION_FLAGS[key]) {
+    const abbr = REGION_ABBR[key]
     return abbr
       ? { emoji: abbr, label: loc, isText: true }
-      : { emoji: REGION_FLAGS[loc], label: loc }
+      : { emoji: REGION_FLAGS[key], label: loc }
   }
   return { emoji: '🌐', label: loc }
 }
@@ -243,10 +257,10 @@ function effectiveBlockedLocation(data: LocationData): string | null {
     ? data.source?.replace(RE_MOBILE_SOURCE_STRIP, '').trim() || null
     : null
   if (sourceCountry) {
-    return blockedCountries.has(sourceCountry) ? sourceCountry : null
+    return isBlockedLocation(sourceCountry) ? sourceCountry : null
   }
   if (data.location && data.locationAccurate !== false) {
-    return blockedCountries.has(data.location) ? data.location : null
+    return isBlockedLocation(data.location) ? data.location : null
   }
   return null
 }
@@ -1110,7 +1124,8 @@ function buildHiddenPlaceholder(article: Element, label: string): HTMLElement {
   const ph = document.createElement('div')
   ph.className = HIDDEN_PLACEHOLDER_CLASS
 
-  const flag = COUNTRY_FLAGS[label] ?? REGION_FLAGS[label] ?? '🌐'
+  const key = canonicalLocation(label)
+  const flag = COUNTRY_FLAGS[key] ?? REGION_FLAGS[key] ?? '🌐'
   const labelEl = document.createElement('span')
   labelEl.className = 'x-loc-hidden-label'
   labelEl.textContent = `🚫 Hidden · ${flag} ${label}`

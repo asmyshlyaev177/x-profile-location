@@ -156,6 +156,14 @@
   line-height: 1;
 }
 
+/* The alias the query matched, when it wasn't the country's own name. */
+.dropdownAlias {
+  margin-left: auto;
+  padding-left: 8px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
 .controlRow {
   display: flex;
   align-items: center;

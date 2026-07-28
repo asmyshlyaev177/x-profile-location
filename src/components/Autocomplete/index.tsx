@@ -12,7 +12,49 @@ export interface AutocompleteProps {
   allowFreeInput?: boolean
   /** Close the dropdown after an option is selected (default: true) */
   closeOnSelect?: boolean
-  renderOption?: (opt: string) => ComponentChild
+  /**
+   * Extra strings an option also matches on, keyed by option — e.g.
+   * `{ 'United States': ['USA', 'America'] }`. Only ever a search aid: the
+   * value committed is always the option itself.
+   */
+  aliases?: Record<string, string[]>
+  renderOption?: (opt: string, matchedAlias?: string) => ComponentChild
+}
+
+// Lower is better. Whole-string beats prefix beats substring, and the option's
+// own name beats an alias at each tier — so "us" offers United States before
+// Belarus, and "united" doesn't lose United States to a country aliased "US".
+function score(name: string, aliases: string[], query: string) {
+  if (name === query) return 0
+  if (aliases.includes(query)) return 1
+  if (name.startsWith(query)) return 2
+  if (aliases.some((a) => a.startsWith(query))) return 3
+  if (name.includes(query)) return 4
+  if (aliases.some((a) => a.includes(query))) return 5
+  return -1
+}
+
+// Matches first, best first. Sort is stable, so options that score the same
+// keep the order they were given in (alphabetical, for the country list).
+function rankMatches(
+  options: string[],
+  aliases: Record<string, string[]> | undefined,
+  rawQuery: string,
+): string[] {
+  const query = rawQuery.trim().toLowerCase()
+  if (!query) return options
+  return options
+    .map((opt) => ({
+      opt,
+      score: score(
+        opt.toLowerCase(),
+        (aliases?.[opt] ?? []).map((a) => a.toLowerCase()),
+        query,
+      ),
+    }))
+    .filter((m) => m.score >= 0)
+    .sort((a, b) => a.score - b.score)
+    .map((m) => m.opt)
 }
 
 export function Autocomplete({
@@ -23,6 +65,7 @@ export function Autocomplete({
   placeholder,
   allowFreeInput,
   closeOnSelect = true,
+  aliases,
   renderOption,
 }: AutocompleteProps) {
   const [query, setQuery] = useState('')
@@ -36,9 +79,24 @@ export function Autocomplete({
     (o) => !selectedLower.includes(o.toLowerCase()),
   )
   const suggestions =
-    query.length === 0
-      ? available
-      : available.filter((o) => o.toLowerCase().includes(query.toLowerCase()))
+    query.length === 0 ? available : rankMatches(available, aliases, query)
+
+  // Which alias earned an option its place, so the row can show why it matched.
+  // Nothing to explain when the name itself matched.
+  function matchedAlias(opt: string): string | undefined {
+    const q = query.trim().toLowerCase()
+    if (!aliases || !q || opt.toLowerCase().includes(q)) return undefined
+    return aliases[opt]?.find((a) => a.toLowerCase().includes(q))
+  }
+
+  function isExactMatch(opt: string): boolean {
+    const q = query.trim().toLowerCase()
+    if (!q) return false
+    return (
+      opt.toLowerCase() === q ||
+      (aliases?.[opt] ?? []).some((a) => a.toLowerCase() === q)
+    )
+  }
 
   useEffect(() => {
     setActiveIndex(-1)
@@ -67,7 +125,13 @@ export function Autocomplete({
       e.preventDefault()
       if (activeIndex >= 0 && isOpen) {
         commit(suggestions[activeIndex])
-      } else if (!allowFreeInput && isOpen && suggestions.length === 1) {
+      } else if (
+        !allowFreeInput &&
+        isOpen &&
+        (suggestions.length === 1 || isExactMatch(suggestions[0]))
+      ) {
+        // An exact name or alias always sorts first, so "usa" can commit
+        // United States on Enter without arrowing past the other matches.
         commit(suggestions[0])
       } else if (allowFreeInput && query.trim()) {
         commit(query.trim())
@@ -150,7 +214,7 @@ export function Autocomplete({
               }}
               onMouseEnter={() => setActiveIndex(i)}
             >
-              {renderOption ? renderOption(opt) : opt}
+              {renderOption ? renderOption(opt, matchedAlias(opt)) : opt}
             </li>
           ))}
         </ul>

@@ -4,6 +4,8 @@ import { Autocomplete } from '../components/Autocomplete'
 import {
   BACKGROUND_PREFETCH_KEY,
   BLOCKED_COUNTRIES_KEY,
+  canonicalLocation,
+  CANONICAL_LOCATIONS,
   COUNTRY_FLAGS,
   DEFAULT_OPTIONS_SECTIONS,
   DEFAULT_PREFETCH_SHARE,
@@ -16,6 +18,7 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  LOCATION_ALIASES,
   LOOKUP_LIMIT_PER_WINDOW,
   LOOKUP_WINDOW_MINUTES,
   OPTIONS_SECTIONS_KEY,
@@ -34,7 +37,8 @@ import { isSharedCacheConfigured } from '../scripts/shared-cache'
 import css from './options.module.css'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
-const ALL_LOCATIONS = Object.keys(ALL_FLAGS).sort()
+
+const dedupe = (values: string[]) => [...new Set(values)]
 
 const KEYWORD_SUGGESTIONS = [
   'NAFO',
@@ -103,8 +107,15 @@ export function Options() {
         OPTIONS_SECTIONS_KEY,
       ])
       .then((result) => {
+        // Folded through the alias table so a list saved before an alias
+        // existed ('Czech Republic', 'Czechia') shows as one chip, matching
+        // what the content script blocks.
         setBlocked(
-          (result[BLOCKED_COUNTRIES_KEY] as string[] | undefined) ?? [],
+          dedupe(
+            ((result[BLOCKED_COUNTRIES_KEY] as string[] | undefined) ?? []).map(
+              canonicalLocation,
+            ),
+          ),
         )
         setKeywords(
           (result[HIGHLIGHT_KEYWORDS_KEY] as string[] | undefined) ?? [],
@@ -141,7 +152,8 @@ export function Options() {
       })
   }, [])
 
-  function addBlocked(country: string) {
+  function addBlocked(name: string) {
+    const country = canonicalLocation(name)
     if (blocked.includes(country)) return
     const next = [...blocked, country]
     setBlocked(next)
@@ -609,13 +621,15 @@ export function Options() {
           <Autocomplete
             id="country"
             selected={blocked}
-            allOptions={ALL_LOCATIONS}
+            allOptions={CANONICAL_LOCATIONS}
+            aliases={LOCATION_ALIASES}
             onSelect={addBlocked}
-            placeholder="Search countries..."
-            renderOption={(c) => (
+            placeholder="Search countries — name, code or nickname…"
+            renderOption={(c, alias) => (
               <>
                 <span class={css.dropdownFlag}>{ALL_FLAGS[c] ?? '🌐'}</span>
                 <span>{c}</span>
+                {alias && <span class={css.dropdownAlias}>{alias}</span>}
               </>
             )}
           />

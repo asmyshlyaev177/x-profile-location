@@ -241,6 +241,37 @@ Several tests pin an entry exactly on the 30-day boundary (`fetchedAt: Date.now(
 
 ---
 
+## Location names & aliases (countries.ts)
+
+`COUNTRY_FLAGS` / `REGION_FLAGS` are keyed by the vocabulary X itself reports —
+ISO-official spellings like `Russian Federation`, `Viet Nam`, `Korea`. Users don't
+type those, and X may not always report the same one, so `LOCATION_ALIASES` maps
+each canonical name to its alternates (`USA` / `America`, `Russia`, `Vietnam`,
+`Türkiye`, `DRC`, `Holland`, ISO codes, common native names).
+
+`canonicalLocation(name)` folds any of them — case- and whitespace-insensitively —
+onto the canonical name; unknown locations pass through trimmed, since X's
+vocabulary isn't ours to police and a name we don't know yet must still be
+blockable. **Every comparison against `blockedCountries` goes through it**
+(`isBlockedLocation()` in content.tsx), and the set itself is canonicalised on
+load, so a list saved as `Czech Republic` blocks a profile X reports as `Czechia`
+and vice versa. Flag lookups canonicalise too, so an alias gets its flag rather
+than the 🌐 fallback.
+
+A handful of aliases (`Czech Republic`, `Macedonia`) are *also* flag-map keys —
+they stay there for direct display but resolve to one canonical entry, and
+`CANONICAL_LOCATIONS` (what the options-page picker offers) filters them out via
+`canonicalLocation(name) === name`. Aliases win over their own identity mapping,
+which is why `countries.test.ts` asserts an alias that shadows a real flag key
+must carry the *same emoji* as its canonical — that guard is what stops a future
+`Ireland → United Kingdom` from silently swallowing a country.
+
+The `Autocomplete` takes the table as its `aliases` prop and ranks matches
+whole-string → prefix → substring, name before alias at each tier ("us" offers
+United States before Belarus). `renderOption(opt, matchedAlias)` gets the alias
+that earned the row its place — only when the name itself didn't match — and the
+options page shows it muted on the right.
+
 ## Chrome storage keys (countries.ts)
 
 ```typescript

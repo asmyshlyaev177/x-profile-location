@@ -1456,6 +1456,37 @@ describe('hide tweets by blocked location', () => {
     expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
   })
 
+  it('matches the blocked list across alternate names for one country', async () => {
+    // Saved one way, reported the other — either direction has to hide.
+    setBlockedCountries(['USA'])
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'United States',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('aliasuser')
+    document.body.appendChild(article)
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+
+    setBlockedCountries(['Czechia'])
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Czech Republic',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const czArticle = makeTweetArticle('czuser')
+    document.body.appendChild(czArticle)
+    await flushAsync()
+
+    expect(czArticle.getAttribute('data-x-loc-hidden')).toBe('collapse')
+  })
+
   it('uses App Store country as the primary signal over the stated location', async () => {
     // Account claims United States, but the store region (India) is blocked.
     vi.mocked(getCached).mockResolvedValue({
