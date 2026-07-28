@@ -4,13 +4,16 @@
 // from its x-rate-limit-* response headers). Hovering reveals a location on
 // demand, but feed-location display, hide-by-location, and the shared community
 // cache all benefit from knowing many accounts' locations up front. This queue
-// trickles background lookups for on-screen accounts — most-followed first —
-// while never letting *total* usage (background + the user's own hovers) pass a
-// reserved share of the window, so a manual hover is never starved by prefetch.
+// trickles background lookups for on-screen accounts — in the order they appear
+// on the page — while never letting *total* usage (background + the user's own
+// hovers) pass a reserved share of the window, so a manual hover is never
+// starved by prefetch.
 //
 // Candidates are split across two queues by PrefetchPriority: the feed the user
 // is scrolling ('high') is drained entirely before a thread's replies ('low').
-// Within each, most-followed goes first.
+// Each queue is plain FIFO — the timeline hands accounts over in the order they
+// are rendered, so looking them up in arrival order means locations fill in from
+// the top of the feed downwards, roughly tracking where the user is reading.
 //
 // Budget is driven entirely by the live remaining count the content script keeps
 // in sync from the x-rate-limit-* headers (which every AboutAccountQuery — manual
@@ -50,8 +53,6 @@ export type PrefetchPriority = 'high' | 'low'
 
 export interface PrefetchCandidate {
   userName: string
-  /** From `legacy.followers_count`; higher = fetched sooner. Missing → 0. */
-  followers: number
   /** Defaults to 'high' — an unlabelled candidate is never buried. */
   priority?: PrefetchPriority
 }
@@ -137,9 +138,9 @@ export class BackgroundPrefetcher {
   private readonly setTimer: (fn: () => void, ms: number) => unknown
   private readonly clearTimer: (handle: unknown) => void
 
-  // Two queues, each kept sorted most-followed first. `high` drains completely
-  // before `low` is touched, so a thread full of replies can never push the feed
-  // the user is scrolling out of the way.
+  // Two FIFO queues, each in the order the page handed the accounts over.
+  // `high` drains completely before `low` is touched, so a thread full of
+  // replies can never push the feed the user is scrolling out of the way.
   private high: PrefetchCandidate[] = []
   private low: PrefetchCandidate[] = []
   // Lowercased name → the queue it currently sits in.
@@ -164,14 +165,14 @@ export class BackgroundPrefetcher {
   }
 
   /**
-   * Add on-screen candidates, each into the queue its priority names; dedups
-   * against what's already queued. A name already queued as 'low' that turns up
-   * as 'high' is *promoted* (a reply author who also appears in the feed); the
-   * reverse never demotes.
+   * Add on-screen candidates, each appended to the queue its priority names, in
+   * the order given — which is the order the timeline rendered them. Dedups
+   * against what's already queued, keeping the position the name first earned.
+   * A name already queued as 'low' that turns up as 'high' is *promoted* (a
+   * reply author who also appears in the feed); the reverse never demotes.
    */
   enqueue(candidates: PrefetchCandidate[]): void {
-    let addedHigh = false
-    let addedLow = false
+    let added = false
 
     for (const c of candidates) {
       const key = c.userName.toLowerCase()
@@ -181,31 +182,18 @@ export class BackgroundPrefetcher {
       if (existing === priority || existing === 'high') continue
       if (existing === 'low') {
         // Promoting (priority can only be 'high' here): drop the low-queue copy,
-        // it is re-added to `high` below. Filtering keeps the rest in order, so
-        // only the high queue needs re-sorting.
+        // it is re-added at the back of `high` below.
         this.low = this.low.filter((q) => q.userName.toLowerCase() !== key)
       }
 
       this.queued.set(key, priority)
-      const entry: PrefetchCandidate = {
-        userName: c.userName,
-        followers: Number.isFinite(c.followers) ? c.followers : 0,
-        priority,
-      }
-      if (priority === 'high') {
-        this.high.push(entry)
-        addedHigh = true
-      } else {
-        this.low.push(entry)
-        addedLow = true
-      }
+      const entry: PrefetchCandidate = { userName: c.userName, priority }
+      if (priority === 'high') this.high.push(entry)
+      else this.low.push(entry)
+      added = true
     }
-    if (!addedHigh && !addedLow) return
+    if (!added) return
 
-    const byFollowers = (a: PrefetchCandidate, b: PrefetchCandidate) =>
-      b.followers - a.followers
-    if (addedHigh) this.high.sort(byFollowers)
-    if (addedLow) this.low.sort(byFollowers)
     this.trimToMaxQueue()
 
     // Wake the loop if it went idle waiting for candidates — respecting the pace,
@@ -214,7 +202,11 @@ export class BackgroundPrefetcher {
       this.scheduleTick(this.delayFromLastFetch())
   }
 
-  /** Drop overflow, least-followed low-priority candidates first. */
+  /**
+   * Drop overflow from the back of each queue — the most recently seen accounts
+   * — emptying `low` before touching `high`. Shedding the tail rather than the
+   * head is what keeps the surviving queue in appearance order.
+   */
   private trimToMaxQueue(): void {
     let overflow = this.high.length + this.low.length - this.opts.maxQueue
     if (overflow <= 0) return

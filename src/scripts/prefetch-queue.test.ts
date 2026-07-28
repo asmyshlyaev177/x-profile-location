@@ -72,40 +72,41 @@ describe('enqueue', () => {
   it('dedups by case-insensitive username', () => {
     const { p } = harness()
     p.enqueue([
-      { userName: 'alice', followers: 1 },
-      { userName: 'Alice', followers: 2 },
-      { userName: 'ALICE', followers: 3 },
+      { userName: 'alice' },
+      { userName: 'Alice' },
+      { userName: 'ALICE' },
     ])
     expect(p.__state().queueLength).toBe(1)
   })
 
-  it('orders the queue most-followed first', () => {
+  it('keeps candidates in the order they appeared on the page', () => {
     const { p } = harness()
     p.enqueue([
-      { userName: 'small', followers: 10 },
-      { userName: 'big', followers: 9000 },
-      { userName: 'mid', followers: 500 },
+      { userName: 'first' },
+      { userName: 'second' },
+      { userName: 'third' },
     ])
-    expect(p.__state().order).toEqual(['big', 'mid', 'small'])
+    expect(p.__state().order).toEqual(['first', 'second', 'third'])
   })
 
-  it('treats a missing/NaN followers count as 0', () => {
+  it('appends a later batch behind the earlier one', () => {
     const { p } = harness()
-    p.enqueue([
-      { userName: 'known', followers: 100 },
-      { userName: 'unknown', followers: NaN },
-    ])
-    expect(p.__state().order).toEqual(['known', 'unknown'])
+    p.enqueue([{ userName: 'first' }, { userName: 'second' }])
+    p.enqueue([{ userName: 'third' }]) // the user scrolled further down
+    expect(p.__state().order).toEqual(['first', 'second', 'third'])
   })
 
-  it('caps the queue at maxQueue, dropping the least-followed', () => {
+  it('leaves a repeat sighting where it first appeared', () => {
+    const { p } = harness()
+    p.enqueue([{ userName: 'first' }, { userName: 'second' }])
+    p.enqueue([{ userName: 'First' }, { userName: 'third' }])
+    expect(p.__state().order).toEqual(['first', 'second', 'third'])
+  })
+
+  it('caps the queue at maxQueue, dropping the latest to appear', () => {
     const { p } = harness({ maxQueue: 2 })
-    p.enqueue([
-      { userName: 'a', followers: 1 },
-      { userName: 'b', followers: 2 },
-      { userName: 'c', followers: 3 },
-    ])
-    expect(p.__state().order).toEqual(['c', 'b'])
+    p.enqueue([{ userName: 'a' }, { userName: 'b' }, { userName: 'c' }])
+    expect(p.__state().order).toEqual(['a', 'b'])
   })
 })
 
@@ -115,7 +116,7 @@ describe('enqueue', () => {
 describe('priority queues', () => {
   it('treats an unlabelled candidate as high priority', () => {
     const { p } = harness()
-    p.enqueue([{ userName: 'plain', followers: 1 }])
+    p.enqueue([{ userName: 'plain' }])
     expect(p.__state().highOrder).toEqual(['plain'])
     expect(p.__state().lowOrder).toEqual([])
   })
@@ -123,48 +124,46 @@ describe('priority queues', () => {
   it('drains every high candidate before the first low one', async () => {
     const { p, fetched } = harness()
     p.enqueue([
-      // The reply author is far more followed, and still goes last.
-      { userName: 'famous-reply', followers: 9_000_000, priority: 'low' },
-      { userName: 'feed-small', followers: 10, priority: 'high' },
-      { userName: 'feed-big', followers: 5000, priority: 'high' },
+      // The reply author came first and still goes last.
+      { userName: 'reply', priority: 'low' },
+      { userName: 'feed-1', priority: 'high' },
+      { userName: 'feed-2', priority: 'high' },
     ])
-    expect(p.__state().order).toEqual([
-      'feed-big',
-      'feed-small',
-      'famous-reply',
-    ])
+    expect(p.__state().order).toEqual(['feed-1', 'feed-2', 'reply'])
 
     for (let i = 0; i < 3; i++) await p.runOnce()
-    expect(fetched).toEqual(['feed-big', 'feed-small', 'famous-reply'])
+    expect(fetched).toEqual(['feed-1', 'feed-2', 'reply'])
   })
 
-  it('sorts by followers within each queue', () => {
+  it('keeps appearance order within each queue', () => {
     const { p } = harness()
     p.enqueue([
-      { userName: 'r-small', followers: 1, priority: 'low' },
-      { userName: 'f-small', followers: 2, priority: 'high' },
-      { userName: 'r-big', followers: 900, priority: 'low' },
-      { userName: 'f-big', followers: 800, priority: 'high' },
+      { userName: 'r1', priority: 'low' },
+      { userName: 'f1', priority: 'high' },
+      { userName: 'r2', priority: 'low' },
+      { userName: 'f2', priority: 'high' },
     ])
-    expect(p.__state().highOrder).toEqual(['f-big', 'f-small'])
-    expect(p.__state().lowOrder).toEqual(['r-big', 'r-small'])
+    expect(p.__state().highOrder).toEqual(['f1', 'f2'])
+    expect(p.__state().lowOrder).toEqual(['r1', 'r2'])
   })
 
   it('promotes a reply author who then turns up in the feed', () => {
     const { p } = harness()
-    p.enqueue([{ userName: 'Both', followers: 5, priority: 'low' }])
+    p.enqueue([{ userName: 'Both', priority: 'low' }])
+    p.enqueue([{ userName: 'feed-1', priority: 'high' }])
     expect(p.__state().lowOrder).toEqual(['Both'])
 
-    p.enqueue([{ userName: 'both', followers: 5, priority: 'high' }])
-    expect(p.__state().highOrder).toEqual(['both'])
+    // Promoted to the back of the feed queue: that is where it was seen.
+    p.enqueue([{ userName: 'both', priority: 'high' }])
+    expect(p.__state().highOrder).toEqual(['feed-1', 'both'])
     expect(p.__state().lowOrder).toEqual([]) // moved, not copied
-    expect(p.__state().queueLength).toBe(1)
+    expect(p.__state().queueLength).toBe(2)
   })
 
   it('never demotes: a feed account seen again in a thread stays high', () => {
     const { p } = harness()
-    p.enqueue([{ userName: 'feed', followers: 5, priority: 'high' }])
-    p.enqueue([{ userName: 'feed', followers: 5, priority: 'low' }])
+    p.enqueue([{ userName: 'feed', priority: 'high' }])
+    p.enqueue([{ userName: 'feed', priority: 'low' }])
     expect(p.__state().highOrder).toEqual(['feed'])
     expect(p.__state().lowOrder).toEqual([])
   })
@@ -172,13 +171,13 @@ describe('priority queues', () => {
   it('sheds low-priority overflow first when over maxQueue', () => {
     const { p } = harness({ maxQueue: 3 })
     p.enqueue([
-      { userName: 'f1', followers: 100, priority: 'high' },
-      { userName: 'f2', followers: 90, priority: 'high' },
-      { userName: 'r1', followers: 80, priority: 'low' },
-      { userName: 'r2', followers: 70, priority: 'low' },
-      { userName: 'r3', followers: 60, priority: 'low' },
+      { userName: 'f1', priority: 'high' },
+      { userName: 'f2', priority: 'high' },
+      { userName: 'r1', priority: 'low' },
+      { userName: 'r2', priority: 'low' },
+      { userName: 'r3', priority: 'low' },
     ])
-    // Both feed accounts survive; only the most-followed reply fits.
+    // Both feed accounts survive; only the first reply still fits.
     expect(p.__state().highOrder).toEqual(['f1', 'f2'])
     expect(p.__state().lowOrder).toEqual(['r1'])
   })
@@ -186,25 +185,23 @@ describe('priority queues', () => {
   it('falls back to trimming the high queue once low is empty', () => {
     const { p } = harness({ maxQueue: 2 })
     p.enqueue([
-      { userName: 'f1', followers: 100, priority: 'high' },
-      { userName: 'f2', followers: 90, priority: 'high' },
-      { userName: 'f3', followers: 80, priority: 'high' },
-      { userName: 'r1', followers: 70, priority: 'low' },
+      { userName: 'f1', priority: 'high' },
+      { userName: 'f2', priority: 'high' },
+      { userName: 'f3', priority: 'high' },
+      { userName: 'r1', priority: 'low' },
     ])
     expect(p.__state().highOrder).toEqual(['f1', 'f2'])
     expect(p.__state().lowOrder).toEqual([])
   })
 
-  it('re-queues a dropped name (its slot in `queued` is freed too)', () => {
+  it('re-queues a dropped name (its slot in `queued` is freed too)', async () => {
     const { p } = harness({ maxQueue: 1 })
-    p.enqueue([
-      { userName: 'kept', followers: 100 },
-      { userName: 'dropped', followers: 1 },
-    ])
+    p.enqueue([{ userName: 'kept' }, { userName: 'dropped' }])
     expect(p.__state().order).toEqual(['kept'])
 
-    // Nothing lingers in the dedup map, so it can come back on the next batch.
-    p.enqueue([{ userName: 'dropped', followers: 500 }])
+    await p.runOnce() // 'kept' goes out, leaving room again
+    // Nothing lingers in the dedup map, so 'dropped' can come back next batch.
+    p.enqueue([{ userName: 'dropped' }])
     expect(p.__state().order).toEqual(['dropped'])
   })
 })
@@ -213,17 +210,17 @@ describe('priority queues', () => {
 // runOnce — priority, budget, known-skip, pause
 // ---------------------------------------------------------------------------
 describe('runOnce', () => {
-  it('fetches candidates in follower order', async () => {
+  it('fetches candidates in the order they were queued', async () => {
     const { p, fetched } = harness()
     p.enqueue([
-      { userName: 'small', followers: 10 },
-      { userName: 'big', followers: 9000 },
-      { userName: 'mid', followers: 500 },
+      { userName: 'first' },
+      { userName: 'second' },
+      { userName: 'third' },
     ])
     expect(await p.runOnce()).toBe('fetched')
     expect(await p.runOnce()).toBe('fetched')
     expect(await p.runOnce()).toBe('fetched')
-    expect(fetched).toEqual(['big', 'mid', 'small'])
+    expect(fetched).toEqual(['first', 'second', 'third'])
   })
 
   it('reports empty when nothing is queued', async () => {
@@ -235,10 +232,10 @@ describe('runOnce', () => {
     const { p, fetched, known } = harness()
     known.add('bob')
     p.enqueue([
-      { userName: 'alice', followers: 100 },
-      { userName: 'bob', followers: 9000 }, // highest, but known
+      { userName: 'bob' }, // first in line, but already known
+      { userName: 'alice' },
     ])
-    // bob is taken first (highest) but skipped; alice is fetched instead.
+    // bob is taken first and skipped; alice is fetched in the same run.
     expect(await p.runOnce()).toBe('fetched')
     expect(fetched).toEqual(['alice'])
     expect(p.__state().fetchedCount).toBe(1) // only the real fetch counted
@@ -248,7 +245,7 @@ describe('runOnce', () => {
     const { p, fetched, rate, setNow } = harness()
     setNow(1000)
     rate.resetAt = 5000
-    p.enqueue([{ userName: 'a', followers: 1 }])
+    p.enqueue([{ userName: 'a' }])
     expect(await p.runOnce()).toBe('paused')
     expect(fetched).toEqual([])
   })
@@ -264,10 +261,10 @@ describe('budget', () => {
     rate.limit = 4
     rate.remaining = 4 // live value observed
     p.enqueue([
-      { userName: 'a', followers: 4 },
-      { userName: 'b', followers: 3 },
-      { userName: 'c', followers: 2 },
-      { userName: 'd', followers: 1 },
+      { userName: 'a' },
+      { userName: 'b' },
+      { userName: 'c' },
+      { userName: 'd' },
     ])
     expect(await p.runOnce()).toBe('fetched') // remaining 4→3
     expect(await p.runOnce()).toBe('fetched') // remaining 3→2
@@ -279,7 +276,7 @@ describe('budget', () => {
     const { p, rate } = harness({ reserveFraction: 0.5 })
     rate.limit = 4
     rate.remaining = 2 // user already consumed down to the reserved half
-    p.enqueue([{ userName: 'a', followers: 1 }])
+    p.enqueue([{ userName: 'a' }])
     expect(await p.runOnce()).toBe('budget')
   })
 
@@ -287,11 +284,7 @@ describe('budget', () => {
     const { p, fetched, rate } = harness({ reserveFraction: 0.5 })
     rate.limit = 4
     rate.remaining = 4
-    p.enqueue([
-      { userName: 'a', followers: 4 },
-      { userName: 'b', followers: 3 },
-      { userName: 'c', followers: 2 },
-    ])
+    p.enqueue([{ userName: 'a' }, { userName: 'b' }, { userName: 'c' }])
     expect(await p.runOnce()).toBe('fetched') // 4→3
     expect(await p.runOnce()).toBe('fetched') // 3→2
     expect(await p.runOnce()).toBe('budget')
@@ -307,7 +300,7 @@ describe('budget', () => {
     const { p, fetched, rate } = harness({ reserveFraction: 0.5 })
     rate.limit = 10
     rate.remaining = 6
-    for (let i = 0; i < 4; i++) p.enqueue([{ userName: `u${i}`, followers: 1 }])
+    for (let i = 0; i < 4; i++) p.enqueue([{ userName: `u${i}` }])
 
     expect(await p.runOnce()).toBe('fetched') // 6 → 5, the last of the 0.5 share
     expect(await p.runOnce()).toBe('budget')
@@ -335,7 +328,7 @@ describe('budget', () => {
     rate.limit = 10
     rate.remaining = 10
     for (let i = 0; i < 5; i++) {
-      p.enqueue([{ userName: `u${i}`, followers: 5 - i }])
+      p.enqueue([{ userName: `u${i}` }])
     }
     let count = 0
     for (let i = 0; i < 5; i++) {
@@ -450,10 +443,7 @@ describe('paced loop', () => {
 
   it('fetches the first candidate immediately, then spaces the rest out', async () => {
     const h = paced()
-    h.p.enqueue([
-      { userName: 'a', followers: 3 },
-      { userName: 'b', followers: 2 },
-    ])
+    h.p.enqueue([{ userName: 'a' }, { userName: 'b' }])
     h.p.start()
     expect(h.delays[0]).toBe(0) // no reason to make the user wait for the first
     await h.drain(1)
@@ -465,13 +455,13 @@ describe('paced loop', () => {
 
   it('does not let a fresh batch of candidates jump the pace', async () => {
     const h = paced()
-    h.p.enqueue([{ userName: 'a', followers: 1 }])
+    h.p.enqueue([{ userName: 'a' }])
     h.p.start()
     await h.drain() // fetches 'a', then goes idle on an empty queue
     expect(h.fetched).toEqual(['a'])
 
     const before = h.delays.length
-    h.p.enqueue([{ userName: 'b', followers: 1 }]) // e.g. the user scrolled
+    h.p.enqueue([{ userName: 'b' }]) // e.g. the user scrolled
     expect(h.delays[before]).toBe((15 * 60 * 1000) / 34) // paced, not 0
     h.p.stop()
   })
@@ -481,10 +471,7 @@ describe('paced loop', () => {
   // after a gap that can be minutes long.
   it('re-times the pending lookup when the share widens', async () => {
     const h = paced()
-    h.p.enqueue([
-      { userName: 'a', followers: 2 },
-      { userName: 'b', followers: 1 },
-    ])
+    h.p.enqueue([{ userName: 'a' }, { userName: 'b' }])
     h.p.start()
     await h.drain(1) // fetched 'a'; next scheduled for the 70% share
 
@@ -496,10 +483,7 @@ describe('paced loop', () => {
 
   it('re-times the pending lookup when pacing switches to instant', async () => {
     const h = paced({ minSpacingMs: 1500 })
-    h.p.enqueue([
-      { userName: 'a', followers: 2 },
-      { userName: 'b', followers: 1 },
-    ])
+    h.p.enqueue([{ userName: 'a' }, { userName: 'b' }])
     h.p.start()
     await h.drain(1)
 
@@ -511,7 +495,7 @@ describe('paced loop', () => {
 
   it('schedules nothing when a setting changes while stopped', () => {
     const h = paced()
-    h.p.enqueue([{ userName: 'a', followers: 1 }])
+    h.p.enqueue([{ userName: 'a' }])
     h.p.setReserveFraction(0.9)
     h.p.setPacing('instant')
     expect(h.delays).toEqual([])
@@ -519,10 +503,7 @@ describe('paced loop', () => {
 
   it('resumes on schedule after stop/start rather than firing immediately', async () => {
     const h = paced()
-    h.p.enqueue([
-      { userName: 'a', followers: 2 },
-      { userName: 'b', followers: 1 },
-    ])
+    h.p.enqueue([{ userName: 'a' }, { userName: 'b' }])
     h.p.start()
     await h.drain(1) // fetched 'a' at t0
     h.p.stop()
@@ -536,13 +517,13 @@ describe('paced loop', () => {
 
   it('credits time already elapsed since the last lookup', async () => {
     const h = paced()
-    h.p.enqueue([{ userName: 'a', followers: 1 }])
+    h.p.enqueue([{ userName: 'a' }])
     h.p.start()
     await h.drain()
 
     const before = h.delays.length
     h.setNow(1_000_000 + 10_000) // 10s passed while the queue was empty
-    h.p.enqueue([{ userName: 'b', followers: 1 }])
+    h.p.enqueue([{ userName: 'b' }])
     // budget 34 over the 14m50s left, minus the 10s already served.
     expect(h.delays[before]).toBe((15 * 60 * 1000 - 10_000) / 34 - 10_000)
     h.p.stop()
@@ -550,13 +531,13 @@ describe('paced loop', () => {
 
   it('fires immediately when more than a full gap has already passed', async () => {
     const h = paced()
-    h.p.enqueue([{ userName: 'a', followers: 1 }])
+    h.p.enqueue([{ userName: 'a' }])
     h.p.start()
     await h.drain()
 
     const before = h.delays.length
     h.setNow(1_000_000 + 5 * 60 * 1000) // idle far longer than one gap
-    h.p.enqueue([{ userName: 'b', followers: 1 }])
+    h.p.enqueue([{ userName: 'b' }])
     expect(h.delays[before]).toBe(0)
     h.p.stop()
   })
@@ -566,16 +547,16 @@ describe('paced loop', () => {
 // start() / stop() loop wiring
 // ---------------------------------------------------------------------------
 describe('start/stop loop', () => {
-  it('drains the queue in priority order when started', async () => {
+  it('drains the queue in order when started', async () => {
     const h = harness()
     h.p.enqueue([
-      { userName: 'small', followers: 1 },
-      { userName: 'big', followers: 999 },
-      { userName: 'mid', followers: 50 },
+      { userName: 'first' },
+      { userName: 'second' },
+      { userName: 'third' },
     ])
     h.p.start()
     await h.drain()
-    expect(h.fetched).toEqual(['big', 'mid', 'small'])
+    expect(h.fetched).toEqual(['first', 'second', 'third'])
     expect(h.p.isRunning()).toBe(true)
     h.p.stop()
     expect(h.p.isRunning()).toBe(false)
@@ -583,7 +564,7 @@ describe('start/stop loop', () => {
 
   it('does nothing after stop()', async () => {
     const h = harness()
-    h.p.enqueue([{ userName: 'a', followers: 1 }])
+    h.p.enqueue([{ userName: 'a' }])
     h.p.start()
     h.p.stop()
     await h.drain()
@@ -595,7 +576,7 @@ describe('start/stop loop', () => {
     h.rate.limit = 4
     h.rate.remaining = 2 // already at the reserved half → no budget
     h.rate.windowResetAt = 999_999 // reschedule against the window reset
-    h.p.enqueue([{ userName: 'a', followers: 1 }])
+    h.p.enqueue([{ userName: 'a' }])
     h.p.start()
     await h.drain(3)
     expect(h.fetched).toEqual([]) // never fetched while starved
@@ -607,7 +588,7 @@ describe('start/stop loop', () => {
     const h = harness()
     h.setNow(1000)
     h.rate.resetAt = 5000 // 429 backoff in effect
-    h.p.enqueue([{ userName: 'a', followers: 1 }])
+    h.p.enqueue([{ userName: 'a' }])
     h.p.start()
     await h.drain(3)
     expect(h.fetched).toEqual([])

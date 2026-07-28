@@ -629,6 +629,53 @@ describe('x-loc-request-users event', () => {
     spy.mockRestore()
   })
 
+  it('replays in first-appearance order, even for a repeat sighting', async () => {
+    // The content script feeds the replay straight into the FIFO prefetch queue,
+    // so a name seen twice must keep the slot it earned the first time rather
+    // than jumping to the back of the buffer.
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(homeTimelineResponse('alpha', 'a')), {
+            status: 200,
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(homeTimelineResponse('beta', 'b')), {
+            status: 200,
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(homeTimelineResponse('alpha', 'a2')), {
+            status: 200,
+          }),
+        ),
+    )
+    await import('./page-script')
+
+    for (const _ of [0, 1, 2]) {
+      const dispatched = nextWindowEvent<CustomEvent>('x-loc-users-data')
+      window.fetch('https://x.com/i/api/graphql/HomeTimeline', {})
+      await dispatched
+    }
+
+    const spy = vi.spyOn(window, 'dispatchEvent')
+    window.dispatchEvent(new CustomEvent('x-loc-request-users'))
+
+    const replayed = spy.mock.calls
+      .map(([e]) => e as CustomEvent)
+      .filter((e) => e.type === 'x-loc-users-data')
+      .flatMap(
+        (e) => e.detail.users as Array<{ userName: string; bio: string }>,
+      )
+
+    expect(replayed.map((u) => u.userName)).toEqual(['alpha', 'beta'])
+    expect(replayed[0].bio).toBe('a2') // still the freshest record
+    spy.mockRestore()
+  })
+
   it('keeps a buffered feed account high when a thread mentions it again', async () => {
     const shared = 'inboth'
     vi.stubGlobal(

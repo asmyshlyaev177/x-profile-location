@@ -518,8 +518,8 @@ export function Options() {
             <span>Prefetch locations in the background</span>
           </label>
           <p class={css.mobileHint}>
-            Looks up accounts in your feed, most-followed first, so flags appear
-            without hovering.
+            Looks up accounts in your feed, in the order they appear, so flags
+            show up without hovering.
           </p>
 
           <label class={rowClass(css.controlRow, cacheOff || !prefetchEnabled)}>

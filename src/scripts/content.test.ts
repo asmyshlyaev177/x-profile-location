@@ -1651,7 +1651,7 @@ describe('prefetcher wiring', () => {
     expect(prefetcher.setReserveFraction).not.toHaveBeenCalled()
   })
 
-  it('queues feed users high and reply users low, keeping follower counts', () => {
+  it('queues feed users high and reply users low, in the order received', () => {
     window.dispatchEvent(
       new CustomEvent('x-loc-users-data', {
         detail: {
@@ -1660,14 +1660,12 @@ describe('prefetcher wiring', () => {
               userName: 'feeduser',
               displayName: null,
               bio: null,
-              followers: 900,
               priority: 'high',
             },
             {
               userName: 'replyuser',
               displayName: null,
               bio: null,
-              followers: 5,
               priority: 'low',
             },
           ],
@@ -1676,12 +1674,12 @@ describe('prefetcher wiring', () => {
     )
 
     expect(prefetcher.enqueue).toHaveBeenCalledWith([
-      { userName: 'feeduser', followers: 900, priority: 'high' },
-      { userName: 'replyuser', followers: 5, priority: 'low' },
+      { userName: 'feeduser', priority: 'high' },
+      { userName: 'replyuser', priority: 'low' },
     ])
   })
 
-  it('defaults an untagged user to the high queue and 0 followers', () => {
+  it('defaults an untagged user to the high queue', () => {
     window.dispatchEvent(
       new CustomEvent('x-loc-users-data', {
         detail: {
@@ -1691,7 +1689,7 @@ describe('prefetcher wiring', () => {
     )
 
     expect(prefetcher.enqueue).toHaveBeenCalledWith([
-      { userName: 'untagged', followers: 0, priority: 'high' },
+      { userName: 'untagged', priority: 'high' },
     ])
   })
 

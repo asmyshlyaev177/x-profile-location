@@ -1745,9 +1745,10 @@ async function applySharedHits(userNames: string[]) {
 // ---------------------------------------------------------------------------
 // Background location prefetcher
 // ---------------------------------------------------------------------------
-// Trickle location lookups for on-screen accounts (most-followed first), paced
-// across the rate-limit window and using at most 70% of it, so feed-location
-// display and hide-by-location fill in without the user hovering every profile.
+// Trickle location lookups for on-screen accounts in the order they appear in
+// the feed, paced across the rate-limit window and using at most 70% of it, so
+// feed-location display and hide-by-location fill in without the user hovering
+// every profile.
 // See prefetch-queue.ts.
 const prefetcher = new BackgroundPrefetcher({
   fetch: async (userName) => {
@@ -1792,7 +1793,6 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
         userName: string
         displayName: string | null
         bio: string | null
-        followers?: number
         priority?: PrefetchPriority
       }>
     | undefined
@@ -1800,13 +1800,13 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
   void applySharedHits(users.map((u) => u.userName))
   // Queue whenever the settings allow prefetch (even before auth headers
   // arrive); the prefetcher only starts draining once syncPrefetcher() sees
-  // headers. page-script tags each user by where they came from: feed tweets go
-  // to the high queue, a thread's replies to the low one.
+  // headers. The array is in timeline order, and the queue is FIFO, so lookups
+  // follow the feed down. page-script tags each user by where they came from:
+  // feed tweets go to the high queue, a thread's replies to the low one.
   if (prefetchAllowedBySettings()) {
     prefetcher.enqueue(
       users.map((u) => ({
         userName: u.userName,
-        followers: u.followers ?? 0,
         priority: u.priority ?? 'high',
       })),
     )

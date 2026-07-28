@@ -477,10 +477,10 @@ export function normalizeHideBlockedMode(value: unknown): HideBlockedMode {
 // URL (CACHE_API_BASE in constants.ts) is configured.
 export const SHARED_CACHE_KEY = 'sharedCacheEnabled'
 
-// Whether to prefetch locations in the background for on-screen accounts
-// (most-followed first), warming the local + community caches so flags appear
-// without hovering. Defaults on; spends at most PREFETCH_SHARE_KEY of the
-// rate-limit window.
+// Whether to prefetch locations in the background for on-screen accounts (in
+// the order they appear on the page), warming the local + community caches so
+// flags appear without hovering. Defaults on; spends at most PREFETCH_SHARE_KEY
+// of the rate-limit window.
 export const BACKGROUND_PREFETCH_KEY = 'backgroundPrefetch'
 
 // AboutAccountQuery lookups X allows per window, and how long that window is

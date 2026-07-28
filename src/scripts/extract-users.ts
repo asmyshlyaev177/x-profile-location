@@ -2,13 +2,14 @@ export interface UserBio {
   userName: string
   displayName: string | null
   bio: string | null
-  // Follower count from `legacy.followers_count`, when present. Used to
-  // prioritize background location prefetching toward more-popular accounts.
-  // Omitted (not null) when the User node carries no count, so consumers can
-  // treat a missing value as 0 and existing extract shapes stay unchanged.
-  followers?: number
 }
 
+/**
+ * Walks a GraphQL response for User nodes. The walk is depth-first over the
+ * response's own key/element order, so the result comes back in the order the
+ * timeline lists its entries — which is what the prefetch queue consumes as
+ * "the order accounts appear on the page".
+ */
 export function extractUsers(_obj: unknown, depth = 0): UserBio[] {
   if (depth > 20 || !_obj || typeof _obj !== 'object') return []
   const obj = _obj as Record<string, unknown>
@@ -26,10 +27,7 @@ export function extractUsers(_obj: unknown, depth = 0): UserBio[] {
         core?.description ??
         legacy?.description ??
         null) as string | null
-      const user: UserBio = { userName, displayName, bio }
-      const followers = legacy?.followers_count
-      if (typeof followers === 'number') user.followers = followers
-      return [user]
+      return [{ userName, displayName, bio }]
     }
     return []
   }

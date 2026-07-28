@@ -101,7 +101,9 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
         // Whoever the account is in the feed, they stay 'high' — a later thread
         // response must not bury them behind its replies.
         const wasHigh = userBuffer.get(key)?.priority === 'high'
-        userBuffer.delete(key) // keep most-recent value, refresh insertion order
+        // set() on an existing key keeps its insertion slot, so a repeat sighting
+        // refreshes the value without losing where the account first appeared —
+        // the replay is consumed as page order by the prefetch queue.
         userBuffer.set(key, wasHigh ? { ...u, priority: 'high' } : u)
         if (userBuffer.size > USER_BUFFER_CAP) {
           userBuffer.delete(userBuffer.keys().next().value as string)
