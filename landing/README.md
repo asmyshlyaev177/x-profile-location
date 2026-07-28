@@ -26,27 +26,55 @@ landing/
 │   ├── shoot-options.mjs    # Renders the options page → screen_5.png
 │   └── minify-html.mjs      # Post-build HTML minification
 ├── src/
-│   ├── components/           # Page order matches app.tsx
+│   ├── components/           # Homepage order matches app.tsx
 │   │   ├── SiteHeader.tsx    # Sticky header; blurs once scrolled past 24px
 │   │   ├── Hero.tsx          # Headline + XPanel, the tilting mock of X with the extension running
 │   │   ├── Screenshots.tsx   # Real screenshots: tablist rail + native <dialog> lightbox
 │   │   ├── HowItWorks.tsx    # Three steps — the "how can it even know?" answer
 │   │   ├── SeeItInAction.tsx # Features: a 5-badge legend, then three showcases
 │   │   ├── Trust.tsx         # What is never sent vs. what the cache sends
+│   │   ├── Faq.tsx           # Native <details>; renders a route's `faq` array
 │   │   ├── CTA.tsx           # Cyan-drenched closing fold
 │   │   ├── Footer.tsx
 │   │   ├── InstallButton.tsx # Browser-detected install link, `signal` / `void` tones
 │   │   ├── Wordmark.tsx      # Favicon glyph reused as the site mark
-│   │   └── PrivacyPolicy.tsx
+│   │   ├── PrivacyPolicy.tsx
+│   │   ├── AboutThisAccount.tsx  # Guide — /x-about-this-account
+│   │   └── EngagementFarming.tsx # Guide — /spot-engagement-farming
 │   ├── utils/
 │   │   ├── browser.ts        # Browser detection for install links
 │   │   └── constants.ts      # Store URLs
-│   ├── seo.ts                # Meta tags / OG data
+│   ├── routes.ts             # Every page as data — see Routing below
+│   ├── seo.ts                # Per-route <head>, OG data, JSON-LD
 │   ├── app.tsx
 │   ├── main.tsx
 │   └── index.css             # Design tokens, type scale, motion — see below
 └── vite.config.ts            # Prerender plugin, sitemap, __EXT_VERSION__ define
 ```
+
+## Routing
+
+`src/routes.ts` is the single source of truth: path, title, description,
+`noindex`, and an optional `faq` array. It is deliberately free of JSX imports,
+because `vite.config.ts` reads it at config-load time to derive
+`additionalPrerenderRoutes` and the sitemap's exclusions — importing a component
+tree there would drag Preact through esbuild for nothing.
+
+**Adding a page** is two steps: an entry in `routes.ts`, and a line in the
+`GUIDES` map in `app.tsx` (or a branch, if it needs a different shape). The
+`<head>`, canonical, prerender list and sitemap all follow from the route entry.
+
+A route's `faq` array is rendered visibly by `<Faq>` *and* emitted as FAQPage
+structured data by `seo.ts`. Never reword one without the other — schema that
+does not match the visible copy is a manual-action risk. `<Faq>` uses native
+`<details>` for the same reason hydration is deferred: the answers have to be in
+the prerendered HTML whether or not JS ever runs.
+
+`siteUrl` guards against a local `VITE_SITE_URL`. Vite loads plain `.env` in
+every mode, production builds included, and `pnpm deploy` ships whatever `dist`
+this machine built — so `VITE_SITE_URL=http://localhost:5173` in `.env` used to
+end up in the canonical and `og:url` of the live site. A localhost value is now
+ignored when `import.meta.env.PROD` is set.
 
 ## Design system
 
@@ -109,9 +137,10 @@ throttling). The things holding it there, in case one looks removable:
 - **`public/_headers`** gives Cloudflare Pages the year-long immutable cache for
   `/assets/*` and `/fonts/*`. Without it, repeat visits refetch ~250 kB.
 
-`/privacy-policy` scores 100 / 100 / 100 but 66 on SEO, because `main.tsx`
-marks it `noindex`. That is a deliberate choice, not a defect — drop the tag if
-you would rather the policy were searchable.
+`/privacy-policy` scores 100 / 100 / 100 but 66 on SEO, because it carries
+`noindex: true` in `routes.ts` (which also keeps it out of the sitemap). That is
+a deliberate choice, not a defect — drop the flag if you would rather the policy
+were searchable.
 
 ## Image workflow
 

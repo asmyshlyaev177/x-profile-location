@@ -1,35 +1,48 @@
+import { routes, type RouteDef } from './routes'
+
+const PRODUCTION_URL = 'https://x-profile-location.pages.dev/'
+
 // Falls back to production URL when import.meta.env is unavailable (e.g. vite.config.ts load time)
-const rawSiteUrl: string =
-  import.meta.env?.VITE_SITE_URL ?? 'https://x-profile-location.pages.dev/'
+const rawSiteUrl: string = import.meta.env?.VITE_SITE_URL ?? PRODUCTION_URL
+
+/**
+ * Vite loads plain `.env` in *every* mode, production builds included, and
+ * `pnpm deploy` ships the dist built on whichever machine ran it. A developer's
+ * local `VITE_SITE_URL=http://localhost:5173` therefore used to end up in the
+ * canonical and og:url of the live site — which tells Google the real pages are
+ * duplicates of a host it cannot reach. A localhost value is only ever right
+ * when the build is not for production.
+ */
+const isLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(
+  rawSiteUrl,
+)
+const resolvedSiteUrl =
+  import.meta.env?.PROD && isLocalUrl ? PRODUCTION_URL : rawSiteUrl
 
 /**
  * Always ends in exactly one `/`. VITE_SITE_URL gets written both ways by hand,
  * and every consumer here concatenates a path onto it — without normalising,
  * one spelling yields `…dev//og-image.png` and the other `…devog-image.png`.
  */
-export const siteUrl: string = rawSiteUrl.replace(/\/*$/, '/')
+export const siteUrl: string = resolvedSiteUrl.replace(/\/*$/, '/')
 
 export const buildDate = new Date().toISOString()
 
+/** The homepage entry, and the source of the site-wide title/description. */
+const home = routes[0]!
+
+/**
+ * Site-level constants. Per-page title and description live in `routes.ts` —
+ * they were here when there was only one page.
+ */
 export const seo = {
-  /** 53 chars — brand first, then the phrase people actually search for. */
-  title: 'X Profile Location — see the country of any X profile',
-
-  /**
-   * 144 chars. The previous one ran to 236 and was cut off mid-sentence in
-   * every SERP; anything past ~160 is wasted.
-   */
-  description:
-    "Puts a country flag on every X profile, from X's own data. Warns on likely VPNs, hides tweets by country, and needs no account. Free for Chrome.",
-
   /** Ignored by Google since 2009, still read by a few smaller engines. */
   keywords:
-    'X Twitter profile location, country flag extension, Twitter location checker, VPN detection Twitter, where is this Twitter user from, X profile country, hide tweets by country, collapse tweets by location, Chrome extension',
+    'X Twitter profile location, country flag extension, Twitter location checker, VPN detection Twitter, where is this Twitter user from, X profile country, hide tweets by country, collapse tweets by location, X about this account, engagement farming X, Twitter bot check, Chrome extension',
   author: 'asmyshlyaev177',
 
   og: {
     type: 'website',
-    url: siteUrl,
     image: `${siteUrl}og-image.png`,
     imageAlt:
       'An X hover card with a German flag and the word Germany added under the handle',
@@ -47,6 +60,11 @@ export const seo = {
   },
 } as const
 
+/** `/` → siteUrl; `/foo` → siteUrl + 'foo'. */
+export function canonicalFor(route: RouteDef): string {
+  return route.path === '/' ? siteUrl : `${siteUrl}${route.path.slice(1)}`
+}
+
 /**
  * SoftwareApplication structured data. Deliberately no `aggregateRating`:
  * review counts belong to the store, and inventing them here would be a lie
@@ -59,7 +77,7 @@ export function buildJsonLd(version: string) {
     name: 'X Profile Location',
     applicationCategory: 'BrowserApplication',
     operatingSystem: 'Chrome, Edge, Brave, Lemur Browser',
-    description: seo.description,
+    description: home.description,
     url: siteUrl,
     softwareVersion: version,
     installUrl:
@@ -70,18 +88,52 @@ export function buildJsonLd(version: string) {
   }
 }
 
-/** Returns the full set of <head> elements for vite-prerender-plugin */
-export function buildHeadElements(version: string) {
-  return new Set([
-    // SoftwareApplication structured data. `textContent` is the prerender
-    // plugin's escape hatch for elements that carry a body rather than attrs.
-    {
-      type: 'script',
-      props: {
-        type: 'application/ld+json',
-        textContent: JSON.stringify(buildJsonLd(version)),
-      },
+/**
+ * FAQPage structured data, built from the same array the page renders visibly.
+ * Google requires the two to match; sharing the source is what guarantees it.
+ */
+export function buildFaqJsonLd(route: RouteDef) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: (route.faq ?? []).map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  }
+}
+
+function jsonLdEl(data: unknown) {
+  return {
+    type: 'script',
+    props: {
+      type: 'application/ld+json',
+      // `textContent` is the prerender plugin's escape hatch for elements that
+      // carry a body rather than attributes.
+      textContent: JSON.stringify(data),
     },
+  }
+}
+
+/** Returns the full set of <head> elements for vite-prerender-plugin */
+export function buildHeadElements(route: RouteDef, version: string) {
+  const canonical = canonicalFor(route)
+
+  // Nothing below the fold matters for a page we're asking not to be indexed.
+  if (route.noindex) {
+    return new Set<unknown>([
+      {
+        type: 'meta',
+        props: { name: 'description', content: route.description },
+      },
+      { type: 'link', props: { rel: 'canonical', href: canonical } },
+      { type: 'meta', props: { name: 'robots', content: 'noindex' } },
+    ])
+  }
+
+  const elements: unknown[] = [
+    jsonLdEl(buildJsonLd(version)),
     {
       type: 'meta',
       props: {
@@ -89,7 +141,10 @@ export function buildHeadElements(version: string) {
         content: 'VGWeNcrEVDQA07xz1L_6VZjcMEip0kTWdxxpIEmmbKc',
       },
     },
-    { type: 'meta', props: { name: 'description', content: seo.description } },
+    {
+      type: 'meta',
+      props: { name: 'description', content: route.description },
+    },
     { type: 'meta', props: { name: 'keywords', content: seo.keywords } },
     { type: 'meta', props: { name: 'author', content: seo.author } },
     {
@@ -102,11 +157,11 @@ export function buildHeadElements(version: string) {
 
     // Open Graph
     { type: 'meta', props: { property: 'og:type', content: seo.og.type } },
-    { type: 'meta', props: { property: 'og:url', content: seo.og.url } },
-    { type: 'meta', props: { property: 'og:title', content: seo.title } },
+    { type: 'meta', props: { property: 'og:url', content: canonical } },
+    { type: 'meta', props: { property: 'og:title', content: route.title } },
     {
       type: 'meta',
-      props: { property: 'og:description', content: seo.description },
+      props: { property: 'og:description', content: route.description },
     },
     { type: 'meta', props: { property: 'og:image', content: seo.og.image } },
     {
@@ -139,10 +194,10 @@ export function buildHeadElements(version: string) {
       type: 'meta',
       props: { name: 'twitter:card', content: seo.twitter.card },
     },
-    { type: 'meta', props: { name: 'twitter:title', content: seo.title } },
+    { type: 'meta', props: { name: 'twitter:title', content: route.title } },
     {
       type: 'meta',
-      props: { name: 'twitter:description', content: seo.description },
+      props: { name: 'twitter:description', content: route.description },
     },
     {
       type: 'meta',
@@ -164,6 +219,10 @@ export function buildHeadElements(version: string) {
     },
 
     // Canonical
-    { type: 'link', props: { rel: 'canonical', href: seo.og.url } },
-  ])
+    { type: 'link', props: { rel: 'canonical', href: canonical } },
+  ]
+
+  if (route.faq?.length) elements.push(jsonLdEl(buildFaqJsonLd(route)))
+
+  return new Set(elements)
 }

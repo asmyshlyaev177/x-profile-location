@@ -2,11 +2,13 @@ import { useEffect, useState } from 'preact/hooks'
 import { InstallButton } from './InstallButton'
 import { Wordmark } from './Wordmark'
 
+// Root-relative, not bare fragments: the header renders on the guide pages too,
+// where `#how` would resolve against a document that has no such section.
 const LINKS = [
-  { href: '#proof', label: 'Screenshots' },
-  { href: '#how', label: 'How it works' },
-  { href: '#features', label: 'Features' },
-  { href: '#privacy', label: 'Privacy' },
+  { href: '/#proof', label: 'Screenshots' },
+  { href: '/#how', label: 'How it works' },
+  { href: '/#features', label: 'Features' },
+  { href: '/#privacy', label: 'Privacy' },
 ]
 
 export function SiteHeader() {

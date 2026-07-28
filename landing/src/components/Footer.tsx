@@ -12,6 +12,16 @@ const LINKS: { heading: string; items: { label: string; href: string }[] }[] = [
     ],
   },
   {
+    heading: 'Guides',
+    items: [
+      { label: 'X “About this account”', href: '/x-about-this-account' },
+      {
+        label: 'Spotting engagement farming',
+        href: '/spot-engagement-farming',
+      },
+    ],
+  },
+  {
     heading: 'Small print',
     items: [
       { label: 'Privacy policy', href: '/privacy-policy' },
@@ -24,7 +34,7 @@ const LINKS: { heading: string; items: { label: string; href: string }[] }[] = [
 export function Footer() {
   return (
     <footer class="border-hair border-t">
-      <div class="shell grid gap-10 py-14 sm:grid-cols-[1.4fr_1fr_1fr]">
+      <div class="shell grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <Wordmark />
           <p class="text-faint mt-4 max-w-[34ch] text-[0.8125rem] leading-relaxed">
