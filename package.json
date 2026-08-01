@@ -1,5 +1,5 @@
 {
-  "name": "x-profile-location",
+  "name": "x-pat",
   "private": true,
   "version": "1.5.4",
   "type": "module",
@@ -63,7 +63,7 @@
     "vitest": "4.1.2",
     "web-ext": "^10.5.0"
   },
-  "description": "X Profile Location",
+  "description": "See the country any X profile posts from — country flags, VPN warnings, and country filters, read from X's own data.",
   "intent": {
     "skills": [
       "test-proxy-recorder"
@@ -73,7 +73,7 @@
   "author": {
     "name": "asmyshlyaev177",
     "email": "asmyshlyaev177+x-ext@gmail.com",
-    "url": "https://x-profile-location.pages.dev/"
+    "url": "https://x-pat.pages.dev/"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

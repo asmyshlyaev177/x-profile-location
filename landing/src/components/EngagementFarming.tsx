@@ -130,7 +130,7 @@ export function EngagementFarming() {
               </p>
               <p>
                 <strong class="text-text font-semibold">
-                  X Profile Location does that part.
+                  X-Pat does that part.
                 </strong>{' '}
                 It puts the country in the hover card and, if you want it,
                 inline in the timeline — plus a warning when X itself cannot

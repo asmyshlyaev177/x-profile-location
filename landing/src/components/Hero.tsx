@@ -200,9 +200,7 @@ function XPanel() {
 
             <div class="border-hair mt-3 flex items-center gap-1.5 border-t pt-2.5">
               <span class="bg-signal h-1 w-1 rounded-full" />
-              <span class="t-data text-signal/80 text-[0.5625rem]!">
-                X Profile Location
-              </span>
+              <span class="t-data text-signal/80 text-[0.5625rem]!">X-Pat</span>
             </div>
           </div>
 

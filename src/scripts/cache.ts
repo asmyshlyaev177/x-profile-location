@@ -16,6 +16,14 @@ interface CachedEntry {
 
 const CACHE_TTL = 30 * 24 * 60 * 60 * 1000 // 30 days
 
+/**
+ * The IndexedDB database name. Deliberately *not* renamed with the extension —
+ * it is a storage key, not a brand. Changing it points every existing install
+ * at an empty database and silently discards the cache they have built up,
+ * which then has to be re-fetched against X's rate limit.
+ *
+ * `e2e/helpers.ts` opens this same name by hand; the two have to agree.
+ */
 const locStore = createStore('x-profile-location', 'location-data')
 
 export async function getCached(

@@ -1,9 +1,9 @@
 {
-  "name": "x-profile-location-cache",
+  "name": "x-pat-cache",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Shared, crowdsourced location cache for the X Profile Location extension (Cloudflare Worker + D1, or Node + SQLite).",
+  "description": "Shared, crowdsourced location cache for the X-Pat extension (Cloudflare Worker + D1, or Node + SQLite).",
   "license": "MIT",
   "scripts": {
     "dev": "wrangler dev",
