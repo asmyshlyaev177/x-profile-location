@@ -40,3 +40,6 @@ test-results
 # Generated locally by e2e/auth.setup.ts; provided to CI via the
 # PLAYWRIGHT_AUTH_STATE secret. See .github/workflows/tests.yml.
 e2e/.auth/
+
+# Local planning doc — intentionally not committed
+ROADMAP.md
