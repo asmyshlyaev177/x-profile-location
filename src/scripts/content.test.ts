@@ -34,6 +34,7 @@ vi.mock('./shared-cache', () => ({
   sharedBatchLookup: vi.fn().mockResolvedValue([]),
   contributeLocation: vi.fn(),
   setSharedCacheEnabled: vi.fn(),
+  setMinConfidence: vi.fn(),
   flushContributions: vi.fn(),
   isSharedCacheConfigured: vi.fn(() => true),
   isSharedCacheEnabled: vi.fn(() => true),
@@ -68,7 +69,11 @@ import {
   __testResetState,
 } from './content'
 import { getCached, mergeCached, clearAllCache } from './cache'
-import { isSharedCacheConfigured, isSharedCacheEnabled } from './shared-cache'
+import {
+  isSharedCacheConfigured,
+  isSharedCacheEnabled,
+  sharedBatchLookup,
+} from './shared-cache'
 
 // Capture listeners registered at module load time before any vi.clearAllMocks() runs.
 const chromeGlobal = (globalThis as any).chrome
@@ -78,6 +83,36 @@ const onChangedCallback: (
 ) => void = chromeGlobal.storage.onChanged.addListener.mock.calls[0][0]
 const onMessageCallback: (message: unknown) => void =
   chromeGlobal.runtime.onMessage.addListener.mock.calls[0][0]
+
+// ---------------------------------------------------------------------------
+// Per-test isolation
+// ---------------------------------------------------------------------------
+// This hook is file-scoped on purpose: Vitest runs file-level beforeEach hooks
+// before describe-level ones, so every test starts from the same state no matter
+// which describe (or which order) it runs in. `vi.clearAllMocks()` — which most
+// describes below call — only clears call history, *not* implementations, so a
+// `mockResolvedValue` set by one test stays installed for every test after it.
+// That was a real order dependency: with `--sequence.shuffle`, the
+// `fetchLocationData` tests (which expect the cache to miss, and so never set
+// getCached themselves) failed whenever a describe that stubs getCached with a
+// hit ran first. Restore the mock defaults explicitly rather than relying on
+// vi.resetAllMocks(), which would also blank the `() => true` predicates in the
+// shared-cache mock and silently change behaviour.
+const originalFetch = globalThis.fetch
+
+beforeEach(() => {
+  __testResetState()
+  document.body.innerHTML = ''
+  history.pushState({}, '', '/')
+  globalThis.fetch = originalFetch
+
+  vi.mocked(getCached).mockResolvedValue(undefined)
+  vi.mocked(mergeCached).mockResolvedValue(undefined)
+  vi.mocked(clearAllCache).mockResolvedValue(undefined)
+  vi.mocked(sharedBatchLookup).mockResolvedValue([])
+  vi.mocked(isSharedCacheConfigured).mockReturnValue(true)
+  vi.mocked(isSharedCacheEnabled).mockReturnValue(true)
+})
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -157,7 +192,6 @@ describe('fetchLocationData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setApiHeaders(HEADERS)
-    __testResetState()
   })
 
   it('sends screenName (not userName) as the GraphQL variable key', async () => {
@@ -248,7 +282,6 @@ describe('fetchLocationData — cache hit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setApiHeaders(HEADERS)
-    __testResetState()
   })
 
   it('returns cached data without making a network request when location is present', async () => {
@@ -293,7 +326,6 @@ describe('fetchLocationData — checkedThisSession dedup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setApiHeaders(HEADERS)
-    __testResetState()
   })
 
   it('skips network on the second call for the same user after a successful fetch', async () => {
@@ -333,7 +365,6 @@ describe('fetchLocationData — concurrent deduplication', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setApiHeaders(HEADERS)
-    __testResetState()
   })
 
   it('concurrent calls for the same user share one in-flight fetch', async () => {
@@ -377,7 +408,6 @@ describe('fetchLocationData — error responses', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setApiHeaders(HEADERS)
-    __testResetState()
   })
 
   it('returns null on a non-200, non-429 response', async () => {
@@ -491,7 +521,6 @@ describe('chrome.runtime.onMessage — CLEAR_CACHE', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setApiHeaders(HEADERS)
-    __testResetState()
   })
 
   it('calls clearAllCache', () => {
@@ -548,7 +577,6 @@ describe('x-loc-headers-captured event', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setApiHeaders(null)
-    __testResetState()
   })
 
   it('sets apiHeaders so subsequent fetches include auth', async () => {
@@ -593,7 +621,6 @@ describe('x-loc-headers-captured event', () => {
 describe('x-loc-users-data event', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    __testResetState()
     document.body.innerHTML = ''
   })
 
@@ -922,7 +949,6 @@ describe('x-loc-users-data event', () => {
 describe('feed location injection', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
-    __testResetState()
     document.body.innerHTML = ''
     enableFeedLocation()
     await flushAsync()
@@ -1150,7 +1176,6 @@ describe('hover card exception button', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setApiHeaders(null) // avoid network in fetchLocationData
-    __testResetState()
     document.body.innerHTML = ''
   })
 
@@ -1220,7 +1245,6 @@ describe('primary tweet exception button', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setApiHeaders(null) // avoid network in fetchLocationData
-    __testResetState()
     document.body.innerHTML = ''
     history.pushState({}, '', '/sarcasticuser/status/123')
   })
@@ -1321,7 +1345,6 @@ describe('injectFeedLocationForUser — via hover card fetch', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     setApiHeaders(HEADERS)
-    __testResetState()
     document.body.innerHTML = ''
     enableFeedLocation()
     await flushAsync()
@@ -1409,7 +1432,6 @@ function setHideMode(mode: 'off' | 'collapse' | 'hide') {
 describe('hide tweets by blocked location', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
-    __testResetState()
     document.body.innerHTML = ''
     setBlockedCountries(['India', 'Nigeria', 'Africa'])
     setHideMode('collapse')
@@ -1625,7 +1647,6 @@ describe('hide tweets by blocked location', () => {
 describe('prefetcher wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    __testResetState()
     document.body.innerHTML = ''
   })
 
@@ -1821,7 +1842,6 @@ describe('swipe-right gesture', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setApiHeaders(HEADERS)
-    __testResetState()
     document.body.innerHTML = ''
     document.getElementById('x-loc-location-toast')?.remove()
   })
@@ -2043,7 +2063,6 @@ describe('swipe-right gesture', () => {
 describe('community cache gating', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    __testResetState()
     vi.mocked(isSharedCacheConfigured).mockReturnValue(true)
     vi.mocked(isSharedCacheEnabled).mockReturnValue(true)
   })

@@ -4,7 +4,23 @@ import pkg from '../../package.json'
 export const baseManifest = {
   // Required
   // - - - - - - - - -
-  name: 'X Profile Location',
+  // This is the store listing title on both Chrome and AMO, not just the
+  // in-browser label, so it carries the search keywords the old literal name
+  // won on. `short_name` is what the browser UI shows when space is tight.
+  //
+  // Two halves, deliberately: "X profile location" is the exact phrase people
+  // search, and doubles as the thing the extension reveals; "filter and
+  // highlight" are verbs, so the title says what you *do* rather than listing
+  // topics. No "VPN" — it is the weakest of the three signals, it reads as a
+  // VPN product to anyone scanning a store search, and over-claiming it fights
+  // the neutral posture the whole brand is built on. It stays in the store
+  // description and the landing copy, both of which are indexed.
+  //
+  // 48 characters. **AMO caps the name at 50** and Chrome at 75, so the
+  // Firefox limit is the binding one — check any future edit against 50, not
+  // 75. (Edge Add-ons caps at 45, but we publish to Chrome and AMO only.)
+  name: 'X-Pat — X profile location, filter and highlight',
+  short_name: 'X-Pat',
   version: pkg.version,
   manifest_version: 3,
 
@@ -24,7 +40,9 @@ export const baseManifest = {
       48: 'assets/icons/icon-48x48.png',
       128: 'assets/icons/icon-128x128.png',
     },
-    default_title: pkg.name,
+    // Toolbar tooltip. Was `pkg.name`, which is now the npm-style `x-pat` —
+    // correct as a package name, wrong as something a user reads.
+    default_title: 'X-Pat',
     default_popup: 'pages/options.html',
   },
 

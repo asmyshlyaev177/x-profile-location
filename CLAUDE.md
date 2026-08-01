@@ -38,18 +38,18 @@ page-script.ts                      content.tsx
 
 ## Key files
 
-| File                            | Purpose                                                                                                                                                                                 |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/scripts/page-script.ts`    | Injected into `world: MAIN`. Wraps `fetch` + `XMLHttpRequest`. Captures auth headers; extracts bios from HomeTimeline/TweetDetail.                                                      |
-| `src/scripts/content.tsx`       | Content script. Listens for events from page-script, calls `AboutAccountQuery`, injects DOM rows, runs MutationObserver, handles keyword/flag highlighting.                             |
-| `src/scripts/extract-users.ts`  | Recursive GraphQL response walker. Finds `__typename: 'User'` nodes up to depth 20.                                                                                                     |
-| `src/scripts/cache.ts`          | IndexedDB wrapper (idb-keyval). 30-day TTL. Keys are lowercased usernames.                                                                                                              |
-| `src/scripts/prefetch-queue.ts` | `BackgroundPrefetcher`: two FIFO queues (feed before replies), page order within each, paced evenly over its 70% share of the rate-limit window. Unit-tested via `runOnce()`.           |
-| `src/scripts/countries.ts`      | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps + storage key constants.                                                                                                            |
-| `src/scripts/grapheme.ts`       | Grapheme-cluster-aware substring search, used for keyword highlight matching.                                                                                                           |
-| `src/scripts/service-worker.ts` | Background script. Sets `blockedCountries` defaults in `chrome.storage.local` on install.                                                                                               |
-| `src/pages/options.tsx`         | Preact options page: blocked countries, keyword highlights, flag-count threshold, background lookups (prefetch share + pacing).                                                         |
-| `src/components/Autocomplete/`  | Reusable Preact autocomplete used in the options page.                                                                                                                                  |
+| File                            | Purpose                                                                                                                                                                       |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/scripts/page-script.ts`    | Injected into `world: MAIN`. Wraps `fetch` + `XMLHttpRequest`. Captures auth headers; extracts bios from HomeTimeline/TweetDetail.                                            |
+| `src/scripts/content.tsx`       | Content script. Listens for events from page-script, calls `AboutAccountQuery`, injects DOM rows, runs MutationObserver, handles keyword/flag highlighting.                   |
+| `src/scripts/extract-users.ts`  | Recursive GraphQL response walker. Finds `__typename: 'User'` nodes up to depth 20.                                                                                           |
+| `src/scripts/cache.ts`          | IndexedDB wrapper (idb-keyval). 30-day TTL. Keys are lowercased usernames.                                                                                                    |
+| `src/scripts/prefetch-queue.ts` | `BackgroundPrefetcher`: two FIFO queues (feed before replies), page order within each, paced evenly over its 70% share of the rate-limit window. Unit-tested via `runOnce()`. |
+| `src/scripts/countries.ts`      | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps + storage key constants.                                                                                                  |
+| `src/scripts/grapheme.ts`       | Grapheme-cluster-aware substring search, used for keyword highlight matching.                                                                                                 |
+| `src/scripts/service-worker.ts` | Background script. Sets `blockedCountries` defaults in `chrome.storage.local` on install.                                                                                     |
+| `src/pages/options.tsx`         | Preact options page: blocked countries, keyword highlights, flag-count threshold, background lookups (prefetch share + pacing).                                               |
+| `src/components/Autocomplete/`  | Reusable Preact autocomplete used in the options page.                                                                                                                        |
 
 ---
 
@@ -92,7 +92,7 @@ Rate-limit response: **HTTP 429** + `x-rate-limit-reset` header (Unix seconds).
 
 It **paces** that share across the window rather than spending it back-to-back: before every lookup, `nextDelayMs()` recomputes the gap as `msLeftInWindow / budget` (≈26 s at 35 lookups / 15 min), clamped to `[minSpacingMs 1.5 s, maxSpacingMs 2 min]`. The recompute is self-correcting — hovers eat the shared budget and stretch the gap; a rolled-over window shrinks it back. `windowResetAt` is unknown until the first response, so a full window is assumed. The first lookup after `start()` fires immediately; after that `enqueue()` waking an idle queue still waits out the gap since `lastFetchAt`.
 
-Candidates sit in **two queues** (`PrefetchPriority`): `high` — the feed being scrolled (`HomeTimeline`) — is drained completely before `low` — a thread's replies (`TweetDetail`) — gets a single lookup. Each queue is **plain FIFO — page order**: `extractUsers()` walks the response depth-first in its own key order, so accounts arrive in the order the timeline renders them, and looking them up in that order means locations fill in down the feed, tracking where the user is reading. (This replaced a most-followed-first sort; `followers` is no longer extracted or carried anywhere.) Dedup keeps the slot a name first earned — in the queue *and* in page-script's replay buffer, where a repeat sighting is `set()` in place rather than deleted and re-added. `page-script.ts` tags every dispatched user with the priority of the response it came from (`BIO_INTERCEPT` maps operation → priority), and the tweet the user actually **opened** never goes through the queue at all — `processPrimaryTweet()` fetches it directly. A name queued `low` that later arrives `high` is promoted (to the back of `high`, where it was seen); the reverse never demotes, in the queue and in the replay buffer alike. `maxQueue` overflow sheds from the **bottom** — the latest to appear — emptying `low` before touching `high`, which is what keeps the survivors in page order.
+Candidates sit in **two queues** (`PrefetchPriority`): `high` — the feed being scrolled (`HomeTimeline`) — is drained completely before `low` — a thread's replies (`TweetDetail`) — gets a single lookup. Each queue is **plain FIFO — page order**: `extractUsers()` walks the response depth-first in its own key order, so accounts arrive in the order the timeline renders them, and looking them up in that order means locations fill in down the feed, tracking where the user is reading. (This replaced a most-followed-first sort; `followers` is no longer extracted or carried anywhere.) Dedup keeps the slot a name first earned — in the queue _and_ in page-script's replay buffer, where a repeat sighting is `set()` in place rather than deleted and re-added. `page-script.ts` tags every dispatched user with the priority of the response it came from (`BIO_INTERCEPT` maps operation → priority), and the tweet the user actually **opened** never goes through the queue at all — `processPrimaryTweet()` fetches it directly. A name queued `low` that later arrives `high` is promoted (to the back of `high`, where it was seen); the reverse never demotes, in the queue and in the replay buffer alike. `maxQueue` overflow sheds from the **bottom** — the latest to appear — emptying `low` before touching `high`, which is what keeps the survivors in page order.
 
 The **community cache is the master switch** for all of this. Prefetch exists to warm it, so `prefetchAllowedBySettings()` in content.tsx requires `SHARED_CACHE_KEY` — turning the cache off stops the prefetcher (via `syncPrefetcher()` on the storage change) and stops queueing candidates. The gate only applies when a server is configured: `!isSharedCacheConfigured() || isSharedCacheEnabled()`, so a build with an empty `CACHE_API_BASE` (where the toggle isn't rendered) still prefetches. The options page mirrors this — the cache toggle leads the **Background lookups** section and disables everything below it (`cacheOff`).
 
@@ -160,7 +160,7 @@ The tweet is resolved from the **`touchstart`** target and remembered — by the
 
 `isCommittedSwipe(dx, dy)` (exported for tests) is the predicate: ≥40px rightward, ≤50px drift, **and** `dx >= |dy| * 1.5`. That last clause is the one firing mid-drag made necessary — a vertical fling that starts on a slight diagonal can satisfy both raw thresholds long before it is recognisably horizontal.
 
-`renderLocationToast(text, pending)` backs the overlay. A `pending` toast has no auto-dismiss timer, so **every pending toast must be resolved by a later call** or it never goes away — `revealLocationForSwipe` shows `@handle …` immediately, then replaces it with the result, `'No location'`, or nothing. "Nothing" (`dismissLocationToast()`) is for when the lookup couldn't be *attempted* — rate-limited, or headers not yet captured — as opposed to X having no answer. That distinction is load-bearing: `#x-loc-rate-toast` is a separate element pinned to the same `bottom: 24px`, so a `'No location'` toast would render on top of the countdown.
+`renderLocationToast(text, pending)` backs the overlay. A `pending` toast has no auto-dismiss timer, so **every pending toast must be resolved by a later call** or it never goes away — `revealLocationForSwipe` shows `@handle …` immediately, then replaces it with the result, `'No location'`, or nothing. "Nothing" (`dismissLocationToast()`) is for when the lookup couldn't be _attempted_ — rate-limited, or headers not yet captured — as opposed to X having no answer. That distinction is load-bearing: `#x-loc-rate-toast` is a separate element pinned to the same `bottom: 24px`, so a `'No location'` toast would render on top of the countdown.
 
 ---
 
@@ -258,12 +258,12 @@ load, so a list saved as `Czech Republic` blocks a profile X reports as `Czechia
 and vice versa. Flag lookups canonicalise too, so an alias gets its flag rather
 than the 🌐 fallback.
 
-A handful of aliases (`Czech Republic`, `Macedonia`) are *also* flag-map keys —
+A handful of aliases (`Czech Republic`, `Macedonia`) are _also_ flag-map keys —
 they stay there for direct display but resolve to one canonical entry, and
 `CANONICAL_LOCATIONS` (what the options-page picker offers) filters them out via
 `canonicalLocation(name) === name`. Aliases win over their own identity mapping,
 which is why `countries.test.ts` asserts an alias that shadows a real flag key
-must carry the *same emoji* as its canonical — that guard is what stops a future
+must carry the _same emoji_ as its canonical — that guard is what stops a future
 `Ireland → United Kingdom` from silently swallowing a country.
 
 The `Autocomplete` takes the table as its `aliases` prop and ranks matches
@@ -325,7 +325,7 @@ pnpm dlx @tanstack/intent@latest load test-proxy-recorder#proxy-setup
 
 `proxy-setup` is the relevant one — the other two are Next.js / TanStack Start SSR and don't apply to an extension. `intent.skills` in `package.json` is the allowlist of packages whose skills may surface; without it the tool warns that a future version will require one.
 
-Note that **secret redaction has been on by default since 1.0.2** — Authorization / Cookie / Set-Cookie headers are stripped when *recording*. Replaying existing HARs is unaffected.
+Note that **secret redaction has been on by default since 1.0.2** — Authorization / Cookie / Set-Cookie headers are stripped when _recording_. Replaying existing HARs is unaffected.
 
 ### E2E browser profile
 
@@ -337,7 +337,7 @@ Gotchas:
 
 - Options-page accordions persist their open/closed state, so never click a `summary` blind to open a section — a click closes one that a default or a previous step already opened. Use `setSectionOpen(page, section, true)` from `helpers.ts`, which clicks only when needed and waits for the storage write. `setCheckboxOption()` handles this on its own — a collapsed section is `display:none`, so it force-opens the checkbox's `<details>` ancestor before clicking.
 - Scope options-page locators to their section (`optionsSection(page, 'blocked').locator('select')`). A bare `locator('select')` was unique until the prefetch share dropdown shipped, then failed strict mode — the same trap waits for any `input`/`button` locator.
-- Don't index into the article list — use `TWEET_ARTICLE` / `PRIMARY_TWEET` / `tweetArticles()` / `waitForReplies()` / `nthReply(page, n)` from `helpers.ts`. `nthReply` counts **replies**, sidestepping the off-by-one a raw `.nth()` walks into: when the page's own tweet is itself a reply, its parent renders *above* it, so replies don't start at a fixed row. `mostLikedReply()` goes further and re-anchors on the author's handle, because X's virtualised timeline recycles rows out from under an `nth()` handle.
+- Don't index into the article list — use `TWEET_ARTICLE` / `PRIMARY_TWEET` / `tweetArticles()` / `waitForReplies()` / `nthReply(page, n)` from `helpers.ts`. `nthReply` counts **replies**, sidestepping the off-by-one a raw `.nth()` walks into: when the page's own tweet is itself a reply, its parent renders _above_ it, so replies don't start at a fixed row. `mostLikedReply()` goes further and re-anchors on the author's handle, because X's virtualised timeline recycles rows out from under an `nth()` handle.
 - Which reply a test picks is often pinned by its recording, not free choice — the HAR only holds the pages that were visited at record time. The second-level-reply test needs reply **2** specifically (reply 1 has no thread under it); say so at the call site so nobody "fixes" it to reply 1.
 - Seeding must launch with `--password-store=basic` — Playwright always does, and cookies encrypted against the OS keyring can't be decrypted without it.
 - Cookies are only committed to SQLite on clean shutdown (or a ~30 s timer), so the browser must be **closed**, not killed.

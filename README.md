@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-346_passing-3fb950?style=flat-square" alt="346 unit tests passing">
+  <img src="https://img.shields.io/badge/tests-363_passing-3fb950?style=flat-square" alt="363 unit tests passing">
   <img src="https://img.shields.io/badge/runtime_deps-2-3fb950?style=flat-square" alt="Two runtime dependencies">
   <img src="https://img.shields.io/badge/account_required-none-3fb950?style=flat-square" alt="No account required">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7f8c93?style=flat-square" alt="MIT License"></a>
@@ -55,11 +55,11 @@ reading: next to the name.
 
 It reads three fields from X:
 
-| X field | Shown as |
-| --- | --- |
-| `account_based_in` | Country flag, or a region tag |
-| `source` | App-store origin badge |
-| `location_accurate` | Possible VPN/proxy warning |
+| X field             | Shown as                      |
+| ------------------- | ----------------------------- |
+| `account_based_in`  | Country flag, or a region tag |
+| `source`            | App-store origin badge        |
+| `location_accurate` | Possible VPN/proxy warning    |
 
 ### It respects X's rate limit, so you don't hit it
 
@@ -119,20 +119,20 @@ carry a random per-install id and nothing tied to you.
 
 It's off by default and there's a build with it compiled out entirely.
 
-| Permission | Why |
-| --- | --- |
-| `storage` | Your settings and the local location cache |
+| Permission              | Why                                            |
+| ----------------------- | ---------------------------------------------- |
+| `storage`               | Your settings and the local location cache     |
 | `x.com` / `twitter.com` | Read the page, and request account data from X |
 
 Full text: [Privacy Policy](https://x-profile-location.pages.dev/privacy).
 
 ## Install
 
-| Browser | |
-| --- | --- |
-| Chrome, Edge, Brave, other Chromium | [Chrome Web Store](https://chromewebstore.google.com/detail/x-profile-location/mooomapkphlmpilnlcnpoilondlppbhi) |
-| Android | [Lemur Browser](https://play.google.com/store/apps/details?id=com.lemurbrowser.exts) — runs the Chrome build as-is |
-| Firefox, Safari | Buildable from source today; store listings not up yet |
+| Browser                             |                                                                                                                    |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Chrome, Edge, Brave, other Chromium | [Chrome Web Store](https://chromewebstore.google.com/detail/x-profile-location/mooomapkphlmpilnlcnpoilondlppbhi)   |
+| Android                             | [Lemur Browser](https://play.google.com/store/apps/details?id=com.lemurbrowser.exts) — runs the Chrome build as-is |
+| Firefox, Safari                     | Buildable from source today; store listings not up yet                                                             |
 
 Or build it yourself — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -148,7 +148,7 @@ runs on a VPS that costs real money every month.
 Bug reports and PRs welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the architecture,
 the test setup, and the three areas where a subtle change does the most damage.
 
-If you just want to see whether it's any good: `pnpm test` runs 310 unit tests (plus 36 for the cache server), and
+If you just want to see whether it's any good: `pnpm test` runs 319 unit tests (plus 44 for the cache server), and
 [`server/README.md`](server/README.md) has the cache server's design and benchmarks.
 
 ## Licence

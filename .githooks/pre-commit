@@ -1,4 +1,24 @@
 #!/bin/sh
 # Run oxfmt + oxlint on staged files before each commit.
 # Hook path is registered via the "prepare" script (git config core.hooksPath .githooks).
-pnpm exec lint-staged
+pnpm exec lint-staged || exit 1
+
+# A raw capture is a slice of a real logged-in X session — hundreds of third-party
+# handles, display names, bios and post text. Scrubbing is wired into the record
+# loop (`pnpm test:e2e:record`), but a capture can reach the index by other routes:
+# a `--ui` session killed before it exits, a rebase, `git add -A` after a manual
+# proxy run. Once a recording is committed, scrubbing the working tree no longer
+# helps — history keeps the original — so the cheapest place to catch it is here,
+# before the object exists.
+#
+# CI runs `pnpm scrub:check` as the backstop; this is the version that fixes the
+# problem instead of reporting it.
+if git diff --cached --name-only --diff-filter=ACM | grep -q '^e2e/recordings/'; then
+  echo "pre-commit: recordings staged — scrubbing before commit"
+  pnpm run scrub || exit 1
+  # Re-stage whatever the scrub rewrote, so the commit contains the scrubbed
+  # bytes rather than leaving the fix behind in the working tree.
+  git diff --name-only -- e2e/recordings/ | while read -r f; do
+    git add -- "$f"
+  done
+fi

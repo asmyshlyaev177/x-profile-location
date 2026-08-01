@@ -38,8 +38,8 @@ body:
         Bios and post language come free from the timeline. Anything else
         probably costs extra requests.
       options:
-        - "No — uses data the extension already has"
-        - "Yes — needs something new from X"
-        - "Not sure"
+        - 'No — uses data the extension already has'
+        - 'Yes — needs something new from X'
+        - 'Not sure'
     validations:
       required: true

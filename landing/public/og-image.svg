@@ -45,7 +45,7 @@
   <text x="438" y="462" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="700" fill="#00d4c0" text-anchor="middle">Country blocking</text>
 
   <!-- Bottom URL -->
-  <text x="80" y="570" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="700" fill="#ffffff" opacity="0.30">x-profile-location.pages.dev</text>
+  <text x="80" y="570" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="700" fill="#ffffff" opacity="0.30">x-pat.pages.dev</text>
 
   <!-- ── RIGHT COLUMN — hover card mockup ── -->
 

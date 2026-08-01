@@ -4,7 +4,7 @@ export function Wordmark({ class: cls = '' }: { class?: string }) {
     <a
       href="/"
       class={`group inline-flex items-center gap-2.5 ${cls}`}
-      aria-label="X Profile Location — home"
+      aria-label="X-Pat — home"
     >
       <svg
         width="26"
@@ -20,7 +20,7 @@ export function Wordmark({ class: cls = '' }: { class?: string }) {
         />
       </svg>
       <span class="text-text text-[0.9375rem] font-bold tracking-[-0.02em]">
-        X Profile Location
+        X-Pat
       </span>
     </a>
   )

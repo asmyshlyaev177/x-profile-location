@@ -18,8 +18,14 @@ import { dirname, join } from 'node:path'
 const landingDir = join(dirname(fileURLToPath(import.meta.url)), '..')
 const publicDir = join(landingDir, 'public')
 const storeDir = join(landingDir, 'extension_store')
-const siteUrl =
-  process.env.VITE_SITE_URL ?? 'https://x-profile-location.pages.dev'
+const siteUrl = process.env.VITE_SITE_URL ?? 'https://x-pat.pages.dev'
+/**
+ * The host written into the SVG templates, swapped for the real one below so a
+ * preview build's images don't advertise production. Must stay in sync with the
+ * literal text in `public/*.svg` — keep both on the production host so the
+ * templates still read correctly when opened on their own.
+ */
+const TEMPLATE_HOST = 'x-pat.pages.dev'
 
 mkdirSync(storeDir, { recursive: true })
 
@@ -31,9 +37,7 @@ async function generate(
   { noAlpha = false } = {},
 ) {
   const raw = readFileSync(srcPath, 'utf8')
-  const svg = Buffer.from(
-    raw.replace('x-profile-location.pages.dev', new URL(siteUrl).host),
-  )
+  const svg = Buffer.from(raw.replace(TEMPLATE_HOST, new URL(siteUrl).host))
   let pipeline = sharp(svg).resize(width, height)
   if (noAlpha) pipeline = pipeline.flatten({ background: '#0b0b12' })
   await pipeline.png({ compressionLevel: 9 }).toFile(destPath)
