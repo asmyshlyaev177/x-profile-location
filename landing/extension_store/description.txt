@@ -1,0 +1,76 @@
+See which country an X account posts from, without opening a menu.
+
+X has a country on file for nearly every account, and it will show you, but only one profile at a time: open the profile, hit the ⋯ menu, pick "About this account", close it again. Nobody is doing that eighty times to get through a reply thread.
+
+X-Pat puts the same country in the hover card, and in the timeline itself if you want it there.
+
+
+Seeing it
+
+Hover any avatar and the flag turns up in the card X already opens for you. Turn on "Show location in feed" and it sits next to the handle on every post instead. On Android, in Lemur Browser, swipe right on a post.
+
+Some accounts get a VPN badge. That is X saying it cannot verify the location, which is weaker than it sounds and gets misread constantly. It is not proof that anyone is using a VPN.
+
+
+Filtering
+
+Pick countries or whole regions, then decide what happens to their posts: leave them alone, collapse them behind a "Show" button, or hide them.
+
+Collapse is the default. A timeline that silently deletes things is not one you can trust, and you can always open what it folded.
+
+
+Highlighting
+
+Highlight posts matching your keywords. Or highlight accounts carrying more than a set number of flags in the bio, which is a pattern you start seeing everywhere once you look for it. You can count only unique flags, so the same one repeated six times does not trip it.
+
+There is an allowlist for accounts you never want highlighted, plus a "Don't highlight" button on the hover card so adding one is not a trip to the settings page.
+
+
+Where the country comes from
+
+Your browser asks x.com, using the session you are already logged into, with the same request the site makes when it shows you a profile. The answer comes straight back to you. No server of ours in the middle, no IP geolocation, nothing from a third party database.
+
+Which means the country is exactly as good as X's own. Usually right. Sometimes marked unverified. Sometimes missing, because plenty of older accounts have nothing on file at all, and no extension can invent one for them.
+
+There is no login and no API key.
+
+
+Privacy
+
+The extension does not read your cookies or session tokens, the bios and posts you scroll past, or your history. Not as a setting you can flip. It never reads them.
+
+No analytics or telemetry in the extension.
+
+Results sit in your browser for 30 days, so a second look at the same account is free. One button clears them.
+
+
+The shared cache, which is on by default
+
+X limits how many accounts you can look up in a window, and on a busy thread that limit is the thing you actually run into. The shared cache works around it by letting your lookups answer other people's and theirs answer yours.
+
+What gets sent: the handle that was looked up, its country and VPN flag, and a random install ID so one person reporting the same thing six times only counts once. That is the entire payload. It says nothing about you and nothing about what you read.
+
+It ships enabled. One toggle in the options page turns it off, and with it off nothing leaves your browser. There is also a setting for how many separate reports a location needs before X-Pat will believe it.
+
+Background lookups fetch countries slightly ahead of your scrolling so the flag is there when you arrive. They spend the same rate limit as everything else, so you decide how much of it they get, or turn them off.
+
+
+Permissions
+
+x.com and twitter.com, because that is where it runs and where the lookup has to come from to reuse your session. Storage, for your settings and the cache. Context menus, for a single "Options" entry when you right-click the toolbar icon.
+
+That is the whole list. It cannot see any other tab you have open, and there is no remote code.
+
+
+What it is not
+
+It does not detect bots or engagement farming. It surfaces one signal you otherwise cannot see without opening every profile one at a time. Reading that signal against follower counts and account age is still your call to make.
+
+
+Chrome, Edge and Brave on the desktop. Lemur Browser on Android.
+
+MIT licensed and the source is public, so anything above is something you can go and check instead of taking my word for it.
+
+https://github.com/asmyshlyaev177/x-profile-location
+https://x-pat.pages.dev/
+Privacy policy: https://x-pat.pages.dev/privacy-policy
