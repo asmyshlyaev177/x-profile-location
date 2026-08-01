@@ -26,5 +26,13 @@ export const X_GRAPHQL_PATH = 'x.com/i/api/graphql'
 // variable, so exporting an empty VITE_CACHE_API_BASE disables the shared cache
 // entirely — no requests are made to any server, and the options page hides the
 // toggle (see isSharedCacheConfigured in shared-cache.ts).
+//
+// The `?.` is for Playwright, not for Vite. The e2e suite imports this module
+// through Playwright's own TypeScript loader, which knows nothing of Vite and
+// leaves `import.meta.env` undefined — so a bare property access throws at import
+// time and takes the whole suite down with it ("0 tests in 0 files"). Vite still
+// substitutes the full `import.meta.env.VITE_CACHE_API_BASE` expression, and an
+// explicitly empty value is still an empty string rather than undefined, so the
+// disable-the-cache case above is unaffected.
 export const CACHE_API_BASE =
-  import.meta.env.VITE_CACHE_API_BASE ?? 'https://xloc.vmirrormanv.xyz'
+  import.meta.env?.VITE_CACHE_API_BASE ?? 'https://xloc.vmirrormanv.xyz'

@@ -1,120 +1,159 @@
-# X Profile Location
+<p align="center">
+  <img src="landing/public/Hover_screenshot-x-profile-location.png" alt="A country flag shown in an X hover card" width="720">
+</p>
 
-A browser extension that shows a country flag (or region abbreviation) in X hover cards and profile pages, sourced from X's own location API.
+<h1 align="center">X Profile Location</h1>
 
-Live landing page: [x-profile-location.pages.dev](https://x-profile-location.pages.dev)
+<p align="center">
+  <strong>See where any X profile is really from.</strong><br>
+  Country flags in hover cards and the feed, app-store origin, VPN warnings, and filters for the accounts you'd rather not read.
+</p>
 
-## How it works
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/x-profile-location/mooomapkphlmpilnlcnpoilondlppbhi"><img src="https://img.shields.io/badge/Chrome-Install-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Install from the Chrome Web Store"></a>
+  <a href="https://chromewebstore.google.com/detail/x-profile-location/mooomapkphlmpilnlcnpoilondlppbhi"><img src="https://img.shields.io/badge/Brave_&_Edge-Install-FB542B?style=for-the-badge&logo=brave&logoColor=white" alt="Install on Brave or Edge"></a>
+</p>
 
-1. **`page-script.ts`** — runs in the page's own JS context (`world: MAIN`) to intercept `fetch`/`XHR`. Captures auth headers from outgoing `x.com/i/api/graphql` requests and extracts user bios from `HomeTimeline` and `TweetDetail` responses, dispatching both to the content script via custom events.
-2. **`content.tsx`** — injected into every X page. Listens for captured headers and bio data from `page-script.ts`, fetches location via `AboutAccountQuery` on hover, merges everything into an IndexedDB cache, and injects a location row into hover cards and tweet articles.
-3. **`service-worker.ts`** — background script. Initialises the blocked-countries list in `chrome.storage.local` on install and tracks install/update analytics events.
-4. **`options.tsx`** — embedded options page where users configure which countries/regions to block.
+<p align="center">
+  <img src="https://img.shields.io/badge/tests-346_passing-3fb950?style=flat-square" alt="346 unit tests passing">
+  <img src="https://img.shields.io/badge/runtime_deps-2-3fb950?style=flat-square" alt="Two runtime dependencies">
+  <img src="https://img.shields.io/badge/account_required-none-3fb950?style=flat-square" alt="No account required">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7f8c93?style=flat-square" alt="MIT License"></a>
+</p>
 
-### Data sources
+<p align="center">
+  <a href="#what-it-does">Features</a> &nbsp;|&nbsp;
+  <a href="#screenshots">Screenshots</a> &nbsp;|&nbsp;
+  <a href="#reading-the-data-correctly">Accuracy</a> &nbsp;|&nbsp;
+  <a href="#privacy">Privacy</a> &nbsp;|&nbsp;
+  <a href="#install">Install</a> &nbsp;|&nbsp;
+  <a href="CONTRIBUTING.md">Development</a>
+</p>
 
-- **Location & VPN flag** — fetched on demand from X's `AboutAccountQuery` GraphQL endpoint using the session's own auth headers (no extra credentials needed).
-- **Bio** — extracted passively from `HomeTimeline` / `TweetDetail` responses as the user browses; no additional network requests.
-- **Store badge** — derived from the `source` field returned by `AboutAccountQuery` (e.g. `Japan Android App` → `📱 🇯🇵`).
+X already knows which country an account posts from — it's in X's own **About this
+account** panel, two taps deep on every profile. This puts it where you're actually
+reading: next to the name.
 
-### Icon display order (left → right)
+> This is not a geolocation tool. It does not find anyone's physical location or
+> inspect their device. It shows values X itself returns. If X returns nothing,
+> there is nothing to show.
 
-`📱 <store-country>` → `<location flag or region abbr>` → `⚠ VPN`
+## What it does
 
-- **Store badge** — app store country the account was created with (e.g. `📱 🇯🇵`)
-- **Location** — country flag emoji for countries; 3-letter abbreviation (e.g. `NAM`, `EUR`) for regions, with the full name on hover
-- **VPN badge** — shown when X flags the location as potentially inaccurate
+<table>
+  <tr>
+    <td width="33%"><strong>Flags where you're reading</strong><br>Country flag in hover cards, on profiles, and inline in the feed. Regions get a three-letter tag with the full name on hover.</td>
+    <td width="33%"><strong>App-store origin</strong><br>The country the account's app store is set to, which often differs from the account country.</td>
+    <td width="33%"><strong>VPN warning</strong><br>A marker when X flags the account's location as possibly inaccurate.</td>
+  </tr>
+  <tr>
+    <td><strong>Hide or collapse countries</strong><br>Pick countries and regions to hide outright, or collapse behind a placeholder you can open.</td>
+    <td><strong>Highlight by bio keyword</strong><br>Flag accounts whose bio matches your keywords, with per-account exceptions.</td>
+    <td><strong>Swipe on mobile</strong><br>Swipe right on any post to look up its author. No hover needed.</td>
+  </tr>
+</table>
 
-## Project structure
+It reads three fields from X:
 
-```text
-src/
-├── _config/
-│   ├── bedframe.config.ts   # Bedframe configuration (browsers, pages, test setup)
-│   └── tests.config.ts      # Vitest setup file
-├── assets/icons/            # Extension icons (16, 32, 48, 128 px)
-├── manifests/               # Browser-specific manifest definitions
-│   ├── base.manifest.ts
-│   ├── chrome.ts
-│   ├── brave.ts
-│   ├── firefox.ts
-│   └── safari.ts
-├── pages/
-│   ├── main.html            # Overlay entry point (unused UI shell)
-│   ├── options.html         # Options page entry
-│   └── options.tsx          # Options page component (Preact)
-├── scripts/
-│   ├── content.tsx          # Content script — main extension logic
-│   ├── countries.ts         # COUNTRY_FLAGS, REGION_FLAGS, REGION_ABBR, blocked defaults
-│   ├── cache.ts             # IndexedDB cache via idb-keyval
-│   ├── page-script.ts       # Injected into page context to intercept XHR/fetch
-│   ├── service-worker.ts    # Background script
-│   └── analytics.ts         # Event tracking helpers
-├── messages/                # i18n message files
-├── index.css                # Global styles
-└── main.tsx                 # Overlay entry (minimal)
+| X field | Shown as |
+| --- | --- |
+| `account_based_in` | Country flag, or a region tag |
+| `source` | App-store origin badge |
+| `location_accurate` | Possible VPN/proxy warning |
 
-landing/                     # Separate Vite + Preact landing page (see landing/README.md)
-```
+### It respects X's rate limit, so you don't hit it
 
-## Quick start
+X allows **50 account lookups per 15 minutes**. That budget is easy to burn through in
+seconds, and when it's gone you get nothing until the window rolls over.
 
-```bash
-pnpm install
+So this extension treats it as a budget rather than a race. Background lookups are
+spread evenly across the window instead of fired in a burst, and **30% is held back for
+the accounts you actually hover** — your own lookups are never starved by background
+work. The share and the pacing are both yours to change in Options.
 
-pnpm dev       # build + watch for Chrome/Brave/Firefox/Safari
-pnpm build     # production build (all browsers)
-pnpm test      # vitest run --coverage
-pnpm fix       # oxfmt + oxlint --fix
-pnpm zip       # package extension ZIPs for store submission
-```
+An optional community cache makes it go further: results other people already looked up
+don't cost you a request at all.
 
-Built output goes to `dist/<browser>/`.
+## Screenshots
 
-## E2E tests
+<table>
+  <tr>
+    <td width="50%"><img src="landing/public/Flags_screenshot-x-profile-location.png" alt="Country flags in the X timeline"><br><strong>Flags in the feed</strong></td>
+    <td width="50%"><img src="landing/public/Hover_screenshot-x-profile-location.png" alt="Location shown in an X hover card"><br><strong>Hover card</strong></td>
+  </tr>
+  <tr>
+    <td><img src="landing/public/Highlight_screenshot-x-profile-location.png" alt="Highlighted account matching a bio keyword"><br><strong>Keyword highlighting</strong></td>
+    <td><img src="landing/public/Highlight2_screenshot-x-profile-location.png" alt="Highlight with per-account exception"><br><strong>Per-account exceptions</strong></td>
+  </tr>
+</table>
 
-```bash
-pnpm e2e:profile   # one-time: log in to X in a real browser, hand the profile to Playwright
-pnpm test:e2e      # run the suite (xvfb, replay mode by default)
-```
+## Reading the data correctly
 
-X flags Playwright's bundled Chromium, so the suite runs on a profile you log
-into by hand. `pnpm e2e:profile` opens Brave (or `--browser=chromium|chrome|<path>`)
-on its own profile under `e2e/.auth/`; log in, close the window, and it copies the
-profile plus a note of which binary made it. From then on the tests launch that
-same browser with a clone of that profile. Re-run it when X invalidates the
-session. Nothing under `e2e/.auth/` is committed — it holds a live session.
+This matters more than it sounds — the data is easy to over-read.
 
-## Tech stack
+- **Country is what X attributes to the account.** It is not a live physical location,
+  and it is not where a given post came from.
+- **App-store origin is account-level.** It does not prove which device made a post.
+- **The VPN warning is a hint, not proof.** `location_accurate: false` can mean a VPN or
+  proxy. It can also mean X is unsure.
+- **Community records are contributed by other users.** They can be stale. Check
+  anything important against X directly.
+- **X can change everything without notice** — the query, the response shape, the page
+  markup. Any of those can break this overnight.
 
-| Concern         | Tool                             |
-| --------------- | -------------------------------- |
-| Framework       | [Bedframe](https://bedframe.dev) |
-| UI              | Preact + TSX                     |
-| Build           | Vite                             |
-| Styling         | Tailwind CSS v4                  |
-| Tests           | Vitest + Happy DOM               |
-| Lint/format     | Oxlint + oxfmt                   |
-| Package manager | pnpm                             |
+## Privacy
 
-## Browsers
+No analytics. No account. No API key. No servers involved unless you turn the community
+cache on.
 
-Chrome, Brave, Firefox, Safari.
+The extension uses the X session already open in your browser. To call X's own
+endpoint it captures the `authorization` header X attaches to its requests — that
+header goes to X and nowhere else. Your CSRF token is deliberately never broadcast
+internally, and never leaves the browser.
 
-Firefox needs Gecko 128+ (`content_scripts[].world: "MAIN"`) and runs the background
-module as `background.scripts` rather than a service worker, which Firefox doesn't
-implement. `vite.config.ts` passes `browser: 'firefox'` to crxjs on that build mode so
-the emitted loader and `web_accessible_resources` match. Before a first AMO submission,
-the manifest still needs a `browser_specific_settings.gecko.data_collection_permissions`
-declaration.
+**If you enable the community cache**, three fields are shared for accounts you look
+up: country, source label, and the location-accuracy flag. Nothing else — not bios,
+not post text, not your handle, not who you looked at. Lookups carry no identifier at
+all, so the server cannot link an install to the accounts it viewed. Contributions
+carry a random per-install id and nothing tied to you.
 
-The Playwright suite is Chrome-only — Playwright cannot install a Firefox extension or
-open `moz-extension://` pages. Check Firefox by hand instead:
+It's off by default and there's a build with it compiled out entirely.
 
-```bash
-pnpm dev:firefox   # builds dist/firefox, runs it in Firefox via web-ext, opens x.com
-```
+| Permission | Why |
+| --- | --- |
+| `storage` | Your settings and the local location cache |
+| `x.com` / `twitter.com` | Read the page, and request account data from X |
 
-It keeps a profile at `e2e/.auth/firefox-profile`, so you log in to X once. Firefox MV3
-treats host permissions as user-granted, so allow x.com from the extensions button on
-the first run — real users have to do this too.
+Full text: [Privacy Policy](https://x-profile-location.pages.dev/privacy).
+
+## Install
+
+| Browser | |
+| --- | --- |
+| Chrome, Edge, Brave, other Chromium | [Chrome Web Store](https://chromewebstore.google.com/detail/x-profile-location/mooomapkphlmpilnlcnpoilondlppbhi) |
+| Android | [Lemur Browser](https://play.google.com/store/apps/details?id=com.lemurbrowser.exts) — runs the Chrome build as-is |
+| Firefox, Safari | Buildable from source today; store listings not up yet |
+
+Or build it yourself — see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Support this
+
+It's free, MIT-licensed, and has no ads, tracking or paid tier — and the community cache
+runs on a VPS that costs real money every month.
+
+<!-- Funding links land here once the card-to-crypto page is up; see ROADMAP.md Phase 4. -->
+
+## Contributing
+
+Bug reports and PRs welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the architecture,
+the test setup, and the three areas where a subtle change does the most damage.
+
+If you just want to see whether it's any good: `pnpm test` runs 310 unit tests (plus 36 for the cache server), and
+[`server/README.md`](server/README.md) has the cache server's design and benchmarks.
+
+## Licence
+
+[MIT](LICENSE) for the code. Landing-page copy and screenshots aren't covered by the
+grant.
+
+Not affiliated with, endorsed by, or connected to X Corp.

@@ -23,6 +23,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # Fails if any committed recording still contains a real handle that no
+      # test names. Runs before anything slower, because a capture landing
+      # unscrubbed is a privacy incident rather than a broken build — and by the
+      # time it is on a public branch it is already too late to fix quietly.
+      - name: Recordings are scrubbed
+        run: pnpm scrub:check
+
       - name: Unit tests
         run: pnpm test
 

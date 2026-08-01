@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Shared, crowdsourced location cache for the X Profile Location extension (Cloudflare Worker + D1, or Node + SQLite).",
+  "license": "MIT",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",

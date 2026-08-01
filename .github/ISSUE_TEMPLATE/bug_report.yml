@@ -1,0 +1,66 @@
+name: Bug report
+description: Something shows the wrong thing, or nothing at all
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        X changes its GraphQL queries, response shapes and page markup without
+        notice, and any of those can break this overnight. If flags vanished
+        everywhere at once, that is the likely cause — say so and it gets
+        triaged first.
+
+        Please redact any handles you don't want in a public issue.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open x.com
+        2. Hover an account
+        3. …
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Extension version
+      description: Shown at the bottom of the options page.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options: [Chrome, Brave, Edge, Firefox, Safari, Lemur (Android), Other]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: shared-cache
+    attributes:
+      label: Community cache
+      description: Options → is the shared cache switched on?
+      options: ["On", "Off", "Not sure"]
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: >
+        Optional. The extension is quiet by default, so this is often empty —
+        that itself is useful to know.
+      render: text

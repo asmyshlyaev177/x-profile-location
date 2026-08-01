@@ -1,0 +1,7 @@
+{
+  "//": "README.md and server/README.md use centered HTML for the hero, badges and screenshot tables — GitHub renders no other way to do it. Line length is left to the author.",
+  "MD033": false,
+  "MD041": false,
+  "MD013": false,
+  "MD024": { "siblings_only": true }
+}

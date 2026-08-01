@@ -1,0 +1,13 @@
+{
+  "//": "Policy for scripts/scrub-recordings.mjs. See CONTRIBUTING.md § Recordings must be scrubbed.",
+
+  "//no-names-here": "This file names no account, and none may be added. Which handles survive a scrub is DERIVED, not declared: any handle a test source references is an account the suite asserts against, so it and its bio stay; every other handle in a capture is an incidental third party and is pseudonymised. That keeps the rule in one place — if a test stops naming an account, the next scrub anonymises it automatically, and the recording account (which no test names) is removed without ever being written down.",
+
+  "//testSources": "Scanned to find those referenced handles. Globs are relative to the repo root.",
+  "testSources": ["e2e/*.test.ts", "e2e/helpers.ts"],
+
+  "//dropMedia": "Response bodies discarded outright. Video is the largest non-JS payload and no test asserts on it.",
+  "dropMedia": ["video/mp4", "application/x-mpegURL", "video/MP2T"],
+
+  "//keepsData": "Never touched, because the extension is tested against them: about_profile.account_based_in (country), about_profile.source (app store), location_accurate, and created_at."
+}

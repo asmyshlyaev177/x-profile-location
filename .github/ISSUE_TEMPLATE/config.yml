@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Flags stopped appearing everywhere at once
+    url: https://github.com/asmyshlyaev177/x-profile-location/issues?q=is%3Aissue+label%3Ax-api-change
+    about: X likely changed its API. Check whether it's already reported before filing.
+  - name: Shared cache server
+    url: https://github.com/asmyshlyaev177/x-profile-location/blob/master/server/README.md
+    about: Design, consensus model, deploy shapes and benchmarks for the community cache.
+  - name: Development setup
+    url: https://github.com/asmyshlyaev177/x-profile-location/blob/master/CONTRIBUTING.md
+    about: Architecture, tests, and how to build the extension yourself.

@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest something the extension should do
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Worth knowing before you write: X allows **50 account lookups per 15
+        minutes**, and most of the design exists to live inside that budget.
+        Anything needing a lookup per account on screen is the hard case — not
+        impossible, but it has to earn its requests.
+
+        [ROADMAP.md](../blob/master/ROADMAP.md) lists what's already planned.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: >
+        The situation, not the solution — it often has a cheaper answer than the
+        one that comes to mind first.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like it to do?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: data
+    attributes:
+      label: Does this need data X doesn't already give us?
+      description: >
+        Country, app-store source and the VPN flag come from one call.
+        Bios and post language come free from the timeline. Anything else
+        probably costs extra requests.
+      options:
+        - "No — uses data the extension already has"
+        - "Yes — needs something new from X"
+        - "Not sure"
+    validations:
+      required: true

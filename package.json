@@ -19,6 +19,8 @@
     "test": "vitest run --coverage",
     "e2e:profile": "node e2e/scripts/seed-profile.mjs",
     "test:e2e": "xvfb-run --auto-servernum playwright test --retries 1",
+    "scrub": "node --max-old-space-size=6144 scripts/scrub-recordings.mjs",
+    "scrub:check": "node scripts/scrub-recordings.mjs --check",
     "test:e2e:ui": "playwright test --ui",
     "convert:safari": "xcrun safari-web-extension-converter dist/safari --project-location . --app-name $npm_package_name-safari",
     "proxy": "test-proxy-recorder",
@@ -66,7 +68,7 @@
       "test-proxy-recorder"
     ]
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "author": {
     "name": "asmyshlyaev177",
     "email": "asmyshlyaev177+x-ext@gmail.com",
