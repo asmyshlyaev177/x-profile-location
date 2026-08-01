@@ -65,7 +65,7 @@ export function Footer() {
 
       <div class="shell border-hair flex flex-col gap-3 border-t py-6 sm:flex-row sm:items-center sm:justify-between">
         <p class="text-faint text-[0.8125rem]">
-          © {new Date().getFullYear()} X Profile Location
+          © {new Date().getFullYear()} X-Pat
         </p>
         <p class="text-faint text-[0.8125rem]">
           Not affiliated with X Corp. Location data comes from X’s own public

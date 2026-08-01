@@ -35,7 +35,10 @@ export interface RouteDef {
 export const routes: RouteDef[] = [
   {
     path: '/',
-    title: 'X Profile Location — see the country of any X profile',
+    // Brand first, then the exact phrase the old name ranked for. Keeping
+    // "X Profile Location" in the title is the whole reason a rename doesn't
+    // have to cost the literal-match traffic — same tactic as the store title.
+    title: 'X-Pat — X Profile Location: see the country of any X profile',
     description:
       "Puts a country flag on every X profile, from X's own data. Warns on likely VPNs, hides tweets by country, and needs no account. Free for Chrome.",
     faq: [
@@ -111,8 +114,8 @@ export const routes: RouteDef[] = [
   },
   {
     path: '/privacy-policy',
-    title: 'Privacy Policy — X Profile Location',
-    description: 'Privacy Policy for the X Profile Location browser extension.',
+    title: 'Privacy Policy — X-Pat',
+    description: 'Privacy Policy for the X-Pat browser extension.',
     noindex: true,
   },
 ]
