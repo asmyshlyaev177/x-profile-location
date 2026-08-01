@@ -21,6 +21,11 @@ import {
   LOCATION_ALIASES,
   LOOKUP_LIMIT_PER_WINDOW,
   LOOKUP_WINDOW_MINUTES,
+  DEFAULT_MIN_CONFIDENCE,
+  MIN_CONFIDENCE_CHOICES,
+  MIN_CONFIDENCE_KEY,
+  normalizeMinConfidence,
+  SHOW_ADVANCED_KEY,
   OPTIONS_SECTIONS_KEY,
   type OptionsSectionId,
   PREFETCH_PACING_KEY,
@@ -83,6 +88,8 @@ export function Options() {
   const [hideMode, setHideMode] = useState<HideBlockedMode>('off')
   const [cacheCleared, setCacheCleared] = useState(false)
   const [sections, setSections] = useState(DEFAULT_OPTIONS_SECTIONS)
+  const [minConfidence, setMinConfidence] = useState(DEFAULT_MIN_CONFIDENCE)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   async function handleClearCache() {
     await chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' })
@@ -105,6 +112,8 @@ export function Options() {
         PREFETCH_SHARE_KEY,
         PREFETCH_PACING_KEY,
         OPTIONS_SECTIONS_KEY,
+        MIN_CONFIDENCE_KEY,
+        SHOW_ADVANCED_KEY,
       ])
       .then((result) => {
         // Folded through the alias table so a list saved before an alias
@@ -149,6 +158,23 @@ export function Options() {
           normalizeHideBlockedMode(result[HIDE_BLOCKED_LOCATIONS_KEY]),
         )
         setSections(normalizeOptionsSections(result[OPTIONS_SECTIONS_KEY]))
+        setMinConfidence(normalizeMinConfidence(result[MIN_CONFIDENCE_KEY]))
+
+        // The advanced section is revealed by opening the options page as
+        // `options.html?advanced=1` (and hidden again with `?advanced=0`), then
+        // remembered. Deliberately undiscoverable from the UI: the one setting
+        // it holds is a documented trade-off rather than a preference, and it
+        // needs the reasoning in server/README.md to mean anything. A URL
+        // parameter costs the normal page nothing and is easy to talk someone
+        // through in a bug report.
+        const param = new URLSearchParams(location.search).get('advanced')
+        if (param === null) {
+          setShowAdvanced(Boolean(result[SHOW_ADVANCED_KEY]))
+        } else {
+          const next = param !== '0'
+          setShowAdvanced(next)
+          chrome.storage.local.set({ [SHOW_ADVANCED_KEY]: next })
+        }
       })
   }, [])
 
@@ -219,6 +245,13 @@ export function Options() {
   /** Dims a row whose controls are disabled, so the reason reads as deliberate. */
   function rowClass(base: string, disabled: boolean) {
     return disabled ? `${base} ${css.optionDisabled}` : base
+  }
+
+  // Comes off a <select>, so it arrives as a string.
+  function updateMinConfidence(value: string) {
+    const next = normalizeMinConfidence(value)
+    setMinConfidence(next)
+    chrome.storage.local.set({ [MIN_CONFIDENCE_KEY]: next })
   }
 
   // Comes off a <select>, so it arrives as a string.
@@ -641,6 +674,41 @@ export function Options() {
           )}
         </div>
       </details>
+
+      {showAdvanced && isSharedCacheConfigured() && (
+        <details {...sectionProps('advanced')}>
+          <summary class={css.accordionSummary}>
+            <span>Advanced 🔧</span>
+            <span class={css.accordionArrow}>▾</span>
+          </summary>
+          <div class={css.accordionContent}>
+            <label class={rowClass(css.controlRow, cacheOff)}>
+              <span>Trust a shared location after this many reports:</span>
+              <select
+                class={css.modeSelect}
+                value={String(minConfidence)}
+                disabled={cacheOff}
+                onChange={(e) =>
+                  updateMinConfidence((e.target as HTMLSelectElement).value)
+                }
+              >
+                {MIN_CONFIDENCE_CHOICES.map((n) => (
+                  <option key={n} value={String(n)}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p class={css.mobileHint}>
+              Higher is harder to poison but answers far less: today only about
+              1 in 80 cached profiles has been reported twice, so anything above
+              1 mostly falls back to looking the account up on X and spends your
+              rate limit. Leave it at {DEFAULT_MIN_CONFIDENCE} unless you are
+              measuring this.
+            </p>
+          </div>
+        </details>
+      )}
 
       <div class={css.cacheSection}>
         <button

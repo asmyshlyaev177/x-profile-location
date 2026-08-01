@@ -6,7 +6,18 @@ import {
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
   SHARED_CACHE_KEY,
+  SHOW_ADVANCED_KEY,
+  MIN_CONFIDENCE_KEY,
+  MIN_CONFIDENCE_CHOICES,
+  DEFAULT_MIN_CONFIDENCE,
 } from '../scripts/countries'
+import { isSharedCacheConfigured } from '../scripts/shared-cache'
+
+// The real module reads CACHE_API_BASE at import time; the options page only
+// asks it whether a server is configured at all.
+vi.mock('../scripts/shared-cache', () => ({
+  isSharedCacheConfigured: vi.fn(() => true),
+}))
 
 // Mutable backing store for the chrome.storage.local mock. It has to be in
 // place before options.tsx is imported below — the module renders itself into
@@ -236,5 +247,93 @@ describe('background lookups section', () => {
       expect(shareSelect(container).disabled).toBe(false)
       expect(checkbox(container, SPREAD).disabled).toBe(false)
     })
+  })
+})
+
+// The threshold the shared cache trusts (MIN_CONFIDENCE_KEY) is a documented
+// trade-off rather than a preference, so it lives behind a section that the
+// options page does not advertise — see the reasoning in shared-cache.ts.
+describe('advanced section', () => {
+  const ADVANCED_LABEL = 'Advanced'
+
+  function hasAdvanced(root: ParentNode) {
+    return [...root.querySelectorAll('summary')].some((el) =>
+      el.textContent?.includes(ADVANCED_LABEL),
+    )
+  }
+
+  function confidenceSelect(root: ParentNode) {
+    return section(root, ADVANCED_LABEL).querySelector(
+      'select',
+    ) as HTMLSelectElement
+  }
+
+  afterEach(() => {
+    history.pushState({}, '', '/')
+  })
+
+  it('is absent for a normal install', async () => {
+    const { container } = mountStored({})
+    await waitFor(() => expect(hasAdvanced(container)).toBe(false))
+  })
+
+  it('is shown once it has been enabled', async () => {
+    const { container } = mountStored({ [SHOW_ADVANCED_KEY]: true })
+    await waitFor(() => expect(hasAdvanced(container)).toBe(true))
+    expect(confidenceSelect(container).value).toBe(
+      String(DEFAULT_MIN_CONFIDENCE),
+    )
+  })
+
+  it('?advanced=1 reveals it and remembers the choice', async () => {
+    history.pushState({}, '', '/options.html?advanced=1')
+    const { container } = mountStored({})
+
+    await waitFor(() => expect(hasAdvanced(container)).toBe(true))
+    expect(setMock).toHaveBeenCalledWith({ [SHOW_ADVANCED_KEY]: true })
+  })
+
+  it('?advanced=0 hides it again', async () => {
+    history.pushState({}, '', '/options.html?advanced=0')
+    const { container } = mountStored({ [SHOW_ADVANCED_KEY]: true })
+
+    await waitFor(() => expect(setMock).toHaveBeenCalled())
+    expect(hasAdvanced(container)).toBe(false)
+    expect(setMock).toHaveBeenCalledWith({ [SHOW_ADVANCED_KEY]: false })
+  })
+
+  it('loads a stored threshold and persists a change', async () => {
+    const { container } = mountStored({
+      [SHOW_ADVANCED_KEY]: true,
+      [MIN_CONFIDENCE_KEY]: 2,
+    })
+    await waitFor(() => expect(confidenceSelect(container).value).toBe('2'))
+
+    const select = confidenceSelect(container)
+    select.value = '3'
+    fireEvent.change(select)
+
+    expect(setMock).toHaveBeenCalledWith({ [MIN_CONFIDENCE_KEY]: 3 })
+  })
+
+  // Storage is hand-editable, and 0 would trust a single unverified report
+  // while a large value would silently serve nothing at all.
+  it('clamps an out-of-range stored threshold', async () => {
+    const { container } = mountStored({
+      [SHOW_ADVANCED_KEY]: true,
+      [MIN_CONFIDENCE_KEY]: 99,
+    })
+    await waitFor(() =>
+      expect(confidenceSelect(container).value).toBe(
+        String(MIN_CONFIDENCE_CHOICES[MIN_CONFIDENCE_CHOICES.length - 1]),
+      ),
+    )
+  })
+
+  it('stays hidden when the shared cache is not configured', async () => {
+    vi.mocked(isSharedCacheConfigured).mockReturnValue(false)
+    const { container } = mountStored({ [SHOW_ADVANCED_KEY]: true })
+    await waitFor(() => expect(hasAdvanced(container)).toBe(false))
+    vi.mocked(isSharedCacheConfigured).mockReturnValue(true)
   })
 })

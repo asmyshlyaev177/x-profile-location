@@ -36,14 +36,37 @@ for free from the timeline JSON, so there is nothing to share.
 
 ## Anti-poisoning: consensus
 
-Anyone could POST a fake location. Defense: the value is only served once
-**≥ `MIN_CONFIDENCE` distinct clients** (default 2, enforced client-side) report
-the _same_ `(location, source, accurate)` tuple. Since the data comes from X's
-own API, honest clients all report the identical tuple, so casual poisoning
-needs several forged installs per target. Each install sends an anonymous random
-`clientId`; the `location_votes` table keeps one (latest) vote per client per
-username, so a single client can't stuff votes. See
+Anyone can POST a fake location. The endpoint and its body shape are documented
+below, so this section is written to be useful to someone deciding whether to
+trust the cache — including where it does not currently protect you.
+
+Each install sends an anonymous random `clientId`. The `location_votes` table
+keeps one (latest) vote per client per username, so a single client cannot stuff
+votes for a handle; `location_confidence` is the number of distinct clients
+backing the winning `(location, source, accurate)` tuple. Because the data comes
+from X's own API, honest clients all report an identical tuple. See
 [`src/consensus.ts`](src/consensus.ts).
+
+Clients then decide how much agreement to require before believing a value.
+**That threshold currently ships at 1, not 2** — i.e. a single unverified report
+is served and used. This is a deliberate trade, and the numbers are the reason:
+confidence only accrues when two installs independently look up the same handle,
+and at the current user count feeds barely overlap. Measured on the live server
+on 2026-07-27, **52 of 4242 profiles had reached 2**. Requiring two votes today
+would discard about 99% of what the cache can answer — and the cache exists to
+spare X's 50-lookups-per-15-minutes budget, so a threshold that empties it costs
+users more than it protects them.
+
+It is a stored setting (`sharedCacheMinConfidence`), not a compiled-in constant,
+so it can be raised on one install and measured without shipping a build to
+everyone. The extension exposes it under Advanced (open the options page as
+`options.html?advanced=1`). Re-run the query below and raise the default once
+the second figure is a majority of the first:
+
+```sh
+sqlite3 /var/lib/x-loc-cache/x-loc-cache.db \
+  'SELECT COUNT(*) AS profiles, SUM(location_confidence >= 2) AS ready FROM profiles;'
+```
 
 Votes are also **capped per username** (`VOTE_CAP`, 10, pruned once a handle
 exceeds 15). Without it `location_votes` grows as _users × profiles each user
@@ -53,6 +76,35 @@ count. Eviction is oldest-first, so the surviving window is the most recent
 observers and a relocation can propagate instead of being outvoted by stale
 data. The trade-off is that poisoning gets cheaper: forged clients only have to
 fill the window rather than out-number every honest vote ever cast.
+
+### Contribution budget
+
+What actually bounds an honest client is X, not this server: an install gets
+~50 `AboutAccountQuery` lookups per 15 minutes, so it physically cannot report
+many distinct handles. A poisoner skips that step, which is what makes the two
+paragraphs above weaker than they look.
+
+[`src/contrib-limit.ts`](src/contrib-limit.ts) caps how many **distinct handles**
+one `clientId` may contribute per 15-minute window (200 — four times what X
+allows an honest client). Over-budget entries are dropped silently and the
+response is still `{ ok: true }`, so a poisoner gets no signal telling it when to
+rotate. Re-reporting a handle the client already paid for is free, since that is
+what revalidation and genuine relocations do.
+
+This is a guardrail, not a security boundary, and it is worth being explicit
+about the gap: **it does not stop an attacker who mints a fresh `clientId` per
+request.** Nothing short of attestation would, and attestation is not compatible
+with the privacy guarantee below. What it does is make the cost of poisoning
+scale with the number of ids an attacker has to manufacture and rotate, where
+today one id poisons without limit.
+
+The budget is held in memory rather than in SQLite deliberately. Counting a
+client's recent handles from `location_votes` would need an index on
+`client_id`, and the measurements in [`schema.sql`](schema.sql) show why a second
+index on that table is the wrong trade — slower inserts, a slower retention
+pass, and a 20% larger file, to defend a guardrail. On the Node/SQLite backend
+there is one process, so the count is exact; on Workers each isolate keeps its
+own, which weakens it but does not break it.
 
 ## API
 
@@ -450,12 +502,12 @@ here — so it was re-measured on this hardware instead (better-sqlite3, WAL,
 `synchronous=NORMAL`, votes spread over 61 days, one daily retention pass
 deleting the ~1/61 that just aged out):
 
-| Rows | `seen_at` index | Insert  | DB size | Retention DELETE |
-| ---- | --------------- | ------- | ------- | ---------------- |
-| 1M   | no              | 1.7 s   | 78 MB   | 234 ms           |
-| 1M   | yes             | 2.9 s   | 94 MB   | 233 ms           |
-| 5M   | no              | 8.3 s   | 404 MB  | 1138 ms          |
-| 5M   | yes             | 22.4 s  | 483 MB  | 1492 ms          |
+| Rows | `seen_at` index | Insert | DB size | Retention DELETE |
+| ---- | --------------- | ------ | ------- | ---------------- |
+| 1M   | no              | 1.7 s  | 78 MB   | 234 ms           |
+| 1M   | yes             | 2.9 s  | 94 MB   | 233 ms           |
+| 5M   | no              | 8.3 s  | 404 MB  | 1138 ms          |
+| 5M   | yes             | 22.4 s | 483 MB  | 1492 ms          |
 
 The index is a straight loss. It does make the planner switch from `SCAN` to
 `SEARCH ... USING INDEX`, which looks like the win you were after — but the scan
@@ -527,22 +579,22 @@ Measured on Node 24.10, `cache_size` 256 MB, `mmap` 512 MB. The numbers that
 matter are the **single-core** column — a Ryzen 7 7735HS pinned to one core with
 `taskset -c 0` under a 640 MB cgroup, standing in for a 1 vCPU VPS:
 
-| Operation | 1 core p50 | 1 core p99 | 16 cores p50 |
-| --- | --- | --- | --- |
-| lookup, 100 names, all hits | 0.45 ms | 9.46 ms | 0.40 ms |
-| lookup, 100 names, 50% miss | 0.26 ms | 1.16 ms | 0.25 ms |
-| contribute, 50 entries | 3.32 ms | 8.26 ms | 1.80 ms |
-| `COUNT(*)` both tables (stats) | 7.82 ms | — | 6.88 ms |
-| `COUNT(DISTINCT client_id)` (stats) | 252 ms | 1005 ms | 217 ms |
-| retention pass, one day's votes | 1469 ms | — | 199 ms |
+| Operation                           | 1 core p50 | 1 core p99 | 16 cores p50 |
+| ----------------------------------- | ---------- | ---------- | ------------ |
+| lookup, 100 names, all hits         | 0.45 ms    | 9.46 ms    | 0.40 ms      |
+| lookup, 100 names, 50% miss         | 0.26 ms    | 1.16 ms    | 0.25 ms      |
+| contribute, 50 entries              | 3.32 ms    | 8.26 ms    | 1.80 ms      |
+| `COUNT(*)` both tables (stats)      | 7.82 ms    | —          | 6.88 ms      |
+| `COUNT(DISTINCT client_id)` (stats) | 252 ms     | 1005 ms    | 217 ms       |
+| retention pass, one day's votes     | 1469 ms    | —          | 199 ms       |
 
 Over HTTP, that single core sustained, with **zero errors**:
 
-| Load | Throughput | p50 | p99 |
-| --- | --- | --- | --- |
-| lookups, 16 concurrent | 1411 req/s | 9.4 ms | 28.4 ms |
-| lookups, 64 concurrent | 1700 req/s | 35.3 ms | 74.6 ms |
-| 75/25 read/write, 64 concurrent | 916 req/s | 67.8 ms | 149.7 ms |
+| Load                            | Throughput | p50     | p99      |
+| ------------------------------- | ---------- | ------- | -------- |
+| lookups, 16 concurrent          | 1411 req/s | 9.4 ms  | 28.4 ms  |
+| lookups, 64 concurrent          | 1700 req/s | 35.3 ms | 74.6 ms  |
+| 75/25 read/write, 64 concurrent | 916 req/s  | 67.8 ms | 149.7 ms |
 
 The request path barely moves between 50k profiles and 2M, or between 1 core and
 16 — both handlers are primary-key seeks, so they scale with the batch size, not
@@ -598,25 +650,41 @@ sudo journalctl -u x-loc-cache | grep 'stats ' | sed 's/.*stats //' | jq .
 
 ```json
 {
-  "reason": "interval", "since": "2026-07-27T00:00:00.000Z", "windowS": 86400,
-  "lookups": 2140, "lookupNames": 51203, "lookupHits": 40655, "hitRate": 0.794,
-  "contributions": 388, "contributedEntries": 9012, "other": 6,
-  "users": 34, "rateLimited": 0, "tooLarge": 0, "errors": 0,
-  "avgMs": 2.6, "maxMs": 41, "users24h": 37, "users7d": 112,
-  "profiles": 44210, "votes": 91884, "dbMb": 19.4, "rssMb": 128
+  "reason": "interval",
+  "since": "2026-07-27T00:00:00.000Z",
+  "windowS": 86400,
+  "lookups": 2140,
+  "lookupNames": 51203,
+  "lookupHits": 40655,
+  "hitRate": 0.794,
+  "contributions": 388,
+  "contributedEntries": 9012,
+  "other": 6,
+  "users": 34,
+  "rateLimited": 0,
+  "tooLarge": 0,
+  "errors": 0,
+  "avgMs": 2.6,
+  "maxMs": 41,
+  "users24h": 37,
+  "users7d": 112,
+  "profiles": 44210,
+  "votes": 91884,
+  "dbMb": 19.4,
+  "rssMb": 128
 }
 ```
 
-| Field | |
-| --- | --- |
-| `lookups` / `contributions` | **reads / writes** — request counts for `/v1/loc/batch` and `/v1/loc` |
-| `lookupNames` / `lookupHits` | usernames asked about, and how many the cache could answer |
-| `hitRate` | `lookupHits / lookupNames` — the number that says whether any of this is working. `null` when nothing was asked, so an idle night doesn't read as an outage |
-| `users` | distinct anonymous installs that contributed **during this window** — counted in-process from the clientId already on the wire, so it costs nothing |
-| `users24h` / `users7d` | the same figure over a trailing 24h / 7d, from SQL. Survives restarts and is independent of the log cadence, but costs a full scan — see Performance above |
-| `usersCapped` | present only if the in-process set hit its 50k ceiling, meaning `users` is a floor |
-| `profiles` / `votes` / `dbMb` | current totals, not window deltas |
-| `rateLimited` / `tooLarge` / `errors` | rejections; these never reached a handler, so they're excluded from the request counts above |
+| Field                                 |                                                                                                                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lookups` / `contributions`           | **reads / writes** — request counts for `/v1/loc/batch` and `/v1/loc`                                                                                       |
+| `lookupNames` / `lookupHits`          | usernames asked about, and how many the cache could answer                                                                                                  |
+| `hitRate`                             | `lookupHits / lookupNames` — the number that says whether any of this is working. `null` when nothing was asked, so an idle night doesn't read as an outage |
+| `users`                               | distinct anonymous installs that contributed **during this window** — counted in-process from the clientId already on the wire, so it costs nothing         |
+| `users24h` / `users7d`                | the same figure over a trailing 24h / 7d, from SQL. Survives restarts and is independent of the log cadence, but costs a full scan — see Performance above  |
+| `usersCapped`                         | present only if the in-process set hit its 50k ceiling, meaning `users` is a floor                                                                          |
+| `profiles` / `votes` / `dbMb`         | current totals, not window deltas                                                                                                                           |
+| `rateLimited` / `tooLarge` / `errors` | rejections; these never reached a handler, so they're excluded from the request counts above                                                                |
 
 Counters are per-window and reset when logged. `/healthz` is deliberately not
 counted — at one probe every 30 s it would be most of the traffic.
@@ -670,12 +738,12 @@ docker run -d --name x-loc-cache \
 
 **What the image changes**, versus running the process directly:
 
-| | Bare metal | Container |
-| --- | --- | --- |
-| `XLOC_HOST` | `127.0.0.1` | `0.0.0.0` — loopback inside a network namespace reaches nothing; Docker's port mapping does the confining instead |
-| `XLOC_DB` | `/var/lib/x-loc-cache/…` | `/data/x-loc-cache.db` |
-| Node | installed on the host, ABI must match `npm install` | pinned by the base image; `better-sqlite3` is compiled in a builder stage on the same base, so the ABI can't drift |
-| Restart / logs | `systemctl`, `journalctl` | `restart: unless-stopped`, `docker compose logs` (capped at 3 × 10 MB) |
+|                | Bare metal                                          | Container                                                                                                          |
+| -------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `XLOC_HOST`    | `127.0.0.1`                                         | `0.0.0.0` — loopback inside a network namespace reaches nothing; Docker's port mapping does the confining instead  |
+| `XLOC_DB`      | `/var/lib/x-loc-cache/…`                            | `/data/x-loc-cache.db`                                                                                             |
+| Node           | installed on the host, ABI must match `npm install` | pinned by the base image; `better-sqlite3` is compiled in a builder stage on the same base, so the ABI can't drift |
+| Restart / logs | `systemctl`, `journalctl`                           | `restart: unless-stopped`, `docker compose logs` (capped at 3 × 10 MB)                                             |
 
 Everything else is the same `XLOC_*` set — put overrides in `environment:`.
 

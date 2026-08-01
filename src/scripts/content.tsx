@@ -14,6 +14,7 @@ import {
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
   LOOKUP_LIMIT_PER_WINDOW,
+  MIN_CONFIDENCE_KEY,
   normalizePrefetchPacing,
   normalizePrefetchShare,
   PREFETCH_PACING_KEY,
@@ -30,6 +31,7 @@ import {
   flushContributions,
   isSharedCacheConfigured,
   isSharedCacheEnabled,
+  setMinConfidence,
   setSharedCacheEnabled,
   sharedBatchLookup,
 } from './shared-cache'
@@ -103,6 +105,7 @@ chrome.storage.local
     HIGHLIGHT_EXCEPTIONS_KEY,
     SHOW_EXCEPTION_BUTTON_KEY,
     SHARED_CACHE_KEY,
+    MIN_CONFIDENCE_KEY,
     HIDE_BLOCKED_LOCATIONS_KEY,
     BACKGROUND_PREFETCH_KEY,
     PREFETCH_SHARE_KEY,
@@ -145,6 +148,7 @@ chrome.storage.local
     setSharedCacheEnabled(
       SHARED_CACHE_KEY in r ? Boolean(r[SHARED_CACHE_KEY]) : true,
     )
+    setMinConfidence(r[MIN_CONFIDENCE_KEY])
 
     // This settings load is async, so tweets may already be rendered (and their
     // bios buffered by page-script) before keywords/toggles were known — in
@@ -202,6 +206,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
     // Opting out of the community cache also stops background prefetch, which
     // exists to warm it — and opting back in restarts it.
     syncPrefetcher()
+  }
+  if (changes[MIN_CONFIDENCE_KEY]) {
+    setMinConfidence(changes[MIN_CONFIDENCE_KEY].newValue)
   }
   if (changes[BACKGROUND_PREFETCH_KEY]) {
     prefetchEnabled = Boolean(changes[BACKGROUND_PREFETCH_KEY].newValue)
@@ -289,6 +296,9 @@ class NormalizedMap<V> {
   }
   delete(name: string) {
     return this.map.delete(this.key(name))
+  }
+  clear() {
+    this.map.clear()
   }
 }
 // Tracks users whose location was already fetched via API this session,
@@ -399,10 +409,51 @@ async function getBioInfo(
   return { bio: data?.bio ?? null, displayName: data?.displayName ?? null }
 }
 
+// Restore every piece of module-level state to the value it holds immediately
+// after import, before the storage load resolves. This module is imported once
+// per test file, so anything a test mutates — settings pushed through the
+// storage.onChanged listener, session caches, the rate-limit window, live
+// timers — otherwise leaks into every test that runs after it, and the suite
+// only passes in the order it happens to run in. Keep this exhaustive: a new
+// `let` at module scope that isn't reset here is a new order dependency.
 export function __testResetState() {
+  // settings (defaults must match the declarations above)
+  blockedCountries = new Set()
+  highlightKeywords = new Set()
+  setKeywords([])
+  highlightFlagsEnabled = false
+  highlightFlagsThreshold = 2
+  highlightFlagsUniqueOnly = false
+  showLocationInFeed = false
+  hideMode = 'off'
+  highlightExceptions = new Set()
+  showExceptionButton = true
+  prefetchEnabled = true
+
+  // session caches and in-flight work
   checkedThisSession.clear()
+  pendingMap.clear()
   bioCache.clear()
+  apiHeaders = null
+
+  // rate-limit window
   rateLimitResetAt = 0
+  rateWindowLimit = LOOKUP_LIMIT_PER_WINDOW
+  rateWindowRemaining = LOOKUP_LIMIT_PER_WINDOW
+  rateWindowResetAt = 0
+
+  // live timers and observers, so nothing fires into the next test's DOM
+  if (rateLimitToastInterval !== null) {
+    clearInterval(rateLimitToastInterval)
+    rateLimitToastInterval = null
+  }
+  if (locationToastTimer !== null) {
+    clearTimeout(locationToastTimer)
+    locationToastTimer = null
+  }
+  feedRowObserver?.disconnect()
+  feedRowObserver = null
+  pendingFeedRows = new WeakMap()
 }
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -1005,7 +1056,8 @@ const FEED_LOCATION_ATTR = 'data-x-loc-feed-done'
 // and injected when scrolled back into view. Injecting into tweets that are
 // on-screen or below the fold is always safe: nothing above the scroll position
 // changes height.
-const pendingFeedRows = new WeakMap<Element, LocationData>()
+// `let` rather than `const` only so __testResetState can swap in a fresh map.
+let pendingFeedRows = new WeakMap<Element, LocationData>()
 let feedRowObserver: IntersectionObserver | null = null
 
 // True when the row's insertion point (just under the name line) sits entirely

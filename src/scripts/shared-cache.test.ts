@@ -24,10 +24,12 @@ import {
   __resetSharedCache,
   contributeLocation,
   FLUSH_DELAY_MS,
-  MIN_CONFIDENCE,
+  minConfidence,
+  setMinConfidence,
   setSharedCacheEnabled,
   sharedBatchLookup,
 } from './shared-cache'
+import { DEFAULT_MIN_CONFIDENCE, MIN_CONFIDENCE_CHOICES } from './countries'
 import type { LocationData } from './cache'
 
 function mockFetchJson(payload: unknown) {
@@ -56,11 +58,11 @@ afterEach(() => {
 })
 
 describe('sharedBatchLookup', () => {
-  it('serves confirmed hits and filters those below MIN_CONFIDENCE', async () => {
+  it('serves confirmed hits and filters those below the threshold', async () => {
     mockFetchJson({
       profiles: [
-        { u: 'alice', loc: 'JP', src: null, acc: true, conf: MIN_CONFIDENCE },
-        { u: 'bob', loc: 'US', src: null, acc: true, conf: MIN_CONFIDENCE - 1 },
+        { u: 'alice', loc: 'JP', src: null, acc: true, conf: minConfidence },
+        { u: 'bob', loc: 'US', src: null, acc: true, conf: minConfidence - 1 },
       ],
     })
 
@@ -71,6 +73,35 @@ describe('sharedBatchLookup', () => {
       userName: 'alice',
       data: { location: 'JP', locationAccurate: true, source: null },
     })
+  })
+
+  it('applies a raised threshold to what it will serve', async () => {
+    setMinConfidence(2)
+    mockFetchJson({
+      profiles: [
+        { u: 'alice', loc: 'JP', src: null, acc: true, conf: 1 },
+        { u: 'bob', loc: 'US', src: null, acc: true, conf: 2 },
+      ],
+    })
+
+    const hits = await sharedBatchLookup(['alice', 'bob'])
+
+    expect(hits.map((h) => h.userName)).toEqual(['bob'])
+  })
+
+  it('clamps a stored threshold into the offered range', () => {
+    // 0 or negative would trust anything; an unreachably high value would serve
+    // nothing forever. Neither should be reachable by hand-editing storage.
+    setMinConfidence(0)
+    expect(minConfidence).toBe(MIN_CONFIDENCE_CHOICES[0])
+    setMinConfidence(99)
+    expect(minConfidence).toBe(
+      MIN_CONFIDENCE_CHOICES[MIN_CONFIDENCE_CHOICES.length - 1],
+    )
+    setMinConfidence('nonsense')
+    expect(minConfidence).toBe(DEFAULT_MIN_CONFIDENCE)
+    setMinConfidence(undefined)
+    expect(minConfidence).toBe(DEFAULT_MIN_CONFIDENCE)
   })
 
   it('does not re-query names already asked about or negative-cached', async () => {

@@ -14,6 +14,7 @@
 // ever touches `Env.DB` through the minimal interface in db-types.ts, which both
 // satisfy. Keep it that way: no Worker globals, no node: imports.
 
+import { admitContributions } from './contrib-limit.ts'
 import { pickConsensus, type LocationVote } from './consensus.ts'
 import type { Db, DbBoundStatement } from './db-types.ts'
 
@@ -42,8 +43,9 @@ const MAX_FIELD_LEN = 60
 // surviving window is the most recent observers, so a relocation propagates
 // instead of being outvoted forever by stale votes. The cost is that poisoning
 // gets cheaper — a flood of forged client ids only has to fill the window rather
-// than out-number every honest vote ever cast. MIN_CONFIDENCE on the client is
-// the backstop there.
+// than out-number every honest vote ever cast. The client's confidence threshold
+// (MIN_CONFIDENCE_KEY, src/scripts/shared-cache.ts) is the backstop there, and
+// admitContributions below raises the price of manufacturing those ids.
 const VOTE_CAP = 10
 const VOTE_CAP_SLACK = 5
 
@@ -179,26 +181,35 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
   if (!cid || rawEntries.length === 0) return json({ ok: true })
 
   const now = Date.now()
-  const votes: {
+  const parsed: {
     u: string
     loc: string | null
     src: string | null
     acc: number
   }[] = []
-  const affected = new Set<string>()
   for (const e of rawEntries.slice(0, MAX_BATCH)) {
     if (!e || typeof e !== 'object') continue
     const rec = e as Record<string, unknown>
     const u = normUser(rec.u)
     if (!u) continue
-    votes.push({
+    parsed.push({
       u,
       loc: sanitizeField(rec.loc),
       src: sanitizeField(rec.src),
       acc: rec.acc === false ? 0 : 1,
     })
-    affected.add(u)
   }
+
+  // Charge the distinct handles to this client's budget and keep only what it
+  // can still afford (see contrib-limit.ts). Anything over budget is dropped
+  // silently and the response is still `{ ok: true }`: contributions are
+  // best-effort and the client ignores the body either way, so there is no
+  // reason to hand a poisoner a signal telling it when to rotate its id.
+  const allowed = new Set(
+    admitContributions(cid, [...new Set(parsed.map((v) => v.u))], now),
+  )
+  const votes = parsed.filter((v) => allowed.has(v.u))
+  const affected = new Set(votes.map((v) => v.u))
   if (votes.length === 0) return json({ ok: true })
 
   // 1. Record each client's (latest) vote — one row per (username, client_id).
