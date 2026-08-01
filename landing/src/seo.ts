@@ -1,6 +1,14 @@
 import { routes, type RouteDef } from './routes'
 
-const PRODUCTION_URL = 'https://x-profile-location.pages.dev/'
+/**
+ * The live host. Moved from `x-profile-location.pages.dev` with the X-Pat
+ * rename; the old project still exists and 301s here (see `redirect/`).
+ *
+ * If a real domain is registered later (`x-pat.app` is free), this constant and
+ * the `_redirects` target in `redirect/_redirects` are the only two places that
+ * need to change — everything else derives from `siteUrl`.
+ */
+const PRODUCTION_URL = 'https://x-pat.pages.dev/'
 
 // Falls back to production URL when import.meta.env is unavailable (e.g. vite.config.ts load time)
 const rawSiteUrl: string = import.meta.env?.VITE_SITE_URL ?? PRODUCTION_URL
