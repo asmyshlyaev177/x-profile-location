@@ -52,7 +52,7 @@ body:
     attributes:
       label: Community cache
       description: Options → is the shared cache switched on?
-      options: ["On", "Off", "Not sure"]
+      options: ['On', 'Off', 'Not sure']
     validations:
       required: true
 

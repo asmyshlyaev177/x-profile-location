@@ -64,7 +64,7 @@ tree there would drag Preact through esbuild for nothing.
 `GUIDES` map in `app.tsx` (or a branch, if it needs a different shape). The
 `<head>`, canonical, prerender list and sitemap all follow from the route entry.
 
-A route's `faq` array is rendered visibly by `<Faq>` *and* emitted as FAQPage
+A route's `faq` array is rendered visibly by `<Faq>` _and_ emitted as FAQPage
 structured data by `seo.ts`. Never reword one without the other — schema that
 does not match the visible copy is a manual-action risk. `<Faq>` uses native
 `<details>` for the same reason hydration is deferred: the answers have to be in
@@ -84,7 +84,7 @@ Everything visual lives in `src/index.css`; components only compose tokens.
   (`--color-void` `#0b0b12`, matching `favicon.svg` and the store tiles, not X's
   pure black). `--color-signal` is the mark's cyan `#00d4c0` and carries the
   brand. The three meaning colours are not interchangeable: `--color-xblue` is
-  *X's* blue and appears only inside product mockups, `--color-attention` means
+  _X's_ blue and appears only inside product mockups, `--color-attention` means
   highlighted, `--color-alarm` means blocked or VPN. Every text/background pair
   clears WCAG AA — see the audit note below before changing one.
 - **Type.** Archivo (self-hosted latin variable subset) does display and body,
@@ -105,7 +105,7 @@ Everything visual lives in `src/index.css`; components only compose tokens.
   bare z-index numbers. The lightbox is a native `<dialog>`, so it renders in
   the top layer and gets its focus trap and Escape handling from the platform.
 
-`__EXT_VERSION__` is the *extension's* version, read from the root
+`__EXT_VERSION__` is the _extension's_ version, read from the root
 `package.json` at build time so the badge in the hero and footer cannot drift
 from what is on the store.
 
@@ -119,7 +119,7 @@ throttling). The things holding it there, in case one looks removable:
   is lost by waiting, and it takes total blocking time from 160 ms to 0.
 - **The stylesheet stays external**, and the report's "Eliminate render-blocking
   resources · 150 ms" item is a false economy. Inlining was measured twice and
-  scored *worse* both times — 99 against 100, FCP 1.2s against 1.1s — because
+  scored _worse_ both times — 99 against 100, FCP 1.2s against 1.1s — because
   the extra ~9 kB per document costs more than the round trip it saves.
   Lighthouse's own two audits disagree about it: `render-blocking-resources`
   reports "0 ms savings" while the newer `render-blocking-insight` claims 150 ms.
@@ -127,7 +127,7 @@ throttling). The things holding it there, in case one looks removable:
 - **Analytics only loads when there is an ID to send to.** `gtag` is ~87 kB,
   two thirds unused, and with `VITE_GA_MEASUREMENT_ID` empty (every local build)
   the page used to request `gtag/js?id=` and pull the whole payload for a
-  property that does not exist. It now waits for idle *and* checks the ID.
+  property that does not exist. It now waits for idle _and_ checks the ID.
   On production, where the ID is set, GA is what puts "Reduce unused JavaScript"
   and "Avoid legacy JavaScript" back in the report — both are entirely inside
   Google's bundle, and neither is scored.
@@ -152,7 +152,7 @@ pnpm generate:images   # or: node scripts/generate-images.mjs
 
 The script reads `VITE_SITE_URL` from the environment (falls back to `https://x-profile-location.pages.dev`) and replaces the domain in SVG text before rendering.
 
-`screen_5.png` — the options-page shot — *is* generated. Build the extension first (`pnpm build` in the repo root), then:
+`screen_5.png` — the options-page shot — _is_ generated. Build the extension first (`pnpm build` in the repo root), then:
 
 ```bash
 xvfb-run --auto-servernum pnpm shoot:options   # drop xvfb-run if you have a display

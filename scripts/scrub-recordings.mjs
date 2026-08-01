@@ -109,10 +109,37 @@ const PLACEHOLDER_IMAGE_B64 =
  * somewhere less ambiguous than a bare identifier.
  */
 const SOURCE_RESERVED = new Set([
-  'page', 'test', 'expect', 'context', 'helpers', 'await', 'async', 'const',
-  'let', 'import', 'export', 'from', 'default', 'window', 'document', 'console',
-  'location', 'status', 'options', 'browser', 'chrome', 'firefox', 'safari',
-  'string', 'number', 'boolean', 'object', 'locator', 'timeout', 'url', 'id',
+  'page',
+  'test',
+  'expect',
+  'context',
+  'helpers',
+  'await',
+  'async',
+  'const',
+  'let',
+  'import',
+  'export',
+  'from',
+  'default',
+  'window',
+  'document',
+  'console',
+  'location',
+  'status',
+  'options',
+  'browser',
+  'chrome',
+  'firefox',
+  'safari',
+  'string',
+  'number',
+  'boolean',
+  'object',
+  'locator',
+  'timeout',
+  'url',
+  'id',
 ])
 /** Below this length a handle is too likely to collide with ordinary prose/code. */
 const MIN_SOURCE_LEN = 5
@@ -263,7 +290,8 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 // ---------------------------------------------------------------------------
 
 const isJsonish = (mime) =>
-  /json|text\/plain/.test(mime || '') && !/application\/javascript/.test(mime || '')
+  /json|text\/plain/.test(mime || '') &&
+  !/application\/javascript/.test(mime || '')
 
 const isImage = (mime) => /^image\//.test(mime || '')
 
@@ -327,11 +355,15 @@ function scrubEntry(entry, stats) {
  * match at replay.
  */
 function scrubUrls(entry, stats) {
-  if (entry.request?.url) entry.request.url = rewriteText(entry.request.url, stats)
+  if (entry.request?.url)
+    entry.request.url = rewriteText(entry.request.url, stats)
   // Referer carries the profile or status URL the request came from, so it holds
   // handles that appear nowhere else in the entry.
   for (const h of entry.request?.headers ?? []) {
-    if (/^(referer|referrer|origin)$/i.test(h.name) && typeof h.value === 'string') {
+    if (
+      /^(referer|referrer|origin)$/i.test(h.name) &&
+      typeof h.value === 'string'
+    ) {
       h.value = rewriteText(h.value, stats)
     }
   }
@@ -344,7 +376,10 @@ function scrubUrls(entry, stats) {
     }
   }
   if (entry.request?.postData?.text) {
-    entry.request.postData.text = rewriteText(entry.request.postData.text, stats)
+    entry.request.postData.text = rewriteText(
+      entry.request.postData.text,
+      stats,
+    )
   }
 }
 
@@ -358,11 +393,41 @@ function scrubUrls(entry, stats) {
  * internal namespace, not an account.
  */
 const RESERVED_PATHS = new Set([
-  'i', 'home', 'explore', 'notifications', 'messages', 'settings', 'search',
-  'compose', 'intent', 'share', 'login', 'logout', 'signup', 'about', 'tos',
-  'privacy', 'help', 'download', 'hashtag', 'account', 'session', 'oauth',
-  'status', 'statuses', 'widgets', 'following', 'followers', 'lists', 'topics',
-  'bookmarks', 'jobs', 'communities', 'premium', 'x', 'twitter',
+  'i',
+  'home',
+  'explore',
+  'notifications',
+  'messages',
+  'settings',
+  'search',
+  'compose',
+  'intent',
+  'share',
+  'login',
+  'logout',
+  'signup',
+  'about',
+  'tos',
+  'privacy',
+  'help',
+  'download',
+  'hashtag',
+  'account',
+  'session',
+  'oauth',
+  'status',
+  'statuses',
+  'widgets',
+  'following',
+  'followers',
+  'lists',
+  'topics',
+  'bookmarks',
+  'jobs',
+  'communities',
+  'premium',
+  'x',
+  'twitter',
 ])
 
 /**
@@ -432,7 +497,10 @@ function findTestSubjects(discovered) {
 
   for (const handle of discovered) {
     const lc = handle.toLowerCase()
-    const re = new RegExp(`(?<![A-Za-z0-9_])${escapeRe(lc)}(?![A-Za-z0-9_])`, 'i')
+    const re = new RegExp(
+      `(?<![A-Za-z0-9_])${escapeRe(lc)}(?![A-Za-z0-9_])`,
+      'i',
+    )
     if (!re.test(text)) continue
     if (lc.length < MIN_SOURCE_LEN || SOURCE_RESERVED.has(lc)) {
       ambiguous.push(handle)
@@ -518,8 +586,16 @@ function main() {
   )
 
   const keys = [
-    'handles', 'names', 'bios', 'avatars', 'posts',
-    'images', 'media', 'tokens', 'unparsed', 'bytesDropped',
+    'handles',
+    'names',
+    'bios',
+    'avatars',
+    'posts',
+    'images',
+    'media',
+    'tokens',
+    'unparsed',
+    'bytesDropped',
   ]
   const totals = Object.fromEntries(keys.map((k) => [k, 0]))
   let bytesBefore = 0

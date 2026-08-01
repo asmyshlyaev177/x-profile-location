@@ -536,6 +536,41 @@ export function normalizePrefetchPacing(value: unknown): PrefetchPacing {
   return value === 'instant' ? 'instant' : 'spread'
 }
 
+// How many distinct clients must independently report the same location before
+// this install will trust it (see the consensus model in server/README.md, and
+// the measurement behind the default in shared-cache.ts).
+//
+// A setting rather than a constant because open-sourcing publishes POST /v1/loc
+// and its body shape, which makes single-vote trust a documented poisoning path.
+// Raising the bar globally today would empty the cache — only ~52 of 4242
+// profiles have two votes — so the default stays 1 and this exists so the
+// threshold can be raised per-install, and measured in the field, without a
+// rebuild. It is deliberately not a user-facing knob: it needs the paragraph
+// above to mean anything, so the options page keeps it behind Advanced.
+export const MIN_CONFIDENCE_KEY = 'sharedCacheMinConfidence'
+
+export const DEFAULT_MIN_CONFIDENCE = 1
+
+/** The thresholds the advanced options offer. */
+export const MIN_CONFIDENCE_CHOICES = [1, 2, 3] as const
+
+// Clamped to the offered range rather than rejected, so a hand-edited storage
+// value can't disable the cache outright (0 or negative would trust anything;
+// an unreachably high value would silently serve nothing forever).
+export function normalizeMinConfidence(value: unknown): number {
+  const n = finiteNumber(value)
+  if (n === null) return DEFAULT_MIN_CONFIDENCE
+  const rounded = Math.round(n)
+  const lowest = MIN_CONFIDENCE_CHOICES[0]
+  const highest = MIN_CONFIDENCE_CHOICES[MIN_CONFIDENCE_CHOICES.length - 1]
+  return Math.min(Math.max(rounded, lowest), highest)
+}
+
+// Whether the options page reveals the Advanced section. Off by default; the
+// settings it holds are documented trade-offs, not preferences, and a normal
+// user has no way to judge them.
+export const SHOW_ADVANCED_KEY = 'showAdvancedOptions'
+
 // Which options-page accordions are expanded, keyed by section id. Pure UI
 // state for the options page — the content script ignores this key.
 export const OPTIONS_SECTIONS_KEY = 'optionsSections'
@@ -546,6 +581,7 @@ export type OptionsSectionId =
   | 'exceptions'
   | 'prefetch'
   | 'blocked'
+  | 'advanced'
 
 export const DEFAULT_OPTIONS_SECTIONS: Record<OptionsSectionId, boolean> = {
   keywords: true,
@@ -553,6 +589,7 @@ export const DEFAULT_OPTIONS_SECTIONS: Record<OptionsSectionId, boolean> = {
   exceptions: false,
   prefetch: false,
   blocked: true,
+  advanced: false,
 }
 
 // Keeps only known section ids so a renamed/removed section can't resurrect a
