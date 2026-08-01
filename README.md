@@ -61,18 +61,30 @@ It reads three fields from X:
 | `source`            | App-store origin badge        |
 | `location_accurate` | Possible VPN/proxy warning    |
 
-### It respects X's rate limit, so you don't hit it
+## X's rate limit, solved instead of hit
 
-X allows **50 account lookups per 15 minutes**. That budget is easy to burn through in
-seconds, and when it's gone you get nothing until the window rolls over.
+You've seen the failure: flags fill in at the top of a thread and then stop, or every
+profile you hover spins forever. That's the rate limit — X cuts you off at **50 account
+lookups per 15 minutes**, and one busy thread has more accounts in it than that, so
+anything fetching greedily burns the window in seconds.
 
-So this extension treats it as a budget rather than a race. Background lookups are
-spread evenly across the window instead of fired in a burst, and **30% is held back for
-the accounts you actually hover** — your own lookups are never starved by background
-work. The share and the pacing are both yours to change in Options.
+Most profiles never cost a lookup at all: they're in your 30-day local cache, or someone
+else looked them up and the [shared cache](server/README.md) answers for free. The rest
+is rationed by [`prefetch-queue.ts`](src/scripts/prefetch-queue.ts):
 
-An optional community cache makes it go further: results other people already looked up
-don't cost you a request at all.
+| | |
+| --- | --- |
+| **Real budget, not a guess** | The count comes from X's `x-rate-limit-*` headers and every lookup decrements it, hovers included. |
+| **Spread, not sprinted** | The gap is recomputed as `msLeftInWindow / budget` before each lookup — about **one every 26s** at the defaults, stretching when you hover and tightening when the window refills. |
+| **Hovers are never starved** | Background work stops at **70%**, leaving the last 15 lookups for accounts you point at. |
+| **Ordered by what you're reading** | The feed you're scrolling drains before a thread's replies. |
+| **Backs off properly** | A 429 pauses everything until the window rolls over. |
+
+Run it dry anyway and you get a countdown to the reset, not a blank flag. The background
+share (30/50/70/90%) and the pacing (`spread` or `instant`) are both yours in Options.
+
+The scheduler is decoupled from the DOM and the network, so it's unit-tested through
+`runOnce()` and `nextDelayMs()` without timers or a browser.
 
 ## Screenshots
 
