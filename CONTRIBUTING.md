@@ -146,7 +146,24 @@ don't add a retry.
 
 **E2E** runs against recorded HAR fixtures via
 [`test-proxy-recorder`](https://github.com/asmyshlyaev177/test-proxy-recorder),
-so the suite is deterministic and needs no live X session to run.
+so the suite is deterministic and sends no request to X.
+
+**It still needs a real logged-in session**, which is why it runs locally rather
+than in CI. That is less obvious than it sounds, so it is worth writing down:
+X's SPA decides on the client whether it is logged in, before issuing anything.
+With no session it routes to the login flow; with a *fake* one it takes a third
+path and asks for endpoints the recordings don't hold — measured at 96 unmatched
+requests against 24 for a real session, with the app shell never rendering.
+Replaying responses doesn't help when the page never sends the requests. Don't
+spend an afternoon on the synthetic-session shortcut; it was tried.
+
+Two practical consequences:
+
+- **Don't interrupt `pnpm test:e2e`.** A killed run skips the proxy teardown and
+  can leave a `.har` partially rewritten. Completed runs never touch them, so if
+  `git status` shows a dirty recording after a Ctrl-C, restore it rather than
+  committing it.
+- Recordings are keyed to test titles, so **renaming a test orphans its `.har`**.
 
 X flags Playwright's bundled Chromium, so recording runs on a profile you log
 into by hand. `pnpm e2e:profile` opens Brave (or `--browser=chromium|chrome|<path>`)
