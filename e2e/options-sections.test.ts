@@ -9,6 +9,7 @@
  * out with no OPTIONS_SECTIONS_KEY and the page renders its defaults.
  */
 import { test, expect } from './fixtures'
+import { DEFAULT_OPTIONS_SECTIONS } from '../src/scripts/countries'
 import {
   expectSectionOpen,
   openOptionsPage,
@@ -46,12 +47,14 @@ test('what the user opens and closes is still that way in a new tab', async ({
   await setSectionOpen(optPage, 'keywords', false)
   await setSectionOpen(optPage, 'flags', true)
 
+  // Spread the defaults rather than listing every id: a stored value always
+  // carries the full set, so this still asserts the exact shape, but adding a
+  // section (Phase 2.3 roughly doubles them) doesn't need this file edited —
+  // only a change to what the two ids under test persist as would.
   expect(await readStoredSections(optPage)).toEqual({
+    ...DEFAULT_OPTIONS_SECTIONS,
     keywords: false,
     flags: true,
-    exceptions: false,
-    prefetch: false,
-    blocked: true,
   })
   await optPage.close()
 
@@ -92,11 +95,10 @@ test('restoring stored state neither reopens a closed section nor writes back', 
   await expect
     .poll(() => readStoredSections(optPage), { timeout: 5_000 })
     .toEqual({
+      ...DEFAULT_OPTIONS_SECTIONS,
       keywords: false,
       flags: true,
       exceptions: true,
-      prefetch: false,
-      blocked: true,
     })
 
   await optPage.close()

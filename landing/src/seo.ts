@@ -1,6 +1,15 @@
 import { routes, type RouteDef } from './routes'
+import { CHROME_STORE_URL } from './utils/constants'
 
-const PRODUCTION_URL = 'https://x-profile-location.pages.dev/'
+/**
+ * The live host. Moved from `x-profile-location.pages.dev` with the X-Pat
+ * rename; the old project still exists and 301s here (see `redirect/`).
+ *
+ * If a real domain is registered later (`x-pat.app` is free), this constant and
+ * the `_redirects` target in `redirect/_redirects` are the only two places that
+ * need to change — everything else derives from `siteUrl`.
+ */
+const PRODUCTION_URL = 'https://x-pat.pages.dev/'
 
 // Falls back to production URL when import.meta.env is unavailable (e.g. vite.config.ts load time)
 const rawSiteUrl: string = import.meta.env?.VITE_SITE_URL ?? PRODUCTION_URL
@@ -49,7 +58,7 @@ export const seo = {
     imageType: 'image/png',
     imageWidth: '1200',
     imageHeight: '630',
-    siteName: 'X Profile Location',
+    siteName: 'X-Pat',
     locale: 'en_US',
     updatedTime: buildDate,
   },
@@ -74,14 +83,17 @@ export function buildJsonLd(version: string) {
   return {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'X Profile Location',
+    name: 'X-Pat',
+    // The pre-rename name, and still what most people search for. schema.org
+    // takes it directly, which is the cheapest way to tell Google the two names
+    // are one product rather than two.
+    alternateName: 'X Profile Location',
     applicationCategory: 'BrowserApplication',
     operatingSystem: 'Chrome, Edge, Brave, Lemur Browser',
     description: home.description,
     url: siteUrl,
     softwareVersion: version,
-    installUrl:
-      'https://chromewebstore.google.com/detail/x-profile-location/mooomapkphlmpilnlcnpoilondlppbhi',
+    installUrl: CHROME_STORE_URL,
     author: { '@type': 'Person', name: seo.author },
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     privacyPolicy: `${siteUrl}privacy-policy`,

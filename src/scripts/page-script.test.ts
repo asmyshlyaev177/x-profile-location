@@ -43,10 +43,31 @@ class FakeXHR {
 // Test setup
 // ---------------------------------------------------------------------------
 
+// Every test re-imports page-script after vi.resetModules(), so each one runs a
+// fresh IIFE that registers its own REQUEST_HEADERS / REQUEST_USERS listeners on
+// the one shared `window` — closing over its own userBuffer. Nothing removes
+// them, so by the tenth test a single `x-loc-request-users` dispatch is answered
+// by ten module instances and the replay assertions see every earlier test's
+// users. In declaration order the leftovers happened to be harmless; under
+// --sequence.shuffle they are not. Record what each test registers and unhook it
+// afterwards, so a test only ever hears from its own instance.
+const originalAddEventListener = window.addEventListener.bind(window)
+let addedListeners: Array<[string, EventListenerOrEventListenerObject]> = []
+
 beforeEach(() => {
   vi.resetModules()
   // Clear the re-injection guard so each test gets a fresh IIFE run.
   delete (window as unknown as Record<string, unknown>).__X_LOC_INJECTED__
+
+  addedListeners = []
+  window.addEventListener = ((
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ) => {
+    addedListeners.push([type, listener])
+    originalAddEventListener(type, listener, options)
+  }) as typeof window.addEventListener
 
   // Provide a default no-op fetch; individual tests override as needed.
   vi.stubGlobal(
@@ -58,7 +79,16 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  for (const [type, listener] of addedListeners) {
+    window.removeEventListener(type, listener)
+  }
+  addedListeners = []
+  window.addEventListener = originalAddEventListener
   vi.unstubAllGlobals()
+  // A test that fails before its own spy.mockRestore() would otherwise leave a
+  // window.dispatchEvent spy installed, and the next test's spy stacks on top of
+  // it — turning one real failure into several.
+  vi.restoreAllMocks()
 })
 
 // ---------------------------------------------------------------------------

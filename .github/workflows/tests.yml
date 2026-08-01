@@ -33,9 +33,28 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      # Same tests, random order. Both suites keep module-level state (content.tsx
+      # settings, page-script's per-instance user buffer) that a test can mutate
+      # and the next test inherits — the kind of coupling that passes forever in
+      # declaration order and then fails once on someone else's machine. Running
+      # shuffled makes that a build failure here rather than a mystery in a
+      # contributor's first PR. If this step fails alone, the seed it prints
+      # reproduces it: `npx vitest run --sequence.shuffle --sequence.seed=<seed>`.
+      - name: Unit tests (random order)
+        run: pnpm test:shuffle
+
       - name: Build extension
         run: pnpm build
 
       # E2E (Playwright) runs locally, not in CI: it needs a logged-in X
       # session and recorded fixtures that drift with X's UI. Run it with
       # `pnpm test:e2e` in the distrobox container before a release.
+      #
+      # The session requirement is not avoidable by faking it, which is less
+      # obvious than it sounds and was measured: replay answers X's *responses*
+      # from the HARs, but X's SPA decides on the client whether it is logged in
+      # before issuing anything, and invented cookies send it down a third boot
+      # path that asks for endpoints the recordings don't hold — 96 unmatched
+      # requests against 24 for a real session, and the app shell never renders.
+      # Putting a real session in Actions secrets would leave it unavailable to
+      # fork PRs and expiring on X's schedule. Don't re-attempt the shortcut.

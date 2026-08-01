@@ -1,0 +1,14 @@
+# Everything on x-profile-location.pages.dev moved to x-pat.pages.dev.
+#
+# `:splat` carries the rest of the path through, so /x-about-this-account lands
+# on the same page rather than the homepage — which is what preserves the
+# ranking of the individual pages rather than just the root.
+#
+# Query strings are forwarded automatically; fragments are never sent to the
+# server, so they survive by virtue of the browser reapplying them.
+#
+# 301 (permanent) is deliberate: it is what tells Google to transfer the old
+# URLs' signals to the new ones. It is also cached hard by browsers, so this
+# line is effectively irreversible for anyone who has hit it once — do not
+# deploy it until x-pat.pages.dev actually serves the site.
+/*  https://x-pat.pages.dev/:splat  301

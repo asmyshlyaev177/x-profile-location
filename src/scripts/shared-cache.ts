@@ -18,6 +18,7 @@
 
 import type { LocationData } from './cache'
 import { CACHE_API_BASE } from './constants'
+import { DEFAULT_MIN_CONFIDENCE, normalizeMinConfidence } from './countries'
 
 // A location is only trusted once this many distinct clients agree (matches the
 // server's consensus model; see server/README.md).
@@ -37,7 +38,17 @@ import { CACHE_API_BASE } from './constants'
 // Flip to 2 when the overlap is actually there — re-run:
 // sqlite3 /var/lib/x-loc-cache/x-loc-cache.db   'SELECT COUNT(*) AS profiles, SUM(location_confidence >= 2) AS ready FROM profiles;'
 // and switch once the second figure is a majority of the first.
-export const MIN_CONFIDENCE = 1
+//
+// Stored rather than compiled in (MIN_CONFIDENCE_KEY), so the threshold can be
+// raised on one install and measured without shipping a build to everyone. The
+// default is unchanged. Read through the live binding at the one call site
+// below, so a change lands on the next lookup without a reload.
+export let minConfidence: number = DEFAULT_MIN_CONFIDENCE
+
+/** Apply the stored threshold. Anything unusable falls back to the default. */
+export function setMinConfidence(value: unknown): void {
+  minConfidence = normalizeMinConfidence(value)
+}
 
 const NEG_TTL_MS = 60 * 60 * 1000 // remember "server had nothing" for 1h
 const QUERIED_TTL_MS = 15 * 60 * 1000 // don't re-query the same name within 15m
@@ -148,7 +159,7 @@ export interface SharedHit {
 /**
  * Look up locations for a set of usernames. Filters out names we asked about
  * recently or that the server is known not to have, so repeated timeline scrolls
- * stay cheap. Returns only confirmed (confidence ≥ MIN_CONFIDENCE) hits.
+ * stay cheap. Returns only confirmed (confidence ≥ minConfidence) hits.
  */
 export async function sharedBatchLookup(
   userNames: string[],
@@ -193,7 +204,7 @@ export async function sharedBatchLookup(
     const hits: SharedHit[] = []
     for (const p of profiles) {
       found.add(p.u)
-      if (p.conf < MIN_CONFIDENCE) continue
+      if (p.conf < minConfidence) continue
       hits.push({
         userName: p.u,
         data: {
@@ -306,6 +317,7 @@ export function flushContributions(): void {
 /** Test-only: reset in-memory caches/buffers. */
 export function __resetSharedCache(): void {
   enabled = false
+  minConfidence = DEFAULT_MIN_CONFIDENCE
   clientIdPromise = null
   negativeCache.clear()
   recentlyQueried.clear()
