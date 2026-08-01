@@ -16,12 +16,12 @@ export function PrivacyPolicy() {
           <section>
             <h2 class="t-h3 mb-3 text-[1.25rem]">Overview</h2>
             <p>
-              X Profile Location is a browser extension that displays the
-              declared location of X / Twitter profiles as a flag emoji and can
-              highlight accounts by location or keyword. We are committed to
-              your privacy. By default, everything the extension does happens
-              locally in your browser. The one exception — an optional,
-              off-by-a-single- toggle community cache — is described below.
+              X-Pat is a browser extension that displays the declared location
+              of X / Twitter profiles as a flag emoji and can highlight accounts
+              by location or keyword. We are committed to your privacy. By
+              default, everything the extension does happens locally in your
+              browser. The one exception — an optional, off-by-a-single- toggle
+              community cache — is described below.
             </p>
           </section>
 

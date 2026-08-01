@@ -4,7 +4,7 @@ Thanks for looking. This file is the technical entry point — the
 [README](README.md) is written for users and deliberately carries no
 architecture.
 
-The fastest way to understand the project is `pnpm test`. There are 310 unit tests here plus 36 for the
+The fastest way to understand the project is `pnpm test`. There are 319 unit tests here plus 44 for the
 cache server, and a Playwright suite, and almost every non-obvious decision in the
 codebase has a test pinning it. If you change behaviour and nothing goes red,
 that's usually a missing test rather than a safe change.
@@ -128,9 +128,42 @@ pnpm e2e:profile       # one-time: hand a logged-in browser profile to Playwrigh
 `prefetch-queue.test.ts` has 47 and drives the scheduler through injected clocks
 rather than real timers.
 
+**Tests must pass in any order.** CI runs the suite twice — once normally, once
+with `--sequence.shuffle` (`pnpm test:shuffle`) — because both content scripts
+keep module-level state that outlives a single test. Two traps, both of which
+have bitten this repo:
+
+- `vi.clearAllMocks()` clears call history but **not** implementations, so a
+  `mockResolvedValue` set in one test stays installed for every test after it.
+  `content.test.ts` restores the mock defaults in a file-level `beforeEach`.
+- Re-importing a module after `vi.resetModules()` runs its top-level code again,
+  and anything it registered on `window` from the previous import is still
+  there. `page-script.test.ts` records and unhooks listeners per test.
+
+If the shuffled run fails on its own, the seed it prints reproduces it exactly:
+`npx vitest run --sequence.shuffle --sequence.seed=<seed>`. Fix the coupling —
+don't add a retry.
+
 **E2E** runs against recorded HAR fixtures via
 [`test-proxy-recorder`](https://github.com/asmyshlyaev177/test-proxy-recorder),
-so the suite is deterministic and needs no live X session to run.
+so the suite is deterministic and sends no request to X.
+
+**It still needs a real logged-in session**, which is why it runs locally rather
+than in CI. That is less obvious than it sounds, so it is worth writing down:
+X's SPA decides on the client whether it is logged in, before issuing anything.
+With no session it routes to the login flow; with a *fake* one it takes a third
+path and asks for endpoints the recordings don't hold — measured at 96 unmatched
+requests against 24 for a real session, with the app shell never rendering.
+Replaying responses doesn't help when the page never sends the requests. Don't
+spend an afternoon on the synthetic-session shortcut; it was tried.
+
+Two practical consequences:
+
+- **Don't interrupt `pnpm test:e2e`.** A killed run skips the proxy teardown and
+  can leave a `.har` partially rewritten. Completed runs never touch them, so if
+  `git status` shows a dirty recording after a Ctrl-C, restore it rather than
+  committing it.
+- Recordings are keyed to test titles, so **renaming a test orphans its `.har`**.
 
 X flags Playwright's bundled Chromium, so recording runs on a profile you log
 into by hand. `pnpm e2e:profile` opens Brave (or `--browser=chromium|chrome|<path>`)
@@ -148,10 +181,23 @@ pnpm scrub:check    # what CI runs; exits 1 on anything unscrubbed
 A capture is a slice of a real logged-in session, so a raw HAR carries hundreds of
 real accounts with their display names, bios, avatars and post text. Session
 credentials are already redacted by the recorder — that covers credentials, not
-identity. **Run `pnpm scrub` after any recording session, then `pnpm test:e2e` to
-confirm replay still passes.** CI fails the build otherwise.
+identity.
 
-Which accounts keep their real handle is *derived, not configured*: an account
+You should not normally have to run `pnpm scrub` by hand. Three things run it for
+you, in the order they can catch a mistake:
+
+1. **`pnpm test:e2e:record`** scrubs as soon as the Playwright UI exits, so the
+   normal record loop leaves a clean working tree.
+2. **The pre-commit hook** scrubs and re-stages if anything under
+   `e2e/recordings/` is staged. This is the one that matters: once a raw capture
+   is committed, scrubbing the working tree no longer helps, because history
+   keeps the original.
+3. **CI** runs `pnpm scrub:check` and fails the build. A backstop, not a fix.
+
+Run `pnpm test:e2e` after a recording session to confirm replay still passes
+against the scrubbed fixtures.
+
+Which accounts keep their real handle is _derived, not configured_: an account
 survives exactly when a test source names it, because that is what "the suite
 asserts against this account" looks like. Everyone else is pseudonymised to
 `user_<hash>`. Two consequences worth knowing:
@@ -195,7 +241,7 @@ pnpm build:nocache                                      # shared cache compiled 
 VITE_CACHE_API_BASE=http://127.0.0.1:8787 pnpm build    # a local server
 ```
 
-The empty case is reachable on purpose: the fallback applies only to an *unset*
+The empty case is reachable on purpose: the fallback applies only to an _unset_
 variable, so an explicitly empty value ships a build that never contacts any
 server and hides the options-page toggle.
 

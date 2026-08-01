@@ -101,11 +101,11 @@ export function AboutThisAccount() {
               <h2 class="t-h2 reveal">The same field, without the menu</h2>
               <div class="policy reveal mt-8 space-y-5">
                 <p>
-                  X Profile Location reads exactly the field the panel reads —
-                  the same endpoint, using the X session already in your browser
-                  — and renders it as a flag in the hover card, and optionally
-                  inline in the timeline. No IP lookups, no third-party
-                  database, no account or API key.
+                  X-Pat reads exactly the field the panel reads — the same
+                  endpoint, using the X session already in your browser — and
+                  renders it as a flag in the hover card, and optionally inline
+                  in the timeline. No IP lookups, no third-party database, no
+                  account or API key.
                 </p>
                 <p>
                   It surfaces three things from that response: the country, the

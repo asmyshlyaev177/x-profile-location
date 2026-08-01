@@ -22,8 +22,10 @@ const updatedFirefoxManifest = {
   browser_specific_settings: {
     gecko: {
       // Permanent add-on identity. Changing it after the first AMO submission
-      // creates a *new* add-on rather than an update.
-      id: 'addon@x-profile-location.pages.dev',
+      // creates a *new* add-on rather than an update — this was safe to rename
+      // only because nothing has been submitted to AMO yet. It is frozen from
+      // the first submission onward, whatever the extension is called later.
+      id: 'addon@x-pat.pages.dev',
       // page-script.ts has to run in `world: 'MAIN'` to patch the page's own
       // fetch/XHR; that content_scripts key landed in Firefox 128.
       // ^^^ https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/content_scripts#world
