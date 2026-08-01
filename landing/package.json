@@ -10,7 +10,7 @@
     "build": "node scripts/generate-images.mjs && vite build && node scripts/flatten-routes.mjs && node scripts/minify-html.mjs",
     "preview": "vite preview --port 5173",
     "deploy": "wrangler pages deploy dist --project-name x-pat",
-    "deploy:old-host": "wrangler pages deploy redirect --project-name x-profile-location"
+    "deploy:redirect": "wrangler pages deploy redirect --project-name x-profile-location"
   },
   "dependencies": {
     "preact": "^10.25.0",
