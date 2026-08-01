@@ -1,5 +1,5 @@
 {
-  "name": "x-profile-location-landing",
+  "name": "x-pat-landing",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,7 +9,8 @@
     "shoot:options": "node scripts/shoot-options.mjs",
     "build": "node scripts/generate-images.mjs && vite build && node scripts/minify-html.mjs",
     "preview": "vite preview --port 5173",
-    "deploy": "wrangler pages deploy dist --project-name x-profile-location"
+    "deploy": "wrangler pages deploy dist --project-name x-pat",
+    "deploy:old-host": "wrangler pages deploy redirect --project-name x-profile-location"
   },
   "dependencies": {
     "preact": "^10.25.0",
