@@ -33,6 +33,16 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      # Same tests, random order. Both suites keep module-level state (content.tsx
+      # settings, page-script's per-instance user buffer) that a test can mutate
+      # and the next test inherits — the kind of coupling that passes forever in
+      # declaration order and then fails once on someone else's machine. Running
+      # shuffled makes that a build failure here rather than a mystery in a
+      # contributor's first PR. If this step fails alone, the seed it prints
+      # reproduces it: `npx vitest run --sequence.shuffle --sequence.seed=<seed>`.
+      - name: Unit tests (random order)
+        run: pnpm test:shuffle
+
       - name: Build extension
         run: pnpm build
 
