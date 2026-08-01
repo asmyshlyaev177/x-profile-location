@@ -3,6 +3,7 @@ import { SiteHeader } from './components/SiteHeader'
 import { Hero } from './components/Hero'
 import { Screenshots } from './components/Screenshots'
 import { HowItWorks } from './components/HowItWorks'
+import { RateBudget } from './components/RateBudget'
 import { SeeItInAction } from './components/SeeItInAction'
 import { Trust } from './components/Trust'
 import { Faq } from './components/Faq'
@@ -66,6 +67,10 @@ export function App({ url }: AppProps) {
       <main>
         <Hero />
         <Screenshots />
+        {/* Above HowItWorks deliberately. "It runs out of lookups and stops
+            working" is the specific way competing extensions disappoint people,
+            so the answer to it is an early argument, not a footnote. */}
+        <RateBudget />
         <HowItWorks />
         <SeeItInAction />
         <Trust />
