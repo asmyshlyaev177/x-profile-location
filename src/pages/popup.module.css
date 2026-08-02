@@ -234,6 +234,13 @@
   cursor: pointer;
 }
 
+/* The footer holds both a <button> and an <a>; keep them visually identical. */
+a.linkBtn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .linkBtn:hover:not(:disabled) {
   text-decoration: underline;
 }
