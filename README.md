@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>See where any X profile is really from.</strong><br>
-  Country flags in hover cards and the feed, app-store origin, VPN warnings, and filters for the accounts you'd rather not read.
+  Country flags in hover cards and the feed, app-store origin and VPN warnings — then hide, collapse or highlight the accounts you'd rather not read, by country, organisation, age or bio keyword.
 </p>
 
 <p align="center">
@@ -15,14 +15,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-363_passing-3fb950?style=flat-square" alt="363 unit tests passing">
+  <img src="https://img.shields.io/badge/tests-518_passing-3fb950?style=flat-square" alt="518 unit tests passing">
   <img src="https://img.shields.io/badge/runtime_deps-2-3fb950?style=flat-square" alt="Two runtime dependencies">
   <img src="https://img.shields.io/badge/account_required-none-3fb950?style=flat-square" alt="No account required">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7f8c93?style=flat-square" alt="MIT License"></a>
 </p>
 
 <p align="center">
-  <a href="#what-it-does">Features</a> &nbsp;|&nbsp;
+  <a href="#what-you-get">Features</a> &nbsp;|&nbsp;
   <a href="#screenshots">Screenshots</a> &nbsp;|&nbsp;
   <a href="#reading-the-data-correctly">Accuracy</a> &nbsp;|&nbsp;
   <a href="#privacy">Privacy</a> &nbsp;|&nbsp;
@@ -38,22 +38,41 @@ reading: next to the name.
 > inspect their device. It shows values X itself returns. If X returns nothing,
 > there is nothing to show.
 
-## What it does
+## What you get
+
+### See who you're reading
 
 <table>
   <tr>
-    <td width="33%"><strong>Flags where you're reading</strong><br>Country flag in hover cards, on profiles, and inline in the feed. Regions get a three-letter tag with the full name on hover.</td>
-    <td width="33%"><strong>App-store origin</strong><br>The country the account's app store is set to, which often differs from the account country.</td>
-    <td width="33%"><strong>VPN warning</strong><br>A marker when X flags the account's location as possibly inaccurate.</td>
-  </tr>
-  <tr>
-    <td><strong>Hide or collapse countries</strong><br>Pick countries and regions to hide outright, or collapse behind a placeholder you can open.</td>
-    <td><strong>Highlight by bio keyword</strong><br>Flag accounts whose bio matches your keywords, with per-account exceptions.</td>
-    <td><strong>Swipe on mobile</strong><br>Swipe right on any post to look up its author. No hover needed.</td>
+    <td width="33%"><strong>The country, without opening anything</strong><br>A flag in hover cards, on profiles, and inline in the feed. Regions get a three-letter tag with the full name on hover.</td>
+    <td width="33%"><strong>The mismatch worth noticing</strong><br>The account's app-store country, which often disagrees with the account country — and a ⚠ when X itself says the location may be wrong.</td>
+    <td width="33%"><strong>Who you're about to reply to</strong><br>Hovering shows account age, affiliate badge, verification, how often the handle changed, and follower count. Free: it's in data X already sent.</td>
   </tr>
 </table>
 
-It reads three fields from X:
+### Decide what reaches your timeline
+
+<table>
+  <tr>
+    <td width="33%"><strong>Skip whole countries</strong><br>Pick countries and regions, then choose: collapse behind a placeholder you can open, or hide outright. Collapse is the default, so nothing vanishes silently.</td>
+    <td width="33%"><strong>Block an organisation at once</strong><br>X badges accounts affiliated with an organisation. Block the parent and every account it badges goes with it.</td>
+    <td width="33%"><strong>Spot accounts that just showed up</strong><br>Posts from accounts younger than your threshold get an amber bar. Marked, never hidden — a new account is not evidence of anything.</td>
+  </tr>
+  <tr>
+    <td><strong>Highlight by bio keyword</strong><br>An amber bar plus the matching words marked in the bio, so you know why it fired. Flag-stuffed bios get caught the same way, at your own threshold.</td>
+    <td><strong>Keep your exceptions</strong><br>An always-show allowlist nothing can touch, plus per-rule exceptions — exempt an account from the keyword without exempting it from the country.</td>
+    <td><strong>Change it mid-scroll</strong><br>The toolbar popup carries the two filters you actually edit while reading — locations and keywords — plus a pause switch. Edits land on the timeline behind it immediately.</td>
+  </tr>
+</table>
+
+Also yours: **copy any post with its flags** as a PNG (rendered in your browser, nothing
+uploaded), **import and export your settings** as JSON, a **light/dark theme** for the
+extension's own screens, and **swipe right on mobile** to look up an author without a
+hover. Quoted posts collapse on their own so the post quoting them stays readable, and
+rows in Followers/Following lists are marked rather than hidden — removing them there
+breaks the counts.
+
+The flags themselves come from three fields X returns:
 
 | X field             | Shown as                      |
 | ------------------- | ----------------------------- |
@@ -97,6 +116,10 @@ The scheduler is decoupled from the DOM and the network, so it's unit-tested thr
     <td><img src="landing/public/Highlight_screenshot-x-profile-location.png" alt="Highlighted account matching a bio keyword"><br><strong>Keyword highlighting</strong></td>
     <td><img src="landing/public/Highlight2_screenshot-x-profile-location.png" alt="Highlight with per-account exception"><br><strong>Per-account exceptions</strong></td>
   </tr>
+  <tr>
+    <td><img src="landing/public/VPN_screenshot-x-profile-location.png" alt="A VPN warning next to an account's flag"><br><strong>VPN/proxy warning</strong></td>
+    <td><img src="landing/public/swipe_right.png" alt="Swiping right on a post to look up its author on mobile"><br><strong>Swipe to look up, on mobile</strong></td>
+  </tr>
 </table>
 
 ## Reading the data correctly
@@ -131,10 +154,11 @@ carry a random per-install id and nothing tied to you.
 
 It's off by default and there's a build with it compiled out entirely.
 
-| Permission              | Why                                            |
-| ----------------------- | ---------------------------------------------- |
-| `storage`               | Your settings and the local location cache     |
-| `x.com` / `twitter.com` | Read the page, and request account data from X |
+| Permission              | Why                                                       |
+| ----------------------- | --------------------------------------------------------- |
+| `storage`               | Your settings and the local location cache                |
+| `contextMenus`          | The right-click entry that copies a post with its flags   |
+| `x.com` / `twitter.com` | Read the page, and request account data from X            |
 
 Full text: [Privacy Policy](https://x-profile-location.pages.dev/privacy).
 
@@ -153,14 +177,18 @@ Or build it yourself — see [CONTRIBUTING.md](CONTRIBUTING.md).
 It's free, MIT-licensed, and has no ads, tracking or paid tier — and the community cache
 runs on a VPS that costs real money every month.
 
-<!-- Funding links land here once the card-to-crypto page is up; see ROADMAP.md Phase 4. -->
+**[Donate — nowpayments.io/donation/asmyshlyaev177](https://nowpayments.io/donation/asmyshlyaev177)**
+(crypto; the same link sits in the extension's popup). GitHub Sponsors isn't available in
+Georgia, which is why this is a plain link rather than the usual button.
+
+<!-- Wallet addresses for direct transfers land here too; see ROADMAP.md Phase 4. -->
 
 ## Contributing
 
 Bug reports and PRs welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the architecture,
 the test setup, and the three areas where a subtle change does the most damage.
 
-If you just want to see whether it's any good: `pnpm test` runs 319 unit tests (plus 44 for the cache server), and
+If you just want to see whether it's any good: `pnpm test` runs 518 unit tests (plus 44 for the cache server), and
 [`server/README.md`](server/README.md) has the cache server's design and benchmarks.
 
 ## Licence

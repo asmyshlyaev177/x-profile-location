@@ -6,3 +6,10 @@
  */
 export const CHROME_STORE_URL =
   'https://chromewebstore.google.com/detail/x-pat/mooomapkphlmpilnlcnpoilondlppbhi'
+
+/**
+ * Crypto donations, via NOWPayments. GitHub Sponsors and every card rail behind
+ * Stripe exclude Georgia, so this is also what `.github/FUNDING.yml` points at
+ * and what the extension's popup links to — one destination, three surfaces.
+ */
+export const DONATE_URL = 'https://nowpayments.io/donation/asmyshlyaev177'

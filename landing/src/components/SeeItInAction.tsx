@@ -193,6 +193,12 @@ function HideShowcase() {
         brings it back for good. The filter follows the app store country when
         there’s one, and it leaves the tweet you opened on purpose alone.
       </p>
+      <p>
+        Country is not the only handle you have. Block an organisation and every
+        account X badges as belonging to it goes too, and accounts younger than
+        a threshold you set get marked as they appear — marked, never hidden,
+        because being new is not evidence of anything.
+      </p>
     </Showcase>
   )
 }
@@ -238,8 +244,10 @@ function HighlightShowcase() {
         is too many.
       </p>
       <p>
-        The rules live in the extension’s options page, along with exceptions
-        for accounts you’d rather leave alone.
+        The rules live in the extension’s options page, along with the
+        exceptions: an allowlist for accounts no rule may touch, and per-rule
+        exemptions for the account you want spared from the keyword but not from
+        the country.
       </p>
     </Showcase>
   )
