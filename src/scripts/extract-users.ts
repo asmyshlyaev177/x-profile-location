@@ -1,7 +1,16 @@
+import { definedFacts, parseAccountFacts } from './profile'
+import type { AccountFacts } from './profile'
+
 export interface UserBio {
   userName: string
   displayName: string | null
   bio: string | null
+  /**
+   * Account age, affiliate badge, verification, follower count — all of it
+   * already sitting in this same node. Only the fields X actually sent are
+   * present, so a node that omits one can't blank a value learned elsewhere.
+   */
+  facts: Partial<AccountFacts>
 }
 
 /**
@@ -27,7 +36,14 @@ export function extractUsers(_obj: unknown, depth = 0): UserBio[] {
         core?.description ??
         legacy?.description ??
         null) as string | null
-      return [{ userName, displayName, bio }]
+      return [
+        {
+          userName,
+          displayName,
+          bio,
+          facts: definedFacts(parseAccountFacts(obj)),
+        },
+      ]
     }
     return []
   }

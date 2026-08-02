@@ -18,6 +18,7 @@
     "prepare": "git config core.hooksPath .githooks || exit 0",
     "test": "vitest run --coverage",
     "test:shuffle": "vitest run --sequence.shuffle",
+    "test:visual": "playwright test -c playwright.visual.config.ts",
     "e2e:profile": "node e2e/scripts/seed-profile.mjs",
     "test:e2e": "xvfb-run --auto-servernum playwright test --retries 1",
     "scrub": "node --max-old-space-size=6144 scripts/scrub-recordings.mjs",

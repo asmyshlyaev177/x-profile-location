@@ -40,6 +40,29 @@ vi.mock('./shared-cache', () => ({
   isSharedCacheEnabled: vi.fn(() => true),
 }))
 
+// Stub the snapshotter. It needs a 2D canvas context and an <img> that can
+// decode an SVG data URL, neither of which happy-dom has, and its DOM surgery
+// is covered by snapshot.test.ts. Rejecting by default is the useful default
+// here: it exercises the fallback, which is the path that has to keep working
+// on a page we do not control.
+const snapshot = vi.hoisted(() => ({
+  snapshotElement: vi.fn().mockRejectedValue(new Error('no canvas in tests')),
+}))
+vi.mock('./snapshot', async (importOriginal) => ({
+  // allowGrowth is real DOM work with no canvas in it, and decorateSnapshot
+  // calls it — only the rendering needs stubbing.
+  ...(await importOriginal<typeof import('./snapshot')>()),
+  snapshotElement: snapshot.snapshotElement,
+}))
+
+// Stub the card renderer: it needs a real 2D canvas context (happy-dom has
+// none) and its layout is covered by share-card.test.ts. What content.tsx owns
+// is *what it passes in* — which post text, for which account.
+vi.mock('./share-card', () => ({
+  renderShareCard: vi.fn().mockResolvedValue(new Blob()),
+  deliverShareCard: vi.fn().mockResolvedValue('clipboard'),
+}))
+
 // Stub the prefetcher. content.tsx's job is only to *drive* it — settings in,
 // candidates in — and its own scheduling is covered by prefetch-queue.test.ts.
 // Stubbing also keeps its background timers (and the lookups they'd trigger)
@@ -62,13 +85,16 @@ vi.mock('./prefetch-queue', () => ({
 }))
 
 import {
+  accountChips,
   fetchLocationData,
   isCommittedSwipe,
+  keywordRangesIn,
   locationSummaryText,
   setApiHeaders,
   __testResetState,
 } from './content'
 import { getCached, mergeCached, clearAllCache } from './cache'
+import { renderShareCard } from './share-card'
 import {
   isSharedCacheConfigured,
   isSharedCacheEnabled,
@@ -1236,6 +1262,352 @@ describe('hover card exception button', () => {
     expect(btn).not.toBeNull()
     expect(btn?.classList.contains('x-loc-exc-active')).toBe(true)
   })
+
+  it('offers itself for a blocked location, with no keyword in sight', async () => {
+    // The button used to know about keywords and nothing else, so the reader
+    // looking at a post collapsed for its country had no way to say "not this
+    // one" without going to the options page and typing the handle in.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: null,
+      bio: 'just a normal bio',
+    })
+    pushSettings({
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const card = await addHoverCard('someone')
+    await flushAsync()
+
+    const btn = card.querySelector<HTMLElement>('.x-loc-exc-btn')
+    expect(btn?.dataset.rules).toBe('location')
+    expect(btn?.title).toContain('blocked-location filter')
+  })
+
+  it('offers itself for an account under the age filter', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: null,
+      facts: { createdAt: Date.now() - 10 * 24 * 60 * 60 * 1000 },
+    })
+    pushSettings({
+      accountAgeFilter: { enabled: true, days: 90 },
+      hideBlockedLocations: 'collapse',
+    })
+
+    const card = await addHoverCard('freshaccount')
+    await flushAsync()
+
+    const btn = card.querySelector<HTMLElement>('.x-loc-exc-btn')
+    expect(btn?.dataset.rules).toBe('age')
+    expect(btn?.title).toContain('account-age filter')
+  })
+
+  it('covers every rule acting on the account, and names them all', async () => {
+    // One button, whatever the reason — the reader's complaint is "not this
+    // account", not "not rule three of four".
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: null,
+      bio: 'no NAFO here',
+    })
+    pushSettings({
+      highlightKeywords: ['nafo'],
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const card = await addHoverCard('sarcasticuser')
+    await flushAsync()
+
+    const btn = card.querySelector<HTMLElement>('.x-loc-exc-btn')
+    expect(btn?.dataset.rules).toBe('highlight location')
+    expect(btn?.title).toContain('keyword and flag highlighting')
+    expect(btn?.title).toContain('the blocked-location filter')
+  })
+
+  it('writes an exception for every rule it covers, in one click', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: null,
+      bio: 'no NAFO here',
+    })
+    pushSettings({
+      highlightKeywords: ['nafo'],
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const card = await addHoverCard('sarcasticuser')
+    await flushAsync()
+    card.querySelector<HTMLElement>('.x-loc-exc-btn')!.click()
+
+    const written = chromeGlobal.storage.local.set.mock.calls.at(-1)[0]
+    expect(written.ruleExceptions.highlight).toContain('sarcasticuser')
+    expect(written.ruleExceptions.location).toContain('sarcasticuser')
+    // The rules it does not cover are left exactly as they were.
+    expect(written.ruleExceptions.age).toEqual([])
+    // Mirrored to the legacy key, or a reload brings the highlight back.
+    expect(written.highlightExceptions).toContain('sarcasticuser')
+  })
+
+  it('undoes every rule it covers, in one click', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: null,
+      bio: 'no NAFO here',
+    })
+    pushSettings({
+      highlightKeywords: ['nafo'],
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+      ruleExceptions: {
+        highlight: ['sarcasticuser'],
+        location: ['sarcasticuser'],
+        affiliation: [],
+        age: [],
+      },
+    })
+
+    const card = await addHoverCard('sarcasticuser')
+    await flushAsync()
+    const btn = card.querySelector<HTMLElement>('.x-loc-exc-btn')!
+    expect(btn.classList.contains('x-loc-exc-active')).toBe(true)
+
+    btn.click()
+
+    const written = chromeGlobal.storage.local.set.mock.calls.at(-1)[0]
+    expect(written.ruleExceptions.highlight).toEqual([])
+    expect(written.ruleExceptions.location).toEqual([])
+    expect(btn.classList.contains('x-loc-exc-active')).toBe(false)
+  })
+
+  it('is not offered for an account on the always-show allowlist', async () => {
+    // Nothing is acting on it, so an exception would be a setting with no
+    // effect — and one more entry for the user to find later and puzzle over.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: null,
+      bio: 'no NAFO here',
+    })
+    pushSettings({
+      highlightKeywords: ['nafo'],
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+      alwaysShowAccounts: ['sarcasticuser'],
+    })
+
+    const card = await addHoverCard('sarcasticuser')
+    await flushAsync()
+
+    expect(card.querySelector('.x-loc-exc-btn')).toBeNull()
+  })
+
+  it('does not offer itself twice when the lookup widens the rule set', async () => {
+    // The button goes in on the bio alone and is synced again when the data
+    // lands; the second pass has to replace the first, not sit under it.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: null,
+      bio: 'no NAFO here',
+    })
+    pushSettings({
+      highlightKeywords: ['nafo'],
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const card = await addHoverCard('sarcasticuser')
+    await flushAsync()
+
+    expect(card.querySelectorAll('.x-loc-exc-btn').length).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Marking the matched keyword in a hover card
+// ---------------------------------------------------------------------------
+describe('keyword marks on hover cards', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setApiHeaders(null)
+    document.body.innerHTML = ''
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
+  })
+
+  /** happy-dom has no Highlight registry — stand one up so it can be read. */
+  function stubHighlightApi(): Map<string, { ranges: Range[] }> {
+    const registry = new Map<string, { ranges: Range[] }>()
+    vi.stubGlobal(
+      'Highlight',
+      class {
+        ranges: Range[]
+        constructor(...ranges: Range[]) {
+          this.ranges = ranges
+        }
+      },
+    )
+    vi.stubGlobal('CSS', { highlights: registry })
+    return registry
+  }
+
+  async function addHoverCard(
+    userName: string,
+    bioHtml: string,
+  ): Promise<HTMLElement> {
+    const card = document.createElement('div')
+    card.setAttribute('data-testid', 'HoverCard')
+    card.innerHTML = `<span>@${userName}</span><div data-testid="UserDescription">${bioHtml}</div>`
+    document.body.appendChild(card)
+    await flushAsync()
+    return card
+  }
+
+  describe('keywordRangesIn', () => {
+    it('covers the keyword exactly, wherever it sits in the bio', () => {
+      onChangedCallback({ highlightKeywords: { newValue: ['nft'] } }, 'local')
+      const host = document.createElement('div')
+      host.innerHTML = '<p>we love <b>nft</b> here</p>'
+      document.body.appendChild(host)
+
+      const ranges = keywordRangesIn(host)
+
+      expect(ranges.map((r) => r.toString())).toEqual(['nft'])
+    })
+
+    it('skips our own injected text', () => {
+      // The account card and the flags row can easily contain a tracked word;
+      // marking those would be the extension pointing at itself.
+      onChangedCallback({ highlightKeywords: { newValue: ['japan'] } }, 'local')
+      const host = document.createElement('div')
+      host.innerHTML =
+        '<p>lives in japan</p><div class="x-loc-hover"><span>Japan</span></div>'
+      document.body.appendChild(host)
+
+      expect(keywordRangesIn(host)).toHaveLength(1)
+    })
+  })
+
+  it('registers a range over the word that fired the rule', async () => {
+    const registry = stubHighlightApi()
+    onChangedCallback({ highlightKeywords: { newValue: ['nft'] } }, 'local')
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'nft trader',
+    })
+
+    await addHoverCard('trader', 'nft trader')
+    await flushAsync()
+
+    expect(registry.get('x-loc-keyword')?.ranges.map(String)).toEqual(['nft'])
+  })
+
+  it('marks nothing for an account the rule does not fire on', async () => {
+    const registry = stubHighlightApi()
+    onChangedCallback({ highlightKeywords: { newValue: ['nft'] } }, 'local')
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'just a normal bio',
+    })
+
+    const card = await addHoverCard('normaluser', 'just a normal bio')
+    await flushAsync()
+
+    expect(card.hasAttribute('data-x-loc-kw')).toBe(false)
+    expect(registry.has('x-loc-keyword')).toBe(false)
+  })
+
+  it('marks nothing for an account excepted from highlighting', async () => {
+    // The posts lose their orange bar, so the bio has to lose its mark — a word
+    // still lit up in a card would read as the exception not having worked.
+    const registry = stubHighlightApi()
+    onChangedCallback({ highlightKeywords: { newValue: ['nft'] } }, 'local')
+    onChangedCallback(
+      { highlightExceptions: { newValue: ['trader'] } },
+      'local',
+    )
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'nft trader',
+    })
+
+    const card = await addHoverCard('trader', 'nft trader')
+    await flushAsync()
+
+    expect(card.hasAttribute('data-x-loc-kw')).toBe(false)
+    expect(registry.has('x-loc-keyword')).toBe(false)
+  })
+
+  it('does not throw where the browser has no highlight registry', async () => {
+    // Firefox before 140. The mark is an explanation of something already
+    // visible, so the right failure is for it not to paint.
+    onChangedCallback({ highlightKeywords: { newValue: ['nft'] } }, 'local')
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'nft trader',
+    })
+
+    const card = await addHoverCard('trader', 'nft trader')
+    await flushAsync()
+
+    // The attribute half still works — that is the emoji marking, which is CSS.
+    expect(card.getAttribute('data-x-loc-kw')).toBe('1')
+  })
+
+  it('marks an emoji keyword through a stylesheet, since X draws it as an image', async () => {
+    onChangedCallback({ highlightKeywords: { newValue: ['🇷🇺'] } }, 'local')
+    await flushAsync()
+
+    const style = document.getElementById('x-loc-kw-styles')
+    expect(style?.textContent).toContain('[data-x-loc-kw] img[alt="🇷🇺"]')
+  })
+
+  it('takes the stylesheet away with the last emoji keyword', async () => {
+    onChangedCallback({ highlightKeywords: { newValue: ['🇷🇺'] } }, 'local')
+    await flushAsync()
+    expect(document.getElementById('x-loc-kw-styles')).not.toBeNull()
+
+    onChangedCallback({ highlightKeywords: { newValue: ['nft'] } }, 'local')
+    await flushAsync()
+
+    expect(document.getElementById('x-loc-kw-styles')).toBeNull()
+  })
+
+  it('escapes a keyword before it reaches the selector', async () => {
+    // A keyword is user input on its way into CSS. Unescaped, the quote in this
+    // one would close the attribute selector and everything after it would be
+    // parsed as rules of the user's choosing.
+    onChangedCallback(
+      { highlightKeywords: { newValue: ['🇷🇺"] , * {display:none} i[alt="'] } },
+      'local',
+    )
+    await flushAsync()
+
+    const css = document.getElementById('x-loc-kw-styles')?.textContent ?? ''
+    // The only unescaped quotes left are the two the generator wrote itself, so
+    // the whole keyword is inside one attribute value and none of it is a rule.
+    expect(css.match(/(?<!\\)"/g)).toHaveLength(2)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -1317,6 +1689,51 @@ describe('primary tweet exception button', () => {
     const btn = article.querySelector('.x-loc-exc-btn')
     expect(btn).not.toBeNull()
     expect(btn?.classList.contains('x-loc-exc-active')).toBe(true)
+  })
+
+  it('appears for a blocked location too, not only for a keyword', async () => {
+    // X opens no hover card for the account a status page is about, so this
+    // inline copy is the only place to make an exception from that page — and
+    // it has to follow the same rules the hover card's button does.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: null,
+      bio: 'just a normal bio',
+    })
+
+    const article = await addPrimaryTweet('sarcasticuser')
+    expect(article.querySelector('.x-loc-exc-btn')).toBeNull()
+
+    pushSettings({
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+    })
+    await flushAsync()
+
+    const btn = article.querySelector<HTMLElement>('.x-loc-exc-btn')
+    expect(btn?.dataset.rules).toBe('location')
+  })
+
+  it('does not double up when two rule changes land back to back', async () => {
+    // Each change starts an async sync; both used to decide "there is no button
+    // to replace" from a handle taken before their awaits, and both appended.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: null,
+      bio: 'no NAFO here',
+    })
+
+    const article = await addPrimaryTweet('sarcasticuser')
+    pushSettings({ highlightKeywords: ['nafo'] })
+    pushSettings({
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+    })
+    await flushAsync()
+
+    expect(article.querySelectorAll('.x-loc-exc-btn').length).toBe(1)
   })
 
   it('is not added on a timeline page', async () => {
@@ -1460,6 +1877,46 @@ describe('hide tweets by blocked location', () => {
     expect(ph).not.toBeNull()
     expect(ph?.textContent).toContain('India')
     expect(article.querySelector('.x-loc-hidden-show')).not.toBeNull()
+  })
+
+  it('offers the exception button on the placeholder, for the rule that hid it', async () => {
+    // A collapsed post shows nothing to hover, so the hover card — where the
+    // button otherwise lives — cannot be reached from here at all.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('inuser')
+    document.body.appendChild(article)
+    await flushAsync()
+
+    const btn = article.querySelector<HTMLElement>(
+      '.x-loc-hidden-ph .x-loc-exc-btn',
+    )
+    expect(btn?.dataset.rules).toBe('location')
+  })
+
+  it('un-hides for good when that button is clicked', async () => {
+    // "Show" spares this one post; the exception spares the account — so the
+    // placeholder has to go, not just this instance of it.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('inuser')
+    document.body.appendChild(article)
+    await flushAsync()
+    article.querySelector<HTMLElement>('.x-loc-exc-btn')!.click()
+    await flushAsync()
+
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+    expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
   })
 
   it('does not hide when the location is not on the blocked list', async () => {
@@ -2121,5 +2578,717 @@ describe('community cache gating', () => {
     expect(prefetcher.stop).not.toHaveBeenCalled()
     usersEvent()
     expect(prefetcher.enqueue).toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 2 filters
+// ---------------------------------------------------------------------------
+function makeUserCell(userName: string, displayName = 'Cell User') {
+  const cell = document.createElement('div')
+  cell.setAttribute('data-testid', 'UserCell')
+  cell.innerHTML = `
+    <div data-testid="User-Name">
+      <a href="/${userName}">${displayName}</a>
+      <a href="/${userName}">@${userName}</a>
+    </div>
+  `
+  return cell
+}
+
+/** Push settings in the way the options page would. */
+function pushSettings(changes: Record<string, unknown>) {
+  const wrapped: Record<string, { newValue: unknown }> = {}
+  for (const [key, newValue] of Object.entries(changes)) {
+    wrapped[key] = { newValue }
+  }
+  onChangedCallback(wrapped, 'local')
+}
+
+const JAPAN = {
+  location: 'Japan',
+  locationAccurate: true,
+  source: 'Japan App Store' as const,
+}
+
+describe('region filtering', () => {
+  it('blocks a member country when its region is on the list', async () => {
+    // The whole point of the region table: 'East Asia' has to catch an account
+    // X reports as Japan, not only one reported as the region itself.
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({
+      blockedCountries: ['East Asia'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('someone')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    expect(article.textContent).toContain('Japan')
+  })
+
+  it('still blocks an account reported as the region itself', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'South Asia',
+      locationAccurate: true,
+      source: null,
+    })
+    pushSettings({
+      blockedCountries: ['South Asia'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('someone')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+  })
+
+  it('leaves a country outside the region alone', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({
+      blockedCountries: ['Africa'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('someone')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+  })
+})
+
+describe('affiliation filtering', () => {
+  it('collapses a post by an account badged with a blocked org', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      facts: {
+        affiliation: { handle: 'someorg', name: 'Some Org', badgeUrl: null },
+      },
+    })
+    pushSettings({
+      blockedAffiliations: ['someorg'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('staffer')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    // The placeholder names the org, so the user can tell which rule fired.
+    expect(article.textContent).toContain('Some Org')
+  })
+
+  it('ignores a badge for an org that is not blocked', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      facts: {
+        affiliation: { handle: 'otherorg', name: 'Other', badgeUrl: null },
+      },
+    })
+    pushSettings({
+      blockedAffiliations: ['someorg'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('staffer')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+  })
+})
+
+describe('account age filtering', () => {
+  const daysAgo = (n: number) => Date.now() - n * 24 * 60 * 60 * 1000
+
+  it('collapses an account younger than the threshold', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      facts: { createdAt: daysAgo(3) },
+    })
+    pushSettings({
+      accountAgeFilter: { enabled: true, days: 30 },
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('newbie')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+  })
+
+  it('leaves an older account alone', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      facts: { createdAt: daysAgo(400) },
+    })
+    pushSettings({
+      accountAgeFilter: { enabled: true, days: 30 },
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('veteran')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+  })
+
+  it('does nothing when X never said when the account was created', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      facts: {},
+    })
+    pushSettings({
+      accountAgeFilter: { enabled: true, days: 30 },
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('unknown')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+  })
+})
+
+describe('the always-show allowlist', () => {
+  it('overrides every filter', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({
+      blockedCountries: ['Japan'],
+      alwaysShowAccounts: ['friend'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('friend')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+  })
+
+  it('does not exempt anyone else', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({
+      blockedCountries: ['Japan'],
+      alwaysShowAccounts: ['friend'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('stranger')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+  })
+})
+
+describe('per-rule exceptions', () => {
+  it('exempts an account from the one rule named, not the others', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      ...JAPAN,
+      facts: {
+        affiliation: { handle: 'someorg', name: 'Some Org', badgeUrl: null },
+      },
+    })
+    pushSettings({
+      blockedCountries: ['Japan'],
+      blockedAffiliations: ['someorg'],
+      ruleExceptions: {
+        highlight: [],
+        location: ['dual'],
+        affiliation: [],
+        age: [],
+      },
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('dual')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    // Location is excused, so the affiliation rule is what catches it.
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    expect(article.textContent).toContain('Some Org')
+  })
+})
+
+describe('quoted posts', () => {
+  it('collapses only the quote when the quoted author is filtered', async () => {
+    vi.mocked(getCached).mockImplementation(async (name: string) =>
+      name.toLowerCase() === 'quoted' ? JAPAN : undefined,
+    )
+    pushSettings({
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeQuoteTweetArticle('outer', 'quoted')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    const quote = article.querySelector('div[role="link"]')!
+    expect(quote.getAttribute('data-x-loc-quote-hidden')).toBe('collapse')
+    // The post doing the quoting was never filtered, so it stays readable —
+    // taking the whole row would remove something the user never asked to hide.
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+  })
+
+  it('collapses the whole post when its own author is filtered', async () => {
+    vi.mocked(getCached).mockImplementation(async (name: string) =>
+      name.toLowerCase() === 'outer' ? JAPAN : undefined,
+    )
+    pushSettings({
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeQuoteTweetArticle('outer', 'quoted')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+  })
+})
+
+describe('people lists', () => {
+  it('marks a matching row instead of removing it', async () => {
+    // Hiding rows here breaks the counts the page exists to show.
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({ blockedCountries: ['Japan'], hideBlockedLocations: 'hide' })
+
+    const cell = makeUserCell('someone')
+    document.body.appendChild(cell)
+    await flushAsync()
+    await flushAsync()
+
+    expect(cell.getAttribute('data-x-loc-cell-match')).toBe('location')
+    expect(cell.querySelector('.x-loc-cell-tag')?.textContent).toContain(
+      'Japan',
+    )
+    expect(cell.isConnected).toBe(true)
+    expect(cell.hasAttribute('data-x-loc-hidden')).toBe(false)
+  })
+
+  it('leaves a row alone when nothing matches', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({ blockedCountries: ['France'], hideBlockedLocations: 'hide' })
+
+    const cell = makeUserCell('someone')
+    document.body.appendChild(cell)
+    await flushAsync()
+    await flushAsync()
+
+    expect(cell.hasAttribute('data-x-loc-cell-match')).toBe(false)
+    expect(cell.querySelector('.x-loc-cell-tag')).toBeNull()
+  })
+})
+
+describe('the master switch', () => {
+  it('strips what is already on screen when switched off', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('someone')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+
+    pushSettings({ extensionEnabled: false })
+
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+    expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
+  })
+
+  it('injects nothing at all while off', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+    })
+    pushSettings({ extensionEnabled: false })
+
+    const article = makeTweetArticle('someone')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+    expect(article.querySelector('.x-loc-info')).toBeNull()
+  })
+
+  it('re-decorates the page when switched back on', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({
+      blockedCountries: ['Japan'],
+      hideBlockedLocations: 'collapse',
+    })
+    pushSettings({ extensionEnabled: false })
+
+    const article = makeTweetArticle('someone')
+    document.body.appendChild(article)
+    await flushAsync()
+
+    pushSettings({ extensionEnabled: true })
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+  })
+})
+
+describe('what a snapshot leaves out', () => {
+  // decorateSnapshot is handed to snapshotElement as a callback, so the test
+  // takes it from the call and runs it — the same way the real snapshot does.
+  function decorateOf(article: Element) {
+    const opts = snapshot.snapshotElement.mock.calls.at(-1)?.[1] as {
+      decorate?: (clone: Element) => void
+    }
+    const clone = article.cloneNode(true) as Element
+    opts.decorate?.(clone)
+    return clone
+  }
+
+  async function snapshotOf(html: string) {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    const article = makeTweetArticle('someone')
+    article.insertAdjacentHTML('beforeend', html)
+    document.body.appendChild(article)
+    await flushAsync()
+
+    const link = article.querySelector('a[href="/someone"]')!
+    link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+
+    const card = document.createElement('div')
+    card.setAttribute('data-testid', 'HoverCard')
+    card.innerHTML =
+      '<div><div><div><div data-testid="UserName"><a href="/someone">T</a></div>' +
+      '<span>@someone</span></div></div></div>'
+    document.body.appendChild(card)
+    await flushAsync()
+    await flushAsync()
+    ;(card.querySelector('.x-loc-share-btn') as HTMLButtonElement).click()
+    await flushAsync()
+
+    return decorateOf(article)
+  }
+
+  it('drops the ⋯ menu, Grok, and the Subscribe button', async () => {
+    // Controls pointed at whoever is looking, not part of the post — and in an
+    // image they invite a click that cannot do anything.
+    const clone = await snapshotOf(
+      '<button data-testid="caret">⋯</button>' +
+        '<button aria-label="Grok actions">grok</button>' +
+        '<div role="button">Subscribe</div>' +
+        '<div role="button">Follow</div>',
+    )
+
+    expect(clone.querySelector('[data-testid="caret"]')).toBeNull()
+    expect(clone.querySelector('[aria-label*="Grok" i]')).toBeNull()
+    expect(clone.textContent).not.toContain('Subscribe')
+    expect(clone.textContent).not.toContain('Follow')
+  })
+
+  it('matches Grok however X localises the label around it', async () => {
+    // The label is translated; the product name inside it is not.
+    const clone = await snapshotOf(
+      '<button aria-label="Acciones de Grok">g</button>',
+    )
+    expect(clone.querySelector('[aria-label*="Grok" i]')).toBeNull()
+  })
+
+  it('keeps a button that only happens to be a button', async () => {
+    const clone = await snapshotOf('<div role="button">Show more</div>')
+    expect(clone.textContent).toContain('Show more')
+  })
+
+  it('replaces our own on-page furniture with a written-out location line', async () => {
+    const clone = await snapshotOf(
+      '<div class="x-loc-info">flags</div><div class="x-loc-card">chips</div>',
+    )
+
+    expect(clone.querySelector('.x-loc-info')).toBeNull()
+    expect(clone.querySelector('.x-loc-card')).toBeNull()
+    // Words, not just a flag the reader has to recognise.
+    expect(clone.textContent).toContain('Japan')
+  })
+})
+
+describe('the account card', () => {
+  const daysAgo = (n: number) => Date.now() - n * 24 * 60 * 60 * 1000
+
+  it('shows only what X actually returned', () => {
+    const chips = accountChips({
+      createdAt: daysAgo(400),
+      followers: 33813,
+    }).map((c) => c.text)
+
+    expect(chips).toContain('🎂 13mo')
+    expect(chips).toContain('👥 34K')
+    // Nothing was said about handle changes, so nothing is claimed about them.
+    expect(chips.join(' ')).not.toContain('handle')
+  })
+
+  it('says nothing about plain Premium, which X already shows as a blue check', () => {
+    expect(accountChips({ blueVerified: true })).toEqual([])
+  })
+
+  it('is empty for an account we know nothing about', () => {
+    expect(accountChips({})).toEqual([])
+    expect(accountChips(undefined)).toEqual([])
+  })
+
+  it('shows only the verification X does not already draw', () => {
+    // Identity and legacy verification render as the same badge as a paid one,
+    // so they are the only ones the card can tell you something new about.
+    expect(
+      accountChips({
+        identityVerified: true,
+        verified: true,
+        blueVerified: true,
+      }).map((c) => c.text),
+    ).toEqual(['🪪 ID verified'])
+    expect(accountChips({ verified: true, blueVerified: true })[0].text).toBe(
+      '✔ Verified',
+    )
+  })
+
+  it('tints a young account and a much-renamed one, and nothing else', () => {
+    const young = accountChips({ createdAt: daysAgo(10) })
+    expect(young[0].tone).toBe('warn')
+
+    const old = accountChips({ createdAt: daysAgo(4000) })
+    expect(old[0].tone).toBe('plain')
+
+    const renamed = accountChips({ handleChanges: 4 })
+    expect(renamed[0].tone).toBe('warn')
+    expect(accountChips({ handleChanges: 1 })[0].tone).toBe('plain')
+  })
+
+  it('names the org a badge points at', () => {
+    const chips = accountChips({
+      affiliation: { handle: 'nasa', name: 'NASA', badgeUrl: null },
+    })
+    expect(chips[0].text).toBe('🏢 NASA')
+    expect(chips[0].title).toContain('@nasa')
+  })
+
+  it('falls back to the handle when the badge carries no name', () => {
+    const chips = accountChips({
+      affiliation: { handle: 'nasa', name: null, badgeUrl: null },
+    })
+    expect(chips[0].text).toBe('🏢 @nasa')
+  })
+})
+
+describe('the hover-card share button', () => {
+  beforeEach(() => {
+    // Call history survives between tests otherwise, and "was it called" is
+    // exactly what these assert. The implementation is re-installed because
+    // clearAllMocks drops history but keeps implementations — and elsewhere in
+    // this file it is the other way round.
+    snapshot.snapshotElement.mockClear()
+    snapshot.snapshotElement.mockRejectedValue(new Error('no canvas in tests'))
+    vi.mocked(renderShareCard).mockClear()
+  })
+
+  function makeHoverCard(userName: string) {
+    const card = document.createElement('div')
+    card.setAttribute('data-testid', 'HoverCard')
+    card.innerHTML = `
+      <div><div><div>
+        <div data-testid="UserName"><a href="/${userName}">Test User</a></div>
+        <span>@${userName}</span>
+      </div></div></div>
+    `
+    return card
+  }
+
+  async function hover(userName: string) {
+    const card = makeHoverCard(userName)
+    document.body.appendChild(card)
+    await flushAsync()
+    await flushAsync()
+    return card
+  }
+
+  it('offers a copy button once X has told us something', async () => {
+    // Discoverability is the whole point: the context menu was the only way in,
+    // so nobody found it.
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    const card = await hover('someone')
+
+    const btn = card.querySelector('.x-loc-share-btn') as HTMLButtonElement
+    expect(btn).not.toBeNull()
+    expect(btn.textContent).toContain('Copy')
+    // In the flags row, not on a line of its own — a hover card is short on
+    // vertical space and the button is an action on exactly that row.
+    expect(btn.closest('.x-loc-info')).not.toBeNull()
+  })
+
+  it('comes after the flags in the row, not before them', async () => {
+    // Everything used to be inserted at the same anchor, which put each new
+    // element above the last and landed the button on top of the flags.
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    const card = await hover('someone')
+
+    const row = card.querySelector('.x-loc-info')!
+    const last = row.lastElementChild as HTMLElement
+    expect(last.classList.contains('x-loc-share-btn')).toBe(true)
+  })
+
+  it('copies the post it was opened from, not just the account', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+
+    const article = makeTweetArticle('someone')
+    article.querySelector('div:not([data-testid])')!.remove()
+    const text = document.createElement('div')
+    text.setAttribute('data-testid', 'tweetText')
+    text.textContent = 'The post that was on screen.'
+    article.appendChild(text)
+    document.body.appendChild(article)
+    await flushAsync()
+
+    // Pointing at the author's link is what opens the card, and is how the
+    // post gets associated with it.
+    const link = article.querySelector('a[href="/someone"]')!
+    link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+
+    const card = await hover('someone')
+    ;(card.querySelector('.x-loc-share-btn') as HTMLButtonElement).click()
+    await flushAsync()
+    await flushAsync()
+
+    // The snapshot is tried first, on the post the pointer was on.
+    expect(snapshot.snapshotElement).toHaveBeenCalled()
+    expect(snapshot.snapshotElement.mock.calls.at(-1)?.[0]).toBe(article)
+
+    // And when it can't render, the drawn card still carries the post text.
+    expect(vi.mocked(renderShareCard).mock.calls.at(-1)?.[0].text).toBe(
+      'The post that was on screen.',
+    )
+  })
+
+  it('falls back to an account-only card when no post is in reach', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    const card = await hover('nowhere')
+    ;(card.querySelector('.x-loc-share-btn') as HTMLButtonElement).click()
+    await flushAsync()
+    await flushAsync()
+
+    // Nothing to snapshot, so it goes straight to the drawn card.
+    expect(snapshot.snapshotElement).not.toHaveBeenCalled()
+    expect(vi.mocked(renderShareCard).mock.calls.at(-1)?.[0].text).toBe('')
+  })
+
+  it('stays away when there is nothing on the card to copy', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+    })
+    const card = await hover('unknown')
+    expect(card.querySelector('.x-loc-share-btn')).toBeNull()
+  })
+
+  it('can be switched off', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({ showShareButton: false })
+
+    const card = await hover('someone')
+    expect(card.querySelector('.x-loc-share-btn')).toBeNull()
+  })
+
+  it('is not added twice when the card is reprocessed', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    const card = await hover('someone')
+    card.removeAttribute('data-x-loc-done')
+    document.body.appendChild(document.createElement('div'))
+    await flushAsync()
+    await flushAsync()
+
+    expect(card.querySelectorAll('.x-loc-share-btn')).toHaveLength(1)
+  })
+})
+
+describe('where the snapshot puts the location line', () => {
+  function decorateOf(article: Element) {
+    const opts = snapshot.snapshotElement.mock.calls.at(-1)?.[1] as {
+      decorate?: (clone: Element) => void
+    }
+    const clone = article.cloneNode(true) as Element
+    opts.decorate?.(clone)
+    return clone
+  }
+
+  async function shareVia(article: HTMLElement) {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    document.body.appendChild(article)
+    await flushAsync()
+
+    onMessageCallback({ type: 'SHARE_POST' })
+    article.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }))
+    onMessageCallback({ type: 'SHARE_POST' })
+    await flushAsync()
+    await flushAsync()
+
+    return decorateOf(article)
+  }
+
+  it('goes inside the name block on a status page, after the handle', async () => {
+    // Where processPrimaryTweet puts it on the page. Putting it after the whole
+    // block instead is what left a gap under a detail page's author.
+    const article = makeTweetArticle('someone', 'Test User', true)
+    const clone = await shareVia(article)
+
+    const nameEl = clone.querySelector('[data-testid="User-Name"]')!
+    expect(nameEl.contains(clone.querySelector('span[style*="flex"]'))).toBe(
+      true,
+    )
+    expect(nameEl.textContent).toContain('Japan')
+  })
+
+  it('goes after the name block in a reply, where placeFeedRow puts it', async () => {
+    const article = makeTweetArticle('someone')
+    const clone = await shareVia(article)
+
+    const nameEl = clone.querySelector('[data-testid="User-Name"]')!
+    expect(nameEl.textContent).not.toContain('Japan')
+    expect(clone.textContent).toContain('Japan')
   })
 })

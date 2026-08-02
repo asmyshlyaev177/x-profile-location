@@ -78,14 +78,14 @@ describe('User node — screen_name from core', () => {
   it('extracts userName from core.screen_name', () => {
     const user = makeUser('alice', { via: 'core' })
     expect(extractUsers(user)).toEqual([
-      { userName: 'alice', displayName: null, bio: null },
+      { userName: 'alice', displayName: null, bio: null, facts: {} },
     ])
   })
 
   it('falls back to legacy.screen_name when core is absent', () => {
     const user = makeUser('bob', { via: 'legacy' })
     expect(extractUsers(user)).toEqual([
-      { userName: 'bob', displayName: null, bio: null },
+      { userName: 'bob', displayName: null, bio: null, facts: {} },
     ])
   })
 
@@ -96,7 +96,7 @@ describe('User node — screen_name from core', () => {
       legacy: { screen_name: 'secondary', description: 'bio' },
     }
     expect(extractUsers(user)).toEqual([
-      { userName: 'primary', displayName: null, bio: 'bio' },
+      { userName: 'primary', displayName: null, bio: 'bio', facts: {} },
     ])
   })
 
@@ -113,21 +113,21 @@ describe('User node — bio extraction', () => {
   it('returns null bio when no description fields present', () => {
     const user = makeUser('charlie')
     expect(extractUsers(user)).toEqual([
-      { userName: 'charlie', displayName: null, bio: null },
+      { userName: 'charlie', displayName: null, bio: null, facts: {} },
     ])
   })
 
   it('uses legacy.description when profile_bio is absent', () => {
     const user = makeUser('dave', { legacyDesc: 'legacy bio' })
     expect(extractUsers(user)).toEqual([
-      { userName: 'dave', displayName: null, bio: 'legacy bio' },
+      { userName: 'dave', displayName: null, bio: 'legacy bio', facts: {} },
     ])
   })
 
   it('uses profile_bio.description when present', () => {
     const user = makeUser('eve', { profileBioDesc: 'profile bio' })
     expect(extractUsers(user)).toEqual([
-      { userName: 'eve', displayName: null, bio: 'profile bio' },
+      { userName: 'eve', displayName: null, bio: 'profile bio', facts: {} },
     ])
   })
 
@@ -137,7 +137,7 @@ describe('User node — bio extraction', () => {
       profileBioDesc: 'profile',
     })
     expect(extractUsers(user)).toEqual([
-      { userName: 'frank', displayName: null, bio: 'profile' },
+      { userName: 'frank', displayName: null, bio: 'profile', facts: {} },
     ])
   })
 
@@ -147,14 +147,14 @@ describe('User node — bio extraction', () => {
       profileBioDesc: null,
     })
     expect(extractUsers(user)).toEqual([
-      { userName: 'grace', displayName: null, bio: 'legacy bio' },
+      { userName: 'grace', displayName: null, bio: 'legacy bio', facts: {} },
     ])
   })
 
   it('returns null bio when both descriptions are null', () => {
     const user = makeUser('heidi', { legacyDesc: null, profileBioDesc: null })
     expect(extractUsers(user)).toEqual([
-      { userName: 'heidi', displayName: null, bio: null },
+      { userName: 'heidi', displayName: null, bio: null, facts: {} },
     ])
   })
 
@@ -162,7 +162,7 @@ describe('User node — bio extraction', () => {
     const user = makeUser('ivan', { legacyDesc: '' })
     // empty string is falsy but still a valid description value
     expect(extractUsers(user)).toEqual([
-      { userName: 'ivan', displayName: null, bio: '' },
+      { userName: 'ivan', displayName: null, bio: '', facts: {} },
     ])
   })
 })
@@ -177,7 +177,7 @@ describe('non-User __typename nodes', () => {
       author: makeUser('judy', { legacyDesc: 'hi' }),
     }
     expect(extractUsers(payload)).toEqual([
-      { userName: 'judy', displayName: null, bio: 'hi' },
+      { userName: 'judy', displayName: null, bio: 'hi', facts: {} },
     ])
   })
 
@@ -194,7 +194,7 @@ describe('nested objects', () => {
   it('finds a User nested one level deep', () => {
     const payload = { data: makeUser('kate', { legacyDesc: 'bio' }) }
     expect(extractUsers(payload)).toEqual([
-      { userName: 'kate', displayName: null, bio: 'bio' },
+      { userName: 'kate', displayName: null, bio: 'bio', facts: {} },
     ])
   })
 
@@ -211,25 +211,27 @@ describe('nested objects', () => {
       userName: 'user1',
       displayName: null,
       bio: 'bio1',
+      facts: {},
     })
     expect(result).toContainEqual({
       userName: 'user2',
       displayName: null,
       bio: 'bio2',
+      facts: {},
     })
   })
 
   it('handles null values inside nested objects without throwing', () => {
     const payload = { a: null, b: makeUser('lena', { legacyDesc: 'ok' }) }
     expect(extractUsers(payload)).toEqual([
-      { userName: 'lena', displayName: null, bio: 'ok' },
+      { userName: 'lena', displayName: null, bio: 'ok', facts: {} },
     ])
   })
 
   it('handles primitive values in nested objects', () => {
     const payload = { x: 1, y: 'str', z: makeUser('mia') }
     expect(extractUsers(payload)).toEqual([
-      { userName: 'mia', displayName: null, bio: null },
+      { userName: 'mia', displayName: null, bio: null, facts: {} },
     ])
   })
 })
@@ -241,7 +243,7 @@ describe('array inputs', () => {
   it('finds a User directly inside an array', () => {
     const arr = [makeUser('nina', { legacyDesc: 'b' })]
     expect(extractUsers(arr)).toEqual([
-      { userName: 'nina', displayName: null, bio: 'b' },
+      { userName: 'nina', displayName: null, bio: 'b', facts: {} },
     ])
   })
 
@@ -256,25 +258,27 @@ describe('array inputs', () => {
       userName: 'oscar',
       displayName: null,
       bio: 'bio-o',
+      facts: {},
     })
     expect(result).toContainEqual({
       userName: 'pat',
       displayName: null,
       bio: 'bio-p',
+      facts: {},
     })
   })
 
   it('skips null and primitive entries in an array', () => {
     const arr = [null, 42, 'x', makeUser('quinn')]
     expect(extractUsers(arr)).toEqual([
-      { userName: 'quinn', displayName: null, bio: null },
+      { userName: 'quinn', displayName: null, bio: null, facts: {} },
     ])
   })
 
   it('handles nested arrays', () => {
     const arr = [[makeUser('rose', { legacyDesc: 'nested' })]]
     expect(extractUsers(arr)).toEqual([
-      { userName: 'rose', displayName: null, bio: 'nested' },
+      { userName: 'rose', displayName: null, bio: 'nested', facts: {} },
     ])
   })
 })
@@ -288,7 +292,7 @@ describe('depth limit', () => {
     // passes depth+1 for each child traversal, so 20 layers reaches depth 20.
     const payload = nest(makeUser('sam', { legacyDesc: 'deep' }), 20)
     expect(extractUsers(payload)).toEqual([
-      { userName: 'sam', displayName: null, bio: 'deep' },
+      { userName: 'sam', displayName: null, bio: 'deep', facts: {} },
     ])
   })
 
@@ -303,7 +307,7 @@ describe('depth limit', () => {
       deep: nest(makeUser('vic', { legacyDesc: 'lost' }), 21),
     }
     expect(extractUsers(payload)).toEqual([
-      { userName: 'uma', displayName: null, bio: 'found' },
+      { userName: 'uma', displayName: null, bio: 'found', facts: {} },
     ])
   })
 })
@@ -347,7 +351,7 @@ describe('HomeTimeline-like shape', () => {
       },
     }
     expect(extractUsers(payload)).toEqual([
-      { userName: 'wendy', displayName: null, bio: 'Timeline bio' },
+      { userName: 'wendy', displayName: null, bio: 'Timeline bio', facts: {} },
     ])
   })
 
@@ -392,11 +396,13 @@ describe('HomeTimeline-like shape', () => {
       userName: 'xena',
       displayName: null,
       bio: 'bio x',
+      facts: {},
     })
     expect(result).toContainEqual({
       userName: 'yara',
       displayName: null,
       bio: 'bio y',
+      facts: {},
     })
   })
 })
@@ -467,11 +473,61 @@ describe('TweetDetail-like shape (replies)', () => {
       userName: 'zara',
       displayName: null,
       bio: 'primary bio',
+      facts: {},
     })
     expect(result).toContainEqual({
       userName: 'amir',
       displayName: null,
       bio: 'reply bio',
+      facts: {},
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Account facts riding along with the bio
+// ---------------------------------------------------------------------------
+describe('account facts', () => {
+  it('carries the facts the same node already contains', () => {
+    const user = {
+      __typename: 'User',
+      core: {
+        screen_name: 'artemis',
+        name: 'NASA Artemis',
+        created_at: 'Tue Jul 10 21:51:25 +0000 2012',
+      },
+      is_blue_verified: true,
+      legacy: { followers_count: 33813 },
+      privacy: { protected: false },
+      rest_id: '632344577',
+      affiliates_highlighted_label: {
+        label: {
+          description: 'NASA',
+          url: { url: 'https://twitter.com/NASA' },
+        },
+      },
+    }
+
+    const [parsed] = extractUsers(user)
+    expect(parsed.userName).toBe('artemis')
+    expect(parsed.facts).toEqual({
+      createdAt: Date.UTC(2012, 6, 10, 21, 51, 25),
+      followers: 33813,
+      blueVerified: true,
+      isProtected: false,
+      restId: '632344577',
+      affiliation: { handle: 'nasa', name: 'NASA', badgeUrl: null },
+    })
+  })
+
+  it('omits fields the node did not carry, rather than sending nulls', () => {
+    const [parsed] = extractUsers({
+      __typename: 'User',
+      core: { screen_name: 'sparse' },
+    })
+    expect(parsed.facts).toEqual({})
+    // A merge target must be able to tell "not in this response" from
+    // "explicitly nothing" — see mergeCached's facts branch.
+    expect('followers' in parsed.facts).toBe(false)
   })
 })

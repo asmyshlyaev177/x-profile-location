@@ -159,6 +159,43 @@ describe('mergeCached', () => {
     })
   })
 
+  it('merges facts instead of replacing them, so each source keeps what it knew', async () => {
+    // The timeline gave us a follower count; AboutAccountQuery gives handle
+    // history. A shallow spread would drop whichever arrived first.
+    vi.mocked(get).mockResolvedValue({
+      data: {
+        location: null,
+        locationAccurate: true,
+        source: null,
+        facts: { followers: 33813, createdAt: 1_700_000_000_000 },
+      } satisfies LocationData,
+      fetchedAt: Date.now() - 1_000,
+    })
+
+    await mergeCached('artemis', { facts: { handleChanges: 3 } })
+
+    const [, entry] = vi.mocked(set).mock.calls[0] as [
+      string,
+      { data: LocationData },
+    ]
+    expect(entry.data.facts).toEqual({
+      followers: 33813,
+      createdAt: 1_700_000_000_000,
+      handleChanges: 3,
+    })
+  })
+
+  it('leaves facts absent entirely when neither side has any', async () => {
+    vi.mocked(get).mockResolvedValue(undefined)
+    await mergeCached('nobody', { bio: 'hi' })
+
+    const [, entry] = vi.mocked(set).mock.calls[0] as [
+      string,
+      { data: LocationData },
+    ]
+    expect('facts' in entry.data).toBe(false)
+  })
+
   it('merges partial data into an existing entry, preserving other fields', async () => {
     const existing: LocationData = {
       location: 'France',

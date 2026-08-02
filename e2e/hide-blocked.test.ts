@@ -18,8 +18,7 @@ import {
   mockSharedCache,
   mostLikedReply,
   openOptionsPage,
-  optionsSection,
-  setSectionOpen,
+  openOptionsTab,
 } from './helpers'
 import { CACHE_API_BASE } from '../src/scripts/constants'
 
@@ -110,14 +109,16 @@ async function setHideMode(
 ): Promise<void> {
   const optPage = await openOptionsPage(context, extensionId)
 
-  // The control sits in a <details>; a closed one can't be selected in. Opening
-  // it via the helper rather than a bare click, because the section may already
-  // be open — by default or from stored state — and a click would close it.
-  await setSectionOpen(optPage, 'blocked', true)
+  // Since the Phase 2 redesign this applies to every filter, not just blocked
+  // locations, so it sits at the top of the Filters tab rather than inside the
+  // Locations section — no accordion to open, but the tab has to be selected.
+  await openOptionsTab(optPage, 'Filters')
 
-  // Scoped to the section: the options page has more than one <select>, and a
-  // bare locator('select') breaks the day another is added.
-  const select = optionsSection(optPage, 'blocked').locator('select')
+  // Anchored on its own label: the tab has more than one <select>, and a bare
+  // locator('select') breaks the day another is added.
+  const select = optPage
+    .locator('label:has-text("Posts caught by any filter") select')
+    .first()
   await select.selectOption(mode)
   // The value is bound to the state the onChange writes to storage, so it only
   // reads back as `mode` once chrome.storage.local.set has been called.

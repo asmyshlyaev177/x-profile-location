@@ -1,0 +1,125 @@
+.popup {
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  width: 268px;
+  padding: 10px 12px 12px;
+  color: #111;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.brand {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.masterSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  /* Comfortably past the 44px touch target on the Android build, where this
+     same page is what the toolbar button opens. */
+  min-height: 44px;
+}
+
+.offNotice {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.dimmed {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.row,
+.selectRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.selectRow {
+  justify-content: space-between;
+}
+
+.selectRow select {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.linkBtn {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: transparent;
+  border: none;
+  padding: 8px 0;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.linkBtn:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.linkBtn:disabled {
+  color: #6b7280;
+  cursor: default;
+}
+
+@media (prefers-color-scheme: dark) {
+  .popup {
+    color: #e7e9ea;
+    background: #15181c;
+  }
+  .header,
+  .footer {
+    border-color: #2f3336;
+  }
+  .selectRow select {
+    background: #202327;
+    color: #e7e9ea;
+    border-color: #3d4144;
+  }
+  .linkBtn {
+    color: #7ab8f5;
+  }
+  .offNotice {
+    color: #8b98a5;
+  }
+}

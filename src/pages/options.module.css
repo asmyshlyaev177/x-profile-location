@@ -1,111 +1,436 @@
+/* Full-page settings.
+ *
+ * This page used to be the toolbar popup as well, so everything was squeezed
+ * into ~350px and folded behind accordions to make it fit. It is its own tab
+ * now, so the accordions are gone: hiding a four-line section behind a click on
+ * a page with room to spare only made settings harder to find.
+ *
+ * What replaces them is a flat list of cards, one per topic, with every control
+ * laid out on the same rhythm — label and explanation on the left, control on
+ * the right. The point is that the page can be *scanned*: you should be able to
+ * find a setting by reading down the left edge, without opening anything.
+ */
+
+:root {
+  --bg: #f7f8f9;
+  --surface: #ffffff;
+  --border: #e3e6e8;
+  --border-strong: #cfd4d8;
+  --text: #0f1419;
+  --text-muted: #5b6875;
+  --text-faint: #8b98a5;
+  --accent: #1d63d8;
+  --accent-soft: rgba(29, 99, 216, 0.1);
+  --warn-bg: #fff8e6;
+  --warn-border: #f5d99b;
+  --warn-text: #7a5300;
+  --danger-bg: #fdeceb;
+  --danger-border: #f3b5b1;
+  --danger-text: #a3231c;
+  --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1114;
+    --surface: #181c20;
+    --border: #2a3037;
+    --border-strong: #3a424b;
+    --text: #e7e9ea;
+    --text-muted: #a3adb8;
+    --text-faint: #7d8894;
+    --accent: #6ea8ff;
+    --accent-soft: rgba(110, 168, 255, 0.14);
+    --warn-bg: rgba(245, 173, 42, 0.12);
+    --warn-border: rgba(245, 173, 42, 0.35);
+    --warn-text: #f0be6a;
+    --danger-bg: rgba(220, 60, 50, 0.13);
+    --danger-border: rgba(220, 60, 50, 0.35);
+    --danger-text: #f0928c;
+  }
+}
+
 .container {
   font-family:
     system-ui,
     -apple-system,
+    'Segoe UI',
     sans-serif;
-  padding: 12px;
-  min-width: 320px;
-  max-width: 480px;
+  /* Wide enough for a label and its control on one line, narrow enough that a
+     description stays inside a comfortable reading measure. */
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px 64px;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+  box-sizing: border-box;
+  line-height: 1.5;
 }
 
-.title {
-  margin: 0 0 12px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #111;
-}
+/* Header ------------------------------------------------------------------ */
 
-/* Accordion */
-
-.accordion {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  overflow: visible;
-}
-
-.accordionSummary {
-  padding: 10px 14px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #111;
-  cursor: pointer;
-  list-style: none;
+.pageHeader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0 14px;
+  background: var(--bg);
+}
+
+.title {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+/* The master switch reads as a state, not a checkbox in a list — it is the one
+   control that decides whether anything else on the page applies. */
+.masterSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  min-height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
   user-select: none;
-  border-radius: 8px;
+  white-space: nowrap;
 }
 
-.accordionSummary::-webkit-details-marker {
-  display: none;
+.masterSwitch input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
 }
 
-.accordionSummary::marker {
-  display: none;
-}
-
-.accordion[open] > .accordionSummary {
-  border-bottom: 1px solid #e5e7eb;
-  border-radius: 8px 8px 0 0;
-}
-
-.accordionContent {
+.pausedBanner {
+  margin: 0 0 18px;
   padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-text);
+  font-size: 13.5px;
 }
 
-.accordionArrow {
-  font-size: 11px;
-  color: #6b7280;
-  display: inline-block;
-  transition: transform 0.15s;
-}
+/* Tabs -------------------------------------------------------------------- */
 
-.accordion[open] .accordionArrow {
-  transform: rotate(180deg);
-}
-
-/* Content */
-
-.subtitle {
-  margin: 0 0 12px;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.chips {
+.tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 2px;
+  margin-bottom: 22px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-/* Scrollable variant for lists that can grow long (e.g. many exceptions) */
-.chipsScroll {
-  max-height: 168px;
-  overflow-y: auto;
-  align-content: flex-start;
-  padding: 6px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #fafafa;
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  flex: 1 1 auto;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  /* Comfortable touch target on the Android build, which opens this same page. */
+  min-height: 40px;
+  padding: 0 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tabActive,
+.tabActive:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+/* Cards ------------------------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 18px;
+  margin-bottom: 14px;
+}
+
+.cardHead {
+  padding: 16px 0 4px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cardDesc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+
+.cardBody {
+  padding: 10px 0 16px;
+}
+
+/* One setting: text on the left, control on the right, on a shared rhythm.
+   This is the pattern that makes the page scannable — every row reads the same
+   way, so you can find a setting by running down the left edge. */
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 13px 0;
+  border-top: 1px solid var(--border);
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.setting:first-child {
+  border-top: none;
+}
+
+/* A whole row that toggles when clicked anywhere on it. */
+label.setting {
+  cursor: pointer;
+  user-select: none;
+}
+
+.settingMain {
+  min-width: 0;
+}
+
+.settingLabel {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.settingDesc {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  max-width: 58ch;
+}
+
+.settingControl {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settingControl input[type='checkbox'] {
+  accent-color: var(--accent);
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+}
+
+/* A block of controls that needs the full width (chip lists, autocompletes). */
+.stack {
+  padding: 14px 0 4px;
+  border-top: 1px solid var(--border);
+}
+
+.stack:first-child {
+  border-top: none;
+}
+
+/* A row switched off by another setting. The control keeps its own :disabled
+   cursor; the opacity lives here so label and value dim together (and don't
+   compound into near-invisibility). */
+.optionDisabled {
+  opacity: 0.45;
+}
+
+/* Controls ---------------------------------------------------------------- */
+
+.modeSelect {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+  outline: none;
+}
+
+.modeSelect:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.modeSelect:disabled {
+  cursor: not-allowed;
+}
+
+.numberInput {
+  width: 62px;
+  padding: 8px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: center;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+}
+
+.numberInput:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.numberInput:disabled {
+  cursor: not-allowed;
 }
 
 .searchInput {
   width: 100%;
   box-sizing: border-box;
-  padding: 6px 10px;
-  margin-bottom: 8px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  font-size: 13px;
-  color: #111;
+  padding: 9px 12px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
   outline: none;
 }
 
-.searchInput:focus {
-  border-color: #93c5fd;
+.searchInput:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.secondaryBtn {
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 0 16px;
+  min-height: 42px;
+  cursor: pointer;
+}
+
+.secondaryBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.dangerBtn {
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 0 16px;
+  min-height: 42px;
+  border-radius: 9px;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  cursor: pointer;
+}
+
+.dangerBtn:hover:not(:disabled) {
+  border-color: var(--danger-text);
+}
+
+.dangerBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+/* Chips ------------------------------------------------------------------- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+/* Scrollable variant for lists that can grow long (e.g. many exceptions) */
+.chipsScroll {
+  max-height: 172px;
+  overflow-y: auto;
+  align-content: flex-start;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border: 1px solid var(--danger-border);
+  border-radius: 7px;
+  padding: 4px 9px;
+  font-size: 13px;
+}
+
+.chipKeyword {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+.chipFlag {
+  font-size: 15px;
 }
 
 .chipLink {
@@ -117,28 +442,6 @@
   text-decoration: underline;
 }
 
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fca5a5;
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 13px;
-}
-
-.chipKeyword {
-  background: #dbeafe;
-  color: #1e40af;
-  border-color: #93c5fd;
-}
-
-.chipFlag {
-  font-size: 15px;
-}
-
 .chipRemove {
   background: none;
   border: none;
@@ -147,10 +450,25 @@
   padding: 0 0 0 2px;
   line-height: 1;
   font-size: 16px;
-  font-weight: 400;
+  opacity: 0.75;
 }
 
-/* Used by renderOption in country autocomplete */
+.chipRemove:hover {
+  opacity: 1;
+}
+
+/* A region chip's "+57 countries" note */
+.chipNote {
+  margin-left: 2px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: rgba(127, 127, 127, 0.18);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: help;
+}
+
+/* Used by renderOption in the country autocomplete */
 .dropdownFlag {
   font-size: 18px;
   line-height: 1;
@@ -164,107 +482,68 @@
   opacity: 0.6;
 }
 
-.controlRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* Per-rule exception groups ------------------------------------------------ */
+
+.ruleGroup {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+
+.ruleGroup:first-of-type {
+  border-top: none;
+  padding-top: 4px;
+}
+
+.ruleTitle {
+  margin: 0 0 10px;
   font-size: 13px;
-  color: #374151;
-  cursor: pointer;
-  user-select: none;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.01em;
 }
 
-.numberInput {
-  width: 48px;
-  padding: 3px 6px;
-  border-radius: 5px;
-  border: 1px solid #d1d5db;
-  font-size: 13px;
-  text-align: center;
-  color: #111;
-  outline: none;
-}
+/* Notes ------------------------------------------------------------------- */
 
-.numberInput:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.modeSelect {
-  padding: 4px 8px;
-  border-radius: 5px;
-  border: 1px solid #d1d5db;
-  font-size: 13px;
-  font-family: inherit;
-  color: #111;
-  background: #fff;
-  cursor: pointer;
-  outline: none;
-}
-
-.modeSelect:focus {
-  border-color: #93c5fd;
-}
-
-.modeSelect:disabled {
-  cursor: not-allowed;
-}
-
-/* A row switched off by another setting. The control keeps its own :disabled
-   cursor; the opacity lives here so label and value dim together (and don't
-   compound into near-invisibility). */
-.optionDisabled {
-  opacity: 0.5;
+.hint {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  max-width: 62ch;
 }
 
 .empty {
-  color: #9ca3af;
-  font-size: 12px;
-  margin-top: 10px;
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
 }
 
-.mobileHint {
-  margin: 0 0 10px 2px;
-  font-size: 12px;
-  color: #6b7280;
+.errorNote {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--danger-text);
 }
 
-.inlineOption {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #111;
-  cursor: pointer;
-  user-select: none;
-  padding: 10px 2px;
-}
-
-.cacheSection {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: flex-start;
-}
-
-.clearCacheBtn {
-  padding: 7px 14px;
-  font-size: 13px;
-  border-radius: 6px;
-  border: 1px solid #fca5a5;
-  background: #fee2e2;
-  color: #991b1b;
-  cursor: pointer;
-}
-
-.clearCacheBtn:hover:not(:disabled) {
-  background: #fecaca;
-  border-color: #f87171;
-}
-
-.clearCacheBtn:disabled {
-  opacity: 0.6;
-  cursor: default;
+@media (max-width: 560px) {
+  .container {
+    padding: 0 14px 48px;
+  }
+  .tabs {
+    border-radius: 10px;
+  }
+  .tab {
+    flex: 0 0 auto;
+    font-size: 13px;
+    padding: 0 12px;
+  }
+  /* Stacked, so a long label and its control stop fighting over one line. */
+  .setting {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  label.setting {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
