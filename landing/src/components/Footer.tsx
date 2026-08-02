@@ -20,6 +20,7 @@ const LINKS: { heading: string; items: { label: string; href: string }[] }[] = [
         label: 'Spotting engagement farming',
         href: '/spot-engagement-farming',
       },
+      { label: 'Compared with X-Posed', href: '/x-posed-alternative' },
     ],
   },
   {
