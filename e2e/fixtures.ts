@@ -12,8 +12,10 @@ import { chromium } from 'playwright-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { playwrightProxy } from 'test-proxy-recorder'
 
+type Mode = 'record' | 'replay'
+
 // Change to 'record' to hit the real API and update recordings.
-export const MODE: 'record' | 'replay' = 'replay'
+export const MODE: Mode = 'replay'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
