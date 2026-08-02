@@ -25,23 +25,28 @@ const OUT =
 const WIDTH = 1280
 const HEIGHT = 800
 
-// What the shot should show off. Sections not listed stay collapsed, which is
-// what keeps the page inside HEIGHT.
+/** Tuned so the whole tab clears HEIGHT — the script warns when it doesn't. */
+const ZOOM = Number(process.env.ZOOM ?? 0.8)
+
+// What the shot should show off: a page that is visibly *doing* something, so
+// the filters read as the point rather than as empty inputs.
+//
+// The tab matters as much as the values now. Sections stopped being accordions
+// in the Phase 2 redesign — the page is five tabs of flat cards, and a shot can
+// only carry one tab, so `optionsTab` is what frames the whole screenshot.
+// `optionsSections` used to live here; that key and its normalizer are gone.
 const SETTINGS = {
+  optionsTab: 'filters',
   highlightKeywords: ['he/him', 'nafo', 'nafofella', '🇷🇺', '🇺🇦'],
   blockedCountries: ['India', 'South Asia', 'Nigeria', 'Pakistan'],
+  blockedAffiliations: ['nasa'],
+  accountAgeFilter: { enabled: true, days: 180 },
+  hideBlockedLocations: 'collapse',
   showLocationInFeed: true,
   sharedCacheEnabled: true,
   backgroundPrefetch: true,
   prefetchShare: 0.7,
   prefetchPacing: 'spread',
-  optionsSections: {
-    keywords: true,
-    flags: false,
-    exceptions: false,
-    prefetch: true,
-    blocked: false,
-  },
 }
 
 const profileDir = path.join(os.tmpdir(), `store-shot-${Date.now()}`)
@@ -63,29 +68,44 @@ const extensionId = new URL(worker.url()).host
 const page = await ctx.newPage()
 await page.setViewportSize({ width: WIDTH, height: HEIGHT })
 await page.goto(`chrome-extension://${extensionId}/pages/options.html`)
-await page.locator('details').first().waitFor()
+await page.locator('section').first().waitFor()
 
 await page.evaluate((settings) => chrome.storage.local.set(settings), SETTINGS)
 await page.reload()
-await page.locator('details').first().waitFor()
+await page.locator('section').first().waitFor()
 
-// The options page is a left-aligned 480px column sized for the extension's own
-// narrow window; centre it on the wide store canvas and shrink it just enough
-// that the whole page fits. Presentation only — the extension is untouched.
+// Shrink the page towards fitting the store canvas, and take the scrollbar out
+// of the frame. Presentation only — the extension is untouched. The column
+// centres itself, so unlike the old narrow layout this needs no flex wrapper.
 await page.addStyleTag({
-  content: `body { display: flex; justify-content: center; }
-            body > div { zoom: 0.93; }`,
+  content: `:root { zoom: ${ZOOM}; scrollbar-width: none; }
+            ::-webkit-scrollbar { display: none; }`,
 })
 await page.waitForTimeout(400)
 
-const contentHeight = await page.evaluate(() => document.body.scrollHeight)
-if (contentHeight > HEIGHT) {
-  console.warn(
-    `⚠ content is ${contentHeight}px tall — the bottom will be cut off.\n` +
-      `  Collapse another section in SETTINGS, or lower the zoom.`,
-  )
-}
+/**
+ * A tab is taller than 800px whatever the zoom — five cards of real settings do
+ * not fit, and shrinking until they do makes the text unreadable, which defeats
+ * the screenshot. So drop the cards that would be sliced instead. Cropping the
+ * image would leave a hard edge mid-card; hiding the overflow lets the page's
+ * own background run to the bottom of the frame, which reads as a page you have
+ * simply not scrolled yet.
+ */
+const dropped = await page.evaluate((limit) => {
+  const cards = [...document.querySelectorAll('section')]
+  let hidden = 0
+  for (const card of cards) {
+    if (card.getBoundingClientRect().bottom > limit - 12) {
+      card.style.display = 'none'
+      hidden++
+    }
+  }
+  return hidden
+}, HEIGHT)
 
+if (dropped) console.log(`hid ${dropped} card(s) that would not fit whole`)
+
+// Captured at 2x and downscaled, so text stays sharp.
 await sharp(await page.screenshot())
   .resize(WIDTH, HEIGHT)
   .png()
