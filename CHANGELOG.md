@@ -44,6 +44,10 @@ issue, your name belongs here.
   flags row of every hover card, and right-clicking a post does the same.
 - **Import and export your settings** as JSON. The export deliberately contains
   neither your cached locations nor the anonymous shared-cache id.
+- **The two filters you actually change mid-scroll are in the toolbar popup** —
+  blocked locations and highlight keywords, each behind a collapsed section so
+  the popup still opens as a handful of switches. Edits land on the timeline
+  behind it immediately; the section you were last in is where it reopens.
 - **A pause switch** in the toolbar popup.
 - 33 territories X can report but the extension could not name — Jersey,
   Réunion, Greenland, Macau, Guadeloupe and the rest.
