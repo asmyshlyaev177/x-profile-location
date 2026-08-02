@@ -709,7 +709,7 @@ export function Options() {
         <>
           <Card
             title="What happens to a filtered post"
-            description="Applies to every filter below. A quoted post is collapsed on its own, so the post quoting it stays readable, and people lists are marked rather than hidden — removing rows there breaks the counts."
+            description="Applies to the two filters that take a post away — blocked locations and blocked affiliations. Account age and keyword highlighting mark a post whatever this is set to. A quoted post is collapsed on its own, so the post quoting it stays readable, and people lists are marked rather than hidden — removing rows there breaks the counts."
           >
             <Setting
               label="Filtered posts"
@@ -824,11 +824,11 @@ export function Options() {
 
           <Card
             title="Account age"
-            description="How long the account has existed, from the creation date X reports."
+            description="How long the account has existed, from the creation date X reports. This one marks posts and never hides them, whatever the setting above says."
           >
             <Setting
-              label="Filter by account age"
-              description="Worth knowing before switching this on: a young account is the strongest single signal for a bought or farmed one, and it is also exactly what somebody who joined recently looks like."
+              label="Mark young accounts"
+              description="Marks their posts the same way a keyword match does, with the orange bar down the side. It stops there on purpose: a young account is the strongest single signal for a bought or farmed one, and it is also exactly what somebody who joined last month looks like — too thin an excuse to take their replies away."
               control={
                 <input
                   type="checkbox"
@@ -842,7 +842,7 @@ export function Options() {
               }
             />
             <Setting
-              label="Filter accounts younger than"
+              label="Mark accounts younger than"
               clickable={false}
               disabled={!accountAge.enabled}
               control={

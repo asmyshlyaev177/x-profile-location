@@ -18,7 +18,13 @@ issue, your name belongs here.
   the countries in it too.
 - **Filter by affiliation** — block an organisation and every account X badges
   as belonging to it.
-- **Filter by account age**, off by default.
+- **Young accounts are marked rather than hidden**, off by default. Posts from
+  an account newer than your threshold get the same orange bar down the side
+  that a keyword match gets. This is the one rule that never collapses a post
+  whatever "what happens to a filtered post" is set to: a young account is the
+  strongest single signal for a bought or farmed one, and it is also exactly
+  what somebody who joined last month looks like, which is too thin an excuse
+  to take their replies away.
 - **Always-show allowlist**, and **per-rule exceptions** so an account can be
   exempt from one filter without being exempt from the rest. Existing highlight
   exceptions carry over untouched.

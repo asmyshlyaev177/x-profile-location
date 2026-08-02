@@ -37,6 +37,7 @@ import {
   PREFETCH_SHARE_KEY,
   REGION_ABBR,
   REGION_FLAGS,
+  ruleHides,
   RULE_EXCEPTIONS_KEY,
   type RuleExceptions,
   SHARED_CACHE_KEY,
@@ -77,6 +78,7 @@ import {
   KEYWORD_MATCH_ATTR,
   PEOPLE_MATCH_ATTR,
   QUOTE_HIDDEN_ATTR,
+  TWEET_MARK_ATTR,
 } from './styles'
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA'
@@ -267,11 +269,13 @@ function stripAllInjections(): void {
   )) {
     article.removeAttribute('data-x-loc-highlighted')
     article.removeAttribute(HIDDEN_ATTR)
+    article.removeAttribute(TWEET_MARK_ATTR)
     article.removeAttribute(FEED_LOCATION_ATTR)
     article.removeAttribute(PRIMARY_TWEET_ATTR)
     const quote = getQuotedTweetEl(article)
     quote?.removeAttribute(QUOTE_HIGHLIGHT_ATTR)
     quote?.removeAttribute(QUOTE_HIDDEN_ATTR)
+    quote?.removeAttribute(TWEET_MARK_ATTR)
   }
   for (const cell of Array.from(
     document.querySelectorAll<Element>(SEL_USER_CELL),
@@ -466,11 +470,11 @@ export interface FilterMatch {
  * Every data-driven rule an account matches, exceptions ignored.
  *
  * Ordered least-surprising-first, since location is the rule the user almost
- * certainly set up deliberately. Split out of filterMatchFor so that the
+ * certainly set up deliberately. Split out of activeMatches so that the
  * exception button and the hide/collapse decision cannot disagree about what a
  * rule means: the button has to offer exactly the rules that are acting, *and*
  * to name one the user has already excepted so it can be undone — which is the
- * one thing filterMatchFor must never return.
+ * one thing activeMatches must never return.
  *
  * Highlighting is absent because it is judged from the bio rather than from
  * this record; activeRulesFor folds it back in.
@@ -513,19 +517,55 @@ function ruleMatches(data: LocationData | null | undefined): FilterMatch[] {
 }
 
 /**
- * The single decision point for "should this account's posts be filtered".
+ * The single decision point for "which rules are acting on this account".
  *
  * The allowlist and the per-rule exceptions are applied here and nowhere else,
  * so they cannot be applied in three subtly different ways — and so a
- * placeholder can always say which rule it was. The first rule the account is
- * not excepted from wins.
+ * placeholder can always say which rule it was.
  */
-function filterMatchFor(
+function activeMatches(
+  userName: string,
+  data: LocationData | undefined,
+): FilterMatch[] {
+  if (isAlwaysShown(userName)) return []
+  return ruleMatches(data).filter((m) => !isExcepted(m.rule, userName))
+}
+
+/**
+ * The rule a post is hidden for, or null — the first one that both fires and is
+ * allowed to hide.
+ *
+ * An account can match a rule that only marks (age) and no rule that hides; the
+ * filter above is what stops that from collapsing the post anyway, which is the
+ * whole difference between the two kinds of rule.
+ */
+function hideMatchFor(
   userName: string,
   data: LocationData | undefined,
 ): FilterMatch | null {
-  if (isAlwaysShown(userName)) return null
-  return ruleMatches(data).find((m) => !isExcepted(m.rule, userName)) ?? null
+  return activeMatches(userName, data).find((m) => ruleHides(m.rule)) ?? null
+}
+
+/** The rule a post is marked for: the first one acting that does not hide. */
+function markMatchFor(
+  userName: string,
+  data: LocationData | undefined,
+): FilterMatch | null {
+  return activeMatches(userName, data).find((m) => !ruleHides(m.rule)) ?? null
+}
+
+/**
+ * The rule to name on a people-list row, hiding or not.
+ *
+ * Rows are marked and never removed, so the distinction that matters everywhere
+ * else does not apply here: a row's tag should say "blocked location" when that
+ * is what fired, even though the same rule collapses a post.
+ */
+function cellMatchFor(
+  userName: string,
+  data: LocationData | undefined,
+): FilterMatch | null {
+  return activeMatches(userName, data)[0] ?? null
 }
 
 // ---------------------------------------------------------------------------
@@ -1536,7 +1576,7 @@ async function tryHideQuote(article: Element) {
   const { userName } = extractQuotedTweetUserInfo(quote)
   if (!userName) return
 
-  const match = filterMatchFor(userName, await getCached(userName))
+  const match = hideMatchFor(userName, await getCached(userName))
   if (match) hideQuote(quote, userName, match)
 }
 
@@ -1553,7 +1593,7 @@ async function tryHideArticle(article: Element) {
   const { userName } = extractTweetUserInfo(article)
   if (!userName) return
 
-  const match = filterMatchFor(userName, await getCached(userName))
+  const match = hideMatchFor(userName, await getCached(userName))
   if (match) hideArticle(article, userName, match)
 }
 
@@ -1562,7 +1602,7 @@ async function tryHideArticle(article: Element) {
 // injectFeedLocationForUser.
 function hideTweetsForUser(userName: string, data: LocationData): void {
   if (hideMode === 'off') return
-  const match = filterMatchFor(userName, data)
+  const match = hideMatchFor(userName, data)
   if (!match) return
   const lc = userName.toLowerCase()
   document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
@@ -1584,9 +1624,8 @@ function hideTweetsForUser(userName: string, data: LocationData): void {
   })
 }
 
-// Re-evaluate every on-screen tweet: unhide first (the mode changed, or a
-// location was removed from the list), then re-hide if still applicable.
-// User-revealed tweets are left alone.
+// Re-evaluate every on-screen tweet after a rule change: strip what the last
+// answer put there, then ask again. User-revealed tweets are left alone.
 function refreshHiddenTweets() {
   if (!extensionEnabled) return
   // The one button covers these rules too, so a change to any of them can make
@@ -1605,9 +1644,75 @@ function refreshHiddenTweets() {
       quote.removeAttribute(QUOTE_HIDDEN_ATTR)
       quote.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
     }
+    a.removeAttribute(TWEET_MARK_ATTR)
+    quote?.removeAttribute(TWEET_MARK_ATTR)
+
     if (hideMode !== 'off') void tryHideArticle(a)
+    // Not gated on hideMode: that setting says what to do with posts a filter
+    // caught, and a rule that marks never catches one in that sense. Someone
+    // running with hiding switched off entirely still wants the mark.
+    void tryMarkArticle(a)
   })
   void refreshPeopleCells()
+}
+
+// ---------------------------------------------------------------------------
+// Marking posts a rule points at rather than hides
+// ---------------------------------------------------------------------------
+// Same mechanism as hiding — an attribute React's re-renders leave alone, plus
+// a CSS rule — but nothing is taken away, so none of the hiding machinery
+// applies: no placeholder to build, no "Show" to offer, no revealed-flag to
+// remember, and no reason to skip the post a status page is about. A young
+// author is worth knowing about on the post you deliberately opened.
+
+async function tryMarkArticle(article: Element) {
+  // The quote's author is judged on their own, exactly as they are for hiding
+  // and highlighting — either, both or neither can be new.
+  void tryMarkQuote(article)
+
+  if (article.hasAttribute(TWEET_MARK_ATTR)) return
+  const { userName } = extractTweetUserInfo(article)
+  if (!userName) return
+
+  const match = markMatchFor(userName, await getCached(userName))
+  if (match) article.setAttribute(TWEET_MARK_ATTR, match.rule)
+}
+
+async function tryMarkQuote(article: Element) {
+  const quote = getQuotedTweetEl(article)
+  if (!quote || quote.hasAttribute(TWEET_MARK_ATTR)) return
+  const { userName } = extractQuotedTweetUserInfo(quote)
+  if (!userName) return
+
+  const match = markMatchFor(userName, await getCached(userName))
+  if (match) quote.setAttribute(TWEET_MARK_ATTR, match.rule)
+}
+
+/**
+ * Mark every post on screen by this account once their data arrives.
+ *
+ * A post is judged when it first appears, which is usually before anything is
+ * known about who wrote it — so the answer it got from an empty cache has to be
+ * revisited, the same way hideTweetsForUser and markPeopleCellsForUser do.
+ */
+function markTweetsForUser(userName: string, data: LocationData): void {
+  const match = markMatchFor(userName, data)
+  if (!match) return
+  const lc = userName.toLowerCase()
+  for (const article of Array.from(
+    document.querySelectorAll<Element>(SEL_TWEET),
+  )) {
+    if (extractTweetUserInfo(article).userName?.toLowerCase() === lc) {
+      article.setAttribute(TWEET_MARK_ATTR, match.rule)
+    }
+    const quote = getQuotedTweetEl(article)
+    if (
+      quote &&
+      extractQuotedTweetUserInfo(quote).userName?.toLowerCase() === lc
+    ) {
+      quote.setAttribute(TWEET_MARK_ATTR, match.rule)
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1637,7 +1742,7 @@ async function tryMarkPeopleCell(cell: Element) {
   cell.setAttribute(PEOPLE_CELL_ATTR, '1')
 
   const data = await getCached(userName)
-  const match = filterMatchFor(userName, data)
+  const match = cellMatchFor(userName, data)
   if (!match) return
 
   cell.setAttribute(PEOPLE_MATCH_ATTR, match.rule)
@@ -1657,7 +1762,7 @@ async function tryMarkPeopleCell(cell: Element) {
  * to be re-judged rather than left at the answer they got from an empty cache.
  */
 function markPeopleCellsForUser(userName: string, data: LocationData): void {
-  if (!filterMatchFor(userName, data)) return
+  if (!cellMatchFor(userName, data)) return
   const lc = userName.toLowerCase()
   for (const cell of Array.from(
     document.querySelectorAll<Element>(SEL_USER_CELL),
@@ -1677,6 +1782,7 @@ function markPeopleCellsForUser(userName: string, data: LocationData): void {
 function applyFiltersForUser(userName: string, data: LocationData): void {
   injectFeedLocationForUser(userName, data)
   hideTweetsForUser(userName, data)
+  markTweetsForUser(userName, data)
   markPeopleCellsForUser(userName, data)
 }
 
@@ -2649,11 +2755,13 @@ function startObserver() {
         tryHighlightArticle(node)
         tryInjectFeedLocation(node)
         tryHideArticle(node)
+        tryMarkArticle(node)
       } else {
         node.querySelectorAll<Element>(SEL_TWEET).forEach((t) => {
           tryHighlightArticle(t)
           tryInjectFeedLocation(t)
           tryHideArticle(t)
+          tryMarkArticle(t)
         })
       }
 
