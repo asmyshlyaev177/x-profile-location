@@ -19,6 +19,7 @@ import { test, expect } from './fixtures'
 import {
   openOptionsPage,
   openOptionsTab,
+  pickBioWord,
   PRIMARY_TWEET,
   readCachedBio,
   tweetArticles,
@@ -135,20 +136,34 @@ test('highlight exception button works the same from a reply hover card', async 
   // processCard() only builds the button for accounts that match a rule, so its
   // presence already says the hover card agreed the keyword hit.
   await target.link.hover()
-  const excBtn = page.locator('[data-testid="HoverCard"] .x-loc-exc-btn')
+  const card = page.locator('[data-testid="HoverCard"]')
+  const excBtn = card.locator('.x-loc-exc-btn')
   await expect(excBtn).toBeVisible({ timeout: 10_000 })
   await expect(excBtn).toHaveText('🚫 Add exception')
+
+  // The card is also where the matched word is marked, which is the other half
+  // of answering "why is this account highlighted?". The text ranges are
+  // registered in CSS.highlights and paint without touching the DOM, so the
+  // attribute — which scopes the emoji half — is the only part a test can see.
+  await expect(card).toHaveAttribute('data-x-loc-kw', '1')
 
   await excBtn.click()
   await expect(target.article).not.toHaveAttribute('data-x-loc-highlighted', {
     timeout: 5_000,
   })
   await expect(excBtn).toHaveText('✓ Exception (undo)')
+  // Excepted accounts lose the bar on their posts, so the mark in their bio has
+  // to go with it — a word still lit up here would read as the exception not
+  // having worked.
+  await expect(card).not.toHaveAttribute('data-x-loc-kw', /.*/, {
+    timeout: 5_000,
+  })
 
   await excBtn.click()
   await expect(target.article).toHaveAttribute('data-x-loc-highlighted', {
     timeout: 5_000,
   })
+  await expect(card).toHaveAttribute('data-x-loc-kw', '1', { timeout: 5_000 })
 })
 
 // ---------------------------------------------------------------------------
@@ -187,16 +202,6 @@ async function pickHighlightableReply(page: Page): Promise<{
     if (keyword) return { article, link, keyword }
   }
   throw new Error('no reply with a cached bio in this recording')
-}
-
-/**
- * Longest run of letters in the bio — longest so the keyword is distinctive, and
- * letters-only so it can't land on an emoji or a fragment of a URL. Grapheme-aware
- * matching in the extension treats it as a standalone word either way.
- */
-function pickBioWord(bio: string | null): string | undefined {
-  const words = bio?.toLowerCase().match(/\p{L}{3,}/gu) ?? []
-  return words.sort((a, b) => b.length - a.length)[0]
 }
 
 async function addKeyword(

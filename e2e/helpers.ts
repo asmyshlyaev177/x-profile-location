@@ -314,6 +314,55 @@ export async function hoverForLocationRow(
   return card
 }
 
+/**
+ * Longest run of letters in a bio — longest so the keyword is distinctive, and
+ * letters-only so it can't land on an emoji or a fragment of a URL.
+ *
+ * Keywords in these tests come from whatever bio the recording captured rather
+ * than a literal, which would rot the day the account edits its bio.
+ */
+export function pickBioWord(bio: string | null): string | undefined {
+  const words = bio?.toLowerCase().match(/\p{L}{3,}/gu) ?? []
+  return words.sort((a, b) => b.length - a.length)[0]
+}
+
+/**
+ * Opens the toolbar popup as an ordinary tab. Callers close it again.
+ *
+ * A tab rather than the real popup because Playwright cannot open a browser
+ * action popup, and it costs nothing: the popup is a normal extension page with
+ * the same access to chrome.storage, so everything it writes reaches the
+ * content script exactly as it would from the toolbar.
+ */
+export async function openPopupPage(
+  context: BrowserContext,
+  extensionId: string,
+): Promise<Page> {
+  const popup = await context.newPage()
+  await popup.goto(`chrome-extension://${extensionId}/pages/popup.html`)
+  // Nothing is interactive until the storage read that seeds every control has
+  // resolved; the master switch is enabled at that point and disabled before.
+  await popup
+    .locator('input[type="checkbox"]:not([disabled])')
+    .first()
+    .waitFor({ timeout: 5_000 })
+  return popup
+}
+
+/** Expands one of the popup's collapsed filter sections, if it isn't already. */
+export async function openPopupSection(
+  popup: Page,
+  title: 'Blocked locations' | 'Highlight keywords',
+): Promise<void> {
+  const button = popup.locator(`button:has-text("${title}")`)
+  await button.waitFor({ timeout: 5_000 })
+  if ((await button.getAttribute('aria-expanded')) === 'true') return
+  await button.click()
+  await expect(button).toHaveAttribute('aria-expanded', 'true', {
+    timeout: 5_000,
+  })
+}
+
 /** Opens the extension's options page in its own tab. Callers close it again. */
 export async function openOptionsPage(
   context: BrowserContext,
