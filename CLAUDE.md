@@ -321,7 +321,7 @@ SHARED_CACHE_KEY = 'sharedCacheEnabled' // default ON (inert without CACHE_API_B
 // Phase 2
 EXTENSION_ENABLED_KEY = 'extensionEnabled' // master switch; default ON
 BLOCKED_AFFILIATIONS_KEY = 'blockedAffiliations' // parent-org handles
-ACCOUNT_AGE_KEY = 'accountAgeFilter' // { enabled, days }; default off / 30
+ACCOUNT_AGE_KEY = 'accountAgeFilter' // { enabled, days }; default off / 180; marks, never hides
 RULE_EXCEPTIONS_KEY = 'ruleExceptions' // Record<FilterRule, string[]>
 ALWAYS_SHOW_KEY = 'alwaysShowAccounts' // exempt from every rule
 SHOW_ACCOUNT_CARD_KEY = 'showAccountCard' // default ON
@@ -352,15 +352,33 @@ literal picks, so "Africa" stays one removable chip; the content script expands
 it to the region's members _plus the region name itself_, because X reports
 accounts under both — some come back as "South Asia" and some as "Pakistan".
 
-`filterMatchFor()` is the single decision point for every filter (location,
+`activeMatches()` is the single decision point for every filter (location,
 affiliation, age), applying the allowlist and per-rule exceptions once rather
-than in three subtly different places. It returns the rule that matched, which
-is what lets the collapse placeholder name the setting to go and change. The
-matching itself lives in `ruleMatches()`, which ignores the exceptions and
-returns _all_ of them — `filterMatchFor` takes the first the account is not
-excepted from, and `activeRulesFor()` (which adds the bio-driven highlight rule)
-takes the lot, because the exception button has to be able to name a rule the
-user has already excepted in order to undo it.
+than in three subtly different places. The matching itself lives in
+`ruleMatches()`, which ignores the exceptions and returns _all_ of them;
+`activeRulesFor()` (which adds the bio-driven highlight rule) takes the lot,
+because the exception button has to be able to name a rule the user has already
+excepted in order to undo it.
+
+**Not every rule may hide.** `HIDING_RULES` (countries.ts) is the list allowed
+to take a post away — `location` and `affiliation`, the two the user named on
+purpose. Account age is deliberately not on it: an age threshold catches whoever
+falls under it, and "joined recently" describes a farmed account and a person
+who signed up last month equally well. Three readers sit on top of the one
+decision, and which one a caller wants is the whole distinction:
+
+- `hideMatchFor()` — the first match that is _allowed_ to hide. Drives
+  `tryHideArticle` / `tryHideQuote`, and returns the rule the placeholder names.
+- `markMatchFor()` — the first match that does _not_ hide. Drives
+  `tryMarkArticle` / `markTweetsForUser`, which set `TWEET_MARK_ATTR` to the
+  rule name. Deliberately **not** gated on `hideMode`: that setting answers
+  "what happens to a post a filter caught", and a rule that only marks never
+  catches one in that sense. The bar it draws is the keyword rule's — one
+  selector list in styles.ts covers highlighted posts, highlighted quote cards
+  and marks, so they cannot drift apart and a post matching two has no cascade
+  to resolve.
+- `cellMatchFor()` — the first match of any kind, for people-list rows, where
+  everything is marked and nothing is ever removed.
 
 **Marking the matched keyword** (`markKeywords`, `keywordRangesIn`) is done
 without touching a node X owns, which is the whole design constraint: the hover

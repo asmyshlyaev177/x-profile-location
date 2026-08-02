@@ -1156,6 +1156,24 @@ export const FILTER_RULES = [
 
 export type FilterRule = (typeof FILTER_RULES)[number]
 
+/**
+ * The rules allowed to take a post away. Every other rule can only point at one.
+ *
+ * Account age is deliberately not here. Location and affiliation catch what the
+ * user named on purpose — a country they typed, an organisation they entered —
+ * so removing the post is doing what was asked. An age threshold catches whoever
+ * happens to fall under it, and "joined recently" describes a farmed account and
+ * a person who signed up last month equally well. Collapsing replies on that
+ * evidence hides real people to make a guess look decisive, so the age rule
+ * marks the post and lets the reader decide.
+ */
+export const HIDING_RULES: readonly FilterRule[] = ['location', 'affiliation']
+
+/** Whether a rule may hide a post, as opposed to only marking it. */
+export function ruleHides(rule: FilterRule): boolean {
+  return HIDING_RULES.includes(rule)
+}
+
 // Per-rule exception lists: `{ location: ['someone'], age: [...] }`.
 //
 // Generalised from what used to be a single hard-coded highlight-exception
