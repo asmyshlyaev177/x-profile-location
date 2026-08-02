@@ -1050,6 +1050,31 @@ export function normalizeOptionsTab(value: unknown): OptionsTabId {
     : 'display'
 }
 
+// Which colour scheme the extension's own pages use — this settings page and
+// the toolbar popup.
+//
+// 'system' is the default *and* the only value that writes no attribute onto
+// <html>: the stylesheets resolve `light-dark()` against the OS on their own,
+// so a system user is painted correctly on the first frame instead of after an
+// async storage read. An explicit choice pins `color-scheme` instead, which is
+// also what gets native checkboxes and scrollbars to match — they have no
+// custom properties to follow.
+//
+// Deliberately not applied to what the content script draws on X. Those rows
+// live inside X's own UI and follow X's theme; making them follow this setting
+// would put a light card on a dark timeline whenever the two disagree.
+export const THEME_KEY = 'theme'
+
+export const THEMES = ['system', 'light', 'dark'] as const
+
+export type ThemePreference = (typeof THEMES)[number]
+
+export function normalizeTheme(value: unknown): ThemePreference {
+  return THEMES.includes(value as ThemePreference)
+    ? (value as ThemePreference)
+    : 'system'
+}
+
 // Which of the toolbar popup's filter accordions was last open.
 //
 // Accordions came *out* of the options page and *into* the popup for the same

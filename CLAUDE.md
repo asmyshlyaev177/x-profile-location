@@ -327,7 +327,14 @@ ALWAYS_SHOW_KEY = 'alwaysShowAccounts' // exempt from every rule
 SHOW_ACCOUNT_CARD_KEY = 'showAccountCard' // default ON
 SHOW_SHARE_BUTTON_KEY = 'showShareButton' // hover-card "Copy card" button; default ON
 OPTIONS_TAB_KEY = 'optionsTab' // which settings tab is open
+THEME_KEY = 'theme' // 'system' | 'light' | 'dark'; default 'system'; extension pages only
 ```
+
+`THEME_KEY` is applied by `src/pages/theme.ts`, which sets `data-theme` on
+`<html>` — and only that. The palettes are `light-dark()` pairs in each page's
+stylesheet, so 'system' writes no attribute at all and CSS resolves the OS
+preference without waiting for the storage read. The content script's marks on X
+are deliberately left out: they sit inside X's UI and follow X's theme.
 
 `HIGHLIGHT_EXCEPTIONS_KEY` still exists and is **still written**: it is the
 mirror of `ruleExceptions.highlight`. Reads merge the old key into that bucket

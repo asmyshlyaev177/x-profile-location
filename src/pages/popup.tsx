@@ -34,6 +34,7 @@ import {
   SHOW_LOCATION_IN_FEED_KEY,
 } from '../scripts/countries'
 import css from './popup.module.css'
+import { startThemeSync } from './theme'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 
@@ -136,6 +137,10 @@ export function Popup() {
   const [keywords, setKeywords] = useState<string[]>([])
   const [section, setSection] = useState<PopupSection | null>(null)
   const [loaded, setLoaded] = useState(false)
+
+  // The popup has no theme control of its own — it is set once in the options
+  // page and every extension page follows it.
+  useEffect(startThemeSync, [])
 
   useEffect(() => {
     chrome.storage.local
