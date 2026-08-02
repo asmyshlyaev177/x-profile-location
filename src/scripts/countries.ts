@@ -1050,6 +1050,27 @@ export function normalizeOptionsTab(value: unknown): OptionsTabId {
     : 'display'
 }
 
+// Which of the toolbar popup's filter accordions was last open.
+//
+// Accordions came *out* of the options page and *into* the popup for the same
+// reason: the options page is a full tab with room to lay everything flat,
+// while the popup is a ~300px panel where two list editors would push the
+// switches off the bottom. Collapsed by default, so the popup still opens as a
+// handful of switches; remembered, because adding three countries one at a time
+// should not mean re-opening the same section three times.
+export const POPUP_SECTION_KEY = 'popupSection'
+
+export const POPUP_SECTIONS = ['locations', 'keywords'] as const
+
+export type PopupSection = (typeof POPUP_SECTIONS)[number]
+
+/** The section to open, or null for all collapsed — which is also the default. */
+export function normalizePopupSection(value: unknown): PopupSection | null {
+  return POPUP_SECTIONS.includes(value as PopupSection)
+    ? (value as PopupSection)
+    : null
+}
+
 // Whether hover cards get the account card (age, affiliation, verification,
 // handle history) under the location row. On by default: the data arrives with
 // responses the extension already receives, so showing it costs nothing, and it
