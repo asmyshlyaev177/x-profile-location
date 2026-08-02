@@ -5,7 +5,6 @@ import {
   type Page,
 } from '@playwright/test'
 import { CACHE_API_BASE } from '../src/scripts/constants'
-import { OPTIONS_SECTIONS_KEY } from '../src/scripts/countries'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -315,6 +314,55 @@ export async function hoverForLocationRow(
   return card
 }
 
+/**
+ * Longest run of letters in a bio — longest so the keyword is distinctive, and
+ * letters-only so it can't land on an emoji or a fragment of a URL.
+ *
+ * Keywords in these tests come from whatever bio the recording captured rather
+ * than a literal, which would rot the day the account edits its bio.
+ */
+export function pickBioWord(bio: string | null): string | undefined {
+  const words = bio?.toLowerCase().match(/\p{L}{3,}/gu) ?? []
+  return words.sort((a, b) => b.length - a.length)[0]
+}
+
+/**
+ * Opens the toolbar popup as an ordinary tab. Callers close it again.
+ *
+ * A tab rather than the real popup because Playwright cannot open a browser
+ * action popup, and it costs nothing: the popup is a normal extension page with
+ * the same access to chrome.storage, so everything it writes reaches the
+ * content script exactly as it would from the toolbar.
+ */
+export async function openPopupPage(
+  context: BrowserContext,
+  extensionId: string,
+): Promise<Page> {
+  const popup = await context.newPage()
+  await popup.goto(`chrome-extension://${extensionId}/pages/popup.html`)
+  // Nothing is interactive until the storage read that seeds every control has
+  // resolved; the master switch is enabled at that point and disabled before.
+  await popup
+    .locator('input[type="checkbox"]:not([disabled])')
+    .first()
+    .waitFor({ timeout: 5_000 })
+  return popup
+}
+
+/** Expands one of the popup's collapsed filter sections, if it isn't already. */
+export async function openPopupSection(
+  popup: Page,
+  title: 'Blocked locations' | 'Highlight keywords',
+): Promise<void> {
+  const button = popup.locator(`button:has-text("${title}")`)
+  await button.waitFor({ timeout: 5_000 })
+  if ((await button.getAttribute('aria-expanded')) === 'true') return
+  await button.click()
+  await expect(button).toHaveAttribute('aria-expanded', 'true', {
+    timeout: 5_000,
+  })
+}
+
 /** Opens the extension's options page in its own tab. Callers close it again. */
 export async function openOptionsPage(
   context: BrowserContext,
@@ -322,86 +370,54 @@ export async function openOptionsPage(
 ): Promise<Page> {
   const optPage = await context.newPage()
   await optPage.goto(`chrome-extension://${extensionId}/pages/options.html`)
-  await optPage.locator('details').first().waitFor({ timeout: 5_000 })
+  await optPage
+    .locator('button[role="tab"]')
+    .first()
+    .waitFor({ timeout: 5_000 })
   return optPage
 }
 
-const SECTION_LABELS = {
-  keywords: 'Highlight tweets by keyword',
-  flags: 'Highlight tweets by flags',
-  exceptions: 'Highlight exceptions',
-  prefetch: 'Background lookups',
-  blocked: 'Blocked locations',
+// Each section, its heading, and the tab it lives behind. Sections are only in
+// the DOM while their tab is selected, so every locator here selects the tab
+// first — see openOptionsTab.
+//
+// There is nothing to expand any more: the accordions were removed when the
+// options page became a full tab, so the old setSectionOpen / readStoredSections
+// helpers went with them. A section is just a card you read inside.
+const SECTIONS = {
+  keywords: { tab: 'Filters', label: 'Highlight by keyword' },
+  flags: { tab: 'Filters', label: 'Highlight by flags' },
+  blocked: { tab: 'Filters', label: 'Locations' },
+  affiliation: { tab: 'Filters', label: 'Affiliations' },
+  age: { tab: 'Filters', label: 'Account age' },
+  mode: { tab: 'Filters', label: 'What happens to a filtered post' },
+  exceptions: { tab: 'Exceptions', label: 'Per-rule exceptions' },
+  allowlist: { tab: 'Exceptions', label: 'Always show' },
+  prefetch: { tab: 'Data & privacy', label: 'Background lookups' },
+  data: { tab: 'Data & privacy', label: 'Back up & restore' },
+  cache: { tab: 'Data & privacy', label: 'Local cache' },
 } as const
 
-export type OptionsSection = keyof typeof SECTION_LABELS
+export type OptionsSection = keyof typeof SECTIONS
 
-/** The <details> accordion for one options-page section. */
-export function optionsSection(page: Page, section: OptionsSection): Locator {
-  return page.locator(
-    `details:has(summary:has-text("${SECTION_LABELS[section]}"))`,
-  )
+/** Selects a tab by its label, if it isn't already the active one. */
+export async function openOptionsTab(page: Page, tab: string): Promise<void> {
+  const button = page.locator(`button[role="tab"]:has-text("${tab}")`)
+  await button.waitFor({ timeout: 5_000 })
+  if ((await button.getAttribute('aria-selected')) === 'true') return
+  await button.click()
+  await expect(button).toHaveAttribute('aria-selected', 'true', {
+    timeout: 5_000,
+  })
 }
 
-export async function expectSectionOpen(
+/** The card for one options-page section, with its tab selected first. */
+export async function optionsSection(
   page: Page,
   section: OptionsSection,
-  open: boolean,
-): Promise<void> {
-  const details = optionsSection(page, section)
-  if (open)
-    await expect(details).toHaveAttribute('open', '', { timeout: 5_000 })
-  else
-    await expect(details).not.toHaveAttribute('open', /.*/, { timeout: 5000 })
-}
-
-/**
- * Expands or collapses a section, clicking only when it isn't already that way.
- * The state is persisted (OPTIONS_SECTIONS_KEY) and restored on load, so a blind
- * click closes what the caller meant to open as soon as a previous test — or the
- * default — left it open.
- */
-export async function setSectionOpen(
-  page: Page,
-  section: OptionsSection,
-  open: boolean,
-): Promise<void> {
-  const details = optionsSection(page, section)
-  await details.waitFor({ timeout: 5_000 })
-  const isOpen = await details.evaluate((el) => (el as HTMLDetailsElement).open)
-  if (isOpen === open) return
-
-  await details.locator('summary').click()
-  await expectSectionOpen(page, section, open)
-  // <details> flips itself on click and the storage write trails the toggle
-  // handler, so returning on the DOM alone would leave a caller that reads
-  // storage — or reopens the page — racing that write.
-  await expect
-    .poll(async () => (await readStoredSections(page))?.[section], {
-      timeout: 5_000,
-    })
-    .toBe(open)
-}
-
-/** Raw OPTIONS_SECTIONS_KEY value, straight out of chrome.storage.local. */
-export async function readStoredSections(
-  page: Page,
-): Promise<Record<string, boolean> | undefined> {
-  return page.evaluate(async (key) => {
-    const result = await chrome.storage.local.get(key)
-    return result[key] as Record<string, boolean> | undefined
-  }, OPTIONS_SECTIONS_KEY)
-}
-
-/** Seeds OPTIONS_SECTIONS_KEY. The page reads it on load, so reload afterwards. */
-export async function writeStoredSections(
-  page: Page,
-  sections: Record<string, boolean>,
-): Promise<void> {
-  await page.evaluate(
-    ({ key, value }) => chrome.storage.local.set({ [key]: value }),
-    { key: OPTIONS_SECTIONS_KEY, value: sections },
-  )
+): Promise<Locator> {
+  await openOptionsTab(page, SECTIONS[section].tab)
+  return page.locator(`section:has(h2:text-is("${SECTIONS[section].label}"))`)
 }
 
 /**
@@ -418,17 +434,17 @@ export async function setCheckboxOption(
   const optPage = await context.newPage()
   await optPage.goto(`chrome-extension://${extensionId}/pages/options.html`)
 
+  // A setting is only in the DOM while its tab is selected. Which tab owns
+  // which label isn't worth a second table to keep in sync, so try each in turn
+  // and stop at the one that has it.
   const toggle = optPage
     .locator(`label:has-text("${labelText}") input[type="checkbox"]`)
     .first()
+  for (const tab of ['Display', 'Filters', 'Exceptions', 'Data & privacy']) {
+    await openOptionsTab(optPage, tab)
+    if ((await toggle.count()) > 0) break
+  }
   await toggle.waitFor({ state: 'attached', timeout: 5_000 })
-  // Settings inside a collapsed accordion are display:none and can't be clicked.
-  // Flipping `open` fires `toggle` exactly as a click does, so the page persists
-  // the section as opened — same end state as a user expanding it by hand.
-  await toggle.evaluate((el) => {
-    const details = el.closest('details')
-    if (details && !details.open) details.open = true
-  })
   await toggle.setChecked(enabled)
   // The checkbox is bound to the state the onChange writes to storage, so it
   // only reads back as `enabled` once chrome.storage.local.set has been called.

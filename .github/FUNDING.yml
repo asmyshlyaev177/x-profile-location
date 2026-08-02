@@ -2,5 +2,7 @@
 # countries), but `custom` needs no eligibility — it just links out. That is what
 # puts the Sponsor button on the repo.
 #
-# Fill in once the card-to-crypto donation page exists; see ROADMAP.md Phase 4.
-# custom: ["https://<donation-page>"]
+# NOWPayments, crypto-only: no merchant KYC on the payout side. The donor-facing
+# card path is an on-ramp with its own minimums, so this is a sponsor rail rather
+# than a tip rail — see ROADMAP.md Phase 4.
+custom: ["https://nowpayments.io/donation/asmyshlyaev177"]

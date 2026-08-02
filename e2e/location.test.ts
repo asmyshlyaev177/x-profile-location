@@ -26,6 +26,8 @@ import {
   navigateToTweetDetail,
   nthReply,
   officialAccountLocation,
+  openOptionsPage,
+  optionsSection,
   readIdb,
   TWEET_ARTICLE,
   tweetArticles,
@@ -240,15 +242,19 @@ test('clear cache button empties IDB and forces fresh API call on re-hover', asy
   const keysBefore = await readIdb(page)
   expect(keysBefore).toContain('sotaproject')
 
-  // Open the options page and click "Clear location cache".
-  const optionsPage = await context.newPage()
-  await optionsPage.goto(`chrome-extension://${extensionId}/pages/options.html`)
-  // Use a class selector so the locator survives the text change after clicking.
-  const clearBtn = optionsPage.locator('[class*="clearCacheBtn"]')
-  await clearBtn.waitFor({ timeout: 5_000 })
+  // Open the options page and click "Clear location cache". Scoped to its own
+  // section (which selects the Data & privacy tab first — a section is only in
+  // the DOM while its tab is showing) rather than to a class name: this read
+  // `[class*="clearCacheBtn"]` until the Phase 2 redesign renamed the class to
+  // `dangerBtn`, and a class selector fails silently the moment the styling is
+  // touched.
+  const optionsPage = await openOptionsPage(context, extensionId)
+  const clearBtn = (await optionsSection(optionsPage, 'cache')).locator(
+    'button',
+  )
   await clearBtn.click()
-  // Button text flips to "Cache cleared!" once the message round-trip completes.
-  await expect(clearBtn).toHaveText('Cache cleared!', { timeout: 5_000 })
+  // Button text flips once the message round-trip completes.
+  await expect(clearBtn).toHaveText('Cache cleared', { timeout: 5_000 })
   await optionsPage.close()
 
   // Give the content script time to process the relayed CLEAR_CACHE message.

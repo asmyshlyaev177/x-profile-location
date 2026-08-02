@@ -1,0 +1,65 @@
+/* The page around the fixtures: a stand-in for X's own chrome, and nothing
+   else. Every rule that is actually under test comes from CONTENT_CSS, injected
+   by the spec — if a fixture needs a rule of its own to look right, that rule
+   belongs in the extension, not here. */
+
+body {
+  background: #000;
+  color: #e7e9ea;
+  font:
+    15px system-ui,
+    sans-serif;
+  margin: 0;
+  padding: 24px;
+}
+
+h4 {
+  color: #71767b;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 24px 0 8px;
+}
+
+/* X's hover card: a fixed-width panel, laid out as a column. The column is the
+   part that matters — it is what used to stretch our buttons to full width. */
+.hovercard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 300px;
+  padding: 12px;
+  border: 1px solid #2f3336;
+  border-radius: 16px;
+}
+
+.name {
+  font-weight: 700;
+}
+
+.handle {
+  color: #71767b;
+  font-size: 14px;
+}
+
+.bio {
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+.bio img {
+  height: 1.2em;
+  vertical-align: -0.2em;
+}
+
+/* X's tweet article and people row, reduced to the box they occupy. */
+article,
+.usercell {
+  width: 560px;
+  padding: 12px 0;
+  border-bottom: 1px solid #2f3336;
+}
+
+.tweetbody {
+  padding: 0 16px;
+}
