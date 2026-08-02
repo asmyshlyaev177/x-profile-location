@@ -1,3 +1,18 @@
+/* See the same block in options.module.css: `light-dark()` holds both palettes
+   and `color-scheme` picks between them, so the theme setting is one attribute
+   on <html> and 'system' needs no JavaScript at all. */
+:root {
+  color-scheme: light dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
 .popup {
   font-family:
     system-ui,
@@ -9,20 +24,21 @@
   width: 300px;
   padding: 10px 12px 12px;
   color: var(--text);
+  background: light-dark(#ffffff, #15181c);
 
   /* Read by Autocomplete, which is shared with the options page and styles
      itself from these. Without them it falls back to light-mode literals and
      lands a white input on the dark popup — exactly the bug the options page
      had. */
-  --text: #111;
-  --text-dim: #6b7280;
-  --surface: #fff;
-  --surface-alt: #f3f4f6;
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
-  --accent: #93c5fd;
-  --accent-soft: rgba(147, 197, 253, 0.35);
-  --link: #1d4ed8;
+  --text: light-dark(#111, #e7e9ea);
+  --text-dim: light-dark(#6b7280, #8b98a5);
+  --surface: light-dark(#fff, #202327);
+  --surface-alt: light-dark(#f3f4f6, #1a1d21);
+  --border: light-dark(#e5e7eb, #2f3336);
+  --border-strong: light-dark(#d1d5db, #3d4144);
+  --accent: light-dark(#93c5fd, #1d9bf0);
+  --accent-soft: light-dark(rgba(147, 197, 253, 0.35), rgba(29, 155, 240, 0.3));
+  --link: light-dark(#1d4ed8, #7ab8f5);
 }
 
 .header {
@@ -248,20 +264,4 @@ a.linkBtn {
 .linkBtn:disabled {
   color: var(--text-dim);
   cursor: default;
-}
-
-@media (prefers-color-scheme: dark) {
-  .popup {
-    background: #15181c;
-
-    --text: #e7e9ea;
-    --text-dim: #8b98a5;
-    --surface: #202327;
-    --surface-alt: #1a1d21;
-    --border: #2f3336;
-    --border-strong: #3d4144;
-    --accent: #1d9bf0;
-    --accent-soft: rgba(29, 155, 240, 0.3);
-    --link: #7ab8f5;
-  }
 }

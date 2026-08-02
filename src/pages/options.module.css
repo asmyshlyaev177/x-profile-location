@@ -11,43 +11,41 @@
  * find a setting by reading down the left edge, without opening anything.
  */
 
+/* Both palettes, one line per colour. `light-dark()` reads whichever half the
+   page's `color-scheme` selects, which is how the theme setting switches them:
+   it sets `data-theme` on <html> and nothing else. Absent — the default — the
+   scheme stays `light dark` and the OS decides, with no storage read in the
+   way, so a system user never sees the wrong theme flash first. */
 :root {
-  --bg: #f7f8f9;
-  --surface: #ffffff;
-  --border: #e3e6e8;
-  --border-strong: #cfd4d8;
-  --text: #0f1419;
-  --text-muted: #5b6875;
-  --text-faint: #8b98a5;
-  --accent: #1d63d8;
-  --accent-soft: rgba(29, 99, 216, 0.1);
-  --warn-bg: #fff8e6;
-  --warn-border: #f5d99b;
-  --warn-text: #7a5300;
-  --danger-bg: #fdeceb;
-  --danger-border: #f3b5b1;
-  --danger-text: #a3231c;
+  color-scheme: light dark;
+
+  --bg: light-dark(#f7f8f9, #0f1114);
+  --surface: light-dark(#ffffff, #181c20);
+  --border: light-dark(#e3e6e8, #2a3037);
+  --border-strong: light-dark(#cfd4d8, #3a424b);
+  --text: light-dark(#0f1419, #e7e9ea);
+  --text-muted: light-dark(#5b6875, #a3adb8);
+  --text-faint: light-dark(#8b98a5, #7d8894);
+  --accent: light-dark(#1d63d8, #6ea8ff);
+  --accent-soft: light-dark(rgba(29, 99, 216, 0.1), rgba(110, 168, 255, 0.14));
+  --warn-bg: light-dark(#fff8e6, rgba(245, 173, 42, 0.12));
+  --warn-border: light-dark(#f5d99b, rgba(245, 173, 42, 0.35));
+  --warn-text: light-dark(#7a5300, #f0be6a);
+  --danger-bg: light-dark(#fdeceb, rgba(220, 60, 50, 0.13));
+  --danger-border: light-dark(#f3b5b1, rgba(220, 60, 50, 0.35));
+  --danger-text: light-dark(#a3231c, #f0928c);
   --radius: 12px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1114;
-    --surface: #181c20;
-    --border: #2a3037;
-    --border-strong: #3a424b;
-    --text: #e7e9ea;
-    --text-muted: #a3adb8;
-    --text-faint: #7d8894;
-    --accent: #6ea8ff;
-    --accent-soft: rgba(110, 168, 255, 0.14);
-    --warn-bg: rgba(245, 173, 42, 0.12);
-    --warn-border: rgba(245, 173, 42, 0.35);
-    --warn-text: #f0be6a;
-    --danger-bg: rgba(220, 60, 50, 0.13);
-    --danger-border: rgba(220, 60, 50, 0.35);
-    --danger-text: #f0928c;
-  }
+/* An explicit choice pins the scheme. Pinning rather than re-declaring the
+   variables is what also brings the controls with no custom properties to
+   follow — checkboxes, the number spinner, scrollbars — onto the same theme. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 .container {

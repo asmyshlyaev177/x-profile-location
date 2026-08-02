@@ -9,6 +9,10 @@ issue, your name belongs here.
 
 ### Added
 
+- **Light / dark theme**, under Display → Appearance, defaulting to matching
+  your system. It covers X-Pat's own screens — the settings page and the toolbar
+  popup — and not the flags and marks drawn on X, which keep following X's own
+  theme so they never clash with the timeline around them.
 - **Account details on hover** — account age, affiliate badge, verification,
   handle-change count and follower count. All of it read from responses the
   extension already receives, so it costs no extra lookups and none of your

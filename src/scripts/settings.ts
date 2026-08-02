@@ -33,6 +33,7 @@ import {
   normalizePrefetchPacing,
   normalizePrefetchShare,
   normalizeRuleExceptions,
+  normalizeTheme,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
   RULE_EXCEPTIONS_KEY,
@@ -41,6 +42,7 @@ import {
   SHOW_EXCEPTION_BUTTON_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
   SHOW_SHARE_BUTTON_KEY,
+  THEME_KEY,
 } from './countries'
 
 /** A stored value, cleaned. Returning undefined drops the key entirely. */
@@ -93,6 +95,7 @@ export const SETTINGS_REGISTRY: Record<string, Normalizer> = {
   [SHOW_ACCOUNT_CARD_KEY]: asBoolean,
   [SHOW_EXCEPTION_BUTTON_KEY]: asBoolean,
   [SHOW_SHARE_BUTTON_KEY]: asBoolean,
+  [THEME_KEY]: normalizeTheme,
   [SHARED_CACHE_KEY]: asBoolean,
   [BACKGROUND_PREFETCH_KEY]: asBoolean,
   [PREFETCH_SHARE_KEY]: normalizePrefetchShare,

@@ -21,6 +21,7 @@ import {
   normalizeHandleList,
   normalizeOptionsTab,
   normalizeRuleExceptions,
+  normalizeTheme,
 } from './countries'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
@@ -153,6 +154,21 @@ describe('normalizePrefetchPacing', () => {
     expect(normalizePrefetchPacing('instant')).toBe('instant')
     for (const stored of [undefined, null, '', 'spread', 'nonsense', 0, true]) {
       expect(normalizePrefetchPacing(stored)).toBe('spread')
+    }
+  })
+})
+
+describe('normalizeTheme', () => {
+  it('keeps an explicit choice', () => {
+    expect(normalizeTheme('light')).toBe('light')
+    expect(normalizeTheme('dark')).toBe('dark')
+  })
+
+  it('falls back to following the system for anything else', () => {
+    // Including 'auto' and 'os', which are what an imported file written by
+    // some other extension's export would plausibly carry.
+    for (const stored of [undefined, null, '', 'auto', 'os', 0, true, {}]) {
+      expect(normalizeTheme(stored)).toBe('system')
     }
   })
 })

@@ -50,6 +50,9 @@ import {
   MIN_CONFIDENCE_CHOICES,
   MIN_CONFIDENCE_KEY,
   normalizeMinConfidence,
+  normalizeTheme,
+  THEME_KEY,
+  type ThemePreference,
   SHOW_ADVANCED_KEY,
   OPTIONS_TAB_KEY,
   type OptionsTabId,
@@ -76,6 +79,7 @@ import {
   settingsFileName,
 } from '../scripts/settings'
 import css from './options.module.css'
+import { applyTheme, startThemeSync } from './theme'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 
@@ -220,6 +224,7 @@ export function Options() {
   const [cacheCleared, setCacheCleared] = useState(false)
   const [minConfidence, setMinConfidence] = useState(DEFAULT_MIN_CONFIDENCE)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [theme, setTheme] = useState<ThemePreference>('system')
   const [transferNote, setTransferNote] = useState<string | null>(null)
   const [transferError, setTransferError] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -254,6 +259,7 @@ export function Options() {
         OPTIONS_TAB_KEY,
         MIN_CONFIDENCE_KEY,
         SHOW_ADVANCED_KEY,
+        THEME_KEY,
       ])
       .then((result) => {
         setEnabled(
@@ -320,6 +326,9 @@ export function Options() {
         )
         setTab(normalizeOptionsTab(result[OPTIONS_TAB_KEY]))
         setMinConfidence(normalizeMinConfidence(result[MIN_CONFIDENCE_KEY]))
+        // Only the select's value: painting the page is startThemeSync's job,
+        // below, which also keeps it in step with a second tab.
+        setTheme(normalizeTheme(result[THEME_KEY]))
 
         // The advanced tab is revealed by opening the options page as
         // `options.html?advanced=1` (and hidden again with `?advanced=0`), then
@@ -339,9 +348,19 @@ export function Options() {
       })
   }, [])
 
+  useEffect(startThemeSync, [])
+
   function selectTab(next: OptionsTabId) {
     setTab(next)
     chrome.storage.local.set({ [OPTIONS_TAB_KEY]: next })
+  }
+
+  function updateTheme(next: ThemePreference) {
+    setTheme(next)
+    // Painted here rather than left to the storage listener, so the page
+    // changes under the select immediately instead of one round-trip later.
+    applyTheme(next)
+    chrome.storage.local.set({ [THEME_KEY]: next })
   }
 
   function addBlocked(name: string) {
@@ -624,84 +643,111 @@ export function Options() {
 
       {/* ---------------------------------------------------------------- */}
       {activeTab === 'display' && (
-        <Card
-          title="On the page"
-          description="What X-Pat draws on X. None of this changes which posts are filtered."
-        >
-          <Setting
-            label="Show location in feed"
-            description="A flag under every name in the timeline, not only on hover."
-            control={
-              <input
-                type="checkbox"
-                checked={showLocationInFeed}
-                onChange={(e) => {
-                  const next = (e.target as HTMLInputElement).checked
-                  setShowLocationInFeed(next)
-                  chrome.storage.local.set({
-                    [SHOW_LOCATION_IN_FEED_KEY]: next,
-                  })
-                }}
-              />
-            }
-          />
+        <>
+          <Card
+            title="On the page"
+            description="What X-Pat draws on X. None of this changes which posts are filtered."
+          >
+            <Setting
+              label="Show location in feed"
+              description="A flag under every name in the timeline, not only on hover."
+              control={
+                <input
+                  type="checkbox"
+                  checked={showLocationInFeed}
+                  onChange={(e) => {
+                    const next = (e.target as HTMLInputElement).checked
+                    setShowLocationInFeed(next)
+                    chrome.storage.local.set({
+                      [SHOW_LOCATION_IN_FEED_KEY]: next,
+                    })
+                  }}
+                />
+              }
+            />
 
-          <Setting
-            label="Show account details on hover"
-            description="Account age, affiliate badge, verification, handle changes and follower count — read from data X already sent, so it costs no extra lookups."
-            control={
-              <input
-                type="checkbox"
-                checked={showAccountCard}
-                onChange={(e) => {
-                  const next = (e.target as HTMLInputElement).checked
-                  setShowAccountCard(next)
-                  chrome.storage.local.set({ [SHOW_ACCOUNT_CARD_KEY]: next })
-                }}
-              />
-            }
-          />
+            <Setting
+              label="Show account details on hover"
+              description="Account age, affiliate badge, verification, handle changes and follower count — read from data X already sent, so it costs no extra lookups."
+              control={
+                <input
+                  type="checkbox"
+                  checked={showAccountCard}
+                  onChange={(e) => {
+                    const next = (e.target as HTMLInputElement).checked
+                    setShowAccountCard(next)
+                    chrome.storage.local.set({ [SHOW_ACCOUNT_CARD_KEY]: next })
+                  }}
+                />
+              }
+            />
 
-          <Setting
-            label="“Copy” button on hover cards"
-            description="A small “Copy” button in the flags row. Copies the post you hovered from, together with the flags, as an image — rendered in your browser, nothing uploaded. Right-clicking a post does the same thing."
-            control={
-              <input
-                type="checkbox"
-                checked={showShareButton}
-                onChange={(e) => {
-                  const next = (e.target as HTMLInputElement).checked
-                  setShowShareButton(next)
-                  chrome.storage.local.set({ [SHOW_SHARE_BUTTON_KEY]: next })
-                }}
-              />
-            }
-          />
+            <Setting
+              label="“Copy” button on hover cards"
+              description="A small “Copy” button in the flags row. Copies the post you hovered from, together with the flags, as an image — rendered in your browser, nothing uploaded. Right-clicking a post does the same thing."
+              control={
+                <input
+                  type="checkbox"
+                  checked={showShareButton}
+                  onChange={(e) => {
+                    const next = (e.target as HTMLInputElement).checked
+                    setShowShareButton(next)
+                    chrome.storage.local.set({ [SHOW_SHARE_BUTTON_KEY]: next })
+                  }}
+                />
+              }
+            />
 
-          <Setting
-            label="Exception button on hover cards"
-            description="A one-click exemption for the account you are looking at, from whichever rules are acting on it — the keyword highlight, the country, the affiliate badge, the age. Its tooltip says which."
-            control={
-              <input
-                type="checkbox"
-                checked={showExceptionButton}
-                onChange={(e) => {
-                  const next = (e.target as HTMLInputElement).checked
-                  setShowExceptionButton(next)
-                  chrome.storage.local.set({
-                    [SHOW_EXCEPTION_BUTTON_KEY]: next,
-                  })
-                }}
-              />
-            }
-          />
+            <Setting
+              label="Exception button on hover cards"
+              description="A one-click exemption for the account you are looking at, from whichever rules are acting on it — the keyword highlight, the country, the affiliate badge, the age. Its tooltip says which."
+              control={
+                <input
+                  type="checkbox"
+                  checked={showExceptionButton}
+                  onChange={(e) => {
+                    const next = (e.target as HTMLInputElement).checked
+                    setShowExceptionButton(next)
+                    chrome.storage.local.set({
+                      [SHOW_EXCEPTION_BUTTON_KEY]: next,
+                    })
+                  }}
+                />
+              }
+            />
 
-          {isMobile && (
-            <p class={css.hint}>
-              👉 Swipe right on any post to fetch its location.
-            </p>
-          )}
-        </Card>
+            {isMobile && (
+              <p class={css.hint}>
+                👉 Swipe right on any post to fetch its location.
+              </p>
+            )}
+          </Card>
+
+          <Card
+            title="Appearance"
+            description="Covers X-Pat's own screens — this page and the toolbar popup. The flags and marks drawn on X follow X's theme instead, so they never clash with the timeline they sit in."
+          >
+            <Setting
+              label="Theme"
+              clickable={false}
+              control={
+                <select
+                  class={css.modeSelect}
+                  value={theme}
+                  onChange={(e) =>
+                    updateTheme(
+                      normalizeTheme((e.target as HTMLSelectElement).value),
+                    )
+                  }
+                >
+                  <option value="system">Match system</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              }
+            />
+          </Card>
+        </>
       )}
 
       {/* ---------------------------------------------------------------- */}

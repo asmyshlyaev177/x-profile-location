@@ -18,6 +18,7 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   REGION_MEMBERS,
   RULE_EXCEPTIONS_KEY,
+  THEME_KEY,
 } from '../scripts/countries'
 import { isSharedCacheConfigured } from '../scripts/shared-cache'
 
@@ -501,5 +502,58 @@ describe('master switch', () => {
 
     expect(setMock).toHaveBeenCalledWith({ [EXTENSION_ENABLED_KEY]: false })
     await waitFor(() => expect(container.textContent).toContain('Paused'))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Appearance
+// ---------------------------------------------------------------------------
+describe('theme', () => {
+  function themeSelect(root: ParentNode) {
+    return section(root, 'Appearance').querySelector(
+      'select',
+    ) as HTMLSelectElement
+  }
+
+  afterEach(() => {
+    document.documentElement.removeAttribute('data-theme')
+  })
+
+  it('follows the system with nothing stored, and writes nothing to say so', async () => {
+    const { container } = mountStored({}, 'display')
+
+    await waitFor(() => expect(themeSelect(container).value).toBe('system'))
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
+    expect(setMock).not.toHaveBeenCalled()
+  })
+
+  it('shows the stored choice', async () => {
+    const { container } = mountStored({ [THEME_KEY]: 'dark' }, 'display')
+
+    await waitFor(() => expect(themeSelect(container).value).toBe('dark'))
+  })
+
+  it('paints the page as soon as it is picked, without waiting for storage', async () => {
+    const { container } = mountStored({}, 'display')
+    await waitFor(() => expect(themeSelect(container).value).toBe('system'))
+
+    const select = themeSelect(container)
+    select.value = 'dark'
+    fireEvent.change(select)
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+    expect(setMock).toHaveBeenCalledWith({ [THEME_KEY]: 'dark' })
+  })
+
+  it('takes the attribute back off when system is chosen again', async () => {
+    const { container } = mountStored({ [THEME_KEY]: 'dark' }, 'display')
+    await waitFor(() => expect(themeSelect(container).value).toBe('dark'))
+
+    const select = themeSelect(container)
+    select.value = 'system'
+    fireEvent.change(select)
+
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
+    expect(setMock).toHaveBeenCalledWith({ [THEME_KEY]: 'system' })
   })
 })
