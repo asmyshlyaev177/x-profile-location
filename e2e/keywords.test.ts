@@ -6,9 +6,11 @@
  *   OldRoberts953 — "nft" only appears inside a longer word → must NOT highlight
  *                   (regression test for the word-boundary false-positive bug)
  *
- * The last test covers the per-account escape hatch: the "🚫 Don't highlight"
- * button on the hover card, which adds the account to HIGHLIGHT_EXCEPTIONS_KEY
- * so shouldHighlight() returns false even while the keyword still matches.
+ * The last two cover the per-account escape hatch: the "🚫 Add exception"
+ * button, which adds the account to the highlight bucket of RULE_EXCEPTIONS_KEY
+ * (mirrored to HIGHLIGHT_EXCEPTIONS_KEY) so shouldHighlight() returns false even
+ * while the keyword still matches. The same button covers the location,
+ * affiliation and age rules when those are what is acting on the account.
  *
  * All x.com traffic is recorded/replayed via HAR (see fixtures.ts).
  */
@@ -16,9 +18,9 @@ import type { BrowserContext, Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
   openOptionsPage,
+  openOptionsTab,
   PRIMARY_TWEET,
   readCachedBio,
-  setSectionOpen,
   tweetArticles,
   waitForReplies,
 } from './helpers'
@@ -97,14 +99,14 @@ test('highlight exception button un-highlights the account, and undoes cleanly',
   // injected inline under the name line instead (syncPrimaryExceptionButton).
   const excBtn = authorArticle.locator('.x-loc-exc-btn')
   await expect(excBtn).toBeVisible({ timeout: 10_000 })
-  await expect(excBtn).toHaveText("🚫 Don't highlight")
+  await expect(excBtn).toHaveText('🚫 Add exception')
 
   // Excepted: the keyword still matches, the account is just spared.
   await excBtn.click()
   await expect(authorArticle).not.toHaveAttribute('data-x-loc-highlighted', {
     timeout: 5_000,
   })
-  await expect(excBtn).toHaveText('✓ Highlight exception (undo)')
+  await expect(excBtn).toHaveText('✓ Exception (undo)')
 
   // Same button undoes it — the exception is a toggle, not a one-way door.
   await excBtn.click()
@@ -135,13 +137,13 @@ test('highlight exception button works the same from a reply hover card', async 
   await target.link.hover()
   const excBtn = page.locator('[data-testid="HoverCard"] .x-loc-exc-btn')
   await expect(excBtn).toBeVisible({ timeout: 10_000 })
-  await expect(excBtn).toHaveText("🚫 Don't highlight")
+  await expect(excBtn).toHaveText('🚫 Add exception')
 
   await excBtn.click()
   await expect(target.article).not.toHaveAttribute('data-x-loc-highlighted', {
     timeout: 5_000,
   })
-  await expect(excBtn).toHaveText('✓ Highlight exception (undo)')
+  await expect(excBtn).toHaveText('✓ Exception (undo)')
 
   await excBtn.click()
   await expect(target.article).toHaveAttribute('data-x-loc-highlighted', {
@@ -203,12 +205,11 @@ async function addKeyword(
   keyword: string,
 ): Promise<void> {
   const optPage = await openOptionsPage(context, extensionId)
-  // The input lives inside an accordion whose open/closed state persists.
-  await setSectionOpen(optPage, 'keywords', true)
+  // Keyword settings live on the Filters tab. Nothing to expand — the
+  // accordions went away when the options page became a full tab.
+  await openOptionsTab(optPage, 'Filters')
 
-  const input = optPage.getByPlaceholder(
-    'Type a keyword or pick a suggestion...',
-  )
+  const input = optPage.getByPlaceholder('Type a keyword or pick a suggestion…')
   await input.click()
   await input.fill(keyword)
   await input.press('Enter')
@@ -226,7 +227,7 @@ async function removeKeyword(
   keyword: string,
 ): Promise<void> {
   const optPage = await openOptionsPage(context, extensionId)
-  await setSectionOpen(optPage, 'keywords', true)
+  await openOptionsTab(optPage, 'Filters')
 
   await optPage.locator(`button[title="Remove ${keyword}"]`).click()
 

@@ -201,6 +201,47 @@ export const COUNTRY_FLAGS: Record<string, string> = {
   Yemen: '🇾🇪',
   Zambia: '🇿🇲',
   Zimbabwe: '🇿🇼',
+
+  // Territories and dependencies. X reports these in their own right — an
+  // account's store region can be "Jersey App Store" — and without an entry
+  // here they fell through to the 🌐 fallback and could not be filtered by
+  // name at all. Sovereignty is not the question being answered: the only
+  // question is whether X can name it, so it needs to be selectable.
+  Anguilla: '🇦🇮',
+  Aruba: '🇦🇼',
+  Bermuda: '🇧🇲',
+  'British Virgin Islands': '🇻🇬',
+  'Cayman Islands': '🇰🇾',
+  'Christmas Island': '🇨🇽',
+  'Cook Islands': '🇨🇰',
+  Curaçao: '🇨🇼',
+  'Falkland Islands': '🇫🇰',
+  'Faroe Islands': '🇫🇴',
+  'French Guiana': '🇬🇫',
+  'French Polynesia': '🇵🇫',
+  Gibraltar: '🇬🇮',
+  Greenland: '🇬🇱',
+  Guadeloupe: '🇬🇵',
+  Guam: '🇬🇺',
+  Guernsey: '🇬🇬',
+  Jersey: '🇯🇪',
+  Macau: '🇲🇴',
+  Martinique: '🇲🇶',
+  Mayotte: '🇾🇹',
+  Montserrat: '🇲🇸',
+  'New Caledonia': '🇳🇨',
+  'Northern Mariana Islands': '🇲🇵',
+  Réunion: '🇷🇪',
+  'Saint Barthélemy': '🇧🇱',
+  'Saint Martin': '🇲🇫',
+  'Saint Pierre and Miquelon': '🇵🇲',
+  'Sint Maarten': '🇸🇽',
+  'Turks and Caicos Islands': '🇹🇨',
+  'U.S. Virgin Islands': '🇻🇮',
+  'Wallis and Futuna': '🇼🇫',
+  'Western Sahara': '🇪🇭',
+  'American Samoa': '🇦🇸',
+  'Åland Islands': '🇦🇽',
 }
 
 export const REGION_FLAGS: Record<string, string> = {
@@ -214,7 +255,7 @@ export const REGION_FLAGS: Record<string, string> = {
   'North America': '🌎',
   'South America': '🌎',
   'East Asia': '🌏',
-  'Central Asia': '🌎',
+  'Central Asia': '🌏',
   'South Asia': '🌏',
   'Southeast Asia': '🌏',
   'West Asia': '🌍',
@@ -411,6 +452,20 @@ export const LOCATION_ALIASES: Record<string, string[]> = {
   'Southeast Asia': ['SE Asia', 'South East Asia', 'ASEAN'],
   'West Asia': ['Middle East', 'Western Asia', 'Near East'],
   Australasia: ['Oceania'],
+
+  // Territories
+  Curaçao: ['Curacao'],
+  Réunion: ['Reunion'],
+  'Saint Barthélemy': ['Saint Barthelemy', 'St Barts'],
+  'Åland Islands': ['Aland Islands', 'Aland'],
+  Macau: ['Macao'],
+  Greenland: ['Kalaallit Nunaat'],
+  'U.S. Virgin Islands': ['US Virgin Islands', 'United States Virgin Islands'],
+  'British Virgin Islands': ['BVI'],
+  'Turks and Caicos Islands': ['Turks and Caicos'],
+  'Faroe Islands': ['Faroes', 'Føroyar'],
+  'Falkland Islands': ['Malvinas'],
+  'French Polynesia': ['Tahiti'],
 }
 
 // Lowercased alias (and canonical name) → canonical name. Canonical names are
@@ -439,6 +494,368 @@ export function canonicalLocation(value: string): string {
   return CANONICAL_BY_NAME.get(trimmed.toLowerCase()) ?? trimmed
 }
 
+// Which countries each region contains.
+//
+// Regions were already selectable, but selecting one only ever matched an
+// account X had literally reported *as* that region — so blocking "Europe" did
+// nothing to an account reported as France, which is the opposite of what
+// picking a region on a filter list means. These lists are what make the choice
+// mean what it reads as.
+//
+// Membership is deliberately generous and deliberately overlapping. Egypt is in
+// both Africa and North Africa; East Asia & Pacific contains all of East Asia,
+// Southeast Asia and Australasia. Someone blocking the larger region wants the
+// smaller one included, and nobody picks a region off a list expecting to
+// litigate its boundary — so where a country's membership is genuinely arguable
+// (Russia, Turkey, Cyprus) it belongs to every region it is commonly counted
+// in. The cost of over-inclusion is a country the user can add back by name;
+// the cost of under-inclusion is a filter that silently does nothing.
+export const REGION_MEMBERS: Record<string, string[]> = {
+  'North America': [
+    'Canada',
+    'United States',
+    'Mexico',
+    'Guatemala',
+    'Belize',
+    'El Salvador',
+    'Honduras',
+    'Nicaragua',
+    'Costa Rica',
+    'Panama',
+    'Cuba',
+    'Jamaica',
+    'Haiti',
+    'Dominican Republic',
+    'Bahamas',
+    'Barbados',
+    'Trinidad and Tobago',
+    'Antigua and Barbuda',
+    'Dominica',
+    'Grenada',
+    'Saint Kitts and Nevis',
+    'Saint Lucia',
+    'Saint Vincent and the Grenadines',
+    'Puerto Rico',
+    'Bermuda',
+    'Greenland',
+    'Cayman Islands',
+    'Aruba',
+    'Curaçao',
+    'Martinique',
+    'Guadeloupe',
+    'Anguilla',
+    'Montserrat',
+    'Turks and Caicos Islands',
+    'British Virgin Islands',
+    'U.S. Virgin Islands',
+    'Saint Martin',
+    'Sint Maarten',
+    'Saint Barthélemy',
+    'Saint Pierre and Miquelon',
+  ],
+  'South America': [
+    'Argentina',
+    'Bolivia',
+    'Brazil',
+    'Chile',
+    'Colombia',
+    'Ecuador',
+    'Guyana',
+    'Paraguay',
+    'Peru',
+    'Suriname',
+    'Uruguay',
+    'Venezuela',
+    'French Guiana',
+    'Falkland Islands',
+  ],
+  Europe: [
+    'Albania',
+    'Andorra',
+    'Austria',
+    'Belarus',
+    'Belgium',
+    'Bosnia and Herzegovina',
+    'Bulgaria',
+    'Croatia',
+    'Cyprus',
+    'Czechia',
+    'Denmark',
+    'Estonia',
+    'Finland',
+    'France',
+    'Germany',
+    'Greece',
+    'Hungary',
+    'Iceland',
+    'Ireland',
+    'Italy',
+    'Kosovo',
+    'Latvia',
+    'Liechtenstein',
+    'Lithuania',
+    'Luxembourg',
+    'Malta',
+    'Moldova',
+    'Monaco',
+    'Montenegro',
+    'Netherlands',
+    'North Macedonia',
+    'Norway',
+    'Poland',
+    'Portugal',
+    'Romania',
+    'Russian Federation',
+    'San Marino',
+    'Serbia',
+    'Slovakia',
+    'Slovenia',
+    'Spain',
+    'Sweden',
+    'Switzerland',
+    'Turkey',
+    'Ukraine',
+    'United Kingdom',
+    'Vatican City',
+    'Isle of Man',
+    'Jersey',
+    'Guernsey',
+    'Gibraltar',
+    'Faroe Islands',
+    'Åland Islands',
+  ],
+  'Eastern Europe': [
+    'Albania',
+    'Belarus',
+    'Bosnia and Herzegovina',
+    'Bulgaria',
+    'Croatia',
+    'Czechia',
+    'Estonia',
+    'Hungary',
+    'Kosovo',
+    'Latvia',
+    'Lithuania',
+    'Moldova',
+    'Montenegro',
+    'North Macedonia',
+    'Poland',
+    'Romania',
+    'Russian Federation',
+    'Serbia',
+    'Slovakia',
+    'Slovenia',
+    'Ukraine',
+  ],
+  'Eastern Europe (Non-EU)': [
+    'Albania',
+    'Belarus',
+    'Bosnia and Herzegovina',
+    'Kosovo',
+    'Moldova',
+    'Montenegro',
+    'North Macedonia',
+    'Russian Federation',
+    'Serbia',
+    'Ukraine',
+  ],
+  Africa: [
+    'Algeria',
+    'Angola',
+    'Benin',
+    'Botswana',
+    'Burkina Faso',
+    'Burundi',
+    'Cabo Verde',
+    'Cameroon',
+    'Central African Republic',
+    'Chad',
+    'Comoros',
+    'Congo',
+    'Democratic Republic of the Congo',
+    'Djibouti',
+    'Egypt',
+    'Equatorial Guinea',
+    'Eritrea',
+    'Eswatini',
+    'Ethiopia',
+    'Gabon',
+    'Gambia',
+    'Ghana',
+    'Guinea',
+    'Guinea-Bissau',
+    'Ivory Coast',
+    'Kenya',
+    'Lesotho',
+    'Liberia',
+    'Libya',
+    'Madagascar',
+    'Malawi',
+    'Mali',
+    'Mauritania',
+    'Mauritius',
+    'Morocco',
+    'Mozambique',
+    'Namibia',
+    'Niger',
+    'Nigeria',
+    'Rwanda',
+    'Sao Tome and Principe',
+    'Senegal',
+    'Seychelles',
+    'Sierra Leone',
+    'Somalia',
+    'South Africa',
+    'South Sudan',
+    'Sudan',
+    'Tanzania',
+    'Togo',
+    'Tunisia',
+    'Uganda',
+    'Zambia',
+    'Zimbabwe',
+    'Réunion',
+    'Mayotte',
+    'Western Sahara',
+  ],
+  'North Africa': [
+    'Algeria',
+    'Egypt',
+    'Libya',
+    'Morocco',
+    'Sudan',
+    'Tunisia',
+    'Western Sahara',
+  ],
+  'West Asia': [
+    'Armenia',
+    'Azerbaijan',
+    'Bahrain',
+    'Cyprus',
+    'Georgia',
+    'Iraq',
+    'Israel',
+    'Jordan',
+    'Kuwait',
+    'Lebanon',
+    'Oman',
+    'Palestine',
+    'Qatar',
+    'Saudi Arabia',
+    'Syria',
+    'Turkey',
+    'United Arab Emirates',
+    'Yemen',
+  ],
+  'Central Asia': [
+    'Kazakhstan',
+    'Kyrgyzstan',
+    'Tajikistan',
+    'Turkmenistan',
+    'Uzbekistan',
+  ],
+  'South Asia': [
+    'Afghanistan',
+    'Bangladesh',
+    'Bhutan',
+    'India',
+    'Maldives',
+    'Nepal',
+    'Pakistan',
+    'Sri Lanka',
+  ],
+  'East Asia': [
+    'China',
+    'Hong Kong',
+    'Japan',
+    'Korea',
+    'Macau',
+    'Mongolia',
+    'North Korea',
+    'Taiwan',
+  ],
+  'Southeast Asia': [
+    'Brunei',
+    'Cambodia',
+    'Indonesia',
+    'Laos',
+    'Malaysia',
+    'Myanmar',
+    'Philippines',
+    'Singapore',
+    'Thailand',
+    'Timor-Leste',
+    'Viet Nam',
+  ],
+  Australasia: [
+    'Australia',
+    'New Zealand',
+    'Fiji',
+    'Papua New Guinea',
+    'Solomon Islands',
+    'Vanuatu',
+    'Samoa',
+    'Tonga',
+    'Kiribati',
+    'Tuvalu',
+    'Nauru',
+    'Marshall Islands',
+    'Micronesia',
+    'Palau',
+    'French Polynesia',
+    'New Caledonia',
+    'Guam',
+    'American Samoa',
+    'Northern Mariana Islands',
+    'Cook Islands',
+    'Wallis and Futuna',
+    'Christmas Island',
+  ],
+}
+
+// The World Bank's umbrella region, defined from the three it contains rather
+// than typed out again — it is the one region here that is purely a union, and
+// a hand-copied fourth list would drift the first time a country moved.
+REGION_MEMBERS['East Asia & Pacific'] = [
+  ...new Set([
+    ...REGION_MEMBERS['East Asia'],
+    ...REGION_MEMBERS['Southeast Asia'],
+    ...REGION_MEMBERS['Australasia'],
+  ]),
+]
+
+/**
+ * Every canonical location a saved list actually blocks, with each region
+ * replaced by itself *plus* its member countries.
+ *
+ * The region name is kept alongside its members because X reports both: some
+ * accounts come back as "South Asia" and some as "Pakistan", and a list that
+ * dropped the region name would stop matching the first kind.
+ *
+ * Only the content script expands. Storage and the options page keep the user's
+ * actual picks, so blocking Africa stays one chip you can remove rather than
+ * fifty-seven you cannot.
+ */
+export function expandLocations(list: Iterable<string>): Set<string> {
+  const out = new Set<string>()
+  for (const raw of list) {
+    const name = canonicalLocation(raw)
+    out.add(name)
+    for (const member of REGION_MEMBERS[name] ?? []) {
+      out.add(canonicalLocation(member))
+    }
+  }
+  return out
+}
+
+/** The regions a country belongs to, for explaining *why* something matched. */
+export function regionsContaining(location: string): string[] {
+  const name = canonicalLocation(location)
+  return Object.keys(REGION_MEMBERS).filter((region) =>
+    REGION_MEMBERS[region].some((m) => canonicalLocation(m) === name),
+  )
+}
+
 /** The locations the options page offers, aliases folded away. */
 export const CANONICAL_LOCATIONS = [
   ...Object.keys(COUNTRY_FLAGS),
@@ -447,14 +864,52 @@ export const CANONICAL_LOCATIONS = [
   .filter((name) => canonicalLocation(name) === name)
   .sort((a, b) => a.localeCompare(b))
 
+// Master switch. When off the content script injects nothing, filters nothing
+// and looks nothing up — X renders exactly as it would with the extension
+// uninstalled. Default on, obviously; this is the toggle for "not right now",
+// which is otherwise a trip to chrome://extensions.
+export const EXTENSION_ENABLED_KEY = 'extensionEnabled'
+
 export const BLOCKED_COUNTRIES_KEY = 'blockedCountries'
 export const HIGHLIGHT_KEYWORDS_KEY = 'highlightKeywords'
 export const HIGHLIGHT_FLAGS_KEY = 'highlightFlags'
+
+export interface HighlightFlagsSetting {
+  enabled: boolean
+  threshold: number
+  uniqueOnly: boolean
+}
+
+export const DEFAULT_HIGHLIGHT_FLAGS: HighlightFlagsSetting = {
+  enabled: false,
+  threshold: 2,
+  uniqueOnly: false,
+}
+
+/**
+ * The flag-count rule, cleaned. A threshold below zero would highlight
+ * everything with a bio, which is the one outcome nobody chose on purpose.
+ */
+export function normalizeHighlightFlags(value: unknown): HighlightFlagsSetting {
+  const v = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+  const threshold = finiteNumber(v.threshold)
+  return {
+    enabled: Boolean(v.enabled),
+    threshold:
+      threshold === null
+        ? DEFAULT_HIGHLIGHT_FLAGS.threshold
+        : Math.min(Math.max(Math.round(threshold), 0), 50),
+    uniqueOnly: Boolean(v.uniqueOnly),
+  }
+}
 export const SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed'
 // Usernames (lowercased) that should never be highlighted, even when they match
 // a keyword or flag rule — e.g. accounts using a keyword sarcastically ("no NAFO").
 export const HIGHLIGHT_EXCEPTIONS_KEY = 'highlightExceptions'
-// Whether to show the "Don't highlight" toggle button on profile hover cards.
+// Whether to show the one-click exception button on profile hover cards (and on
+// the primary tweet of a status page, which X opens no hover card for).
 export const SHOW_EXCEPTION_BUTTON_KEY = 'showExceptionButton'
 // How to treat tweets whose author's location is on the blocked list (reuses
 // BLOCKED_COUNTRIES_KEY). Stores a HideBlockedMode; 'collapse' by default.
@@ -571,40 +1026,180 @@ export function normalizeMinConfidence(value: unknown): number {
 // user has no way to judge them.
 export const SHOW_ADVANCED_KEY = 'showAdvancedOptions'
 
-// Which options-page accordions are expanded, keyed by section id. Pure UI
-// state for the options page — the content script ignores this key.
-export const OPTIONS_SECTIONS_KEY = 'optionsSections'
+// Which tab the options page opens on — the only piece of options-page UI state
+// still worth remembering, now that the accordions are gone. `optionsSections`
+// used to live here alongside it; the flat card layout has nothing to expand or
+// collapse, so both the key and its normalizer were deleted rather than left
+// behind to describe a UI that no longer exists. Any value still sitting in
+// storage from an older version is simply never read.
+export const OPTIONS_TAB_KEY = 'optionsTab'
 
-export type OptionsSectionId =
-  | 'keywords'
-  | 'flags'
-  | 'exceptions'
-  | 'prefetch'
-  | 'blocked'
-  | 'advanced'
+export const OPTIONS_TABS = [
+  'display',
+  'filters',
+  'exceptions',
+  'data',
+  'advanced',
+] as const
 
-export const DEFAULT_OPTIONS_SECTIONS: Record<OptionsSectionId, boolean> = {
-  keywords: true,
-  flags: false,
-  exceptions: false,
-  prefetch: false,
-  blocked: true,
-  advanced: false,
+export type OptionsTabId = (typeof OPTIONS_TABS)[number]
+
+export function normalizeOptionsTab(value: unknown): OptionsTabId {
+  return OPTIONS_TABS.includes(value as OptionsTabId)
+    ? (value as OptionsTabId)
+    : 'display'
 }
 
-// Keeps only known section ids so a renamed/removed section can't resurrect a
-// stale entry, and falls back to the defaults for anything not stored yet.
-export function normalizeOptionsSections(
+// Whether hover cards get the account card (age, affiliation, verification,
+// handle history) under the location row. On by default: the data arrives with
+// responses the extension already receives, so showing it costs nothing, and it
+// is the difference between a flag and an actual profile summary.
+export const SHOW_ACCOUNT_CARD_KEY = 'showAccountCard'
+
+// Whether hover cards get the "Copy card" button. On by default, because the
+// context menu it used to live in only is a place nobody looks — a feature
+// reachable solely by right-clicking is one most people never discover.
+export const SHOW_SHARE_BUTTON_KEY = 'showShareButton'
+
+// ---------------------------------------------------------------------------
+// Filters, exceptions, and the allowlist
+// ---------------------------------------------------------------------------
+
+// Organisations whose badged staff accounts are filtered, stored as the parent
+// account's handle (lowercased, no @). The handle rather than the badge text
+// because an org can rename its badge freely and the account it points at is
+// what stays put — see parseAffiliation in profile.ts.
+export const BLOCKED_AFFILIATIONS_KEY = 'blockedAffiliations'
+
+// Filter accounts younger than `days`. Stored as
+// `{ enabled: boolean, days: number }`; off by default, because this is the
+// filter most likely to catch someone whose only offence is having joined
+// recently.
+export const ACCOUNT_AGE_KEY = 'accountAgeFilter'
+
+export interface AccountAgeFilter {
+  enabled: boolean
+  days: number
+}
+
+export const DEFAULT_ACCOUNT_AGE_DAYS = 180
+
+/**
+ * The thresholds the options page offers, in days.
+ *
+ * Deliberately measured in months and years rather than days. A week-old or
+ * month-old account is *obviously* new — you can see the join date on the
+ * profile and nobody needs a filter for it. The cutoff that actually separates
+ * a bought or farmed account from an ordinary one sits much further out: those
+ * accounts are typically registered in batches and left to age before being
+ * used, so the interesting question is "younger than a year", not "younger than
+ * a fortnight".
+ */
+export const ACCOUNT_AGE_CHOICES = [90, 180, 365, 1095] as const
+
+/** How a threshold is written in the UI: months up to a year, then years. */
+export function formatAgeChoice(days: number): string {
+  if (days < 60) return `${days} days`
+  if (days < 365) return `${Math.round(days / 30)} months`
+  const years = Math.round((days / 365) * 10) / 10
+  return `${years} year${years === 1 ? '' : 's'}`
+}
+
+export function normalizeAccountAge(value: unknown): AccountAgeFilter {
+  const v = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+  const days = finiteNumber(v.days)
+  return {
+    enabled: Boolean(v.enabled),
+    // Clamped rather than snapped: unlike the prefetch share, any positive day
+    // count is a coherent answer here — the <select> choices are convenience,
+    // not the domain. A value the list doesn't offer (a hand-edited setting, or
+    // one saved before the choices changed) is kept exactly as it is; the
+    // options page adds it to the dropdown rather than silently moving it,
+    // because snapping would quietly widen or narrow somebody's filter.
+    days:
+      days === null || days < 1
+        ? DEFAULT_ACCOUNT_AGE_DAYS
+        : Math.min(Math.round(days), 3650),
+  }
+}
+
+// Every rule an account can be exempted from, individually.
+export const FILTER_RULES = [
+  'highlight',
+  'location',
+  'affiliation',
+  'age',
+] as const
+
+export type FilterRule = (typeof FILTER_RULES)[number]
+
+// Per-rule exception lists: `{ location: ['someone'], age: [...] }`.
+//
+// Generalised from what used to be a single hard-coded highlight-exception
+// list. Every filter added after it would otherwise have needed its own
+// parallel list, its own storage key and its own copy of the same UI, and the
+// user would have had to learn which of four lists a name belonged in.
+export const RULE_EXCEPTIONS_KEY = 'ruleExceptions'
+
+export type RuleExceptions = Record<FilterRule, string[]>
+
+// Accounts exempt from *every* filter — never hidden, never collapsed, never
+// highlighted. The blunt instrument, for people you always want to read
+// regardless of where they post from or what they are badged as.
+export const ALWAYS_SHOW_KEY = 'alwaysShowAccounts'
+
+/** A handle as it is stored and compared: lowercased, no leading @. */
+export function normalizeHandle(value: string): string {
+  return value.trim().replace(/^@+/, '').toLowerCase()
+}
+
+/** A stored handle list, cleaned of blanks and duplicates, order preserved. */
+export function normalizeHandleList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of value) {
+    if (typeof raw !== 'string') continue
+    const handle = normalizeHandle(raw)
+    if (!handle || seen.has(handle)) continue
+    seen.add(handle)
+    out.push(handle)
+  }
+  return out
+}
+
+/**
+ * Per-rule exceptions, with the old single-purpose list folded into the
+ * `highlight` bucket.
+ *
+ * `legacyHighlight` is what `HIGHLIGHT_EXCEPTIONS_KEY` holds. It is read
+ * forever rather than migrated once: a storage rewrite that runs on load is a
+ * data-loss bug waiting for the one install where it half-completes, and the
+ * old key costs nothing left where it is. It also means an install that
+ * downgrades still finds its exceptions.
+ */
+export function normalizeRuleExceptions(
   value: unknown,
-): Record<OptionsSectionId, boolean> {
+  legacyHighlight?: unknown,
+): RuleExceptions {
   const stored = (
     typeof value === 'object' && value !== null ? value : {}
   ) as Record<string, unknown>
-  const next = { ...DEFAULT_OPTIONS_SECTIONS }
-  for (const id of Object.keys(next) as OptionsSectionId[]) {
-    if (id in stored) next[id] = Boolean(stored[id])
+
+  const out = {} as RuleExceptions
+  for (const rule of FILTER_RULES) {
+    out[rule] = normalizeHandleList(stored[rule])
   }
-  return next
+
+  if (legacyHighlight !== undefined) {
+    const legacy = normalizeHandleList(legacyHighlight)
+    if (legacy.length > 0) {
+      out.highlight = normalizeHandleList([...out.highlight, ...legacy])
+    }
+  }
+  return out
 }
 
 export const DEFAULT_BLOCKED_COUNTRIES = [

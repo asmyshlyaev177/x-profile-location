@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Collapsed post</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <h4>Collapse mode — placeholder in place of the post</h4>
+    <article data-testid="tweet" data-x-loc-hidden="collapse" id="collapsed">
+      <div class="tweetbody" id="collapsed-body">
+        <div data-testid="User-Name">Someone · @someone</div>
+        <div>The post itself, which must not be visible.</div>
+      </div>
+      <div class="x-loc-hidden-ph" id="ph">
+        <span class="x-loc-hidden-label">🚫 Hidden · 🇮🇳 India</span>
+        <button type="button" class="x-loc-hidden-show" id="show">Show</button>
+        <button type="button" class="x-loc-exc-btn" id="exc">
+          🚫 Add exception
+        </button>
+      </div>
+    </article>
+
+    <h4>Collapse mode — a label long enough to wrap</h4>
+    <article data-testid="tweet" data-x-loc-hidden="collapse">
+      <div class="tweetbody">The post itself.</div>
+      <div class="x-loc-hidden-ph" id="ph-long">
+        <span class="x-loc-hidden-label"
+          >🚫 Hidden · 🏢 A Rather Long Organisation Name That Really Does Go On
+          And On</span
+        >
+        <button type="button" class="x-loc-hidden-show" id="show-long">
+          Show
+        </button>
+        <button type="button" class="x-loc-exc-btn" id="exc-long">
+          🚫 Add exception
+        </button>
+      </div>
+    </article>
+
+    <h4>Hide mode — the post goes silently, no placeholder</h4>
+    <article data-testid="tweet" data-x-loc-hidden="hide" id="hidden">
+      <div class="tweetbody" id="hidden-body">Gone entirely.</div>
+    </article>
+
+    <h4>Untouched post — nothing applies</h4>
+    <article data-testid="tweet" id="plain">
+      <div class="tweetbody" id="plain-body">An ordinary post.</div>
+    </article>
+
+    <h4>Quoted post collapsed on its own, host still readable</h4>
+    <article data-testid="tweet" id="host">
+      <div class="tweetbody" id="host-body">
+        The outer post, which must stay readable.
+        <div role="link" data-x-loc-quote-hidden="collapse" id="quote">
+          <div class="tweetbody" id="quote-body">The quoted post.</div>
+          <div class="x-loc-hidden-ph">
+            <span class="x-loc-hidden-label">🚫 Hidden · 🇮🇳 India</span>
+            <button type="button" class="x-loc-hidden-show">Show</button>
+          </div>
+        </div>
+      </div>
+    </article>
+  </body>
+</html>

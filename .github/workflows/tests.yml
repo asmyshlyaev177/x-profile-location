@@ -43,6 +43,42 @@ jobs:
       - name: Unit tests (random order)
         run: pnpm test:shuffle
 
+      # Layout tests for the UI the content script injects. Unlike the e2e suite
+      # below, this one needs no session and no recordings — hardcoded fixture
+      # DOM, the extension's own stylesheet over it (imported from
+      # src/scripts/styles.ts, so it is the shipped CSS and not a copy), and
+      # assertions about how a real browser laid it out. happy-dom has no layout
+      # engine, so none of it is reachable from the unit suite: it reports no
+      # boxes, resolves no cascade, and has neither the CSS Custom Highlight API
+      # nor a working ::highlight().
+      #
+      # Only chromium is downloaded — the config runs one project. The install
+      # is deliberately uncached: it is the slowest step here by far, but a
+      # stale-cache failure in a suite that exists to catch layout regressions
+      # would cost more attention than the download saves.
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Assertions are layout facts (boxes, computed styles), never pixel
+      # diffs — a screenshot baseline compares font rendering as much as
+      # layout, so it fails on any runner whose fonts differ from the author's
+      # and teaches everyone to re-baseline without looking. Keep it that way;
+      # this step is only trustworthy while it stays runner-independent.
+      - name: Visual tests
+        run: pnpm test:visual
+
+      # Playwright writes an error context (DOM snapshot, resolved styles) per
+      # failure. A layout failure that only reproduces on the runner is exactly
+      # the case where that is worth having.
+      - name: Upload visual test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-test-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Build extension
         run: pnpm build
 
