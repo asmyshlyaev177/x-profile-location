@@ -37,6 +37,9 @@ import css from './popup.module.css'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 
+/** Crypto donations, via NOWPayments. */
+const DONATE_URL = 'https://nowpayments.io/donation/asmyshlyaev177'
+
 /**
  * Open the settings page and then close the popup.
  *
@@ -132,7 +135,6 @@ export function Popup() {
   const [blocked, setBlocked] = useState<string[]>([])
   const [keywords, setKeywords] = useState<string[]>([])
   const [section, setSection] = useState<PopupSection | null>(null)
-  const [cleared, setCleared] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -208,12 +210,6 @@ export function Popup() {
   function openSection(next: PopupSection | null) {
     setSection(next)
     write(POPUP_SECTION_KEY, next)
-  }
-
-  async function clearCache() {
-    await chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' })
-    setCleared(true)
-    setTimeout(() => setCleared(false), 2000)
   }
 
   return (
@@ -394,9 +390,15 @@ export function Popup() {
         <button class={css.linkBtn} onClick={() => void openOptions()}>
           All settings →
         </button>
-        <button class={css.linkBtn} onClick={clearCache} disabled={cleared}>
-          {cleared ? 'Cache cleared' : 'Clear cache'}
-        </button>
+        <a
+          class={css.linkBtn}
+          href={DONATE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Support development"
+        >
+          Donate 💜
+        </a>
       </footer>
     </div>
   )
