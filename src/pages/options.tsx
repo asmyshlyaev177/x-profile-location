@@ -708,30 +708,43 @@ export function Options() {
       {activeTab === 'filters' && (
         <>
           <Card
-            title="What happens to a filtered post"
-            description="Applies to the two filters that take a post away — blocked locations and blocked affiliations. Account age and keyword highlighting mark a post whatever this is set to. A quoted post is collapsed on its own, so the post quoting it stays readable, and people lists are marked rather than hidden — removing rows there breaks the counts."
+            title="Highlight by keyword"
+            description="Marks posts whose author's name or bio contains any of these. Highlighting marks a post; it never hides one."
           >
-            <Setting
-              label="Filtered posts"
-              clickable={false}
-              control={
-                <select
-                  class={css.modeSelect}
-                  value={hideMode}
-                  onChange={(e) =>
-                    updateHideMode(
-                      normalizeHideBlockedMode(
-                        (e.target as HTMLSelectElement).value,
-                      ),
-                    )
-                  }
-                >
-                  <option value="off">Show normally</option>
-                  <option value="collapse">Collapse (“Show” to open)</option>
-                  <option value="hide">Hide completely</option>
-                </select>
-              }
-            />
+            <Stack>
+              {keywords.length > 0 && (
+                <div class={css.chips}>
+                  {keywords.map((kw) => (
+                    <span key={kw} class={`${css.chip} ${css.chipKeyword}`}>
+                      {kw}
+                      <button
+                        class={css.chipRemove}
+                        onClick={() => removeKeyword(kw)}
+                        title={`Remove ${kw}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <Autocomplete
+                id="keyword"
+                selected={keywords}
+                allOptions={KEYWORD_SUGGESTIONS}
+                onSelect={addKeyword}
+                placeholder="Type a keyword or pick a suggestion…"
+                allowFreeInput
+                closeOnSelect={false}
+              />
+
+              {keywords.length === 0 && (
+                <p class={css.empty}>
+                  No keywords set — all posts shown normally.
+                </p>
+              )}
+            </Stack>
           </Card>
 
           <Card
@@ -794,6 +807,33 @@ export function Options() {
                 </p>
               )}
             </Stack>
+          </Card>
+
+          <Card
+            title="What happens to a filtered post"
+            description="Applies to the two filters that take a post away — blocked locations and blocked affiliations. Account age and keyword highlighting mark a post whatever this is set to. A quoted post is collapsed on its own, so the post quoting it stays readable, and people lists are marked rather than hidden — removing rows there breaks the counts."
+          >
+            <Setting
+              label="Filtered posts"
+              clickable={false}
+              control={
+                <select
+                  class={css.modeSelect}
+                  value={hideMode}
+                  onChange={(e) =>
+                    updateHideMode(
+                      normalizeHideBlockedMode(
+                        (e.target as HTMLSelectElement).value,
+                      ),
+                    )
+                  }
+                >
+                  <option value="off">Show normally</option>
+                  <option value="collapse">Collapse (“Show” to open)</option>
+                  <option value="hide">Hide completely</option>
+                </select>
+              }
+            />
           </Card>
 
           <Card
@@ -864,46 +904,6 @@ export function Options() {
                 </select>
               }
             />
-          </Card>
-
-          <Card
-            title="Highlight by keyword"
-            description="Marks posts whose author's name or bio contains any of these. Highlighting marks a post; it never hides one."
-          >
-            <Stack>
-              {keywords.length > 0 && (
-                <div class={css.chips}>
-                  {keywords.map((kw) => (
-                    <span key={kw} class={`${css.chip} ${css.chipKeyword}`}>
-                      {kw}
-                      <button
-                        class={css.chipRemove}
-                        onClick={() => removeKeyword(kw)}
-                        title={`Remove ${kw}`}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <Autocomplete
-                id="keyword"
-                selected={keywords}
-                allOptions={KEYWORD_SUGGESTIONS}
-                onSelect={addKeyword}
-                placeholder="Type a keyword or pick a suggestion…"
-                allowFreeInput
-                closeOnSelect={false}
-              />
-
-              {keywords.length === 0 && (
-                <p class={css.empty}>
-                  No keywords set — all posts shown normally.
-                </p>
-              )}
-            </Stack>
           </Card>
 
           <Card
