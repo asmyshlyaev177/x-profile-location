@@ -18,6 +18,12 @@ export const QUOTE_HIDDEN_ATTR = 'data-x-loc-quote-hidden'
 // Set on a people-list row whose account matches a rule. Rows there are marked,
 // never hidden.
 export const PEOPLE_MATCH_ATTR = 'data-x-loc-cell-match'
+// Set on a post (or a quote card) whose account matched a rule that marks
+// rather than hides — account age is the only one today. Carries the rule as its
+// value so a later one can be styled apart if it ever earns it; today they all
+// draw the same bar a keyword match does, because the reader should have one
+// mark to learn rather than a colour code to decode.
+export const TWEET_MARK_ATTR = 'data-x-loc-mark'
 // Set on a hover card whose account the keyword/flag rule is firing on; scopes
 // the generated emoji-keyword rules (see updateKeywordEmojiStyle).
 export const KEYWORD_MATCH_ATTR = 'data-x-loc-kw'
@@ -171,7 +177,13 @@ export const CONTENT_CSS = `
   color: rgba(255, 255, 255, 0.75);
   border-color: rgba(29, 155, 240, 0.28);
 }
-article[data-x-loc-highlighted] {
+/* Every reason a post gets pointed at draws the same bar: the keyword rule on a
+   post, on a quote card, and the rules that mark instead of hiding. One
+   declaration rather than three identical ones, so they cannot drift apart —
+   and so a post that matches two of them has no cascade to resolve. */
+article[data-x-loc-highlighted],
+[data-x-loc-quote-highlighted],
+[${TWEET_MARK_ATTR}='age'] {
   border-left: 3px solid #f59e0b !important;
   background: rgba(245, 158, 11, 0.05) !important;
 }
@@ -181,10 +193,6 @@ article[data-x-loc-highlighted] {
    few properties are allowed here; background-color is the one that matters. */
 ::highlight(${KEYWORD_HIGHLIGHT_NAME}) {
   background-color: rgba(245, 158, 11, 0.4);
-}
-[data-x-loc-quote-highlighted] {
-  border-left: 3px solid #f59e0b !important;
-  background: rgba(245, 158, 11, 0.05) !important;
 }
 .x-loc-card {
   display: flex;

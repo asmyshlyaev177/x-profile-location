@@ -95,6 +95,30 @@ test('a matched post gets its bar without losing its text', async ({
   await expect(page.locator('#highlighted .tweetbody')).toBeVisible()
 })
 
+test('a young account is pointed at, not taken away', async ({ page }) => {
+  // The age rule's whole behaviour: the post is still readable, and it wears
+  // the one bar every "look at this" rule wears.
+  await expect(page.locator('#young-body')).toBeVisible()
+  expect(await styleOf(page.locator('#young'), 'border-left-width')).toBe('3px')
+})
+
+test('every reason to point at a post draws the same bar', async ({ page }) => {
+  // A keyword match, a quoted account's match and the age rule are one look, so
+  // the reader learns a single mark rather than a colour code. They share one
+  // declaration; this is what catches somebody giving one of them its own.
+  const bars = await Promise.all(
+    ['#highlighted', '#young', '#quote-highlighted'].map(async (sel) => [
+      await styleOf(page.locator(sel), 'border-left-color'),
+      await styleOf(page.locator(sel), 'border-left-width'),
+      await styleOf(page.locator(sel), 'background-color'),
+    ]),
+  )
+
+  expect(bars[0][0]).toBe('rgb(245, 158, 11)')
+  expect(bars[1]).toEqual(bars[0])
+  expect(bars[2]).toEqual(bars[0])
+})
+
 test('a people row is marked and stays completely readable', async ({
   page,
 }) => {

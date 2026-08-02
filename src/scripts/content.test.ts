@@ -2713,10 +2713,19 @@ describe('affiliation filtering', () => {
   })
 })
 
-describe('account age filtering', () => {
+describe('account age', () => {
   const daysAgo = (n: number) => Date.now() - n * 24 * 60 * 60 * 1000
 
-  it('collapses an account younger than the threshold', async () => {
+  /** Put a tweet by `user` on the page and let the observer judge it. */
+  async function showTweet(user: string) {
+    const article = makeTweetArticle(user)
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+    return article
+  }
+
+  it('marks an account younger than the threshold', async () => {
     vi.mocked(getCached).mockResolvedValue({
       location: null,
       locationAccurate: true,
@@ -2728,12 +2737,77 @@ describe('account age filtering', () => {
       hideBlockedLocations: 'collapse',
     })
 
-    const article = makeTweetArticle('newbie')
-    document.body.appendChild(article)
-    await flushAsync()
-    await flushAsync()
+    const article = await showTweet('newbie')
+
+    expect(article.getAttribute('data-x-loc-mark')).toBe('age')
+  })
+
+  it('never hides one, whatever the mode is set to', async () => {
+    // The point of the rule: "joined recently" describes a farmed account and
+    // a person who signed up last month equally well, so it points rather than
+    // removes. `hide` is the strongest setting there is and it still must not
+    // apply here.
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      facts: { createdAt: daysAgo(3) },
+    })
+    pushSettings({
+      accountAgeFilter: { enabled: true, days: 30 },
+      hideBlockedLocations: 'hide',
+    })
+
+    const article = await showTweet('newbie')
+
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+    expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
+    expect(article.getAttribute('data-x-loc-mark')).toBe('age')
+  })
+
+  it('marks posts even with hiding switched off entirely', async () => {
+    // `off` answers "what happens to a post a filter caught", and a rule that
+    // only marks never catches one in that sense.
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      facts: { createdAt: daysAgo(3) },
+    })
+    pushSettings({
+      accountAgeFilter: { enabled: true, days: 30 },
+      hideBlockedLocations: 'off',
+    })
+
+    const article = await showTweet('newbie')
+
+    expect(article.getAttribute('data-x-loc-mark')).toBe('age')
+  })
+
+  it('still lets a blocked location hide the same account', async () => {
+    // Being young must not shield a post the location filter would have taken:
+    // the two rules are judged separately, and the hiding one still wins.
+    vi.mocked(getCached).mockResolvedValue({
+      ...JAPAN,
+      facts: { createdAt: daysAgo(3) },
+    })
+    pushSettings({
+      blockedCountries: ['Japan'],
+      accountAgeFilter: { enabled: true, days: 30 },
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = await showTweet('newbie')
 
     expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    // The placeholder names the rule that hid it, not the one that only marks.
+    expect(article.querySelector('.x-loc-hidden-label')?.textContent).toContain(
+      'Japan',
+    )
+    // The mark is set as well, and deliberately left alone: the two rules are
+    // separate answers about the same account, and the collapsed row keeping
+    // the bar costs nothing — the placeholder is what carries the reason.
+    expect(article.getAttribute('data-x-loc-mark')).toBe('age')
   })
 
   it('leaves an older account alone', async () => {
@@ -2748,12 +2822,10 @@ describe('account age filtering', () => {
       hideBlockedLocations: 'collapse',
     })
 
-    const article = makeTweetArticle('veteran')
-    document.body.appendChild(article)
-    await flushAsync()
-    await flushAsync()
+    const article = await showTweet('veteran')
 
     expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+    expect(article.hasAttribute('data-x-loc-mark')).toBe(false)
   })
 
   it('does nothing when X never said when the account was created', async () => {
@@ -2768,12 +2840,61 @@ describe('account age filtering', () => {
       hideBlockedLocations: 'collapse',
     })
 
-    const article = makeTweetArticle('unknown')
-    document.body.appendChild(article)
+    const article = await showTweet('unknown')
+
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+    expect(article.hasAttribute('data-x-loc-mark')).toBe(false)
+  })
+
+  it('drops the mark when the rule is switched off', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      facts: { createdAt: daysAgo(3) },
+    })
+    pushSettings({
+      accountAgeFilter: { enabled: true, days: 30 },
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = await showTweet('newbie')
+    expect(article.getAttribute('data-x-loc-mark')).toBe('age')
+
+    pushSettings({ accountAgeFilter: { enabled: false, days: 30 } })
     await flushAsync()
     await flushAsync()
 
-    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+    expect(article.hasAttribute('data-x-loc-mark')).toBe(false)
+  })
+
+  it('drops the mark for an account excepted from the rule', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      facts: { createdAt: daysAgo(3) },
+    })
+    pushSettings({
+      accountAgeFilter: { enabled: true, days: 30 },
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = await showTweet('newbie')
+    expect(article.getAttribute('data-x-loc-mark')).toBe('age')
+
+    pushSettings({
+      ruleExceptions: {
+        highlight: [],
+        location: [],
+        affiliation: [],
+        age: ['newbie'],
+      },
+    })
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.hasAttribute('data-x-loc-mark')).toBe(false)
   })
 })
 
