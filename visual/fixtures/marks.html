@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Keyword marks and row markers</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <h4>Hover card the keyword rule is firing on</h4>
+    <div
+      class="hovercard"
+      data-testid="HoverCard"
+      data-x-loc-kw="1"
+      id="marked"
+    >
+      <div class="name">NFT Trader</div>
+      <div class="handle">@trader</div>
+      <div class="bio" data-testid="UserDescription" id="marked-bio">
+        Full time nft guy.
+        <img
+          id="marked-emoji"
+          alt="🇷🇺"
+          src="data:image/gif;base64,R0lGODlhAQABAAAAACw="
+        />
+        based.
+      </div>
+      <div class="x-loc-hover">
+        <div class="x-loc-info">
+          <span class="x-loc-icon x-loc-icon-flag">🇯🇵</span>
+        </div>
+      </div>
+    </div>
+
+    <h4>Hover card it is not firing on — the same emoji, unmarked</h4>
+    <div class="hovercard" data-testid="HoverCard" id="unmarked">
+      <div class="name">Normal Person</div>
+      <div class="handle">@normal</div>
+      <div class="bio" data-testid="UserDescription">
+        Gardening and bread.
+        <img
+          id="unmarked-emoji"
+          alt="🇷🇺"
+          src="data:image/gif;base64,R0lGODlhAQABAAAAACw="
+        />
+      </div>
+    </div>
+
+    <h4>Highlighted post</h4>
+    <article data-testid="tweet" data-x-loc-highlighted="1" id="highlighted">
+      <div class="tweetbody">A post by an account that matched.</div>
+    </article>
+
+    <h4>Post from a young account — pointed at, never taken away</h4>
+    <article data-testid="tweet" data-x-loc-mark="age" id="young">
+      <div class="tweetbody" id="young-body">
+        A post by an account that joined last week.
+      </div>
+    </article>
+
+    <h4>Quoted account matched — the card, not the post around it</h4>
+    <article data-testid="tweet" id="quote-host">
+      <div class="tweetbody">The post doing the quoting, untouched.</div>
+      <div data-x-loc-quote-highlighted="1" id="quote-highlighted">
+        <div class="tweetbody">
+          The quoted post, by an account that matched.
+        </div>
+      </div>
+    </article>
+
+    <h4>People row — marked, never hidden</h4>
+    <div
+      class="usercell"
+      data-testid="UserCell"
+      data-x-loc-cell-match="location"
+      id="cell"
+    >
+      <div data-testid="User-Name" id="cell-name">
+        Someone <span class="x-loc-cell-tag" id="cell-tag">🇮🇳 India</span>
+      </div>
+      <div id="cell-bio">Their bio, still readable.</div>
+    </div>
+  </body>
+</html>

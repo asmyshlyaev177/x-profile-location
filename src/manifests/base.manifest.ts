@@ -43,13 +43,31 @@ export const baseManifest = {
     // Toolbar tooltip. Was `pkg.name`, which is now the npm-style `x-pat` —
     // correct as a package name, wrong as something a user reads.
     default_title: 'X-Pat',
-    default_popup: 'pages/options.html',
+    // Its own page since the Phase 2 options redesign. Pointing this at
+    // options.html made the settings page unable to grow past what fits in a
+    // popup panel.
+    default_popup: 'pages/popup.html',
   },
 
   // Optional
   // - - - - - - - - -
   author: {
     email: pkg.author.email,
+  },
+
+  // Required for `chrome.runtime.openOptionsPage()` to do anything at all — it
+  // throws "No Options page defined" without this key, which is what broke the
+  // popup's "All settings" link. Nothing declared it before, because until the
+  // popup was split out, `default_popup` *was* the options page and nothing
+  // ever needed to open it.
+  //
+  // `open_in_tab` because this page is now a full-width five-tab settings
+  // screen; the embedded dialog Chrome otherwise shows is the same cramped box
+  // the redesign existed to escape. It also gives the browser's own extension
+  // menu a working Options entry for free.
+  options_ui: {
+    page: 'pages/options.html',
+    open_in_tab: true,
   },
   background: {
     service_worker: 'scripts/service-worker.ts',

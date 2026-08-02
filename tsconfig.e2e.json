@@ -1,8 +1,16 @@
 {
   "extends": "./tsconfig.node.json",
-  "include": ["e2e/**/*", "playwright.config.ts"],
+  "include": [
+    "e2e/**/*",
+    "visual/**/*",
+    "playwright.config.ts",
+    "playwright.visual.config.ts"
+  ],
   "compilerOptions": {
     "lib": ["ES2023", "DOM"],
-    "types": ["node", "@playwright/test", "@types/chrome"]
+    // `vite/client` for `import.meta.env`: constants.ts reads it, and both
+    // Playwright suites import that module. Without it this config failed on
+    // TS2339 before checking anything, so it gated nothing.
+    "types": ["node", "@playwright/test", "@types/chrome", "vite/client"]
   }
 }
