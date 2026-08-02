@@ -152,7 +152,9 @@ not post text, not your handle, not who you looked at. Lookups carry no identifi
 all, so the server cannot link an install to the accounts it viewed. Contributions
 carry a random per-install id and nothing tied to you.
 
-It's off by default and there's a build with it compiled out entirely.
+It's **on by default** and can be turned off in Options; there's also a build with it
+compiled out entirely (`pnpm build:nocache`), and it stays inert in any build with no
+cache server URL configured.
 
 | Permission              | Why                                                       |
 | ----------------------- | --------------------------------------------------------- |
@@ -160,7 +162,30 @@ It's off by default and there's a build with it compiled out entirely.
 | `contextMenus`          | The right-click entry that copies a post with its flags   |
 | `x.com` / `twitter.com` | Read the page, and request account data from X            |
 
-Full text: [Privacy Policy](https://x-profile-location.pages.dev/privacy).
+Full text: [Privacy Policy](https://x-pat.pages.dev/privacy-policy).
+
+## Compared with the alternatives
+
+<!-- comparison:start -->
+
+> Generated from `landing/src/data/comparison.ts` by the landing build. Edit that file, not this block.
+
+| | X-Pat | X-Posed | Flags & Time | Region Blocker |
+| --- | :---: | :---: | :---: | :---: |
+| Warning when X cannot verify the location | ✅ | ✅ | ✅ | – |
+| Shared cache, so flags survive the rate limit | ✅ | ✅ | ✅ | ❌ |
+| Cache server source published | ✅ | ❌ | ❌ | – |
+| Cached entries cross-checked between installs | ✅ | ❌ | – | – |
+| Automated test suite in the repo | 518 tests | none | – | – |
+
+**Where [X-Posed](https://chromewebstore.google.com/detail/x-posed-account-location/oodhljjldjdhcdopjpmfgbaoibpancfk) is ahead of X-Pat:**
+
+- **X-Posed is the mature one.** Roughly 7,000 Chrome installs against our handful, four years of releases, and a community cache holding millions of profiles where ours holds thousands. A bigger cache genuinely means more instant flags on day one. That is a real advantage and it is not close.
+- **It ships on more surfaces.** Firefox desktop, Firefox for Android, and a companion iPhone app. X-Pat is Chromium-only today — Chrome, Edge, Brave, and Lemur on Android. Firefox is planned, iOS is not.
+- **It has a language filter.** We do not, on purpose. X's per-post language field is wrong often enough that filtering on it produces posts vanishing for no visible reason. That is a defensible call rather than a missing feature — but if filtering by language is what you came for, X-Posed has it and we do not.
+
+Full fifteen-row table, with sources: [https://x-pat.pages.dev/x-posed-alternative](https://x-pat.pages.dev/x-posed-alternative). Store listings read 2026-08-02.
+<!-- comparison:end -->
 
 ## Install
 

@@ -12,6 +12,8 @@ import { Footer } from './components/Footer'
 import { PrivacyPolicy } from './components/PrivacyPolicy'
 import { AboutThisAccount } from './components/AboutThisAccount'
 import { EngagementFarming } from './components/EngagementFarming'
+import { Comparison } from './components/Comparison'
+import { ComparisonTeaser } from './components/ComparisonTeaser'
 import { resolveRoute } from './routes'
 import './index.css'
 
@@ -27,6 +29,7 @@ interface AppProps {
 const GUIDES: Record<string, () => VNode> = {
   '/x-about-this-account': AboutThisAccount,
   '/spot-engagement-farming': EngagementFarming,
+  '/x-posed-alternative': Comparison,
 }
 
 export function App({ url }: AppProps) {
@@ -74,6 +77,7 @@ export function App({ url }: AppProps) {
         <HowItWorks />
         <SeeItInAction />
         <Trust />
+        <ComparisonTeaser />
         <Faq items={route.faq ?? []} />
         <CTA />
       </main>
