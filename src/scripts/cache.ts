@@ -1,4 +1,5 @@
 import { createStore, del, entries, get, set } from 'idb-keyval'
+import type { AccountFacts } from './profile'
 
 export interface LocationData {
   location: string | null
@@ -7,6 +8,11 @@ export interface LocationData {
   source: `${string} Android App` | `${string} App Store` | 'web' | null
   bio?: string | null
   displayName?: string | null
+  // Account age, affiliate badge, verification and so on — everything X hands
+  // over in responses we already receive. Kept in its own object rather than
+  // spread across LocationData so that the three fields the shared cache is
+  // allowed to send stay visibly separate from the ones it must never see.
+  facts?: Partial<AccountFacts>
 }
 
 interface CachedEntry {
@@ -59,11 +65,15 @@ export async function mergeCached(
     locationAccurate: true,
     source: null,
   }
-  await set(
-    key,
-    { data: { ...base, ...partial }, fetchedAt: Date.now() },
-    locStore,
-  )
+  const data: LocationData = { ...base, ...partial }
+  // `facts` is the one field merged rather than replaced. Each source knows a
+  // different subset — a timeline node carries a follower count and no handle
+  // history, AboutAccountQuery the reverse — so a shallow spread would let
+  // whichever response arrived last erase what the other had already learned.
+  if (base.facts || partial.facts) {
+    data.facts = { ...base.facts, ...partial.facts }
+  }
+  await set(key, { data, fetchedAt: Date.now() }, locStore)
 }
 
 export async function clearAllCache(): Promise<void> {

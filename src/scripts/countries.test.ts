@@ -3,14 +3,24 @@ import {
   canonicalLocation,
   CANONICAL_LOCATIONS,
   COUNTRY_FLAGS,
-  DEFAULT_OPTIONS_SECTIONS,
   DEFAULT_PREFETCH_SHARE,
+  expandLocations,
   LOCATION_ALIASES,
-  normalizeOptionsSections,
   normalizePrefetchPacing,
   normalizePrefetchShare,
   PREFETCH_SHARE_CHOICES,
   REGION_FLAGS,
+  REGION_MEMBERS,
+  regionsContaining,
+  FILTER_RULES,
+  ACCOUNT_AGE_CHOICES,
+  DEFAULT_ACCOUNT_AGE_DAYS,
+  formatAgeChoice,
+  normalizeAccountAge,
+  normalizeHandle,
+  normalizeHandleList,
+  normalizeOptionsTab,
+  normalizeRuleExceptions,
 } from './countries'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
@@ -105,48 +115,6 @@ describe('CANONICAL_LOCATIONS', () => {
   })
 })
 
-describe('normalizeOptionsSections', () => {
-  it('returns the defaults when nothing is stored', () => {
-    expect(normalizeOptionsSections(undefined)).toEqual(
-      DEFAULT_OPTIONS_SECTIONS,
-    )
-    expect(normalizeOptionsSections(null)).toEqual(DEFAULT_OPTIONS_SECTIONS)
-    expect(normalizeOptionsSections('nonsense')).toEqual(
-      DEFAULT_OPTIONS_SECTIONS,
-    )
-  })
-
-  it('keeps stored values, overriding the defaults in both directions', () => {
-    expect(
-      normalizeOptionsSections({ keywords: false, exceptions: true }),
-    ).toEqual({
-      ...DEFAULT_OPTIONS_SECTIONS,
-      keywords: false,
-      exceptions: true,
-    })
-  })
-
-  it('drops unknown ids and coerces non-booleans', () => {
-    const result = normalizeOptionsSections({
-      keywords: 0,
-      flags: 'yes',
-      removedSection: true,
-    })
-    expect(result).toEqual({
-      ...DEFAULT_OPTIONS_SECTIONS,
-      keywords: false,
-      flags: true,
-    })
-    expect('removedSection' in result).toBe(false)
-  })
-
-  it('does not mutate the shared defaults', () => {
-    const before = { ...DEFAULT_OPTIONS_SECTIONS }
-    normalizeOptionsSections({ keywords: false, flags: true, blocked: false })
-    expect(DEFAULT_OPTIONS_SECTIONS).toEqual(before)
-  })
-})
-
 describe('normalizePrefetchShare', () => {
   it('defaults to 70% when nothing usable is stored', () => {
     expect(DEFAULT_PREFETCH_SHARE).toBe(0.7)
@@ -186,5 +154,210 @@ describe('normalizePrefetchPacing', () => {
     for (const stored of [undefined, null, '', 'spread', 'nonsense', 0, true]) {
       expect(normalizePrefetchPacing(stored)).toBe('spread')
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Region membership
+// ---------------------------------------------------------------------------
+describe('REGION_MEMBERS', () => {
+  it('only names locations that exist, so a typo cannot silently do nothing', () => {
+    // The whole failure mode this guards: 'Cote dIvoire' or 'Vietnam' in a
+    // member list looks right, matches nothing, and the region quietly filters
+    // one country less than it claims to.
+    const known = new Set([
+      ...Object.keys(COUNTRY_FLAGS),
+      ...Object.keys(REGION_FLAGS),
+    ])
+    const unknown: string[] = []
+    for (const [region, members] of Object.entries(REGION_MEMBERS)) {
+      for (const member of members) {
+        if (!known.has(member)) unknown.push(`${region} → ${member}`)
+      }
+    }
+    expect(unknown).toEqual([])
+  })
+
+  it('lists every member under its canonical name', () => {
+    const notCanonical: string[] = []
+    for (const [region, members] of Object.entries(REGION_MEMBERS)) {
+      for (const member of members) {
+        if (canonicalLocation(member) !== member) {
+          notCanonical.push(`${region} → ${member}`)
+        }
+      }
+    }
+    expect(notCanonical).toEqual([])
+  })
+
+  it('covers every region the flag map offers', () => {
+    for (const region of Object.keys(REGION_FLAGS)) {
+      expect(REGION_MEMBERS[region]?.length ?? 0).toBeGreaterThan(0)
+    }
+  })
+
+  it('never repeats a country inside one region', () => {
+    for (const [region, members] of Object.entries(REGION_MEMBERS)) {
+      expect(new Set(members).size, region).toBe(members.length)
+    }
+  })
+
+  it('builds East Asia & Pacific as the union of the three it contains', () => {
+    const umbrella = new Set(REGION_MEMBERS['East Asia & Pacific'])
+    for (const region of ['East Asia', 'Southeast Asia', 'Australasia']) {
+      for (const member of REGION_MEMBERS[region]) {
+        expect(
+          umbrella.has(member),
+          `${member} missing from the umbrella`,
+        ).toBe(true)
+      }
+    }
+  })
+})
+
+describe('expandLocations', () => {
+  it('turns a region into itself plus its members', () => {
+    const expanded = expandLocations(['South Asia'])
+    // X reports both shapes, so both have to match.
+    expect(expanded.has('South Asia')).toBe(true)
+    expect(expanded.has('India')).toBe(true)
+    expect(expanded.has('Pakistan')).toBe(true)
+    expect(expanded.has('France')).toBe(false)
+  })
+
+  it('leaves a plain country alone', () => {
+    expect([...expandLocations(['France'])]).toEqual(['France'])
+  })
+
+  it('canonicalises on the way in and on the way out', () => {
+    const expanded = expandLocations(['EU'])
+    expect(expanded.has('Europe')).toBe(true)
+    expect(expanded.has('Czechia')).toBe(true)
+    // 'Czech Republic' is an alias of Czechia, not a second entry.
+    expect(expanded.has('Czech Republic')).toBe(false)
+  })
+
+  it('is empty for an empty list', () => {
+    expect(expandLocations([]).size).toBe(0)
+  })
+})
+
+describe('regionsContaining', () => {
+  it('reports every region a country is counted in', () => {
+    expect(regionsContaining('Egypt')).toContain('Africa')
+    expect(regionsContaining('Egypt')).toContain('North Africa')
+    expect(regionsContaining('Japan')).toContain('East Asia')
+    expect(regionsContaining('Japan')).toContain('East Asia & Pacific')
+  })
+
+  it('is empty for something no region claims', () => {
+    expect(regionsContaining('Atlantis')).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Handles, exceptions and the allowlist
+// ---------------------------------------------------------------------------
+describe('normalizeHandle', () => {
+  it('strips the @ and lowercases, so one account is one entry', () => {
+    expect(normalizeHandle('@Jack')).toBe('jack')
+    expect(normalizeHandle('  JACK  ')).toBe('jack')
+    expect(normalizeHandle('@@jack')).toBe('jack')
+  })
+})
+
+describe('normalizeHandleList', () => {
+  it('drops blanks, duplicates and non-strings, keeping the original order', () => {
+    expect(
+      normalizeHandleList([
+        '@Bob',
+        'alice',
+        'bob',
+        '',
+        '  ',
+        42,
+        null,
+        'Carol',
+      ]),
+    ).toEqual(['bob', 'alice', 'carol'])
+  })
+
+  it('is empty for anything that is not a list', () => {
+    for (const junk of [null, undefined, 'bob', {}, 7]) {
+      expect(normalizeHandleList(junk)).toEqual([])
+    }
+  })
+})
+
+describe('normalizeRuleExceptions', () => {
+  it('gives every rule a list, even when storage holds none', () => {
+    const ex = normalizeRuleExceptions(undefined)
+    for (const rule of FILTER_RULES) expect(ex[rule]).toEqual([])
+  })
+
+  it('folds the old single-purpose highlight list into the highlight rule', () => {
+    const ex = normalizeRuleExceptions({ location: ['zoe'] }, ['@Bob', 'alice'])
+    expect(ex.highlight).toEqual(['bob', 'alice'])
+    expect(ex.location).toEqual(['zoe'])
+  })
+
+  it('does not double up a handle present in both the old and new stores', () => {
+    const ex = normalizeRuleExceptions({ highlight: ['bob'] }, ['@Bob'])
+    expect(ex.highlight).toEqual(['bob'])
+  })
+
+  it('ignores rules it does not know', () => {
+    const ex = normalizeRuleExceptions({ nonsense: ['bob'] })
+    expect(ex).not.toHaveProperty('nonsense')
+  })
+})
+
+describe('normalizeAccountAge', () => {
+  it('defaults to off, at six months', () => {
+    expect(normalizeAccountAge(undefined)).toEqual({
+      enabled: false,
+      days: DEFAULT_ACCOUNT_AGE_DAYS,
+    })
+    expect(DEFAULT_ACCOUNT_AGE_DAYS).toBe(180)
+  })
+
+  it('keeps a stored threshold and clamps nonsense to something usable', () => {
+    expect(normalizeAccountAge({ enabled: true, days: 90 }).days).toBe(90)
+    expect(normalizeAccountAge({ enabled: true, days: 1095 }).days).toBe(1095)
+    expect(normalizeAccountAge({ enabled: true, days: 0 }).days).toBe(180)
+    expect(normalizeAccountAge({ enabled: true, days: -5 }).days).toBe(180)
+    expect(normalizeAccountAge({ enabled: true, days: 99999 }).days).toBe(3650)
+  })
+
+  it('keeps a threshold the dropdown no longer offers, rather than snapping it', () => {
+    // Saved before the choices changed, or hand-edited. Snapping would quietly
+    // widen or narrow a filter somebody set on purpose; the options page adds
+    // the odd value to the dropdown instead.
+    expect(normalizeAccountAge({ enabled: true, days: 30 }).days).toBe(30)
+    expect(normalizeAccountAge({ enabled: true, days: '45' }).days).toBe(45)
+  })
+})
+
+describe('formatAgeChoice', () => {
+  it('writes every offered threshold the way a person would say it', () => {
+    expect(ACCOUNT_AGE_CHOICES.map(formatAgeChoice)).toEqual([
+      '3 months',
+      '6 months',
+      '1 year',
+      '3 years',
+    ])
+  })
+
+  it('falls back to days for a short odd value', () => {
+    expect(formatAgeChoice(30)).toBe('30 days')
+    expect(formatAgeChoice(45)).toBe('45 days')
+  })
+})
+
+describe('normalizeOptionsTab', () => {
+  it('falls back to display for anything unrecognised', () => {
+    expect(normalizeOptionsTab('filters')).toBe('filters')
+    expect(normalizeOptionsTab('nope')).toBe('display')
+    expect(normalizeOptionsTab(undefined)).toBe('display')
   })
 })

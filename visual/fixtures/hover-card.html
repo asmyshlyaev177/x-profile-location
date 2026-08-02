@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hover card</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <h4>Everything the extension puts on a hover card</h4>
+    <div class="hovercard" data-testid="HoverCard" id="full">
+      <div class="name">Sarcastic User</div>
+      <div class="handle">@sarcasticuser</div>
+      <div class="bio" data-testid="UserDescription">
+        Full time nft guy, posting from Tokyo.
+      </div>
+
+      <!-- Built by processCard: one wrapper, filled in written order. -->
+      <div class="x-loc-hover" id="wrap">
+        <div class="x-loc-info" id="info">
+          <span class="x-loc-icon x-loc-icon-flag">🇯🇵</span>
+          <span class="x-loc-icon x-loc-icon-vpn">⚠ VPN</span>
+          <button type="button" class="x-loc-share-btn" id="share">
+            Copy card
+          </button>
+        </div>
+        <div class="x-loc-card" id="card">
+          <span class="x-loc-chip x-loc-chip-warn">🎂 3 weeks</span>
+          <span class="x-loc-chip">🏢 Some Org</span>
+          <span class="x-loc-chip">👥 12.4K</span>
+        </div>
+        <button type="button" class="x-loc-exc-btn" id="exc">
+          🚫 Add exception
+        </button>
+      </div>
+    </div>
+
+    <h4>Excepted account — the same button, in its undo state</h4>
+    <div class="hovercard" data-testid="HoverCard">
+      <div class="name">Sarcastic User</div>
+      <div class="handle">@sarcasticuser</div>
+      <div class="x-loc-hover">
+        <div class="x-loc-info">
+          <span class="x-loc-icon x-loc-icon-flag">🇯🇵</span>
+        </div>
+        <button
+          type="button"
+          class="x-loc-exc-btn x-loc-exc-active"
+          id="exc-active"
+        >
+          ✓ Exception (undo)
+        </button>
+      </div>
+    </div>
+
+    <h4>Rate limited — no flags to show, only the countdown</h4>
+    <div class="hovercard" data-testid="HoverCard">
+      <div class="name">Someone</div>
+      <div class="handle">@someone</div>
+      <div class="x-loc-hover">
+        <div class="x-loc-info">
+          <span class="x-loc-icon-ratelimit" id="rate">⏱ 4m 12s</span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

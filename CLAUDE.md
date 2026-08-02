@@ -45,10 +45,16 @@ page-script.ts                      content.tsx
 | `src/scripts/extract-users.ts`  | Recursive GraphQL response walker. Finds `__typename: 'User'` nodes up to depth 20.                                                                                           |
 | `src/scripts/cache.ts`          | IndexedDB wrapper (idb-keyval). 30-day TTL. Keys are lowercased usernames.                                                                                                    |
 | `src/scripts/prefetch-queue.ts` | `BackgroundPrefetcher`: two FIFO queues (feed before replies), page order within each, paced evenly over its 70% share of the rate-limit window. Unit-tested via `runOnce()`. |
-| `src/scripts/countries.ts`      | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps + storage key constants.                                                                                                  |
+| `src/scripts/countries.ts`      | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR`, `REGION_MEMBERS` + every storage key and its normalizer.                                                                      |
+| `src/scripts/profile.ts`        | Parses `AccountFacts` (age, affiliate badge, verification, handle history, followers) off a User node — timeline or AboutAccountQuery alike.                                  |
+| `src/scripts/source.ts`         | The single place X's `source` string is interpreted: platform (`ios`/`android`/`web`) + store country, plus the drawn SVG glyphs.                                             |
+| `src/scripts/settings.ts`       | Registry of every user-facing setting and its normalizer. Backs import/export.                                                                                                |
+| `src/scripts/snapshot.ts`       | Clones a live element, inlines its computed styles and images, renders it to PNG through an SVG `foreignObject`. How a shared post keeps X's own look.                        |
+| `src/scripts/share-card.ts`     | The hand-drawn fallback card, for when a snapshot can't render. Layout is pure (testable); drawing is not.                                                                    |
+| `src/pages/popup.tsx`           | Toolbar popup — master switch, feed flags, account card, filtered-post mode.                                                                                                  |
 | `src/scripts/grapheme.ts`       | Grapheme-cluster-aware substring search, used for keyword highlight matching.                                                                                                 |
 | `src/scripts/service-worker.ts` | Background script. Sets `blockedCountries` defaults in `chrome.storage.local` on install.                                                                                     |
-| `src/pages/options.tsx`         | Preact options page: blocked countries, keyword highlights, flag-count threshold, background lookups (prefetch share + pacing).                                               |
+| `src/pages/options.tsx`         | Preact settings page, five tabs (Display / Filters / Exceptions / Data & privacy / Advanced). Separate from the popup since Phase 2.                                          |
 | `src/components/Autocomplete/`  | Reusable Preact autocomplete used in the options page.                                                                                                                        |
 
 ---
@@ -110,6 +116,7 @@ interface LocationData {
   source: `${string} Android App` | `${string} App Store` | 'web' | null
   bio?: string | null
   displayName?: string | null
+  facts?: Partial<AccountFacts> // see profile.ts
 }
 
 // extract-users.ts
@@ -117,8 +124,34 @@ interface UserBio {
   userName: string // screen name, not display name
   displayName: string | null
   bio: string | null
+  facts: Partial<AccountFacts> // only the fields this node actually carried
+}
+
+// profile.ts
+interface AccountFacts {
+  createdAt: number | null // epoch ms, parsed from X's own date format
+  affiliation: Affiliation | null // { handle, name, badgeUrl }
+  handleChanges: number | null // AboutAccountQuery only
+  restId: string | null
+  blueVerified: boolean | null
+  verified: boolean | null
+  identityVerified: boolean | null
+  isProtected: boolean | null
+  followers: number | null // timeline nodes only
 }
 ```
+
+**`facts` is merged, never replaced.** Each source knows a different subset — a
+timeline User node carries a follower count and no handle history,
+AboutAccountQuery the reverse — so `mergeCached` deep-merges that one key while
+shallow-spreading the rest, and `definedFacts()` strips nulls on the way in so a
+thin sighting cannot blank what a richer one already supplied. None of it costs
+an API call: every field is in a response the extension already receives.
+
+**`created_at` is parsed by hand** (`parseXDate`), not by `Date.parse`. That
+format is outside the spec, so V8 accepting it says nothing about the engine in
+a Firefox or Safari build — and a wrong answer here becomes an account age shown
+next to somebody's name.
 
 `LocationData` is stored in IDB with `{ data: LocationData, fetchedAt: number }`. TTL is 30 days.
 
@@ -284,15 +317,87 @@ BACKGROUND_PREFETCH_KEY = 'backgroundPrefetch' // default ON
 PREFETCH_SHARE_KEY = 'prefetchShare' // fraction of the window prefetch may use; default 0.7
 PREFETCH_PACING_KEY = 'prefetchPacing' // 'spread' | 'instant'; default 'spread'
 SHARED_CACHE_KEY = 'sharedCacheEnabled' // default ON (inert without CACHE_API_BASE); master switch for prefetch
-OPTIONS_SECTIONS_KEY = 'optionsSections' // options-page accordion open/closed state
+
+// Phase 2
+EXTENSION_ENABLED_KEY = 'extensionEnabled' // master switch; default ON
+BLOCKED_AFFILIATIONS_KEY = 'blockedAffiliations' // parent-org handles
+ACCOUNT_AGE_KEY = 'accountAgeFilter' // { enabled, days }; default off / 30
+RULE_EXCEPTIONS_KEY = 'ruleExceptions' // Record<FilterRule, string[]>
+ALWAYS_SHOW_KEY = 'alwaysShowAccounts' // exempt from every rule
+SHOW_ACCOUNT_CARD_KEY = 'showAccountCard' // default ON
+SHOW_SHARE_BUTTON_KEY = 'showShareButton' // hover-card "Copy card" button; default ON
+OPTIONS_TAB_KEY = 'optionsTab' // which settings tab is open
 ```
+
+`HIGHLIGHT_EXCEPTIONS_KEY` still exists and is **still written**: it is the
+mirror of `ruleExceptions.highlight`. Reads merge the old key into that bucket
+(`normalizeRuleExceptions`), so writing only the new key would let a _removal_
+come straight back from the stale copy on the next load. `content.tsx`
+(`writeRuleExceptions`), the options page (`writeExceptions`) and the
+settings importer all keep the two in agreement — a fourth writer has to as well.
+
+`src/scripts/styles.ts` owns the injected stylesheet **and the class and
+attribute names it is written against** (`HIDDEN_ATTR`, `KEYWORD_MATCH_ATTR`,
+…). They live together because renaming one without the other turns a rule into
+a selector that matches nothing, silently — and because a test can then render
+the real CSS without importing `content.tsx`, which talks to chrome APIs the
+moment it loads. `emojiKeywordCss()` is there for the same reason.
+
+`extensionEnabled` is honoured by **stripping what is already on screen**
+(`stripAllInjections`), not only by skipping new work: a switch that left the
+page half-decorated would read as a bug.
+
+`expandLocations()` is applied in **content.tsx only**. Storage keeps the user's
+literal picks, so "Africa" stays one removable chip; the content script expands
+it to the region's members _plus the region name itself_, because X reports
+accounts under both — some come back as "South Asia" and some as "Pakistan".
+
+`filterMatchFor()` is the single decision point for every filter (location,
+affiliation, age), applying the allowlist and per-rule exceptions once rather
+than in three subtly different places. It returns the rule that matched, which
+is what lets the collapse placeholder name the setting to go and change. The
+matching itself lives in `ruleMatches()`, which ignores the exceptions and
+returns _all_ of them — `filterMatchFor` takes the first the account is not
+excepted from, and `activeRulesFor()` (which adds the bio-driven highlight rule)
+takes the lot, because the exception button has to be able to name a rule the
+user has already excepted in order to undo it.
+
+**Marking the matched keyword** (`markKeywords`, `keywordRangesIn`) is done
+without touching a node X owns, which is the whole design constraint: the hover
+card is React's and it re-renders. Text keywords are painted with the **CSS
+Custom Highlight API** — Ranges registered under `x-loc-keyword`, styled by
+`::highlight()`, no markup changed. Emoji keywords cannot be, because X renders
+emoji as `<img alt="🇷🇺">` and there is no text node to range over; those get a
+**generated stylesheet** (`#x-loc-kw-styles`) matching the alt, scoped to cards
+carrying `KEYWORD_MATCH_ATTR`. The alt is escaped on the way in — it is user
+input reaching a selector. `CSS.highlights` is absent before Firefox 140, where
+the text half simply does not paint; `findKeywordMatches()` deliberately runs
+the same two matchers as `matchesAnyKeyword()`, so a mark can never point at a
+word the rule did not fire on.
+
+**One exception button, whatever the rule.** `buildExceptionButton(userName,
+rules)` covers every rule acting on the account at once and names them only in
+its tooltip: four different labels would make one control look like four, and
+the reader's complaint is "not this account", not "not rule three of four". The
+exceptions stay per-rule underneath. It appears in three places, all through
+`syncExceptionButton()` or a direct call: profile hover cards (`processCard`),
+the primary tweet of a status page (`syncPrimaryExceptionButton` — X opens no
+hover card for it), and the collapse placeholder, which needs its own copy
+because a collapsed post leaves nothing to hover. Any rule change re-syncs it,
+from `rehighlightAll()` **and** `refreshHiddenTweets()`, since the button now
+straddles both.
 
 `PREFETCH_SHARE_KEY` / `PREFETCH_PACING_KEY` are the options page's two prefetch dials, both applied live (no reload): `content.tsx` pushes them into the prefetcher via `setReserveFraction()` / `setPacing()` on load and again from `chrome.storage.onChanged`. `normalizePrefetchShare()` **snaps to the nearest `PREFETCH_SHARE_CHOICES` entry** (0.3 / 0.5 / 0.7 / 0.9, comparing in whole percent so exact ties go to the smaller share) — so storage, UI and content script can never hold a value the `<select>` can't display. `LOOKUP_LIMIT_PER_WINDOW` (50) and `LOOKUP_WINDOW_MINUTES` (15) also live in countries.ts; the first seeds content.tsx's live budget, and both are the figures the options page quotes and derives its "one lookup every Ns" estimate from.
 
-`OPTIONS_SECTIONS_KEY` holds `Record<OptionsSectionId, boolean>` (`keywords` | `flags` | `exceptions` | `prefetch` | `blocked`); `normalizeOptionsSections()` merges it over `DEFAULT_OPTIONS_SECTIONS` and drops unknown ids. Restoring it flips `details.open` programmatically, which **also fires `toggle`** — so `toggleSection()` in `options.tsx` must use a functional `setSections` update, or that event clobbers the freshly loaded state with a stale closure.
+`OPTIONS_TAB_KEY` is the only options-page UI state that persists. `optionsSections` (which accordion was open) is **gone** — the accordions were removed when the page became a full tab, so the key, its type and its normalizer were deleted rather than left describing a UI that no longer exists. Any value still in storage from an older version is simply never read.
 
 Default blocked regions set on install (service-worker.ts):  
 `['Africa', 'India', 'South Asia', 'Nigeria', 'Pakistan', 'Bangladesh']`
+
+⚠️ This now **expands**. With `REGION_MEMBERS` in place, seeding `Africa` and
+`South Asia` blocks ~60 countries on a fresh install rather than matching two
+literal strings. See the open item in `ROADMAP.md` §1 — the recommendation there
+is to ship `[]`, and region expansion makes that materially more urgent.
 
 ---
 
@@ -303,12 +408,77 @@ pnpm install
 pnpm dev         # watch build for Chrome (default)
 pnpm build       # production build all browsers → dist/<browser>/
 pnpm test        # vitest run --coverage  (happy-dom, Istanbul)
+pnpm test:visual # playwright layout tests — headless, no session, no HARs
 pnpm fix         # oxfmt + oxlint --fix
 pnpm e2e:profile # seed a real-browser profile for the e2e suite (see below)
 pnpm test:e2e    # playwright under xvfb
 ```
 
 Test environment: **Vitest 4 + happy-dom**. Globals enabled (`describe`, `it`, `expect`, `vi` — no imports needed). Coverage via Istanbul to `coverage/`.
+
+⚠️ **Run `pnpm test`, not `vitest run`.** They are not the same command: `pnpm
+test` adds `--coverage`, and the instrumentation changes enough about the run to
+expose failures a bare `vitest run` never sees. The whole suite was green under
+`vitest run` while 45 tests failed under `pnpm test`.
+
+The reason is in `src/_config/tests.config.ts` — happy-dom 20.8.9 keeps each
+MutationObserver's dispatch closure in a `WeakRef` that nothing else references,
+so the first GC silently stops mutation delivery for the rest of the file, and
+Istanbul allocates enough to trigger one. The setup file makes that single
+WeakRef hold strongly. It was never an extension bug (real browsers keep an
+observed callback alive), which is exactly why it went unnoticed for so long:
+the symptom is a test-only, order-dependent, coverage-only disappearance of
+everything the content script injects.
+
+### Three suites, three different questions
+
+| Suite              | Asks                                   | Needs                          | In CI |
+| ------------------ | -------------------------------------- | ------------------------------ | ----- |
+| `pnpm test`        | Does the logic hold?                   | nothing                        | yes   |
+| `pnpm test:visual` | Does the CSS lay out as intended?      | a headless browser             | yes   |
+| `pnpm test:e2e`    | Does any of it survive contact with X? | a session, a display, the HARs | no    |
+
+`.github/workflows/tests.yml` runs the first two on every push and PR. The
+visual step downloads Playwright's bundled chromium (`playwright install
+--with-deps chromium` — the config's `Desktop Chrome` device is
+`defaultBrowserType: 'chromium'`, so real Google Chrome is not needed), which is
+the slowest thing in the workflow. It is uncached on purpose: a stale cache
+failing a suite whose whole job is catching layout regressions would cost more
+attention than the download saves. On failure the run uploads `test-results/`,
+where Playwright leaves a DOM snapshot and resolved styles per failure — worth
+having for a layout failure that only reproduces on the runner.
+
+`visual/` is the middle one, and it exists because happy-dom has no layout
+engine: it reports no boxes, resolves no cascade, and has neither the CSS Custom
+Highlight API nor a working `::highlight()`. Every bug the injected UI has
+actually shipped with — buttons stretched to full width by X's flex column,
+pieces inserted in reverse order, a placeholder margin knocking a button out of
+its row — was invisible to a unit test and needed a browser to see.
+
+The fixtures under `visual/fixtures/` are **hardcoded HTML**: a stand-in for
+X's DOM with our injected markup already in it. The stylesheet is not a copy —
+`openFixture()` imports `CONTENT_CSS` from `src/scripts/styles.ts` and injects
+the real thing, so the suite fails when the shipped rules change. Anything a
+fixture needs a rule of its own to look right is a rule that belongs in the
+extension.
+
+Assertions are **layout facts** (boxes, computed styles), never pixel diffs. A
+screenshot baseline compares font rendering as much as layout, so it fails on
+any runner whose fonts differ and teaches everyone to re-baseline without
+looking. `expectSameRow`, `right()`, `styleOf()` in `visual/helpers.ts` are the
+vocabulary.
+
+⚠️ Two traps found the hard way:
+
+- **`outline-width` is not a signal.** Chrome computes it as `medium` (3px)
+  whether or not anything is drawn. Assert `outline-style`.
+- **`sheet.cssRules` throws on a `file://` `<link>`** — cross-origin for CSSOM.
+  Wrap the walk in try/catch and skip what you cannot read.
+
+What this suite **cannot** do is notice that X renamed a `data-testid`, moved an
+insertion point, or changed its DOM shape: the fixtures are a copy of X's markup
+as of the day they were written, and a copy cannot report that the original
+changed. That is what `pnpm test:e2e` is for, and neither replaces the other.
 
 **Use pnpm 11 for `pnpm install`.** `node_modules` here was written by pnpm 11, but nvm's `pnpm` on `PATH` is 10.x and shadows it. Installing with 10 aborts with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` — pnpm wanting to wipe and rebuild a modules dir from a different major, and unable to prompt. That error is about the version mismatch, not about anything wrong with the dependency you are adding; `CI=true` "fixes" it only by letting the wipe happen. Run `/home/alex/.local/share/pnpm/bin/pnpm install` (11.0.9) instead.
 
@@ -335,7 +505,7 @@ X blocks Playwright's bundled Chromium, so `e2e/scripts/seed-profile.mjs` launch
 
 Gotchas:
 
-- Options-page accordions persist their open/closed state, so never click a `summary` blind to open a section — a click closes one that a default or a previous step already opened. Use `setSectionOpen(page, section, true)` from `helpers.ts`, which clicks only when needed and waits for the storage write. `setCheckboxOption()` handles this on its own — a collapsed section is `display:none`, so it force-opens the checkbox's `<details>` ancestor before clicking.
+- Options-page sections live behind **tabs**, and a section is only in the DOM while its tab is selected. `optionsSection(page, section)` from `helpers.ts` selects the right tab first and is `async` for that reason; `setCheckboxOption()` tries each tab until it finds the label. There is nothing to expand — the accordions (and `setSectionOpen`) are gone.
 - Scope options-page locators to their section (`optionsSection(page, 'blocked').locator('select')`). A bare `locator('select')` was unique until the prefetch share dropdown shipped, then failed strict mode — the same trap waits for any `input`/`button` locator.
 - Don't index into the article list — use `TWEET_ARTICLE` / `PRIMARY_TWEET` / `tweetArticles()` / `waitForReplies()` / `nthReply(page, n)` from `helpers.ts`. `nthReply` counts **replies**, sidestepping the off-by-one a raw `.nth()` walks into: when the page's own tweet is itself a reply, its parent renders _above_ it, so replies don't start at a fixed row. `mostLikedReply()` goes further and re-anchors on the author's handle, because X's virtualised timeline recycles rows out from under an `nth()` handle.
 - Which reply a test picks is often pinned by its recording, not free choice — the HAR only holds the pages that were visited at record time. The second-level-reply test needs reply **2** specifically (reply 1 has no thread under it); say so at the call site so nobody "fixes" it to reply 1.

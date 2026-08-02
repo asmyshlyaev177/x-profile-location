@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest'
-import { graphemeIncludes, graphemeIncludesWord, toGraphemes } from './keywords'
+import { afterEach, describe, expect, it } from 'vitest'
+import {
+  emojiKeywords,
+  findKeywordMatches,
+  graphemeIncludes,
+  graphemeIncludesWord,
+  setKeywords,
+  toGraphemes,
+} from './keywords'
 
 describe('graphemeIncludes', () => {
   it('finds a plain text substring', () => {
@@ -125,5 +132,74 @@ describe('graphemeIncludesWord', () => {
     expect(
       graphemeIncludesWord(toGraphemes('крипто!'), toGraphemes('крипто')),
     ).toBe(true)
+  })
+})
+
+describe('findKeywordMatches', () => {
+  afterEach(() => setKeywords([]))
+
+  it('gives offsets that cut the keyword out of the text exactly', () => {
+    // These offsets become Range boundaries, so an off-by-one paints half a
+    // word — or half a flag.
+    setKeywords(['nft'])
+    const text = 'we love NFT, all the nft'
+
+    const matches = findKeywordMatches(text)
+
+    expect(matches.map((m) => text.slice(m.start, m.end))).toEqual([
+      'NFT',
+      'nft',
+    ])
+  })
+
+  it('finds nothing where the highlight rule would find nothing', () => {
+    // The mark exists to explain the highlight; marking a word inside a longer
+    // one would explain a highlight that never happened.
+    setKeywords(['nft'])
+    expect(findKeywordMatches('minting nfts today')).toEqual([])
+  })
+
+  it('returns nothing at all when no keywords are set', () => {
+    setKeywords([])
+    expect(findKeywordMatches('anything at all')).toEqual([])
+  })
+
+  it('counts an emoji keyword in code units, not characters', () => {
+    // A flag is two surrogate pairs — four code units. Offsets measured in
+    // characters would land mid-surrogate and split the flag in half.
+    setKeywords(['🇺🇦'])
+    const text = 'slava 🇺🇦 ukraini'
+
+    const [match] = findKeywordMatches(text)
+
+    expect(text.slice(match.start, match.end)).toBe('🇺🇦')
+  })
+
+  it('does not mark 🇵🇸 inside 🇰🇵🇸🇴, same as the rule that fires on it', () => {
+    setKeywords(['🇵🇸'])
+    expect(findKeywordMatches('🇰🇵🇸🇴🇵🇾')).toEqual([])
+  })
+
+  it('finds both a word and an emoji in one pass, in reading order', () => {
+    setKeywords(['crypto', '🇷🇺'])
+    const text = 'crypto and 🇷🇺 stuff'
+
+    const matches = findKeywordMatches(text)
+
+    expect(matches.map((m) => text.slice(m.start, m.end))).toEqual([
+      'crypto',
+      '🇷🇺',
+    ])
+  })
+})
+
+describe('emojiKeywords', () => {
+  afterEach(() => setKeywords([]))
+
+  it('returns the emoji ones, in the form they were typed', () => {
+    // They are stored split into graphemes; the CSS rule that marks them needs
+    // the original string back to match an <img alt>.
+    setKeywords(['nft', '🏳️‍🌈', 'crypto', '🇺🇦'])
+    expect(emojiKeywords()).toEqual(['🏳️‍🌈', '🇺🇦'])
   })
 })
