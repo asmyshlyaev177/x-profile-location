@@ -35,7 +35,24 @@ const resolvedSiteUrl =
  */
 export const siteUrl: string = resolvedSiteUrl.replace(/\/*$/, '/')
 
-export const buildDate = new Date().toISOString()
+/**
+ * When the content last changed — the HEAD commit's date, injected by
+ * `vite.config.ts` (see `scripts/build-date.mjs`).
+ *
+ * Deliberately not `new Date()`. This value feeds `og:updated_time`,
+ * `last-modified` and schema.org `dateModified`, and a build-time clock marks
+ * the site as freshly updated every time it is rebuilt — including rebuilds
+ * that changed nothing. Google's guidance is that `dateModified` must reflect a
+ * real change, and a date that always says "just now" is worth less than no
+ * date at all.
+ *
+ * The `typeof` guard keeps the module importable from Node at config-load time,
+ * where the `define` replacement has not happened.
+ */
+export const buildDate: string =
+  typeof __CONTENT_LAST_MODIFIED__ === 'string'
+    ? __CONTENT_LAST_MODIFIED__
+    : new Date().toISOString()
 
 /** The homepage entry, and the source of the site-wide title/description. */
 const home = routes[0]!
@@ -93,6 +110,10 @@ export function buildJsonLd(version: string) {
     description: home.description,
     url: siteUrl,
     softwareVersion: version,
+    // Real content date, not build time — see `buildDate`. Google treats a
+    // `dateModified` that never matches an actual change as a reason to stop
+    // trusting the field.
+    dateModified: buildDate,
     installUrl: CHROME_STORE_URL,
     author: { '@type': 'Person', name: seo.author },
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
