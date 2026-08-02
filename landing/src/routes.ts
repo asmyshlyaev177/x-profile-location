@@ -40,7 +40,7 @@ export const routes: RouteDef[] = [
     // have to cost the literal-match traffic — same tactic as the store title.
     title: 'X-Pat — X Profile Location: see the country of any X profile',
     description:
-      "Puts a country flag on every X profile, from X's own data. Warns on likely VPNs, hides tweets by country, and needs no account. Free for Chrome.",
+      "A country flag on every X profile, from X's own data. VPN warnings, and hide or highlight posts by country, organisation, age or bio keyword. Free for Chrome.",
     faq: [
       {
         q: 'How do I see what country an X account is from?',
@@ -53,6 +53,10 @@ export const routes: RouteDef[] = [
       {
         q: 'Can I hide or collapse tweets from certain countries?',
         a: 'Yes. Pick the countries or regions in the options page and choose whether matching tweets collapse behind a “Show” button or disappear entirely. Collapse is the default, so nothing is ever silently removed from your timeline.',
+      },
+      {
+        q: 'Can I filter by anything other than country?',
+        a: 'Yes. You can block every account X badges as belonging to an organisation, mark accounts younger than a threshold you pick, and highlight accounts whose name or bio matches your keywords — or whose bio is mostly flag emoji. Age and keyword rules only ever mark a post; they never take it away. An allowlist and per-rule exceptions cover the accounts you want spared.',
       },
       {
         q: 'Does it need my X password or an API key?',
