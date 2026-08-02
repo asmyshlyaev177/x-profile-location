@@ -389,6 +389,24 @@ straddles both.
 
 `PREFETCH_SHARE_KEY` / `PREFETCH_PACING_KEY` are the options page's two prefetch dials, both applied live (no reload): `content.tsx` pushes them into the prefetcher via `setReserveFraction()` / `setPacing()` on load and again from `chrome.storage.onChanged`. `normalizePrefetchShare()` **snaps to the nearest `PREFETCH_SHARE_CHOICES` entry** (0.3 / 0.5 / 0.7 / 0.9, comparing in whole percent so exact ties go to the smaller share) — so storage, UI and content script can never hold a value the `<select>` can't display. `LOOKUP_LIMIT_PER_WINDOW` (50) and `LOOKUP_WINDOW_MINUTES` (15) also live in countries.ts; the first seeds content.tsx's live budget, and both are the figures the options page quotes and derives its "one lookup every Ns" estimate from.
 
+`POPUP_SECTION_KEY` is the popup's equivalent, and the accordions are back —
+in the popup only. They came _out_ of the options page because a full tab has
+room to lay everything flat, and _into_ the popup for the opposite reason: two
+list editors would push the switches people opened it for off the bottom. The
+sections are a button plus a conditional body rather than
+`<details>`/`<summary>`, which this was first: a `<details open>` fires `toggle`
+as it mounts, so restoring the remembered section wrote that section straight
+back to storage — the popup saved on every open. (happy-dom also does not
+implement summary-click toggling, which left it untestable.) A popup test
+asserts that merely opening it writes nothing.
+
+The popup and the options page write the **same keys** — `BLOCKED_COUNTRIES_KEY`,
+`HIGHLIGHT_KEYWORDS_KEY` — and canonicalise identically (`canonicalLocation`
+before storing, keywords lowercased and sorted). The content script is already
+listening on both, so an edit in the popup reaches the timeline behind it
+without a reload. A third editor has to match, or storage ends up holding "USA"
+and "United States" as two filters.
+
 `OPTIONS_TAB_KEY` is the only options-page UI state that persists. `optionsSections` (which accordion was open) is **gone** — the accordions were removed when the page became a full tab, so the key, its type and its normalizer were deleted rather than left describing a UI that no longer exists. Any value still in storage from an older version is simply never read.
 
 Default blocked regions set on install (service-worker.ts):  
