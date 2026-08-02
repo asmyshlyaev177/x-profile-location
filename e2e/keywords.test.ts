@@ -6,9 +6,11 @@
  *   OldRoberts953 — "nft" only appears inside a longer word → must NOT highlight
  *                   (regression test for the word-boundary false-positive bug)
  *
- * The last test covers the per-account escape hatch: the "🚫 Don't highlight"
- * button on the hover card, which adds the account to HIGHLIGHT_EXCEPTIONS_KEY
- * so shouldHighlight() returns false even while the keyword still matches.
+ * The last two cover the per-account escape hatch: the "🚫 Add exception"
+ * button, which adds the account to the highlight bucket of RULE_EXCEPTIONS_KEY
+ * (mirrored to HIGHLIGHT_EXCEPTIONS_KEY) so shouldHighlight() returns false even
+ * while the keyword still matches. The same button covers the location,
+ * affiliation and age rules when those are what is acting on the account.
  *
  * All x.com traffic is recorded/replayed via HAR (see fixtures.ts).
  */
@@ -16,9 +18,10 @@ import type { BrowserContext, Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
   openOptionsPage,
+  openOptionsTab,
+  pickBioWord,
   PRIMARY_TWEET,
   readCachedBio,
-  setSectionOpen,
   tweetArticles,
   waitForReplies,
 } from './helpers'
@@ -97,14 +100,14 @@ test('highlight exception button un-highlights the account, and undoes cleanly',
   // injected inline under the name line instead (syncPrimaryExceptionButton).
   const excBtn = authorArticle.locator('.x-loc-exc-btn')
   await expect(excBtn).toBeVisible({ timeout: 10_000 })
-  await expect(excBtn).toHaveText("🚫 Don't highlight")
+  await expect(excBtn).toHaveText('🚫 Add exception')
 
   // Excepted: the keyword still matches, the account is just spared.
   await excBtn.click()
   await expect(authorArticle).not.toHaveAttribute('data-x-loc-highlighted', {
     timeout: 5_000,
   })
-  await expect(excBtn).toHaveText('✓ Highlight exception (undo)')
+  await expect(excBtn).toHaveText('✓ Exception (undo)')
 
   // Same button undoes it — the exception is a toggle, not a one-way door.
   await excBtn.click()
@@ -133,20 +136,34 @@ test('highlight exception button works the same from a reply hover card', async 
   // processCard() only builds the button for accounts that match a rule, so its
   // presence already says the hover card agreed the keyword hit.
   await target.link.hover()
-  const excBtn = page.locator('[data-testid="HoverCard"] .x-loc-exc-btn')
+  const card = page.locator('[data-testid="HoverCard"]')
+  const excBtn = card.locator('.x-loc-exc-btn')
   await expect(excBtn).toBeVisible({ timeout: 10_000 })
-  await expect(excBtn).toHaveText("🚫 Don't highlight")
+  await expect(excBtn).toHaveText('🚫 Add exception')
+
+  // The card is also where the matched word is marked, which is the other half
+  // of answering "why is this account highlighted?". The text ranges are
+  // registered in CSS.highlights and paint without touching the DOM, so the
+  // attribute — which scopes the emoji half — is the only part a test can see.
+  await expect(card).toHaveAttribute('data-x-loc-kw', '1')
 
   await excBtn.click()
   await expect(target.article).not.toHaveAttribute('data-x-loc-highlighted', {
     timeout: 5_000,
   })
-  await expect(excBtn).toHaveText('✓ Highlight exception (undo)')
+  await expect(excBtn).toHaveText('✓ Exception (undo)')
+  // Excepted accounts lose the bar on their posts, so the mark in their bio has
+  // to go with it — a word still lit up here would read as the exception not
+  // having worked.
+  await expect(card).not.toHaveAttribute('data-x-loc-kw', /.*/, {
+    timeout: 5_000,
+  })
 
   await excBtn.click()
   await expect(target.article).toHaveAttribute('data-x-loc-highlighted', {
     timeout: 5_000,
   })
+  await expect(card).toHaveAttribute('data-x-loc-kw', '1', { timeout: 5_000 })
 })
 
 // ---------------------------------------------------------------------------
@@ -187,28 +204,17 @@ async function pickHighlightableReply(page: Page): Promise<{
   throw new Error('no reply with a cached bio in this recording')
 }
 
-/**
- * Longest run of letters in the bio — longest so the keyword is distinctive, and
- * letters-only so it can't land on an emoji or a fragment of a URL. Grapheme-aware
- * matching in the extension treats it as a standalone word either way.
- */
-function pickBioWord(bio: string | null): string | undefined {
-  const words = bio?.toLowerCase().match(/\p{L}{3,}/gu) ?? []
-  return words.sort((a, b) => b.length - a.length)[0]
-}
-
 async function addKeyword(
   context: BrowserContext,
   extensionId: string,
   keyword: string,
 ): Promise<void> {
   const optPage = await openOptionsPage(context, extensionId)
-  // The input lives inside an accordion whose open/closed state persists.
-  await setSectionOpen(optPage, 'keywords', true)
+  // Keyword settings live on the Filters tab. Nothing to expand — the
+  // accordions went away when the options page became a full tab.
+  await openOptionsTab(optPage, 'Filters')
 
-  const input = optPage.getByPlaceholder(
-    'Type a keyword or pick a suggestion...',
-  )
+  const input = optPage.getByPlaceholder('Type a keyword or pick a suggestion…')
   await input.click()
   await input.fill(keyword)
   await input.press('Enter')
@@ -226,7 +232,7 @@ async function removeKeyword(
   keyword: string,
 ): Promise<void> {
   const optPage = await openOptionsPage(context, extensionId)
-  await setSectionOpen(optPage, 'keywords', true)
+  await openOptionsTab(optPage, 'Filters')
 
   await optPage.locator(`button[title="Remove ${keyword}"]`).click()
 

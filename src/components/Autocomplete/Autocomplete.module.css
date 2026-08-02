@@ -1,3 +1,8 @@
+/* Colours come from the custom properties the host page defines (see
+ * options.module.css), with light-mode literals as the fallback for any page
+ * that doesn't define them. Hard-coded #fff and #111 here used to leave a white
+ * input and a white dropdown sitting on the dark settings page. */
+
 .autocomplete {
   position: relative;
 }
@@ -5,12 +10,19 @@
 .input {
   width: 100%;
   box-sizing: border-box;
-  padding: 7px 10px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  font-size: 14px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong, #d1d5db);
+  font-size: 13.5px;
+  font-family: inherit;
   outline: none;
-  color: #111;
+  color: var(--text, #111);
+  background: var(--surface, #fff);
+}
+
+.input:focus-visible {
+  border-color: var(--accent, #93c5fd);
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(147, 197, 253, 0.35));
 }
 
 .dropdown {
@@ -18,31 +30,32 @@
   top: 100%;
   left: 0;
   right: 0;
-  background: #fff;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  margin: 3px 0 0;
-  padding: 0;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-strong, #d1d5db);
+  border-radius: 8px;
+  margin: 4px 0 0;
+  padding: 4px;
   list-style: none;
-  max-height: 220px;
+  max-height: 240px;
   overflow-y: auto;
   z-index: 999;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
 }
 
 .dropdownItem {
-  padding: 7px 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13.5px;
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #111;
+  color: var(--text, #111);
 }
 
 .dropdownItem:hover,
 .dropdownItemActive {
-  background: #f3f4f6;
+  background: var(--accent-soft, #f3f4f6);
 }
 
 .dropdownFlag {

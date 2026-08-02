@@ -47,7 +47,7 @@ const home = routes[0]!
 export const seo = {
   /** Ignored by Google since 2009, still read by a few smaller engines. */
   keywords:
-    'X Twitter profile location, country flag extension, Twitter location checker, VPN detection Twitter, where is this Twitter user from, X profile country, hide tweets by country, collapse tweets by location, X about this account, engagement farming X, Twitter bot check, Chrome extension',
+    'X Twitter profile location, country flag extension, Twitter location checker, VPN detection Twitter, where is this Twitter user from, X profile country, hide tweets by country, collapse tweets by location, filter X by keyword, block affiliated accounts X, highlight new X accounts, X account age, X about this account, engagement farming X, Twitter bot check, Chrome extension',
   author: 'asmyshlyaev177',
 
   og: {

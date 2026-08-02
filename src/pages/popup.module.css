@@ -1,0 +1,267 @@
+/* See the same block in options.module.css: `light-dark()` holds both palettes
+   and `color-scheme` picks between them, so the theme setting is one attribute
+   on <html> and 'system' needs no JavaScript at all. */
+:root {
+  color-scheme: light dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+.popup {
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  /* Wider than the 268px this started at, because the filter lists brought an
+     autocomplete with them and "Country or region…" plus a dropdown row needs
+     the room. Still a panel, not a page. */
+  width: 300px;
+  padding: 10px 12px 12px;
+  color: var(--text);
+  background: light-dark(#ffffff, #15181c);
+
+  /* Read by Autocomplete, which is shared with the options page and styles
+     itself from these. Without them it falls back to light-mode literals and
+     lands a white input on the dark popup — exactly the bug the options page
+     had. */
+  --text: light-dark(#111, #e7e9ea);
+  --text-dim: light-dark(#6b7280, #8b98a5);
+  --surface: light-dark(#fff, #202327);
+  --surface-alt: light-dark(#f3f4f6, #1a1d21);
+  --border: light-dark(#e5e7eb, #2f3336);
+  --border-strong: light-dark(#d1d5db, #3d4144);
+  --accent: light-dark(#93c5fd, #1d9bf0);
+  --accent-soft: light-dark(rgba(147, 197, 253, 0.35), rgba(29, 155, 240, 0.3));
+  --link: light-dark(#1d4ed8, #7ab8f5);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.masterSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  /* Comfortably past the 44px touch target on the Android build, where this
+     same page is what the toolbar button opens. */
+  min-height: 44px;
+}
+
+.offNotice {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.dimmed {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.row,
+.selectRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.selectRow {
+  justify-content: space-between;
+}
+
+.selectRow select {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* --- collapsible filter lists ------------------------------------------- */
+
+.section {
+  border-top: 1px solid var(--border);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chevron {
+  color: var(--text-dim);
+  font-size: 10px;
+  width: 10px;
+}
+
+.summaryTitle {
+  flex: 1;
+}
+
+/* Count of what is in the list, so a collapsed section still says whether it is
+   doing anything. */
+.count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+  min-width: 1em;
+  text-align: right;
+}
+
+.sectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 0 10px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 7px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-alt);
+  font-size: 12px;
+  line-height: 1.4;
+  max-width: 100%;
+}
+
+.chipKeyword {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.chipFlag {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.chipNote {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.chipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chipRemove:hover {
+  background: var(--border-strong);
+  color: var(--text);
+}
+
+.empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.dropdownFlag {
+  font-size: 14px;
+}
+
+.dropdownNote {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.linkBtn {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--link);
+  background: transparent;
+  border: none;
+  padding: 8px 0;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+/* The footer holds both a <button> and an <a>; keep them visually identical. */
+a.linkBtn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.linkBtn:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.linkBtn:disabled {
+  color: var(--text-dim);
+  cursor: default;
+}

@@ -19,7 +19,6 @@ import {
   mostLikedReply,
   openOptionsPage,
   optionsSection,
-  setSectionOpen,
 } from './helpers'
 import { CACHE_API_BASE } from '../src/scripts/constants'
 
@@ -71,6 +70,43 @@ test('collapse mode (the default) leaves a placeholder that reveals the tweet on
   ).toBeVisible()
 })
 
+test('the placeholder can spare the account, not just the post', async ({
+  page,
+  context,
+  extensionId,
+}) => {
+  // A collapsed post shows nothing to hover, so the placeholder is the only
+  // place to reach the exception button from a timeline — the hover card, where
+  // it otherwise lives, cannot be opened from here at all.
+  await mockSharedCache(page, FROM_INDIA)
+  await mockAboutAccount(page, { account_based_in: 'India' })
+
+  await page.goto(NASA_TWEET)
+
+  const { article } = await mostLikedReply(page)
+  await expect(article).toHaveAttribute(HIDDEN, 'collapse', { timeout: 15_000 })
+
+  const excBtn = article.locator('.x-loc-hidden-ph .x-loc-exc-btn')
+  await expect(excBtn).toBeVisible()
+  await expect(excBtn).toHaveText('🚫 Add exception')
+
+  await excBtn.click()
+
+  await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 5_000 })
+  await expect(article.locator('.x-loc-hidden-ph')).toHaveCount(0)
+  await expect(
+    article.locator('[data-testid="User-Name"]').first(),
+  ).toBeVisible()
+
+  // The difference from "Show": that marks this one post revealed, while an
+  // exception exempts the account — so the post survives the filters being
+  // re-evaluated, which is what changing the mode forces.
+  await expect(article).not.toHaveAttribute(REVEALED, /.*/)
+  await setHideMode(context, extensionId, 'hide')
+  await expect(article).toBeVisible()
+  await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 10_000 })
+})
+
 test('hide mode drops the tweet silently, and switching off brings it back', async ({
   page,
   context,
@@ -110,14 +146,18 @@ async function setHideMode(
 ): Promise<void> {
   const optPage = await openOptionsPage(context, extensionId)
 
-  // The control sits in a <details>; a closed one can't be selected in. Opening
-  // it via the helper rather than a bare click, because the section may already
-  // be open — by default or from stored state — and a click would close it.
-  await setSectionOpen(optPage, 'blocked', true)
+  // Anchored on the section rather than on the control's own label, via the one
+  // table of section headings in helpers.ts. This used to read
+  // `label:has-text("Posts caught by any filter")`, which the Phase 2 redesign
+  // broke twice over: the wording became "Filtered posts", and the row is
+  // rendered as a <div> rather than a <label> (a <label> wrapping a <select>
+  // swallows the click that should open the dropdown). Neither shows up until
+  // the suite is run, which is exactly how it sat broken.
+  const section = await optionsSection(optPage, 'mode')
 
-  // Scoped to the section: the options page has more than one <select>, and a
-  // bare locator('select') breaks the day another is added.
-  const select = optionsSection(optPage, 'blocked').locator('select')
+  // Scoped to the section: the Filters tab has more than one <select>, so a
+  // bare locator('select') would be ambiguous.
+  const select = section.locator('select')
   await select.selectOption(mode)
   // The value is bound to the state the onChange writes to storage, so it only
   // reads back as `mode` once chrome.storage.local.set has been called.

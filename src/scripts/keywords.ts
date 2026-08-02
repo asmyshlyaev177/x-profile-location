@@ -46,6 +46,31 @@ function isWordChar(g: string): boolean {
   return wordCharRe.test(g)
 }
 
+/**
+ * Every position `needle` starts at in `haystack`, as grapheme indices.
+ *
+ * The plural of graphemeIncludes, kept separate rather than folded into it:
+ * graphemeIncludes runs against every bio the extension sees and returns the
+ * moment it finds anything, and marking — which is cosmetic and runs on one
+ * hover card at a time — has no business slowing that down.
+ */
+export function graphemeIndicesOf(
+  haystack: string[],
+  needle: string[],
+): number[] {
+  const out: number[] = []
+  const nLen = needle.length
+  if (nLen === 0) return out
+  const limit = haystack.length - nLen
+  outer: for (let i = 0; i <= limit; i++) {
+    for (let j = 0; j < nLen; j++) {
+      if (haystack[i + j] !== needle[j]) continue outer
+    }
+    out.push(i)
+  }
+  return out
+}
+
 // Like graphemeIncludes but only matches at word boundaries.
 // Adjacent letters/digits/underscores prevent a match; symbols like # $ . do not.
 export function graphemeIncludesWord(
@@ -76,6 +101,10 @@ export function graphemeIncludesWord(
 
 // Text keywords: compiled into a single regex for performance.
 let keywordPattern: RegExp | null = null
+// The same pattern with /g, for finding *every* occurrence rather than
+// answering whether there is one. Compiled alongside so the two can never
+// describe different keywords.
+let keywordPatternGlobal: RegExp | null = null
 // Emoji keywords (surrogate pairs — flags etc.): must use grapheme search to
 // respect grapheme cluster boundaries (avoids matching 🇵🇸 inside 🇰🇵🇸🇴).
 let emojiKeywordGraphemes: string[][] = []
@@ -92,15 +121,69 @@ export function setKeywords(keywords: string[]): void {
   }
   if (textKws.length === 0) {
     keywordPattern = null
+    keywordPatternGlobal = null
   } else {
     const parts = textKws.map((kw) => kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     // Negative lookbehind/lookahead on \p{L}\p{N}_ gives correct word boundaries
     // for any script (Cyrillic, Arabic, …) without needing grapheme segmentation.
-    keywordPattern = new RegExp(
-      `(?<![\\p{L}\\p{N}_])(${parts.join('|')})(?![\\p{L}\\p{N}_])`,
-      'iu',
-    )
+    const source = `(?<![\\p{L}\\p{N}_])(${parts.join('|')})(?![\\p{L}\\p{N}_])`
+    keywordPattern = new RegExp(source, 'iu')
+    keywordPatternGlobal = new RegExp(source, 'giu')
   }
+}
+
+/** The keywords held as emoji, in the form the user typed them. */
+export function emojiKeywords(): string[] {
+  return emojiKeywordGraphemes.map((graphemes) => graphemes.join(''))
+}
+
+/** Where a keyword sits in `text`, as code-unit offsets into it. */
+export interface KeywordMatch {
+  start: number
+  end: number
+}
+
+/**
+ * Every keyword occurrence in `text`, for marking it where the reader can see
+ * it.
+ *
+ * Runs the same two matchers matchesAnyKeyword does, in the same order and with
+ * the same rules — so a mark can never appear on a word the highlight rule did
+ * not fire on, and the answer to "why is this account highlighted?" is always
+ * the word actually responsible.
+ */
+export function findKeywordMatches(text: string): KeywordMatch[] {
+  const matches: KeywordMatch[] = []
+
+  if (keywordPatternGlobal !== null) {
+    // matchAll clones the regex, so the stored one's lastIndex is never left
+    // pointing into a string it has finished with.
+    for (const m of text.matchAll(keywordPatternGlobal)) {
+      if (m.index === undefined) continue
+      matches.push({ start: m.index, end: m.index + m[0].length })
+    }
+  }
+
+  if (emojiKeywordGraphemes.length > 0) {
+    const graphemes = toGraphemes(text)
+    // Grapheme index → code-unit offset. One entry longer than the text, so the
+    // end of the last grapheme is addressable.
+    const offsets: number[] = []
+    let at = 0
+    for (const grapheme of graphemes) {
+      offsets.push(at)
+      at += grapheme.length
+    }
+    offsets.push(at)
+
+    for (const needle of emojiKeywordGraphemes) {
+      for (const i of graphemeIndicesOf(graphemes, needle)) {
+        matches.push({ start: offsets[i], end: offsets[i + needle.length] })
+      }
+    }
+  }
+
+  return matches.sort((a, b) => a.start - b.start)
 }
 
 export function matchesAnyKeyword(text: string): boolean {

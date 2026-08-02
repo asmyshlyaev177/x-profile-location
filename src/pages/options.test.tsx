@@ -2,7 +2,8 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   BACKGROUND_PREFETCH_KEY,
-  OPTIONS_SECTIONS_KEY,
+  OPTIONS_TAB_KEY,
+  type OptionsTabId,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
   SHARED_CACHE_KEY,
@@ -10,6 +11,14 @@ import {
   MIN_CONFIDENCE_KEY,
   MIN_CONFIDENCE_CHOICES,
   DEFAULT_MIN_CONFIDENCE,
+  ACCOUNT_AGE_KEY,
+  ALWAYS_SHOW_KEY,
+  BLOCKED_COUNTRIES_KEY,
+  EXTENSION_ENABLED_KEY,
+  HIGHLIGHT_EXCEPTIONS_KEY,
+  REGION_MEMBERS,
+  RULE_EXCEPTIONS_KEY,
+  THEME_KEY,
 } from '../scripts/countries'
 import { isSharedCacheConfigured } from '../scripts/shared-cache'
 
@@ -38,33 +47,39 @@ const setMock = vi.fn()
 
 const { Options } = await import('./options')
 
-const KEYWORDS_LABEL = 'Highlight tweets by keyword'
-const FLAGS_LABEL = 'Highlight tweets by flags'
-const BLOCKED_LABEL = 'Blocked locations'
+const BLOCKED_LABEL = 'Locations'
 const PREFETCH_LABEL = 'Background lookups'
+const CONFIDENCE_LABEL = 'Shared cache trust'
 
-function mountOptions(sections: Record<string, boolean>) {
-  storedRef.current = { [OPTIONS_SECTIONS_KEY]: sections }
+// Sections live behind tabs since the Phase 2 redesign, so a test has to say
+// which tab it is looking at. Seeded through storage rather than clicked:
+// selecting a tab writes OPTIONS_TAB_KEY, and several tests here assert that
+// merely loading the page writes nothing.
+function mountStored(
+  stored: Record<string, unknown>,
+  tab: OptionsTabId = 'data',
+) {
+  storedRef.current = { [OPTIONS_TAB_KEY]: tab, ...stored }
   return render(<Options />)
 }
 
-function mountStored(stored: Record<string, unknown>) {
-  storedRef.current = stored
-  return render(<Options />)
-}
-
-function section(root: ParentNode, label: string) {
-  const summary = [...root.querySelectorAll('summary')].find((el) =>
+function tabButton(root: ParentNode, label: string) {
+  return [...root.querySelectorAll('button[role="tab"]')].find((el) =>
     el.textContent?.includes(label),
   )
-  if (!summary) throw new Error(`no section titled "${label}"`)
-  return summary.closest('details') as HTMLDetailsElement
 }
 
-/** Mimics the native <details> toggle: flip `open`, then fire the event. */
-function toggle(details: HTMLDetailsElement) {
-  details.open = !details.open
-  fireEvent(details, new Event('toggle'))
+/**
+ * The card carrying a given heading. Sections are plain <section> cards since
+ * the accordions were removed — nothing to expand, so a test just finds the
+ * card and reads inside it.
+ */
+function section(root: ParentNode, label: string) {
+  const heading = [...root.querySelectorAll('h2')].find((el) =>
+    el.textContent?.includes(label),
+  )
+  if (!heading) throw new Error(`no section titled "${label}"`)
+  return heading.closest('section') as HTMLElement
 }
 
 beforeEach(() => {
@@ -75,73 +90,10 @@ afterEach(() => {
   cleanup()
 })
 
-describe('options page section state', () => {
-  // Restoring state flips `open` programmatically, which fires `toggle` too —
-  // those events must not clobber the values that were just loaded, nor write
-  // anything back to storage.
-  it('restores the stored open/closed state', async () => {
-    const { container } = mountOptions({ keywords: false, flags: true })
-
-    await waitFor(() => {
-      expect(section(container, KEYWORDS_LABEL).open).toBe(false)
-    })
-    expect(section(container, FLAGS_LABEL).open).toBe(true)
-    expect(setMock).not.toHaveBeenCalled()
-  })
-
-  it('persists a section the user opens', async () => {
-    const { container } = mountOptions({ flags: false })
-    await waitFor(() =>
-      expect(section(container, FLAGS_LABEL).open).toBe(false),
-    )
-
-    toggle(section(container, FLAGS_LABEL))
-
-    expect(setMock).toHaveBeenCalledWith({
-      [OPTIONS_SECTIONS_KEY]: expect.objectContaining({ flags: true }),
-    })
-    await waitFor(() => expect(section(container, FLAGS_LABEL).open).toBe(true))
-  })
-
-  it('persists a section the user closes without touching the others', async () => {
-    const { container } = mountOptions({ keywords: true, blocked: true })
-    await waitFor(() =>
-      expect(section(container, KEYWORDS_LABEL).open).toBe(true),
-    )
-
-    toggle(section(container, KEYWORDS_LABEL))
-
-    const last = setMock.mock.calls.at(-1)?.[0] as Record<
-      string,
-      Record<string, boolean>
-    >
-    expect(last[OPTIONS_SECTIONS_KEY]).toMatchObject({
-      keywords: false,
-      blocked: true,
-    })
-    await waitFor(() =>
-      expect(section(container, KEYWORDS_LABEL).open).toBe(false),
-    )
-    expect(section(container, BLOCKED_LABEL).open).toBe(true)
-  })
-
-  it('does not write on a toggle event that changes nothing', async () => {
-    const { container } = mountOptions({ keywords: true })
-    await waitFor(() =>
-      expect(section(container, KEYWORDS_LABEL).open).toBe(true),
-    )
-    setMock.mockClear()
-
-    fireEvent(section(container, KEYWORDS_LABEL), new Event('toggle'))
-
-    expect(setMock).not.toHaveBeenCalled()
-  })
-})
-
 describe('background lookups section', () => {
   const PREFETCH = 'Prefetch locations in the background'
   const SPREAD = 'Spread lookups over'
-  const CACHE = 'Use shared community location cache'
+  const CACHE = 'Use the shared community cache'
 
   function shareSelect(root: ParentNode) {
     return section(root, PREFETCH_LABEL).querySelector(
@@ -254,16 +206,14 @@ describe('background lookups section', () => {
 // trade-off rather than a preference, so it lives behind a section that the
 // options page does not advertise — see the reasoning in shared-cache.ts.
 describe('advanced section', () => {
-  const ADVANCED_LABEL = 'Advanced'
-
+  // The tab is what is (or isn't) offered; the section inside it is where the
+  // one setting lives.
   function hasAdvanced(root: ParentNode) {
-    return [...root.querySelectorAll('summary')].some((el) =>
-      el.textContent?.includes(ADVANCED_LABEL),
-    )
+    return tabButton(root, 'Advanced') !== undefined
   }
 
   function confidenceSelect(root: ParentNode) {
-    return section(root, ADVANCED_LABEL).querySelector(
+    return section(root, CONFIDENCE_LABEL).querySelector(
       'select',
     ) as HTMLSelectElement
   }
@@ -273,12 +223,12 @@ describe('advanced section', () => {
   })
 
   it('is absent for a normal install', async () => {
-    const { container } = mountStored({})
+    const { container } = mountStored({}, 'advanced')
     await waitFor(() => expect(hasAdvanced(container)).toBe(false))
   })
 
   it('is shown once it has been enabled', async () => {
-    const { container } = mountStored({ [SHOW_ADVANCED_KEY]: true })
+    const { container } = mountStored({ [SHOW_ADVANCED_KEY]: true }, 'advanced')
     await waitFor(() => expect(hasAdvanced(container)).toBe(true))
     expect(confidenceSelect(container).value).toBe(
       String(DEFAULT_MIN_CONFIDENCE),
@@ -287,7 +237,7 @@ describe('advanced section', () => {
 
   it('?advanced=1 reveals it and remembers the choice', async () => {
     history.pushState({}, '', '/options.html?advanced=1')
-    const { container } = mountStored({})
+    const { container } = mountStored({}, 'advanced')
 
     await waitFor(() => expect(hasAdvanced(container)).toBe(true))
     expect(setMock).toHaveBeenCalledWith({ [SHOW_ADVANCED_KEY]: true })
@@ -295,7 +245,7 @@ describe('advanced section', () => {
 
   it('?advanced=0 hides it again', async () => {
     history.pushState({}, '', '/options.html?advanced=0')
-    const { container } = mountStored({ [SHOW_ADVANCED_KEY]: true })
+    const { container } = mountStored({ [SHOW_ADVANCED_KEY]: true }, 'advanced')
 
     await waitFor(() => expect(setMock).toHaveBeenCalled())
     expect(hasAdvanced(container)).toBe(false)
@@ -303,10 +253,10 @@ describe('advanced section', () => {
   })
 
   it('loads a stored threshold and persists a change', async () => {
-    const { container } = mountStored({
-      [SHOW_ADVANCED_KEY]: true,
-      [MIN_CONFIDENCE_KEY]: 2,
-    })
+    const { container } = mountStored(
+      { [SHOW_ADVANCED_KEY]: true, [MIN_CONFIDENCE_KEY]: 2 },
+      'advanced',
+    )
     await waitFor(() => expect(confidenceSelect(container).value).toBe('2'))
 
     const select = confidenceSelect(container)
@@ -319,10 +269,10 @@ describe('advanced section', () => {
   // Storage is hand-editable, and 0 would trust a single unverified report
   // while a large value would silently serve nothing at all.
   it('clamps an out-of-range stored threshold', async () => {
-    const { container } = mountStored({
-      [SHOW_ADVANCED_KEY]: true,
-      [MIN_CONFIDENCE_KEY]: 99,
-    })
+    const { container } = mountStored(
+      { [SHOW_ADVANCED_KEY]: true, [MIN_CONFIDENCE_KEY]: 99 },
+      'advanced',
+    )
     await waitFor(() =>
       expect(confidenceSelect(container).value).toBe(
         String(MIN_CONFIDENCE_CHOICES[MIN_CONFIDENCE_CHOICES.length - 1]),
@@ -332,8 +282,278 @@ describe('advanced section', () => {
 
   it('stays hidden when the shared cache is not configured', async () => {
     vi.mocked(isSharedCacheConfigured).mockReturnValue(false)
-    const { container } = mountStored({ [SHOW_ADVANCED_KEY]: true })
+    const { container } = mountStored({ [SHOW_ADVANCED_KEY]: true }, 'advanced')
     await waitFor(() => expect(hasAdvanced(container)).toBe(false))
     vi.mocked(isSharedCacheConfigured).mockReturnValue(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tabs
+// ---------------------------------------------------------------------------
+describe('tabs', () => {
+  function tabs(root: ParentNode) {
+    return [...root.querySelectorAll('button[role="tab"]')].map(
+      (el) => el.textContent ?? '',
+    )
+  }
+
+  it('opens on Display when nothing is stored', async () => {
+    const { container } = mountStored({}, 'display')
+    await waitFor(() => expect(tabs(container).length).toBeGreaterThan(0))
+    const active = container.querySelector('[aria-selected="true"]')
+    expect(active?.textContent).toContain('Display')
+  })
+
+  it('remembers the tab the user was last on', async () => {
+    const { container } = mountStored({}, 'filters')
+    await waitFor(() =>
+      expect(
+        container.querySelector('[aria-selected="true"]')?.textContent,
+      ).toContain('Filters'),
+    )
+    expect(setMock).not.toHaveBeenCalled()
+  })
+
+  it('persists a tab change', async () => {
+    const { container } = mountStored({}, 'display')
+    await waitFor(() => expect(tabButton(container, 'Filters')).toBeDefined())
+
+    fireEvent.click(tabButton(container, 'Filters')!)
+
+    expect(setMock).toHaveBeenCalledWith({ [OPTIONS_TAB_KEY]: 'filters' })
+    await waitFor(() => expect(section(container, BLOCKED_LABEL)).toBeDefined())
+  })
+
+  it('falls back to Display when the stored tab is no longer offered', async () => {
+    // ?advanced=0 while sitting on Advanced would otherwise leave the page on a
+    // tab with no button and no content.
+    const { container } = mountStored(
+      { [SHOW_ADVANCED_KEY]: false },
+      'advanced',
+    )
+    await waitFor(() =>
+      expect(
+        container.querySelector('[aria-selected="true"]')?.textContent,
+      ).toContain('Display'),
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Filters tab
+// ---------------------------------------------------------------------------
+describe('blocked locations', () => {
+  it('shows how many countries a region stands for', async () => {
+    const { container } = mountStored(
+      { [BLOCKED_COUNTRIES_KEY]: ['South Asia', 'France'] },
+      'filters',
+    )
+    await waitFor(() => expect(section(container, BLOCKED_LABEL)).toBeDefined())
+
+    const chips = [
+      ...section(container, BLOCKED_LABEL).querySelectorAll('span'),
+    ]
+    const regionNote = chips.find((el) =>
+      el.textContent?.startsWith(`+${REGION_MEMBERS['South Asia'].length}`),
+    )
+    expect(regionNote).toBeDefined()
+    // A plain country stands for itself, so it gets no count.
+    expect(chips.filter((el) => el.textContent?.startsWith('+')).length).toBe(1)
+  })
+
+  it('folds an alias onto one chip, matching what is actually blocked', async () => {
+    const { container } = mountStored(
+      { [BLOCKED_COUNTRIES_KEY]: ['Czech Republic', 'Czechia'] },
+      'filters',
+    )
+    await waitFor(() => expect(section(container, BLOCKED_LABEL)).toBeDefined())
+    const text = section(container, BLOCKED_LABEL).textContent ?? ''
+    expect(text).toContain('Czechia')
+    expect(text).not.toContain('Czech Republic')
+  })
+})
+
+describe('account age filter', () => {
+  it('persists the toggle and the threshold together', async () => {
+    const { container } = mountStored({}, 'filters')
+    await waitFor(() => expect(section(container, 'Account age')).toBeDefined())
+
+    const details = section(container, 'Account age')
+    const check = details.querySelector(
+      'input[type="checkbox"]',
+    ) as HTMLInputElement
+    fireEvent.click(check)
+
+    expect(setMock).toHaveBeenCalledWith({
+      [ACCOUNT_AGE_KEY]: { enabled: true, days: 180 },
+    })
+
+    const select = details.querySelector('select') as HTMLSelectElement
+    await waitFor(() => expect(select.disabled).toBe(false))
+    select.value = '1095'
+    fireEvent.change(select)
+
+    expect(setMock).toHaveBeenCalledWith({
+      [ACCOUNT_AGE_KEY]: { enabled: true, days: 1095 },
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Exceptions tab
+// ---------------------------------------------------------------------------
+describe('account age thresholds', () => {
+  it('offers months and years, not days', async () => {
+    const { container } = mountStored({}, 'filters')
+    await waitFor(() => expect(section(container, 'Account age')).toBeDefined())
+
+    const options = [
+      ...section(container, 'Account age').querySelectorAll('option'),
+    ].map((o) => o.textContent)
+    expect(options).toEqual(['3 months', '6 months', '1 year', '3 years'])
+  })
+
+  it('keeps a stored threshold the list no longer offers, and shows it', async () => {
+    // Somebody who set 30 days before the choices changed must not have their
+    // filter silently moved to the nearest option.
+    const { container } = mountStored(
+      { [ACCOUNT_AGE_KEY]: { enabled: true, days: 30 } },
+      'filters',
+    )
+    await waitFor(() => expect(section(container, 'Account age')).toBeDefined())
+
+    const select = section(container, 'Account age').querySelector(
+      'select',
+    ) as HTMLSelectElement
+    expect(select.value).toBe('30')
+    expect(
+      [...select.querySelectorAll('option')].map((o) => o.textContent),
+    ).toContain('30 days')
+    // Nothing was written — showing a setting must not change it.
+    expect(setMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('per-rule exceptions', () => {
+  it('shows the old highlight-only list under the highlight rule', async () => {
+    const { container } = mountStored(
+      { [HIGHLIGHT_EXCEPTIONS_KEY]: ['legacyuser'] },
+      'exceptions',
+    )
+    await waitFor(() =>
+      expect(section(container, 'Per-rule exceptions').textContent).toContain(
+        '@legacyuser',
+      ),
+    )
+  })
+
+  it('writes both stores, so a removal cannot be resurrected', async () => {
+    const { container } = mountStored(
+      { [HIGHLIGHT_EXCEPTIONS_KEY]: ['bob'] },
+      'exceptions',
+    )
+    await waitFor(() =>
+      expect(section(container, 'Per-rule exceptions').textContent).toContain(
+        '@bob',
+      ),
+    )
+
+    const remove = [
+      ...section(container, 'Per-rule exceptions').querySelectorAll('button'),
+    ].find((b) => b.title === 'Remove @bob')
+    fireEvent.click(remove!)
+
+    const written = setMock.mock.calls.at(-1)?.[0] as Record<string, unknown>
+    expect(written[HIGHLIGHT_EXCEPTIONS_KEY]).toEqual([])
+    expect(
+      (written[RULE_EXCEPTIONS_KEY] as { highlight: string[] }).highlight,
+    ).toEqual([])
+  })
+
+  it('keeps the allowlist separate from the per-rule lists', async () => {
+    const { container } = mountStored(
+      { [ALWAYS_SHOW_KEY]: ['friend'] },
+      'exceptions',
+    )
+    await waitFor(() =>
+      expect(section(container, 'Always show').textContent).toContain(
+        '@friend',
+      ),
+    )
+    expect(section(container, 'Per-rule exceptions').textContent).not.toContain(
+      '@friend',
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Master switch
+// ---------------------------------------------------------------------------
+describe('master switch', () => {
+  it('persists being turned off and says so', async () => {
+    const { container } = mountStored({}, 'display')
+    await waitFor(() => expect(container.textContent).toContain('Enabled'))
+
+    const master = container.querySelector(
+      'header input[type="checkbox"]',
+    ) as HTMLInputElement
+    fireEvent.click(master)
+
+    expect(setMock).toHaveBeenCalledWith({ [EXTENSION_ENABLED_KEY]: false })
+    await waitFor(() => expect(container.textContent).toContain('Paused'))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Appearance
+// ---------------------------------------------------------------------------
+describe('theme', () => {
+  function themeSelect(root: ParentNode) {
+    return section(root, 'Appearance').querySelector(
+      'select',
+    ) as HTMLSelectElement
+  }
+
+  afterEach(() => {
+    document.documentElement.removeAttribute('data-theme')
+  })
+
+  it('follows the system with nothing stored, and writes nothing to say so', async () => {
+    const { container } = mountStored({}, 'display')
+
+    await waitFor(() => expect(themeSelect(container).value).toBe('system'))
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
+    expect(setMock).not.toHaveBeenCalled()
+  })
+
+  it('shows the stored choice', async () => {
+    const { container } = mountStored({ [THEME_KEY]: 'dark' }, 'display')
+
+    await waitFor(() => expect(themeSelect(container).value).toBe('dark'))
+  })
+
+  it('paints the page as soon as it is picked, without waiting for storage', async () => {
+    const { container } = mountStored({}, 'display')
+    await waitFor(() => expect(themeSelect(container).value).toBe('system'))
+
+    const select = themeSelect(container)
+    select.value = 'dark'
+    fireEvent.change(select)
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+    expect(setMock).toHaveBeenCalledWith({ [THEME_KEY]: 'dark' })
+  })
+
+  it('takes the attribute back off when system is chosen again', async () => {
+    const { container } = mountStored({ [THEME_KEY]: 'dark' }, 'display')
+    await waitFor(() => expect(themeSelect(container).value).toBe('dark'))
+
+    const select = themeSelect(container)
+    select.value = 'system'
+    fireEvent.change(select)
+
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
+    expect(setMock).toHaveBeenCalledWith({ [THEME_KEY]: 'system' })
   })
 })

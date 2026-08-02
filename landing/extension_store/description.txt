@@ -1,75 +1,68 @@
-See which country an X account posts from, without opening a menu.
+See which country any X account posts from, without opening a menu.
 
-X has a country on file for nearly every account, and it will show you, but only one profile at a time: open the profile, hit the ⋯ menu, pick "About this account", close it again. Nobody is doing that eighty times to get through a reply thread.
-
-X-Pat puts the same country in the hover card, and in the timeline itself if you want it there.
+Hover a profile and the flag is there. Switch it on for the feed and it sits next to every handle.
 
 
-Seeing it
+WHAT YOU GET
 
-Hover any avatar and the flag turns up in the card X already opens for you. Turn on "Show location in feed" and it sits next to the handle on every post instead. On Android, in Lemur Browser, swipe right on a post.
-
-Some accounts get a VPN badge. That is X saying it cannot verify the location, which is weaker than it sounds and gets misread constantly. It is not proof that anyone is using a VPN.
-
-
-Filtering
-
-Pick countries or whole regions, then decide what happens to their posts: leave them alone, collapse them behind a "Show" button, or hide them.
-
-Collapse is the default. A timeline that silently deletes things is not one you can trust, and you can always open what it folded.
+- Country flag in hover cards, on profiles, and inline in the timeline
+- A VPN badge when X itself cannot verify the location
+- Collapse or hide posts from countries and regions you pick
+- Highlight by keyword, or by flags stacked in a bio
+- Swipe right to reveal, on Android
+- No rate limit errors halfway down a long thread
 
 
-Highlighting
+X RATE LIMITS, SOLVED INSTEAD OF HIT
 
-Highlight posts matching your keywords. Or highlight accounts carrying more than a set number of flags in the bio, which is a pattern you start seeing everywhere once you look for it. You can count only unique flags, so the same one repeated six times does not trip it.
+You have seen the failure. Flags fill in at the top of a thread, then stop. Or every profile you hover spins and never lands. That is the rate limit: X cuts you off at 50 account lookups per 15 minutes, and one busy thread has more accounts in it than that.
 
-There is an allowlist for accounts you never want highlighted, plus a "Don't highlight" button on the hover card so adding one is not a trip to the settings page.
+Most profiles here never cost a lookup, because they are already cached in your browser or answered by the shared cache. The rest is rationed against the live limit, and the last 30 percent is held back for accounts you actually hover.
 
-
-Where the country comes from
-
-Your browser asks x.com, using the session you are already logged into, with the same request the site makes when it shows you a profile. The answer comes straight back to you. No server of ours in the middle, no IP geolocation, nothing from a third party database.
-
-Which means the country is exactly as good as X's own. Usually right. Sometimes marked unverified. Sometimes missing, because plenty of older accounts have nothing on file at all, and no extension can invent one for them.
-
-There is no login and no API key.
+Run it dry and you get a countdown to the reset, not a blank flag.
 
 
-Privacy
+WHERE THE COUNTRY COMES FROM
 
-The extension does not read your cookies or session tokens, the bios and posts you scroll past, or your history. Not as a setting you can flip. It never reads them.
+Your browser asks x.com, using the session you are already logged into. No server of ours in the middle, no IP geolocation, no third party database.
 
-No analytics or telemetry in the extension.
-
-Results sit in your browser for 30 days, so a second look at the same account is free. One button clears them.
+So it is exactly as accurate as X's own data. Sometimes marked unverified, sometimes missing entirely on older accounts. No login and no API key.
 
 
-The shared cache, which is on by default
+FILTERING
 
-X limits how many accounts you can look up in a window, and on a busy thread that limit is the thing you actually run into. The shared cache works around it by letting your lookups answer other people's and theirs answer yours.
-
-What gets sent: the handle that was looked up, its country and VPN flag, and a random install ID so one person reporting the same thing six times only counts once. That is the entire payload. It says nothing about you and nothing about what you read.
-
-It ships enabled. One toggle in the options page turns it off, and with it off nothing leaves your browser. There is also a setting for how many separate reports a location needs before X-Pat will believe it.
-
-Background lookups fetch countries slightly ahead of your scrolling so the flag is there when you arrive. They spend the same rate limit as everything else, so you decide how much of it they get, or turn them off.
+Pick countries or whole regions, then leave them alone, collapse them behind a "Show" button, or hide them. Collapse is the default, because a timeline that silently deletes things is not one you can trust.
 
 
-Permissions
+PRIVACY
 
-x.com and twitter.com, because that is where it runs and where the lookup has to come from to reuse your session. Storage, for your settings and the cache. Context menus, for a single "Options" entry when you right-click the toolbar icon.
+Never read: your cookies and session tokens, the bios and posts you scroll past, your history. Not as a setting. It never reads them.
+
+No analytics or telemetry in the extension. Results sit in your browser for 30 days and one button clears them.
+
+
+THE SHARED CACHE, ON BY DEFAULT
+
+Your lookups answer other people's and theirs answer yours, which is what keeps the rate limit off your back.
+
+What gets sent: the handle looked up, its country and VPN flag, and a random install ID. Nothing about you, nothing about what you read. One toggle in options turns it off.
+
+
+PERMISSIONS
+
+x.com and twitter.com, because that is where it runs. Storage, for settings and the cache. Context menus, for a single "Options" entry.
 
 That is the whole list. It cannot see any other tab you have open, and there is no remote code.
 
 
-What it is not
+WHAT IT IS NOT
 
-It does not detect bots or engagement farming. It surfaces one signal you otherwise cannot see without opening every profile one at a time. Reading that signal against follower counts and account age is still your call to make.
+Not a bot or engagement-farming detector. It surfaces one signal you cannot otherwise see without opening every profile one at a time. What you conclude from it is yours.
 
 
 Chrome, Edge and Brave on the desktop. Lemur Browser on Android.
 
-MIT licensed and the source is public, so anything above is something you can go and check instead of taking my word for it.
+MIT licensed and the source is public, so you can check any of this rather than take my word for it.
 
 https://github.com/asmyshlyaev177/x-profile-location
 https://x-pat.pages.dev/

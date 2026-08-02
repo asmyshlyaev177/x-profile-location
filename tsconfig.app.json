@@ -5,7 +5,12 @@
     "useDefineForClassFields": true,
     "module": "ESNext",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "types": ["@bedframe/core", "jest", "@types/chrome"],
+    // `vitest/globals`, not `jest`: the suite runs on Vitest with `globals: true`
+    // (see bedframe.config.ts), and @types/jest has never been installed here —
+    // so the leftover entry from the template made `tsc -p tsconfig.app.json`
+    // fail on TS2688 before it typechecked a single file, and describe/it/expect
+    // resolved to nothing in every *.test.ts.
+    "types": ["@bedframe/core", "vitest/globals", "@types/chrome"],
     "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"]
