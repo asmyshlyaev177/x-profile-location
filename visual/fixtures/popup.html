@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Toolbar popup</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <h4>The toolbar popup, with the rating ask showing</h4>
+
+    <!--
+      Class names are popup.module.css's own, unhashed: the spec injects that
+      file as written rather than the built stylesheet, so the rules under test
+      are the shipped ones. Renaming a class in the source without renaming it
+      here leaves the element unstyled and fails the layout assertions, which is
+      the failure this fixture is for.
+
+      The markup is a copy of what popup.tsx renders — trimmed to the pieces the
+      ask has to sit correctly between. Its *behaviour* is unit-tested; only the
+      cascade needs a browser.
+    -->
+    <div class="popup">
+      <header class="header">
+        <span class="brand">X-Pat</span>
+        <label class="masterSwitch">
+          <input type="checkbox" checked />
+          <span>On</span>
+        </label>
+      </header>
+
+      <div>
+        <label class="row">
+          <input type="checkbox" />
+          <span>Flags in the feed 📍</span>
+        </label>
+
+        <div class="section">
+          <button type="button" class="summary" aria-expanded="false">
+            <span class="chevron" aria-hidden="true">▸</span>
+            <span class="summaryTitle">Blocked locations</span>
+            <span class="count">2</span>
+          </button>
+        </div>
+
+        <div class="section">
+          <button type="button" class="summary" aria-expanded="false">
+            <span class="chevron" aria-hidden="true">▸</span>
+            <span class="summaryTitle">Highlight keywords</span>
+            <span class="count">1</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="rate" id="rate">
+        <p class="rateText">Been useful? A store rating helps a lot.</p>
+        <div class="rateActions">
+          <a class="rateBtn" id="rate-yes" href="https://example.test/reviews"
+            >Rate it ★</a
+          >
+          <button class="linkBtn" id="rate-later">Later</button>
+          <button class="linkBtn" id="rate-no">No thanks</button>
+        </div>
+      </div>
+
+      <footer class="footer" id="footer">
+        <button class="settingsBtn" id="settings">All settings →</button>
+        <a class="linkBtn" id="rate-link" href="https://example.test/reviews"
+          >Rate ★</a
+        >
+        <a class="linkBtn" id="donate" href="https://example.test/donate"
+          >Donate 💜</a
+        >
+      </footer>
+    </div>
+  </body>
+</html>

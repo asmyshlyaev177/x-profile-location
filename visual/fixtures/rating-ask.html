@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Rating ask</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <h4>
+      The one-time ask, over X. Its rules come from CONTENT_CSS like everything
+      else the content script injects.
+    </h4>
+
+    <!-- Built by showRatingAsk(). Ids and classes are styles.ts's own. -->
+    <div id="x-loc-ask-toast" role="status">
+      <span class="x-loc-ask-msg">
+        <!-- The shipped toolbar icon, the same file the manifest points at.
+             content.tsx inlines it as a data URI; a fixture can just link it. -->
+        <img src="../../src/assets/icons/icon-32x32.png" alt="" />
+        <strong>X-Pat</strong>
+        <span>— been useful? A store rating helps a lot.</span>
+      </span>
+      <button type="button" id="ask-yes">Rate it ★</button>
+      <button type="button" class="x-loc-ask-quiet" id="ask-later">
+        Later
+      </button>
+      <button type="button" class="x-loc-ask-quiet" id="ask-no">
+        No thanks
+      </button>
+    </div>
+
+    <!-- The slot it shares. Only one of the three is ever on screen; this one
+         is here so the spec can prove they would collide if it were not. -->
+    <div id="x-loc-rate-toast">⚠ Rate limit hit · resets in 4m 12s</div>
+  </body>
+</html>

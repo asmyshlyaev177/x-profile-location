@@ -24,6 +24,10 @@ export const TWEET_MARK_ATTR = 'data-x-loc-mark'
 export const KEYWORD_MATCH_ATTR = 'data-x-loc-kw'
 // The name the matched-keyword ranges are registered under in CSS.highlights.
 export const KEYWORD_HIGHLIGHT_NAME = 'x-loc-keyword'
+// The one-time rating ask. Shares the bottom-centre slot with the rate-limit
+// and swipe toasts, so all three know this id: whichever of them needs the slot
+// takes it, and this is the one that yields.
+export const RATING_ASK_ID = 'x-loc-ask-toast'
 
 /**
  * The rules that mark emoji keywords, generated from the current keyword list.
@@ -168,6 +172,77 @@ export const CONTENT_CSS = `
 #x-loc-location-toast[data-pending] {
   color: rgba(255, 255, 255, 0.75);
   border-color: rgba(29, 155, 240, 0.28);
+}
+/* The rating ask. The only thing the extension puts on screen that the user did
+   not ask for, so: the same pill as the other two rather than a shape of its
+   own, wrapping instead of overflowing on a phone, and pointer-events back on
+   because unlike them it has to be clickable. */
+#${RATING_ASK_ID} {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 14px;
+  /* left: 50% leaves only half the viewport as available width, so without
+     max-content this wraps at 450px on a 900px screen — the other two toasts
+     hide that behind white-space: nowrap. max-width still clamps it on a
+     phone, where wrapping is the right answer. */
+  width: max-content;
+  /* 100% and not 100vw: vw counts the scrollbar, which X always has. And
+     border-box, or the padding and border land 34px of this outside the
+     max-width — X sets a global border-box and we must not depend on it. */
+  box-sizing: border-box;
+  max-width: calc(100% - 32px);
+  background: rgba(24, 24, 24, 0.96);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  z-index: 2147483647;
+  border: 1px solid rgba(29, 155, 240, 0.55);
+}
+/* Mark, name and sentence travel together: when the bar wraps on a phone, the
+   thing being rated must not end up on a different line from the ask. */
+#${RATING_ASK_ID} .x-loc-ask-msg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+#${RATING_ASK_ID} .x-loc-ask-msg img {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+/* The name is a flex item like any other, so on a phone it shrank and broke as
+   "X-" / "Pat" — a product name split down the middle is worse than no name. */
+#${RATING_ASK_ID} .x-loc-ask-msg strong {
+  font-weight: 800;
+  white-space: nowrap;
+}
+#${RATING_ASK_ID} button {
+  font: inherit;
+  color: rgb(125, 190, 250);
+  background: none;
+  border: none;
+  padding: 6px 0;
+  margin: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#${RATING_ASK_ID} button:hover {
+  text-decoration: underline;
+}
+/* The two ways of saying no read as one weight quieter than the way of saying
+   yes. Still a button, still the same tap target. */
+#${RATING_ASK_ID} button.x-loc-ask-quiet {
+  color: rgba(255, 255, 255, 0.62);
+  font-weight: 500;
 }
 /* Every reason a post gets pointed at draws the same bar: the keyword rule on a
    post, on a quote card, and the rules that mark instead of hiding. One

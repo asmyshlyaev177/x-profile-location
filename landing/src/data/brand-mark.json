@@ -1,0 +1,8 @@
+{
+  "_comment": "The site's mark, in one place: the favicon and the header wordmark drew the same path from two hand-written copies. Not an .svg because the colours differ per surface \u2014 the wordmark takes currentColor, the favicon its own plate. JSON so generate-images.mjs can read it without a TypeScript loader. NOTE: this is not the extension's toolbar icon, which is a different mark (src/assets/icons/*.png, blue X with a question mark) and is what the in-page rating ask shows.",
+  "viewBox": "0 0 32 32",
+  "radius": 8,
+  "path": "M8 8h4l4 6 4-6h4l-6 8.5L24 24h-4l-4-6-4 6H8l6.5-7.5L8 8z",
+  "plate": "#0b0b12",
+  "signal": "#00d4c0"
+}
