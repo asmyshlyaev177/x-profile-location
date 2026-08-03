@@ -2,10 +2,10 @@
   <img src="landing/public/Hover_screenshot-x-profile-location.png" alt="A country flag shown in an X hover card" width="720">
 </p>
 
-<h1 align="center">X Profile Location</h1>
+<h1 align="center">X-Pat — X Profile Location</h1>
 
 <p align="center">
-  <strong>See where any X profile is really from.</strong><br>
+  <strong>See where any X (Twitter) profile is really from.</strong><br>
   Country flags in hover cards and the feed, app-store origin and VPN warnings — then hide, collapse or highlight the accounts you'd rather not read, by country, organisation, age or bio keyword.
 </p>
 
@@ -15,13 +15,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-518_passing-3fb950?style=flat-square" alt="518 unit tests passing">
+  <img src="https://img.shields.io/badge/tests-609_passing-3fb950?style=flat-square" alt="609 unit tests passing">
   <img src="https://img.shields.io/badge/runtime_deps-2-3fb950?style=flat-square" alt="Two runtime dependencies">
   <img src="https://img.shields.io/badge/account_required-none-3fb950?style=flat-square" alt="No account required">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7f8c93?style=flat-square" alt="MIT License"></a>
 </p>
 
 <p align="center">
+  <a href="https://x-pat.pages.dev">Website</a> &nbsp;|&nbsp;
   <a href="#what-you-get">Features</a> &nbsp;|&nbsp;
   <a href="#screenshots">Screenshots</a> &nbsp;|&nbsp;
   <a href="#reading-the-data-correctly">Accuracy</a> &nbsp;|&nbsp;
@@ -91,13 +92,13 @@ Most profiles never cost a lookup at all: they're in your 30-day local cache, or
 else looked them up and the [shared cache](server/README.md) answers for free. The rest
 is rationed by [`prefetch-queue.ts`](src/scripts/prefetch-queue.ts):
 
-| | |
-| --- | --- |
-| **Real budget, not a guess** | The count comes from X's `x-rate-limit-*` headers and every lookup decrements it, hovers included. |
-| **Spread, not sprinted** | The gap is recomputed as `msLeftInWindow / budget` before each lookup — about **one every 26s** at the defaults, stretching when you hover and tightening when the window refills. |
-| **Hovers are never starved** | Background work stops at **70%**, leaving the last 15 lookups for accounts you point at. |
-| **Ordered by what you're reading** | The feed you're scrolling drains before a thread's replies. |
-| **Backs off properly** | A 429 pauses everything until the window rolls over. |
+|                                    |                                                                                                                                                                                    |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Real budget, not a guess**       | The count comes from X's `x-rate-limit-*` headers and every lookup decrements it, hovers included.                                                                                 |
+| **Spread, not sprinted**           | The gap is recomputed as `msLeftInWindow / budget` before each lookup — about **one every 26s** at the defaults, stretching when you hover and tightening when the window refills. |
+| **Hovers are never starved**       | Background work stops at **70%**, leaving the last 15 lookups for accounts you point at.                                                                                           |
+| **Ordered by what you're reading** | The feed you're scrolling drains before a thread's replies.                                                                                                                        |
+| **Backs off properly**             | A 429 pauses everything until the window rolls over.                                                                                                                               |
 
 Run it dry anyway and you get a countdown to the reset, not a blank flag. The background
 share (30/50/70/90%) and the pacing (`spread` or `instant`) are both yours in Options.
@@ -156,11 +157,11 @@ It's **on by default** and can be turned off in Options; there's also a build wi
 compiled out entirely (`pnpm build:nocache`), and it stays inert in any build with no
 cache server URL configured.
 
-| Permission              | Why                                                       |
-| ----------------------- | --------------------------------------------------------- |
-| `storage`               | Your settings and the local location cache                |
-| `contextMenus`          | The right-click entry that copies a post with its flags   |
-| `x.com` / `twitter.com` | Read the page, and request account data from X            |
+| Permission              | Why                                                     |
+| ----------------------- | ------------------------------------------------------- |
+| `storage`               | Your settings and the local location cache              |
+| `contextMenus`          | The right-click entry that copies a post with its flags |
+| `x.com` / `twitter.com` | Read the page, and request account data from X          |
 
 Full text: [Privacy Policy](https://x-pat.pages.dev/privacy-policy).
 
@@ -176,7 +177,7 @@ Full text: [Privacy Policy](https://x-pat.pages.dev/privacy-policy).
 | Shared cache, so flags survive the rate limit | ✅ | ✅ | ✅ | ❌ |
 | Cache server source published | ✅ | ❌ | ❌ | – |
 | Cached entries cross-checked between installs | ✅ | ❌ | – | – |
-| Automated test suite in the repo | 518 tests | none | – | – |
+| Automated test suite in the repo | 609 tests | none | – | – |
 
 **Where [X-Posed](https://chromewebstore.google.com/detail/x-posed-account-location/oodhljjldjdhcdopjpmfgbaoibpancfk) is ahead of X-Pat:**
 
@@ -213,7 +214,7 @@ Georgia, which is why this is a plain link rather than the usual button.
 Bug reports and PRs welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the architecture,
 the test setup, and the three areas where a subtle change does the most damage.
 
-If you just want to see whether it's any good: `pnpm test` runs 518 unit tests (plus 44 for the cache server), and
+If you just want to see whether it's any good: `pnpm test` runs 609 unit tests (plus 44 for the cache server), and
 [`server/README.md`](server/README.md) has the cache server's design and benchmarks.
 
 ## Licence

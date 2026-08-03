@@ -2,9 +2,13 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   BLOCKED_COUNTRIES_KEY,
+  EXTENSION_ENABLED_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
   POPUP_SECTION_KEY,
+  RATE_PROMPT_KEY,
+  USAGE_STATS_KEY,
 } from '../scripts/countries'
+import { RATE_PROMPT_MIN_DAYS, RATE_PROMPT_SNOOZE_MS } from '../scripts/usage'
 
 // Mutable backing store for the chrome.storage.local mock. It has to be in
 // place before popup.tsx is imported below — the module renders itself into
@@ -204,5 +208,122 @@ describe('editing the filters from the popup', () => {
     )
 
     expect(setMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('the rating ask', () => {
+  const enoughUse = {
+    [USAGE_STATS_KEY]: {
+      activeDays: RATE_PROMPT_MIN_DAYS,
+      lastDay: '2026-08-03',
+    },
+  }
+
+  it('stays away until the extension has been used for a few days', async () => {
+    const { queryByText } = mountStored({
+      [USAGE_STATS_KEY]: {
+        activeDays: RATE_PROMPT_MIN_DAYS - 1,
+        lastDay: '2026-08-03',
+      },
+    })
+    await waitFor(() =>
+      expect(document.querySelector('[aria-expanded]')).toBeTruthy(),
+    )
+
+    expect(queryByText(/Rate it/)).toBeNull()
+  })
+
+  it('appears once it has', async () => {
+    const { findByText } = mountStored(enoughUse)
+    expect(await findByText(/Rate it/)).toBeTruthy()
+  })
+
+  it('does not come back after Later, for a fortnight', async () => {
+    const { findByText } = mountStored(enoughUse)
+    const before = Date.now()
+    fireEvent.click(await findByText('Later'))
+
+    await waitFor(() => expect(lastWrite(RATE_PROMPT_KEY)).toBeTruthy())
+    const written = lastWrite(RATE_PROMPT_KEY) as {
+      status: string
+      snoozeUntil: number
+    }
+    expect(written.status).toBe('later')
+    expect(written.snoozeUntil).toBeGreaterThanOrEqual(
+      before + RATE_PROMPT_SNOOZE_MS,
+    )
+  })
+
+  it('never comes back after No thanks', async () => {
+    const { findByText } = mountStored(enoughUse)
+    fireEvent.click(await findByText('No thanks'))
+
+    await waitFor(() =>
+      expect(lastWrite(RATE_PROMPT_KEY)).toMatchObject({ status: 'done' }),
+    )
+  })
+
+  it('treats rating as answered, so it is asked once', async () => {
+    // The click opens the store in a new tab; the state has to be written on
+    // the way out or the next open asks again.
+    const { findByText } = mountStored(enoughUse)
+    fireEvent.click(await findByText(/Rate it/))
+
+    await waitFor(() =>
+      expect(lastWrite(RATE_PROMPT_KEY)).toMatchObject({ status: 'done' }),
+    )
+  })
+
+  it('links to the store listing, not to a runtime id', async () => {
+    // chrome.runtime.id is a random string for every unpacked build, so the
+    // link has to be the store's own.
+    const { findByText } = mountStored(enoughUse)
+    const link = (await findByText(/Rate it/)) as HTMLAnchorElement
+    expect(link.href).toContain('chromewebstore.google.com')
+  })
+
+  it('does not ask while the extension is paused', async () => {
+    const { queryByText } = mountStored({
+      ...enoughUse,
+      [EXTENSION_ENABLED_KEY]: false,
+    })
+    await waitFor(() =>
+      expect(document.querySelector('[aria-expanded]')).toBeTruthy(),
+    )
+
+    expect(queryByText(/Rate it/)).toBeNull()
+  })
+
+  it('leaves a way to the store even when it is not asking', async () => {
+    // The card is a request and goes away once answered; the footer link is
+    // just the way to the listing, for anyone who goes looking on their own.
+    const { findByText, queryByText } = mountStored({})
+
+    const link = (await findByText('Rate ★')) as HTMLAnchorElement
+    expect(link.href).toContain('chromewebstore.google.com')
+    expect(queryByText(/Rate it/)).toBeNull()
+  })
+
+  it('counts the footer link as answered, so it will not ask later', async () => {
+    // Somebody who has already been to the review page should not be asked to
+    // go there again a week from now.
+    const { findByText } = mountStored({})
+    fireEvent.click(await findByText('Rate ★'))
+
+    await waitFor(() =>
+      expect(lastWrite(RATE_PROMPT_KEY)).toMatchObject({ status: 'done' }),
+    )
+  })
+
+  it('stays gone once answered', async () => {
+    const { queryByText } = mountStored({
+      ...enoughUse,
+      [RATE_PROMPT_KEY]: { status: 'done', snoozeUntil: 0 },
+    })
+    await waitFor(() =>
+      expect(document.querySelector('[aria-expanded]')).toBeTruthy(),
+    )
+
+    expect(queryByText(/Rate it/)).toBeNull()
   })
 })

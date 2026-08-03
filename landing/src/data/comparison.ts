@@ -210,7 +210,7 @@ export const ROWS: Row[] = [
     note: 'Unit, end-to-end against recorded traffic, and visual regression. The number is what CI runs on every push.',
     headline: true,
     cells: {
-      'X-Pat': '518 tests',
+      'X-Pat': '609 tests',
       'X-Posed': 'none',
       'Flags & Time': 'n/a',
       'Region Blocker': 'n/a',
