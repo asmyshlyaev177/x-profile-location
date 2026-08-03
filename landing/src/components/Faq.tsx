@@ -26,7 +26,9 @@ export function Faq({
       <div class="shell-narrow max-w-3xl!">
         <h2 class="t-h2 reveal max-w-[24ch]">{heading}</h2>
 
-        <dl class="border-hair mt-12 border-t">
+        {/* Not a <dl>: the question has to sit inside <summary> to be the
+            control, and <dt> is only valid as a direct child of <dl>. */}
+        <div class="border-hair mt-12 border-t">
           {items.map((item, i) => (
             <details
               key={item.q}
@@ -36,9 +38,9 @@ export function Faq({
               {/* `list-none` kills the triangle in Firefox, the webkit
                   pseudo-element kills it in Safari and Chrome. Both needed. */}
               <summary class="flex cursor-pointer list-none items-start gap-4 py-5 [&::-webkit-details-marker]:hidden">
-                <dt class="text-text flex-1 text-[1.0625rem] font-semibold">
+                <h3 class="text-text flex-1 text-[1.0625rem] font-semibold">
                   {item.q}
-                </dt>
+                </h3>
                 {/* A plus that becomes a minus. Two rules beat an icon font. */}
                 <span
                   aria-hidden="true"
@@ -48,10 +50,10 @@ export function Faq({
                   <span class="bg-signal absolute top-0 left-1/2 h-4 w-px -translate-x-1/2 transition-transform duration-200 group-open:scale-y-0" />
                 </span>
               </summary>
-              <dd class="t-body max-w-[62ch] pb-6">{item.a}</dd>
+              <p class="t-body max-w-[62ch] pb-6">{item.a}</p>
             </details>
           ))}
-        </dl>
+        </div>
       </div>
     </section>
   )

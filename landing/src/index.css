@@ -338,9 +338,9 @@
   /* Scroll reveals ride the native view timeline — no observer, no JS gate,
      and browsers without support simply show the finished state.
 
-     `forwards`, never `both`: backwards fill would hold every element below
-     the fold at opacity 0, so any render that does not scroll (a full-page
-     screenshot, a headless capture, print) would ship the page blank. */
+     Transform only, never opacity: a scroll-driven fade is a parked state, not
+     a transient one, and holding the body colour above 4.5:1 through one would
+     mean starting at 0.86 opacity — not a fade anyone can see. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
       .reveal {
@@ -353,7 +353,6 @@
 
   @keyframes rise {
     from {
-      opacity: 0;
       transform: translate3d(0, 1.25rem, 0);
     }
   }
