@@ -1,4 +1,8 @@
-import { CHROME_STORE_URL, DONATE_URL } from '../utils/constants'
+import {
+  CHROME_STORE_URL,
+  DONATE_URL,
+  GITHUB_REPO_URL,
+} from '../utils/constants'
 import { Wordmark } from './Wordmark'
 
 const LINKS: { heading: string; items: { label: string; href: string }[] }[] = [
@@ -9,6 +13,7 @@ const LINKS: { heading: string; items: { label: string; href: string }[] }[] = [
       { label: 'How it works', href: '/#how' },
       { label: 'Features', href: '/#features' },
       { label: 'Chrome Web Store', href: CHROME_STORE_URL },
+      { label: 'Source on GitHub', href: GITHUB_REPO_URL },
       { label: 'Support the project', href: DONATE_URL },
     ],
   },

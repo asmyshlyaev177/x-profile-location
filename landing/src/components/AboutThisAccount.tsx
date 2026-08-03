@@ -122,7 +122,7 @@ export function AboutThisAccount() {
                 </p>
               </div>
               <div class="reveal mt-10">
-                <InstallButton size="lg" />
+                <InstallButton size="lg" placement="guide_about_this_account" />
               </div>
             </div>
           </div>

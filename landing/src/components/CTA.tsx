@@ -20,7 +20,7 @@ export function CTA() {
         </h2>
 
         <div class="mt-10 flex flex-wrap items-center gap-x-8 gap-y-5">
-          <InstallButton size="lg" tone="void" />
+          <InstallButton size="lg" tone="void" placement="cta" />
           <p class="text-void/75 max-w-[26ch] text-[0.9375rem] leading-snug font-semibold">
             Free, and it works the moment it installs. There’s no account to
             create.
