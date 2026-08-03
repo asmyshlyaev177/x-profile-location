@@ -1,40 +1,22 @@
 // Snapshot a live element to a PNG, keeping the styles it is actually wearing.
+// Beats drawing a card by hand: avatar, badges, media and quoted tweets come
+// free, and it stays right when X changes its layout.
 //
-// The share card used to be drawn by hand on a canvas: a name, a handle, the
-// post text, some chips. It was legible but it was an *illustration* of a post
-// rather than the post — wrong font, wrong spacing, no avatar, no verified
-// badge, no images, no quoted tweet. Snapshotting the real article gives back
-// everything X renders, for free, and stays right when X changes its layout.
+// Clone the node, inline every computed style, re-embed every image as a data
+// URI, then draw it through <foreignObject>. Steps two and three cannot be
+// skipped: an SVG data URL is a restricted context, where no stylesheet of the
+// page applies and no external resource is fetched.
 //
-// How it works, and why it has to be done the long way round:
+// X's own webfont is behind such a URL, so text falls back to the system sans
+// serif — close, not identical. Embedding it would mean shipping it.
 //
-//   1. The node is cloned, because we are about to mutate it and it is on the
-//      user's screen.
-//   2. Every computed style is copied inline onto the clone. This is the part
-//      that cannot be skipped: the snapshot is rendered from an SVG data URL,
-//      which is a *restricted context* — no stylesheet of the page applies
-//      inside it, and no external resource is fetched.
-//   3. Every image is refetched and re-embedded as a data URI, for the same
-//      reason. Avatars, media, and the <img> tags X uses for emoji all vanish
-//      otherwise.
-//   4. The clone goes inside <foreignObject>, and that SVG is drawn to a canvas.
-//
-// The one thing that cannot be recovered is X's own webfont, which lives behind
-// a URL the restricted context won't load. Text falls back to the system sans
-// serif — close, not identical. Embedding the font would mean shipping it.
-//
-// Anything here can fail on a page we do not control, so every step degrades:
-// an image that won't fetch is dropped rather than aborting the snapshot, and
-// the caller keeps the hand-drawn card as a fallback for when the whole thing
-// fails.
+// Every step degrades rather than aborting; the caller keeps the hand-drawn card
+// for when the whole thing fails.
 
 /**
- * The computed properties copied onto the clone.
- *
- * Curated rather than "everything getComputedStyle returns". A tweet is around
- * two hundred elements and the full set is ~340 properties each — that is tens
- * of thousands of declarations, and the data URL it produces is large enough to
- * become its own problem. This list is what visibly matters for a post.
+ * The computed properties copied onto the clone — curated, not everything
+ * getComputedStyle returns. A tweet is ~200 elements × ~340 properties, and the
+ * data URL that produces is large enough to become its own problem.
  */
 const STYLE_PROPS = [
   'box-sizing',
@@ -78,10 +60,8 @@ const STYLE_PROPS = [
   'border-bottom-left-radius',
   'border-bottom-right-radius',
   'background-color',
-  // The avatar is the reason these are here. X draws profile pictures both as
-  // <img> and as a background-image depending on the surface, and without the
-  // background properties the second kind is copied as a blank circle —
-  // inlineImages would then have nothing to find and re-embed.
+  // X draws avatars as <img> on some surfaces and background-image on others;
+  // without these the second kind copies as a blank circle.
   'background-image',
   'background-size',
   'background-position',
@@ -140,8 +120,8 @@ const STYLE_PROPS = [
 export function inlineStyles(source: Element, clone: Element): void {
   const sourceNodes = [source, ...Array.from(source.querySelectorAll('*'))]
   const cloneNodes = [clone, ...Array.from(clone.querySelectorAll('*'))]
-  // The clone is structurally identical, so the two walks stay in step. If they
-  // ever don't, the shorter one wins rather than mismatching pairs.
+  // Structurally identical, so the walks stay in step; if they ever don't, the
+  // shorter one wins rather than pairing the wrong nodes.
   const count = Math.min(sourceNodes.length, cloneNodes.length)
 
   for (let i = 0; i < count; i++) {
@@ -162,15 +142,10 @@ export function inlineStyles(source: Element, clone: Element): void {
 /**
  * Let an inserted element's ancestors grow around it.
  *
- * inlineStyles copies *computed* styles, and a computed height is always a
- * pixel value — the height the element had before anything was added to it. So
- * every ancestor of a newly inserted row is pinned to a box with no room for
- * it, and the row either overflows its container or is clipped away entirely by
- * an `overflow: hidden` further up. Either way it does not appear where it was
- * put, which is the whole failure.
- *
- * Clearing the pinned box back to `auto` on the chain from the insertion point
- * to the root is enough: those are exactly the elements that have to get taller.
+ * A computed height is always a pixel value — the height before the insertion —
+ * so every ancestor is pinned to a box with no room, and the new row overflows
+ * or is clipped by an `overflow: hidden` further up. Clearing the chain from the
+ * insertion point to the root back to `auto` is enough.
  */
 export function allowGrowth(from: Element, root: Element): void {
   let node: Element | null = from
@@ -187,16 +162,12 @@ export function allowGrowth(from: Element, root: Element): void {
 }
 
 /**
- * Stop text from being cut off with an ellipsis.
+ * Stop text being cut off with an ellipsis.
  *
- * X truncates names and titles with `text-overflow: ellipsis` against a width
- * measured for its own webfont. That font cannot be loaded in the context the
- * snapshot renders in, so the fallback is a little wider — and text that fitted
- * on the page comes out clipped to "Some Very Long Nam…" in the image.
- *
- * Only the elements actually configured to truncate are touched, and they are
- * allowed to size to their content instead. Preserving the exact box would mean
- * preserving the truncation, which is the bug.
+ * X sizes its `text-overflow: ellipsis` boxes for its own webfont. The fallback
+ * font is wider, so text that fitted on the page comes out as "Some Very Long
+ * Nam…". Only the elements set to truncate are touched, and they size to their
+ * content — preserving the exact box would preserve the bug.
  */
 export function unclampText(clone: Element): void {
   for (const el of Array.from(clone.querySelectorAll<HTMLElement>('*'))) {
@@ -210,19 +181,13 @@ export function unclampText(clone: Element): void {
 }
 
 /**
- * The box the clone actually needs, by laying it out.
+ * The box the clone actually needs, by laying it out off-screen — every style is
+ * already inlined, so it lays out exactly as the SVG will. Guessing came first
+ * (a flat 80px of slack) and left a band of dead background under every post.
  *
- * The alternative is guessing — the first version added a flat 80px of slack
- * whenever anything was inserted, which left a band of empty background under
- * every post that needed less. Since every style is already inlined, attaching
- * the clone off-screen lays it out exactly as the SVG will.
- *
- * Both dimensions are taken from the union of every descendant's box, not from
- * the root's own rect. `unclampText` deliberately lets a name grow past the
- * width X had sized it to, and content that overflows its parent does not make
- * that parent's rect any wider — so measuring the root alone gives back the
- * width the name was *supposed* to fit in, and the SVG viewport then clips the
- * handle off the right-hand edge.
+ * Measured from the union of every descendant's box: overflow doesn't widen a
+ * parent's rect, so the root alone gives back the width unclampText was
+ * deliberately allowed to exceed, and the viewport clips the handle off.
  */
 export function measureClone(
   clone: Element,
@@ -242,8 +207,8 @@ export function measureClone(
   let bottom = root.bottom
   for (const el of Array.from(clone.querySelectorAll('*'))) {
     const rect = el.getBoundingClientRect()
-    // Zero-sized boxes are hidden elements and decorations; letting them count
-    // would stretch the image to reach something invisible.
+    // Hidden elements and decorations; counting them stretches the image to
+    // reach something invisible.
     if (rect.width === 0 && rect.height === 0) continue
     if (rect.right > right) right = rect.right
     if (rect.bottom > bottom) bottom = rect.bottom
@@ -270,16 +235,13 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 /**
- * A photo in a post can be several megabytes, and it ends up base64'd inside a
- * data URL that also has to be URL-encoded. Two of those turn the snapshot into
- * a string big enough to be its own failure mode, for detail nobody can see at
- * the size the card is viewed.
+ * A post photo can be megabytes, base64'd inside a data URL that is then
+ * URL-encoded. Two of those is a string big enough to be its own failure mode.
  */
 const MAX_IMAGE_EDGE = 1400
 
-// Below this, decoding the image to measure it costs more than it could save.
-// Avatars and emoji — the overwhelming majority of what gets inlined — never
-// come close.
+// Below this, decoding to measure costs more than it could save. Avatars and
+// emoji — most of what gets inlined — never come close.
 const SHRINK_THRESHOLD_CHARS = 400_000
 
 /** Re-encode an oversized image down to MAX_IMAGE_EDGE, or pass it through. */
@@ -297,8 +259,7 @@ async function shrinkIfHuge(dataUrl: string): Promise<string> {
   const ctx = canvas.getContext('2d')
   if (!ctx) return dataUrl
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-  // JPEG: this path only triggers for photos, where the size saving is the
-  // entire point and the alpha channel is not in use.
+  // JPEG: only photos reach here, and the size saving is the point.
   return canvas.toDataURL('image/jpeg', 0.9)
 }
 
@@ -316,16 +277,13 @@ function placeholderFor(el: Element, glyph: string): HTMLElement {
 }
 
 /**
- * Swap `<video>` for something that can actually render.
+ * Swap `<video>` for something that can render: there is no playback in the
+ * restricted context, so a post with a video would come out with a hole in it.
+ * X's `poster` is the frame the user is looking at anyway; without one it
+ * becomes a play-glyph box.
  *
- * A video inside foreignObject draws nothing — there is no playback in the
- * restricted context an SVG image renders in, so a post with a video or a GIF
- * would come out with a hole in it. X gives every video a `poster`, which is
- * the frame the user is looking at anyway; that becomes an `<img>` and gets
- * inlined with the rest. Without a poster it becomes a play-glyph box.
- *
- * Runs after the styles are inlined, so the replacement inherits the box the
- * video occupied and the surrounding layout doesn't move.
+ * Runs after the styles are inlined, so the replacement inherits the video's box
+ * and the surrounding layout doesn't move.
  */
 export function replaceVideos(clone: Element): void {
   for (const video of Array.from(clone.querySelectorAll('video'))) {
@@ -352,21 +310,16 @@ function backgroundUrls(value: string): string[] {
 }
 
 /**
- * Re-embed every image the clone references as a data URI.
+ * Re-embed every image the clone references as a data URI — anything left
+ * pointing at a URL silently disappears inside the SVG.
  *
- * Nothing external loads inside the SVG, so anything left pointing at a URL
- * silently disappears — avatars, post media, and the `<img>` tags X uses for
- * emoji in the post text.
+ * `credentials: 'omit'`: these are public CDN assets and a snapshot has no
+ * business carrying cookies. Redrawing the loaded element onto a canvas would
+ * skip the round trip, but X loads its images without `crossorigin`, so that
+ * canvas is tainted and cannot be exported at all.
  *
- * Fetched with `credentials: 'omit'`: these are public CDN assets, and a
- * snapshot has no business carrying the user's cookies anywhere. Redrawing the
- * already-loaded element onto a canvas would avoid the round trip, but X does
- * not load its images with `crossorigin`, so that canvas is tainted and cannot
- * be exported at all.
- *
- * An image that refuses becomes a placeholder of the same size rather than
- * disappearing, so a post with an unreachable photo still looks like a post
- * with a photo in it.
+ * A refusal becomes a placeholder of the same size, so a post with an
+ * unreachable photo still looks like a post with a photo in it.
  */
 export async function inlineImages(clone: Element): Promise<void> {
   const embed = async (url: string): Promise<string> => {
@@ -381,8 +334,7 @@ export async function inlineImages(clone: Element): Promise<void> {
     try {
       img.setAttribute('src', await embed(src))
     } catch {
-      // Emoji and other small inline images are better dropped than boxed —
-      // a grey square mid-sentence reads far worse than a missing glyph.
+      // A grey square mid-sentence reads worse than a missing glyph.
       const isTiny = (img.getAttribute('style') ?? '').includes('height: 1.2em')
       if (isTiny) img.remove()
       else img.replaceWith(placeholderFor(img, '🖼'))
@@ -412,27 +364,24 @@ export function buildSvgDataUrl(
   width: number,
   height: number,
 ): string {
-  // The wrapper carries the XHTML namespace: foreignObject content is parsed as
-  // XML, and without it nothing inside renders at all.
+  // foreignObject content is parsed as XML; without the XHTML namespace nothing
+  // inside renders at all.
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
     `<foreignObject x="0" y="0" width="100%" height="100%">` +
     `<div xmlns="http://www.w3.org/1999/xhtml">${markup}</div>` +
     `</foreignObject></svg>`
-  // encodeURIComponent rather than base64: it keeps the payload debuggable and
-  // avoids a second full copy of a string that is already large.
+  // encodeURIComponent over base64: debuggable, and no second copy of an
+  // already-large string.
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
 const LOAD_TIMEOUT_MS = 15_000
 
 /**
- * Decode a data URL into an image.
- *
- * The timeout is not belt-and-braces: an `<img>` that neither loads nor errors
- * leaves the promise pending forever, and the only thing the user sees is a
- * "Rendering…" toast that never resolves. Failing is recoverable — the caller
- * falls back to the drawn card — and hanging is not.
+ * Decode a data URL into an image. The timeout is load-bearing: an `<img>` that
+ * neither loads nor errors leaves the promise pending and the "Rendering…" toast
+ * up forever. Failing is recoverable, hanging is not.
  */
 function loadImage(
   src: string,
@@ -464,20 +413,15 @@ export interface SnapshotOptions {
   /** Padding around the element, in CSS pixels. */
   padding?: number
   /**
-   * Last chance to edit the clone before it is serialized.
-   *
-   * Runs *after* the computed styles are inlined, so anything added here has to
-   * carry its own inline styles — nothing from the page's stylesheets reaches
-   * the restricted context the snapshot renders in.
+   * Last chance to edit the clone. Runs after the styles are inlined, so
+   * anything added here has to carry its own.
    */
   decorate?: (clone: Element) => void
 }
 
 /**
- * Render an element to a PNG as it currently appears.
- *
- * Throws rather than returning something half-drawn, so a caller can fall back
- * to a card it knows how to draw itself.
+ * Render an element to a PNG as it currently appears. Throws rather than
+ * returning something half-drawn, so the caller can fall back to its own card.
  */
 export async function snapshotElement(
   el: Element,
@@ -493,15 +437,13 @@ export async function snapshotElement(
   const clone = el.cloneNode(true) as Element
   inlineStyles(el, clone)
   unclampText(clone)
-  // Before inlineImages, so a video's poster is inlined along with everything
-  // else rather than left pointing at a URL that won't load.
+  // Before inlineImages, so a video's poster gets inlined with everything else.
   replaceVideos(clone)
   decorate?.(clone)
   await inlineImages(clone)
 
-  // The element's own box has to be pinned: inside foreignObject it has no
-  // parent to size it, so a width of "auto" collapses it to nothing. Height is
-  // left to grow, since `decorate` may have added a row.
+  // Inside foreignObject there is no parent to size it, so "auto" width
+  // collapses to nothing. Height still grows, since `decorate` may add a row.
   if (clone instanceof HTMLElement) {
     clone.style.width = `${width}px`
     clone.style.height = 'auto'
@@ -509,10 +451,9 @@ export async function snapshotElement(
     clone.style.position = 'static'
   }
 
-  // Measured, not guessed: the decoration and the unclamped text both change
-  // the box, and the SVG viewport has to match or the image comes out cropped
-  // on one side and padded with dead background on the other. Never smaller
-  // than the element started at, so a failed measurement can't shrink it.
+  // The viewport has to match the real box or the image comes out cropped one
+  // side and padded the other. Never smaller than the element started at, so a
+  // failed measurement can't shrink it.
   const measured = measureClone(clone, width)
   const finalWidth = Math.max(width, measured.width)
   const finalHeight = Math.max(height, measured.height)

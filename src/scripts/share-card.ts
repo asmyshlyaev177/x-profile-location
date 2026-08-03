@@ -1,20 +1,12 @@
 // Render a post and the flags we show for it into a PNG, locally.
 //
-// Framing first, because it is most of the feature: this shares *a post with
-// its location flags*. It is not evidence, nobody is exposed, nothing is
-// caught, and there is no button that drafts a reply for you. The card states
-// what X returned and stops — the reader decides what it means. Every string in
-// this file is chosen on that basis, and the same rule applies to anything
-// added later.
+// The card states what X returned and stops — no claim of evidence, no drafted
+// reply. Every string here is chosen on that basis, and so should any added
+// later. Drawn in the page and written to the clipboard: nothing leaves the
+// browser, so sharing a card doesn't tell anyone you looked.
 //
-// Local, too: the image is drawn in the page and written to the clipboard. No
-// upload, no image service, nothing leaves the browser — which is what makes it
-// safe to share a card about an account without telling anyone you looked.
-//
-// The layout is computed separately from the drawing so it can be tested. A
-// 2D canvas context doesn't exist under happy-dom, so anything that only lives
-// inside a draw call is untestable by construction; keeping the arithmetic in
-// buildShareLayout means the part with the bugs in it is the part under test.
+// Layout is computed apart from the drawing because happy-dom has no 2D context
+// — anything living inside a draw call is untestable by construction.
 
 import type { LocationData } from './cache'
 import { canonicalLocation, COUNTRY_FLAGS, REGION_FLAGS } from './countries'
@@ -71,13 +63,10 @@ const BODY_LINE_HEIGHT = 40
 const MAX_BODY_LINES = 12
 
 /**
- * Break text to a pixel width.
- *
- * `measure` is injected rather than reaching for a canvas, so the wrapping can
- * be tested against a predictable width function instead of whatever font
- * happens to be installed. A word longer than the line (a URL, an unbroken
- * string of emoji) is placed on its own line and allowed to overflow rather
- * than being cut mid-character: a truncated link is worse than a wide one.
+ * Break text to a pixel width. `measure` is injected so wrapping can be tested
+ * against a predictable width rather than whatever font is installed. A word
+ * longer than the line overflows on its own line instead of being cut — a
+ * truncated link is worse than a wide one.
  */
 export function wrapText(
   text: string,
@@ -119,14 +108,10 @@ function flagFor(location: string): string {
 }
 
 /**
- * The chips the card carries: what X said, in X's words.
- *
- * The VPN chip reads exactly as the on-page badge does — "⚠ VPN". Anything else
- * would mean the image and the extension describing the same field in two
- * different vocabularies, which is its own kind of misleading. What stays out
- * either way is any claim of *detection*: `location_accurate: false` is X
- * declining to verify a location, which can be a VPN and can equally be X being
- * unsure, and the badge must not upgrade that into a finding.
+ * The chips the card carries: what X said, in X's words. The VPN chip reads
+ * exactly as the on-page badge does, so the image and the extension don't
+ * describe one field in two vocabularies. Neither claims *detection*:
+ * `location_accurate: false` is X declining to verify, not a finding.
  */
 export function shareChips(data: LocationData): string[] {
   const chips: string[] = []
@@ -179,10 +164,8 @@ export function buildShareLayout(
   })
   y += 52
 
-  // No post text is a legitimate case, not an empty one: the hover card shares
-  // an *account*, so its card is the name, the handle and the chips. Skipping
-  // the block entirely (rather than wrapping '') keeps the card from carrying a
-  // blank line where a post would be.
+  // A hover card shares an *account*, so no post text is legitimate. Skipping
+  // the block rather than wrapping '' avoids a blank line where a post would be.
   const lines = input.text.trim()
     ? wrapText(input.text, contentWidth, (s) => measure(s, BODY_FONT))
     : []
@@ -201,9 +184,8 @@ export function buildShareLayout(
   const chips = shareChips(input.data)
   if (chips.length > 0) {
     y += 24
-    // Chips wrap to a second row rather than shrinking or being dropped: a card
-    // that silently omits the VPN caveat because it ran out of width would be
-    // the one failure mode that actually misleads.
+    // Wrap rather than shrink or drop: silently omitting the VPN caveat for want
+    // of width is the one failure mode that actually misleads.
     let x = PAD
     const chipHeight = 44
     for (const chip of chips) {
@@ -251,8 +233,7 @@ export async function renderShareCard(input: ShareInput): Promise<Blob> {
   }
 
   const layout = buildShareLayout(input, { measure })
-  // Drawn at 2x so the card is legible when someone views it full-size; the
-  // scale is applied once here rather than being baked into every coordinate.
+  // 2x for legibility at full size, applied once rather than per coordinate.
   const scale = 2
   canvas.width = layout.width * scale
   canvas.height = layout.height * scale
@@ -283,12 +264,9 @@ export async function renderShareCard(input: ShareInput): Promise<Blob> {
 }
 
 /**
- * Put the card on the clipboard, falling back to a download.
- *
- * Clipboard image writes need a live user gesture and are not available
- * everywhere; a download always works, and the user ends up with the same file
- * either way. The return value says which happened, so the toast can be honest
- * about where the image went.
+ * Put the card on the clipboard, falling back to a download — image writes need a
+ * live user gesture and aren't available everywhere. The return value says which
+ * happened, so the toast can be honest about where the image went.
  */
 export async function deliverShareCard(
   blob: Blob,

@@ -110,16 +110,12 @@ const RE_AT_MENTION = /^@[A-Za-z0-9_]{1,50}$/
 // ---------------------------------------------------------------------------
 let blockedCountries = new Set<string>()
 
-// Held canonicalised *and region-expanded*, and every location is canonicalised
-// before it's tested against the set — so a list saved as "USA" or "Czech
-// Republic" still blocks the "United States" / "Czechia" X reports, and a list
-// holding "South Asia" blocks an account reported as Pakistan as well as one
-// reported as the region itself.
+// Canonicalised and region-expanded, and every location is canonicalised before
+// being tested — so a list saved as "USA" blocks the "United States" X reports,
+// and one holding "South Asia" blocks Pakistan too.
 //
-// The expansion lives here rather than in storage on purpose: what the user
-// picked and what that picks out are different things, and only the second
-// belongs in a comparison. Storage keeps "Africa" as one entry the options page
-// can render as one removable chip.
+// Expansion lives here, not in storage: what the user picked and what that picks
+// out are different things, and only the second belongs in a comparison.
 function toBlockedSet(stored: unknown): Set<string> {
   return expandLocations(Array.isArray(stored) ? (stored as string[]) : [])
 }
@@ -243,11 +239,9 @@ chrome.storage.local
     )
     setMinConfidence(r[MIN_CONFIDENCE_KEY])
 
-    // This settings load is async, so tweets may already be rendered (and their
-    // bios buffered by page-script) before keywords/toggles were known — in
-    // which case nothing was highlighted. Now that settings are loaded, re-scan
-    // what's on screen and replay the buffered bios, so highlighting and feed
-    // locations appear on initial load rather than only after a scroll.
+    // Tweets can render before this async load resolves, in which case nothing
+    // was highlighted. Re-scan and replay the buffered bios, so the first screen
+    // is decorated without waiting for a scroll.
     rehighlightAll()
     refreshFeedLocations()
     refreshHiddenTweets()
@@ -256,12 +250,9 @@ chrome.storage.local
   })
 
 /**
- * Undo every visible thing this script has done to the page.
- *
- * Attribute-and-CSS based throughout, so switching off is removing attributes
- * and a handful of injected nodes rather than trying to restore markup React
- * owns. Elements X has since recycled are simply not there to clean, which is
- * fine — they carry none of our attributes either.
+ * Undo every visible thing this script has done to the page. Attribute-and-CSS
+ * throughout, so this is removing attributes and a few injected nodes rather
+ * than restoring markup React owns.
  */
 function stripAllInjections(): void {
   for (const article of Array.from(
@@ -342,11 +333,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
     refreshFeedLocations()
     syncPrefetcher()
   }
-  // Both keys arrive in one `changes` object when written together, so the
-  // general one is checked first and the legacy one is only a fallback — that
-  // is what makes a *removal* stick. Deliberately synchronous: re-reading
-  // storage here would let a highlight survive a frame past the edit that
-  // removed it, and would make correctness depend on a second async hop.
+  // Both keys arrive in one `changes` object, so the general one wins and the
+  // legacy one is only a fallback — that is what makes a *removal* stick.
+  // Synchronous on purpose: re-reading storage would let a highlight survive a
+  // frame past the edit that removed it.
   if (changes[RULE_EXCEPTIONS_KEY]) {
     // The write already folded in the legacy list (writeHighlightExceptions),
     // so merging it again here would resurrect anything just removed.
@@ -441,11 +431,10 @@ function getLocationDisplay(loc: string): {
   return { emoji: '🌐', label: loc }
 }
 
-// Which blocked location (if any) a profile should be hidden for, or null.
-// The App Store / Play Store country is the primary signal — the store region is
-// hard to fake, so it's trusted over the stated account location. When there's no
-// store signal, fall back to `account_based_in`, but only when it isn't flagged
-// as inaccurate (VPN), since a VPN-masked location can't be trusted either way.
+// Which blocked location a profile is hidden for, or null. The store country is
+// the primary signal — a store region is hard to fake — so it outranks the stated
+// location. Without one, fall back to `account_based_in`, but only when X hasn't
+// flagged it inaccurate.
 function effectiveBlockedLocation(data: LocationData): string | null {
   const { country: sourceCountry } = classifySource(data.source)
   if (sourceCountry) {
@@ -467,17 +456,13 @@ export interface FilterMatch {
 }
 
 /**
- * Every data-driven rule an account matches, exceptions ignored.
+ * Every data-driven rule an account matches, exceptions ignored. Location leads,
+ * since it is the rule the user most certainly set up on purpose.
  *
- * Ordered least-surprising-first, since location is the rule the user almost
- * certainly set up deliberately. Split out of activeMatches so that the
- * exception button and the hide/collapse decision cannot disagree about what a
- * rule means: the button has to offer exactly the rules that are acting, *and*
- * to name one the user has already excepted so it can be undone — which is the
- * one thing activeMatches must never return.
- *
- * Highlighting is absent because it is judged from the bio rather than from
- * this record; activeRulesFor folds it back in.
+ * Split out of activeMatches because the exception button has to be able to name
+ * a rule the user has *already* excepted, in order to undo it — the one thing
+ * activeMatches must never return. Highlighting is judged from the bio instead,
+ * and activeRulesFor folds it back in.
  */
 function ruleMatches(data: LocationData | null | undefined): FilterMatch[] {
   if (!data) return []
@@ -517,11 +502,9 @@ function ruleMatches(data: LocationData | null | undefined): FilterMatch[] {
 }
 
 /**
- * The single decision point for "which rules are acting on this account".
- *
- * The allowlist and the per-rule exceptions are applied here and nowhere else,
- * so they cannot be applied in three subtly different ways — and so a
- * placeholder can always say which rule it was.
+ * The single decision point for "which rules are acting on this account". The
+ * allowlist and the per-rule exceptions are applied here and nowhere else, so
+ * they cannot be applied in three subtly different ways.
  */
 function activeMatches(
   userName: string,
@@ -532,12 +515,9 @@ function activeMatches(
 }
 
 /**
- * The rule a post is hidden for, or null — the first one that both fires and is
- * allowed to hide.
- *
- * An account can match a rule that only marks (age) and no rule that hides; the
- * filter above is what stops that from collapsing the post anyway, which is the
- * whole difference between the two kinds of rule.
+ * The rule a post is hidden for, or null — the first that both fires and is
+ * allowed to hide. An account matching only a marking rule (age) must not have
+ * its post collapsed, which is the whole difference between the two kinds.
  */
 function hideMatchFor(
   userName: string,
@@ -555,11 +535,9 @@ function markMatchFor(
 }
 
 /**
- * The rule to name on a people-list row, hiding or not.
- *
- * Rows are marked and never removed, so the distinction that matters everywhere
- * else does not apply here: a row's tag should say "blocked location" when that
- * is what fired, even though the same rule collapses a post.
+ * The rule to name on a people-list row, hiding or not. Rows are marked and
+ * never removed, so the hide/mark distinction doesn't apply — the tag should say
+ * "blocked location" even though that rule collapses a post elsewhere.
  */
 function cellMatchFor(
   userName: string,
@@ -606,11 +584,9 @@ const pendingMap = new NormalizedMap<Promise<LocationData | null>>()
 let rateLimitResetAt = 0
 let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null
 
-// Live AboutAccountQuery budget. Seeded at the limit and decremented on EVERY
-// network request — manual hover, primary tweet, swipe, OR background prefetch —
-// via noteRequestSent, then corrected from the authoritative x-rate-limit-*
-// response headers. Tracking *all* usage (not just prefetch) is what lets the
-// prefetcher stop before it eats into the user's reserved share of the window.
+// Live AboutAccountQuery budget: seeded at the limit, decremented by every
+// request (hover, swipe, prefetch alike) and corrected from x-rate-limit-*.
+// Counting all of it is what lets the prefetcher stop short of the user's share.
 let rateWindowLimit = LOOKUP_LIMIT_PER_WINDOW
 let rateWindowRemaining = LOOKUP_LIMIT_PER_WINDOW
 let rateWindowResetAt = 0
@@ -660,18 +636,13 @@ function currentRateState() {
   }
 }
 
-// Bio/displayName captured from timeline JSON this session, kept in memory so
-// highlighting reads them synchronously the instant they arrive — never waiting
-// on (or racing with) mergeCached's async get→set write to IndexedDB. Without
-// this, on a fresh load (empty IDB) rehighlightAll's getCached can read the
-// record before mergeCached's set lands, so nothing highlights until a reload
-// pre-populates IDB.
+// Bios captured from timeline JSON this session, in memory so highlighting reads
+// them synchronously rather than racing mergeCached's async write. Without it, a
+// fresh load highlights nothing until a reload has populated IDB.
 //
-// Bounded (LRU-by-write) so a long-lived X tab can't grow it without limit. It's
-// only a fast path: every bio is also persisted to IDB by mergeCached, so an
-// evicted entry (old enough that its IDB write has long landed — no race) simply
-// falls back to getCached below. Same fallback covers users first seen in a
-// prior session.
+// Bounded LRU-by-write, and only ever a fast path: every bio also lands in IDB,
+// so an evicted entry (long since written) falls back to getCached — the same
+// fallback that covers users first seen in an earlier session.
 const BIO_CACHE_CAP = 1000
 
 interface ProfileInfo {
@@ -715,13 +686,10 @@ async function getBioInfo(userName: string): Promise<ProfileInfo> {
   }
 }
 
-// Restore every piece of module-level state to the value it holds immediately
-// after import, before the storage load resolves. This module is imported once
-// per test file, so anything a test mutates — settings pushed through the
-// storage.onChanged listener, session caches, the rate-limit window, live
-// timers — otherwise leaks into every test that runs after it, and the suite
-// only passes in the order it happens to run in. Keep this exhaustive: a new
-// `let` at module scope that isn't reset here is a new order dependency.
+// Restore module-level state to its post-import value. The module is imported
+// once per test file, so anything a test mutates leaks into every test after it
+// and the suite passes only in the order it happens to run. Keep this
+// exhaustive: a module-scope `let` missing here is a new order dependency.
 export function __testResetState() {
   // settings (defaults must match the declarations above)
   blockedCountries = new Set()
@@ -838,11 +806,9 @@ let locationToastTimer: ReturnType<typeof setTimeout> | null = null
 
 /**
  * One-line summary for the swipe overlay, or '' when there is nothing to say.
- *
- * The App Store / Play Store country outranks the stated location (a store
- * region is hard to fake), and a store country that *matches* the stated
- * location corroborates it — so that pairing drops the VPN warning even when X
- * flagged the location as inaccurate. Exported for tests.
+ * The store country outranks the stated location, and one that *matches* it
+ * corroborates it — so that pairing drops the VPN warning even when X flagged
+ * the location inaccurate. Exported for tests.
  */
 export function locationSummaryText(data: LocationData): string {
   const { country: sourceCountry } = classifySource(data.source)
@@ -856,12 +822,8 @@ export function locationSummaryText(data: LocationData): string {
 }
 
 /**
- * Render (or replace) the swipe overlay.
- *
- * `pending` keeps the toast up indefinitely instead of auto-dismissing — the
- * lookup is still in flight and a later call will overwrite the text. Every
- * pending toast must therefore be resolved by a second call, or it never goes
- * away.
+ * Render (or replace) the swipe overlay. `pending` has no auto-dismiss timer, so
+ * every pending toast must be resolved by a later call or it never goes away.
  */
 function dismissLocationToast() {
   document.getElementById('x-loc-location-toast')?.remove()
@@ -1115,23 +1077,17 @@ function shouldHighlight(
 // ---------------------------------------------------------------------------
 // Marking the matched keyword in a hover card
 // ---------------------------------------------------------------------------
-// An orange bar down the side of a post says *that* an account matched. The
-// hover card is where the reader finds out *why*, so the word responsible is
-// marked in the bio it was found in.
+// The bar says *that* an account matched; the hover card is where the reader
+// finds out *why*, so the word responsible is marked in the bio.
 //
-// Nothing here touches the DOM X owns. Wrapping the word in a <mark> would mean
-// restructuring text nodes inside a card React re-renders and then tears down —
-// the one thing the rest of this file is careful never to do. Instead:
+// Nothing here touches the DOM X owns — a <mark> would mean restructuring text
+// nodes inside a card React re-renders. Instead, text keywords are painted with
+// the CSS Custom Highlight API (Ranges, no markup change), and emoji keywords,
+// which X renders as <img alt="🇷🇺"> with no text node to range over, get a
+// generated rule matching the alt.
 //
-//   * text keywords are painted with the CSS Custom Highlight API, which styles
-//     Ranges the script registers and leaves the markup alone;
-//   * emoji keywords can't be: X renders emoji as <img alt="🇷🇺">, so there is no
-//     text node to put a Range over. Those get a generated CSS rule matching the
-//     alt instead, scoped to cards carrying KEYWORD_MATCH_ATTR.
-//
-// Both are cosmetic. Where CSS.highlights is missing (Firefox before 140) the
-// text half simply does not paint, which is the right failure for an
-// explanation of something the reader can already see.
+// Both are cosmetic: without CSS.highlights (Firefox before 140) the text half
+// simply does not paint.
 
 /** The highlight registry, or null in a browser (or a test) without one. */
 function highlightRegistry(): HighlightRegistry | null {
@@ -1143,13 +1099,10 @@ function highlightRegistry(): HighlightRegistry | null {
 /**
  * Ranges over every keyword occurrence in `root`.
  *
- * Text node by text node, so a keyword split across two of them is missed
- * rather than mismarked — X breaks bios up around links and emoji, and a Range
- * assembled across that split would underline the wrong characters.
- *
- * Our own injected text is skipped: the account card and the location row can
- * easily contain a word the user tracks, and marking those would be the
- * extension pointing at itself.
+ * Text node by text node, so a keyword split across two is missed rather than
+ * mismarked — X breaks bios up around links and emoji, and a Range spanning that
+ * split underlines the wrong characters. Our own injected text is skipped, or
+ * the extension ends up pointing at itself.
  */
 export function keywordRangesIn(root: Element): Range[] {
   const ranges: Range[] = []
@@ -1175,12 +1128,9 @@ export function keywordRangesIn(root: Element): Range[] {
 }
 
 /**
- * Re-mark every hover card on screen.
- *
- * A full rescan rather than a per-card update, because the registry is one
- * global object: rebuilding it from what is currently open is the only version
- * that cannot leave a mark behind from a card that has gone, or from a rule the
- * user has since turned off.
+ * Re-mark every hover card on screen. A full rescan, because the registry is one
+ * global object — rebuilding it from what is open is the only version that can't
+ * strand a mark from a closed card or a rule since turned off.
  */
 async function markKeywords(): Promise<void> {
   const registry = highlightRegistry()
@@ -1216,12 +1166,9 @@ function clearKeywordMarks(): void {
 }
 
 /**
- * Rewrite the emoji half of the marking, which is a stylesheet rather than a
- * set of ranges.
- *
- * Regenerated whenever the keyword list changes, in its own <style> so the
- * static rules stay static. The rule itself is built in styles.ts, next to the
- * rest of the CSS and where a test can render the real thing.
+ * Rewrite the emoji half of the marking — a stylesheet rather than ranges. Kept
+ * in its own <style> so the static rules stay static; the rule itself is built
+ * in styles.ts, where a test can render the real thing.
  */
 function updateKeywordEmojiStyle(): void {
   const emoji = extensionEnabled ? emojiKeywords() : []
@@ -1298,9 +1245,8 @@ function rehighlightAll() {
 }
 
 /**
- * Mark every tweet on screen written by this account — and every quoted tweet
- * quoting them. Used when a bio arrives and turns out to match a rule, after
- * the tweets themselves have already been rendered.
+ * Mark every tweet on screen by this account, and every quote of them — for when
+ * a bio arrives after the tweets have already rendered.
  */
 function markHighlightedArticles(userName: string) {
   const lc = userName.toLowerCase()
@@ -1318,18 +1264,11 @@ function markHighlightedArticles(userName: string) {
 
 const FEED_LOCATION_ATTR = 'data-x-loc-feed-done'
 
-// Injecting a feed-location row grows the tweet's height. Doing that to a tweet
-// sitting ABOVE the viewport — e.g. flags that resolve async right after a
-// back-navigation has restored the scroll position — pushes every tweet below it
-// (including the one under the reader's eyes) downward, so the feed appears to
-// jump. X positions each timeline cell absolutely with a JS-computed translateY
-// and re-runs scroll restoration on navigation, which defeats the browser's
-// native scroll anchoring; so we avoid the above-the-fold height change
-// ourselves. Only place the row once the tweet's name line is at or below the
-// viewport top — tweets still above the fold are parked on an IntersectionObserver
-// and injected when scrolled back into view. Injecting into tweets that are
-// on-screen or below the fold is always safe: nothing above the scroll position
-// changes height.
+// A feed row grows the tweet, so injecting one above the viewport pushes
+// everything below it down and the feed jumps. X positions timeline cells
+// absolutely with a computed translateY and re-runs scroll restoration on
+// navigation, which defeats native scroll anchoring — so tweets still above the
+// fold are parked on an IntersectionObserver and injected on the way back.
 // `let` rather than `const` only so __testResetState can swap in a fresh map.
 let pendingFeedRows = new WeakMap<Element, LocationData>()
 let feedRowObserver: IntersectionObserver | null = null
@@ -1443,10 +1382,9 @@ function refreshFeedLocations() {
 // ---------------------------------------------------------------------------
 // Hide tweets from blocked locations
 // ---------------------------------------------------------------------------
-// Collapse the tweet behind a slim placeholder rather than removing it: keeps a
-// visible, reversible trace and avoids fighting X's virtualised timeline (React
-// owns the tweet nodes; a foreign data-attribute + CSS survives its re-renders,
-// same approach as highlighting).
+// Collapse behind a placeholder rather than removing: a visible, reversible
+// trace, and an attribute plus CSS survives React's re-renders where surgery on
+// its nodes would not.
 function buildHiddenPlaceholder(
   target: Element,
   userName: string,
@@ -1477,13 +1415,9 @@ function buildHiddenPlaceholder(
   ph.appendChild(labelEl)
   ph.appendChild(btn)
 
-  // The other home for the exception button, and the one that matters most for
-  // the rules that hide things: a collapsed post shows nothing to hover, so the
-  // hover card — where the button otherwise lives — cannot be opened from here
-  // at all. "Show" spares this one post; this spares the account.
-  //
-  // Only the rule that hid the post, because that is the one the placeholder is
-  // about and the only one it can name from what it was handed.
+  // A collapsed post leaves nothing to hover, so the hover card the button
+  // normally lives in can't be opened here. "Show" spares this post; this spares
+  // the account. Only the rule that hid it — the one it can name.
   if (showExceptionButton) {
     ph.appendChild(buildExceptionButton(userName, [match.rule]))
   }
@@ -1535,11 +1469,9 @@ function revealArticle(article: Element): void {
 }
 
 // --- quoted posts -----------------------------------------------------------
-// A quoted post has its own author, who has nothing to do with the author of
-// the post quoting them. Collapsing the whole row because of the quoted account
-// takes away a post the user never filtered — X-Posed shipped exactly that and
-// had to fix it after complaints — so the quote card is collapsed on its own and
-// the surrounding post stays readable.
+// A quoted post has its own author, unrelated to whoever quoted them. Collapsing
+// the whole row for the quoted account takes away a post the user never filtered
+// (X-Posed shipped that and had to fix it), so the quote collapses alone.
 
 function hideQuote(quote: Element, userName: string, match: FilterMatch): void {
   if (quote.hasAttribute(QUOTE_REVEALED_ATTR)) return
@@ -1659,11 +1591,9 @@ function refreshHiddenTweets() {
 // ---------------------------------------------------------------------------
 // Marking posts a rule points at rather than hides
 // ---------------------------------------------------------------------------
-// Same mechanism as hiding — an attribute React's re-renders leave alone, plus
-// a CSS rule — but nothing is taken away, so none of the hiding machinery
-// applies: no placeholder to build, no "Show" to offer, no revealed-flag to
-// remember, and no reason to skip the post a status page is about. A young
-// author is worth knowing about on the post you deliberately opened.
+// Same mechanism as hiding, but nothing is taken away — so no placeholder, no
+// "Show", no revealed-flag, and no reason to skip the post a status page is
+// about. A young author is worth knowing on the post you opened.
 
 async function tryMarkArticle(article: Element) {
   // The quote's author is judged on their own, exactly as they are for hiding
@@ -1689,11 +1619,9 @@ async function tryMarkQuote(article: Element) {
 }
 
 /**
- * Mark every post on screen by this account once their data arrives.
- *
- * A post is judged when it first appears, which is usually before anything is
- * known about who wrote it — so the answer it got from an empty cache has to be
- * revisited, the same way hideTweetsForUser and markPeopleCellsForUser do.
+ * Mark every post on screen by this account once their data arrives. A post is
+ * judged when it first appears, usually before anything is known about the
+ * author, so the answer from an empty cache has to be revisited.
  */
 function markTweetsForUser(userName: string, data: LocationData): void {
   const match = markMatchFor(userName, data)
@@ -1718,11 +1646,9 @@ function markTweetsForUser(userName: string, data: LocationData): void {
 // ---------------------------------------------------------------------------
 // People lists (Followers / Following / the People tab of search)
 // ---------------------------------------------------------------------------
-// Marked, never removed. Hiding rows here breaks the thing the page exists to
-// show: the count says 400 and you can only scroll past 380, with no way to
-// tell whether the extension ate them or the follower list is simply stale.
-// A list is something you audit, so the answer is to point at the matches, not
-// to take them away.
+// Marked, never removed. Hiding rows breaks what the page exists to show: the
+// count says 400 and you scroll past 380, with no way to tell whether the
+// extension ate them or the list is stale.
 
 /** The handle a people-list row is about, from its first profile link. */
 function userCellName(cell: Element): string | null {
@@ -1757,9 +1683,8 @@ async function tryMarkPeopleCell(cell: Element) {
 }
 
 /**
- * A row is marked when it is first seen, usually before the account's data has
- * arrived — so when a lookup finally resolves, the rows for that account have
- * to be re-judged rather than left at the answer they got from an empty cache.
+ * A row is marked when first seen, usually before the account's data arrives — so
+ * a resolving lookup has to re-judge the rows rather than leave them.
  */
 function markPeopleCellsForUser(userName: string, data: LocationData): void {
   if (!cellMatchFor(userName, data)) return
@@ -1775,9 +1700,8 @@ function markPeopleCellsForUser(userName: string, data: LocationData): void {
 }
 
 /**
- * Everything that has to happen when an account's data lands: fill in the feed
- * row, collapse what the filters caught, mark the people rows. One function so
- * a future caller cannot wire up two of the three and quietly lose the other.
+ * Everything that happens when an account's data lands: the feed row, the
+ * filters, the people rows. One function, so no caller wires up two of three.
  */
 function applyFiltersForUser(userName: string, data: LocationData): void {
   injectFeedLocationForUser(userName, data)
@@ -1886,27 +1810,19 @@ function buildInfoRow(data: LocationData): HTMLElement {
 // ---------------------------------------------------------------------------
 // The exception button
 // ---------------------------------------------------------------------------
-// One button, whatever the reason. An account can be highlighted for a keyword,
-// collapsed for its country, its affiliate badge or its age — and from the
-// reader's side those are all the same complaint: "not this account". Four
-// buttons (or one that only ever knew about keywords, which is what this was)
-// makes the user learn the extension's internal rule names before they can act
-// on what they are looking at.
+// One button, whatever the reason. Keyword, country, affiliate badge, age — from
+// the reader's side these are one complaint, "not this account", and four
+// buttons would make them learn the extension's rule names first.
 //
-// So the button covers every rule currently acting on the account and says
-// which in its tooltip. The exceptions themselves stay per-rule underneath —
-// exempting someone from the country filter should not also stop highlighting
-// them — the single button just writes to all of the ones that apply.
+// So it covers every rule acting on the account and names them in its tooltip.
+// The exceptions stay per-rule underneath; the button just writes to all of
+// them.
 
 /**
- * Persist the exception record to both keys.
- *
- * `HIGHLIGHT_EXCEPTIONS_KEY` is the old single-purpose list; `RULE_EXCEPTIONS_KEY`
- * is the general one that superseded it. Reads merge the old into the new
- * (normalizeRuleExceptions), so writing only the new one would let a *removal*
- * come straight back on the next load from the copy still sitting in the old
- * key. Keeping the old key as a mirror of the highlight bucket also means an
- * install that downgrades still finds its exceptions where it expects them.
+ * Persist the exception record to both keys. Reads merge the old
+ * `HIGHLIGHT_EXCEPTIONS_KEY` into the general one, so writing only the new key
+ * would let a *removal* come straight back from the stale copy — and keeping the
+ * mirror also lets a downgrade find its exceptions.
  */
 function writeRuleExceptions(next: RuleExceptions): void {
   ruleExceptions = next
@@ -1917,13 +1833,10 @@ function writeRuleExceptions(next: RuleExceptions): void {
 }
 
 /**
- * Every rule acting on an account right now, exceptions included.
- *
- * Included, not ignored: a rule the user has already excepted is exactly the
- * one the button has to keep offering, or an exception added by mistake could
- * only be undone from the options page. The account's own data is what decides
- * the rest — so an account nothing applies to gets no button at all rather than
- * a control that would write a setting with no effect.
+ * Every rule acting on an account right now, exceptions included — a rule already
+ * excepted is exactly the one the button must keep offering, or a mistake could
+ * only be undone from the options page. An account nothing applies to gets no
+ * button rather than one that writes a setting with no effect.
  */
 export function activeRulesFor(
   userName: string,
@@ -2018,12 +1931,10 @@ function buildExceptionButton(
 }
 
 /**
- * Put the button where it belongs in `host`, or take it away.
- *
- * Called more than once per card: the highlight rule can be answered from the
- * bio immediately, while the location, affiliation and age rules need the
- * lookup to come back. Rebuilding on a changed rule set (rather than patching)
- * keeps the label, the tooltip and the click handler describing the same set.
+ * Put the button where it belongs in `host`, or take it away. Called more than
+ * once per card — the highlight rule answers from the bio at once, the rest wait
+ * on the lookup — and rebuilt rather than patched, so the label, tooltip and
+ * handler always describe the same rule set.
  */
 function syncExceptionButton(
   host: Element,
@@ -2057,11 +1968,10 @@ function syncExceptionButton(
 // ---------------------------------------------------------------------------
 // Account card
 // ---------------------------------------------------------------------------
-// The facts X already sent, laid out under the location row: age, affiliate
-// badge, verification, handle history, reach. Every one of these arrives with
-// a response the extension already receives, so the card costs no lookups and
-// nothing here is inferred — each chip is a field X returned, phrased as X
-// phrased it. Reading anything into the combination is the user's business.
+// The facts X already sent, under the location row: age, affiliate badge,
+// verification, handle history, reach. All of it rides along with responses the
+// extension already receives, so the card costs no lookups — and nothing is
+// inferred, each chip being a field X returned, phrased as X phrased it.
 
 interface Chip {
   text: string
@@ -2104,12 +2014,9 @@ export function accountChips(
     }
   }
 
-  // No chip for plain Premium (`is_blue_verified`). X already draws the blue
-  // check next to the name, so a chip repeating it spends a row of the card
-  // telling the reader what they can already see. The two below earn their
-  // place by being invisible otherwise — X renders identity and legacy
-  // verification with the same badge as a paid one, so the distinction only
-  // exists here.
+  // No chip for plain Premium: X already draws the blue check. The two below
+  // earn their place by being invisible otherwise — X renders identity and legacy
+  // verification with the same badge as a paid one.
   if (facts.identityVerified) {
     chips.push({
       text: '🪪 ID verified',
@@ -2221,21 +2128,16 @@ async function processCard(card: Element) {
 
   card.setAttribute(HOVER_CARD_DONE_ATTR, '1')
 
-  // One container, inserted once and filled as each piece resolves.
-  //
-  // Everything used to be inserted separately, and insertIntoCard anchors every
-  // call to the same node — so each new element landed *above* the previous
-  // one and the visual order came out backwards (the share button ended up over
-  // the flags rather than with them). Appending into a wrapper makes the order
-  // the order it is written in.
+  // One container, filled as each piece resolves. Inserted separately they came
+  // out backwards: insertIntoCard anchors every call to the same node, so each
+  // new element landed above the last.
   const wrap = document.createElement('div')
   wrap.className = 'x-loc-hover'
   insertIntoCard(card, userName, wrap)
 
-  // The highlight rule is answerable from the bio alone, so the button can go
-  // in before the lookup rather than after it — a hover card is a second or two
-  // of the user's attention and the lookup can eat all of it. It is synced
-  // again below, once the account's data can speak for the other rules.
+  // The highlight rule answers from the bio alone, so the button can go in
+  // before the lookup — a hover card gets a second or two of attention and the
+  // lookup can eat all of it. Synced again below for the other rules.
   const place = (btn: HTMLElement) => wrap.appendChild(btn)
   syncExceptionButton(wrap, userName, null, await getBioInfo(userName), place)
   void markKeywords()
@@ -2268,10 +2170,9 @@ async function processCard(card: Element) {
     }
   }
 
-  // The copy button rides *in* the flags row rather than under it: it is an
-  // action on exactly what that row shows, and a hover card is short on
-  // vertical space. No row means nothing X told us about the account, which is
-  // also the case where the card would be a handle and nothing else.
+  // In the flags row rather than under it: an action on exactly what that row
+  // shows, and a hover card is short on vertical space. No row means nothing to
+  // copy but a handle.
   if (showShareButton && infoRow && !card.querySelector('.x-loc-share-btn')) {
     infoRow.appendChild(buildShareButton(userName, info.displayName ?? ''))
   }
@@ -2312,12 +2213,10 @@ function primaryTweetTarget(): {
   return { tweet, userNameEl, userName: m[1] }
 }
 
-// The hover card is the usual home for the exception toggle, but X opens no
-// hover card for the account a status page is *about* — so on that one tweet the
-// same button goes inline, under the name line next to the location row.
-// Synced rather than injected once: the keyword that makes it relevant is often
-// added long after the page settled, and removing that keyword must take the
-// button with it.
+// X opens no hover card for the account a status page is *about*, so there the
+// button goes inline under the name line. Synced rather than injected once: the
+// keyword that makes it relevant often arrives long after the page settled, and
+// removing it must take the button away again.
 async function syncPrimaryExceptionButton(): Promise<void> {
   const target = primaryTweetTarget()
   if (!target) return
@@ -2382,8 +2281,7 @@ async function processPrimaryTweet() {
 // Share a post with its location flags
 // ---------------------------------------------------------------------------
 // The context-menu click arrives in the service worker, which knows the tab but
-// not the element — so the post has to be remembered here, at the moment of the
-// right-click, before the menu opens.
+// not the element — so the post is remembered here, as the menu opens.
 let lastRightClickedTweet: Element | null = null
 
 document.addEventListener(
@@ -2396,12 +2294,9 @@ document.addEventListener(
   true,
 )
 
-// The post a hover card was opened from.
-//
-// A hover card carries only the account, but the user got to it by pointing at
-// a name inside a post — so that post is what they have in mind when they copy.
-// X gives the card no link back to it, so the anchor is remembered here, at the
-// moment the pointer enters the profile link that will open it.
+// The post a hover card was opened from. The card carries only the account, and
+// X gives it no link back to the post the pointer was on — so the anchor is
+// remembered as the pointer enters the profile link that will open it.
 let lastHoveredTweet: { article: Element; userName: string } | null = null
 
 document.addEventListener(
@@ -2420,13 +2315,9 @@ document.addEventListener(
 )
 
 /**
- * The post this account is being copied from, or null.
- *
- * The remembered hover anchor first, since that is the post the pointer is
- * actually on. Failing that, any post by the same account still on screen —
- * which covers a card opened from somewhere without an anchor (a mention, the
- * profile header) while still copying something true about the account. If
- * neither, the card is account-only.
+ * The post this account is being copied from, or null. The remembered hover
+ * anchor first, then any post by the same account still on screen — which covers
+ * a card opened from a mention or the profile header.
  */
 function postElementForAccount(userName: string): Element | null {
   const lc = userName.toLowerCase()
@@ -2456,12 +2347,9 @@ function tweetText(article: Element): string {
 }
 
 /**
- * The flag for a location, ignoring the blocked list.
- *
- * getLocationDisplay swaps in ⚠️ for a location the user filters, which is
- * right on the page — it is their own setting showing through — but wrong in a
- * shared image, where the reader has no idea what the sender filters and would
- * read the warning as something X said.
+ * The flag for a location, ignoring the blocked list. getLocationDisplay swaps in
+ * ⚠️ for a filtered location, which is right on the page and wrong in a shared
+ * image, where the reader would take the warning for something X said.
  */
 function flagEmojiFor(location: string): string {
   const key = canonicalLocation(location)
@@ -2470,27 +2358,18 @@ function flagEmojiFor(location: string): string {
 
 /**
  * The location strip added to a snapshot: country names in words, next to their
- * flags.
+ * flags. A flag is hoverable on screen; in a reposted image it is a small
+ * coloured rectangle, and plenty are near-identical at that size. Reusing
+ * `shareChips` keeps the wording identical to the drawn card.
  *
- * A flag on its own is fine on screen, where you can hover it — in an image
- * that gets reposted it is a small coloured rectangle the reader has to
- * recognise, and plenty of flags are near-identical at that size. So the
- * snapshot spells the country out. `shareChips` already produces exactly that
- * pairing, and reusing it keeps the wording identical to the drawn card.
- *
- * Every style here is inline: this element is added after the computed styles
- * have been copied onto the clone, and nothing from the page's stylesheets
- * applies inside the SVG the snapshot renders in.
+ * Every style is inline: this is added after the computed styles are copied, and
+ * no stylesheet reaches inside the SVG.
  */
 function buildSnapshotLocationRow(data: LocationData): HTMLElement {
   const row = document.createElement('div')
-  // One line, laid out exactly like the row on the page: store block, then the
-  // account location, then the VPN badge. `nowrap` because it has to stay one
-  // line — this is the same strip the user already reads, not a new component.
-  //
-  // No `color` here on purpose: it inherits X's own text colour from the
-  // inlined styles on the ancestor, so the strip reads correctly on whichever
-  // theme the snapshot was taken in.
+  // Laid out exactly like the row on the page — the same strip the user already
+  // reads, not a new component. No `color`, so it inherits X's own from the
+  // inlined ancestor styles and reads correctly on either theme.
   row.setAttribute(
     'style',
     'display:flex;align-items:center;flex-wrap:nowrap;gap:8px;' +
@@ -2554,14 +2433,10 @@ export function decorateSnapshot(clone: Element, data: LocationData): void {
     )
     .forEach((el) => el.remove())
 
-  // The top-right block — the ⋯ menu, the Grok button, any Subscribe/Follow
-  // button. None of it is part of the post: they are controls pointed at
-  // whoever is looking, and in a shared image they are an invitation to click
-  // something that cannot do anything, about a relationship the reader doesn't
-  // have.
-  //
-  // Grok is matched on a substring of its aria-label rather than the exact
-  // string: X localises that label, but not the product name inside it.
+  // The ⋯ menu, Grok, Subscribe/Follow: controls pointed at whoever is looking,
+  // not part of the post, and in a shared image an invitation to click something
+  // that cannot work. Grok is matched on a substring of its aria-label, since X
+  // localises the label but not the product name inside it.
   clone
     .querySelectorAll('[data-testid="caret"], [aria-label*="Grok" i]')
     .forEach((el) => el.remove())
@@ -2573,19 +2448,11 @@ export function decorateSnapshot(clone: Element, data: LocationData): void {
 
   const row = buildSnapshotLocationRow(data)
 
-  // Placed exactly where the extension places it on the page, which is not the
-  // same spot in both layouts:
-  //
-  //   - In a feed or a reply, the name and handle share one line and the row
-  //     goes *after* the whole name block (placeFeedRow).
-  //   - On a status page the author's name and handle are stacked, and the row
-  //     goes *inside* that block, straight after the handle
-  //     (processPrimaryTweet).
-  //
-  // Inserting after the block in both cases is what left a gap under the author
-  // of a detail page but not under the replies: on that layout the block's
-  // bottom spacing is sized for the post text, so the flags floated away from
-  // the account they belong to.
+  // Where the extension places it on the page, which differs by layout: after
+  // the name block in a feed or reply (placeFeedRow), inside it and straight
+  // after the handle on a status page (processPrimaryTweet). Inserting after the
+  // block in both cases left the detail-page flags floating away from the
+  // account, since that layout sizes the block's bottom spacing for the text.
   const nameEl = getNameEl(clone)
   const handleDiv = clone.matches(SEL_PRIMARY_TWEET)
     ? (nameEl?.children[1] ?? null)
@@ -2610,15 +2477,12 @@ export function decorateSnapshot(clone: Element, data: LocationData): void {
 }
 
 /**
- * Render and deliver a card. One path for both entry points — the hover-card
- * button and the context menu — so the toast wording, the "never spend a
- * lookup" rule and the failure handling can't drift apart.
+ * Render and deliver a card. One path for both entry points, so the toast
+ * wording, the "never spend a lookup" rule and the failure handling can't drift.
  *
- * Snapshots the real post when there is one, so the image carries X's own
- * layout, avatar, badges and media rather than an approximation of them. The
- * hand-drawn card stays as the fallback: the snapshot renders in a restricted
- * context on a page we do not control, so it has more ways to fail, and a
- * plainer image beats no image.
+ * Snapshots the real post when there is one, for X's own layout and media. The
+ * drawn card stays as the fallback — the snapshot renders in a restricted
+ * context on a page we don't control, so it has more ways to fail.
  */
 async function shareCardFor(
   userName: string,
@@ -2699,16 +2563,12 @@ async function shareLastRightClickedPost(): Promise<void> {
 }
 
 /**
- * The copy button that rides in the hover card's flags row.
+ * The copy button that rides in the hover card's flags row — on that line to keep
+ * the card short. The context menu was the only way in, and a feature reachable
+ * solely by right-clicking is one most people never find.
  *
- * The context menu was the only way in, which meant nobody found it — a feature
- * reachable solely by right-clicking is one most people never learn exists. So
- * the button goes where the flags already are, on the same line to keep a hover
- * card short.
- *
- * It copies the post the card was opened from, flags and all — resolved by
- * postTextForAccount — falling back to an account-only card when there is no
- * post to point at.
+ * Copies the post the card was opened from (postTextForAccount), falling back to
+ * an account-only card.
  */
 function buildShareButton(userName: string, displayName: string): HTMLElement {
   const btn = document.createElement('button')
@@ -2802,12 +2662,9 @@ const SWIPE_MAX_Y = 50 // px of vertical drift still counted as horizontal
 const SWIPE_X_DOMINANCE = 1.5 // dx must beat dy by this factor
 
 /**
- * Has the finger travelled far enough, and straight enough, to be a deliberate
- * rightward swipe rather than a tap or a scroll?
- *
- * The dominance ratio matters more here than it did when this only ran on
- * touchend: mid-drag, a vertical fling that starts with a slight diagonal can
- * briefly satisfy the raw distance thresholds. Exported for tests.
+ * Far enough and straight enough to be a deliberate rightward swipe rather than a
+ * tap or a scroll? The dominance ratio earns its place mid-drag, where a vertical
+ * fling starting on a diagonal briefly satisfies the raw thresholds.
  */
 export function isCommittedSwipe(dx: number, dy: number): boolean {
   const drift = Math.abs(dy)
@@ -2856,10 +2713,9 @@ async function revealLocationForSwipe(article: Element) {
 }
 
 /**
- * The gesture commits mid-drag rather than on touchend. Waiting for the lift
- * spent the whole remainder of the swipe — usually longer than the lookup
- * itself — before anything started. touchend stays on as a backstop for flicks
- * short enough that no touchmove ever crossed the threshold.
+ * The gesture commits mid-drag, not on touchend: waiting for the lift spent the
+ * rest of the swipe — usually longer than the lookup — before starting. touchend
+ * stays as a backstop for flicks no touchmove reported past the threshold.
  */
 function startSwipeListener() {
   let startX = 0
@@ -2945,10 +2801,9 @@ window.addEventListener(EVENTS.HEADERS_CAPTURED, (e: Event) => {
 // ---------------------------------------------------------------------------
 // Listen for user bio data intercepted from timeline/tweet API responses
 // ---------------------------------------------------------------------------
-// Look up locations for a batch of just-loaded usernames in the shared cache and
-// apply any confirmed hits locally — so a flag can show without a per-profile X
-// call. Bios/displayNames are not fetched here; they arrive free with the
-// timeline JSON (merged in the USERS_DATA handler below).
+// Look up a batch of just-loaded usernames in the shared cache and apply the
+// confirmed hits, so a flag can show without a per-profile X call. Bios arrive
+// free with the timeline JSON (the USERS_DATA handler below).
 async function applySharedHits(userNames: string[]) {
   const hits = await sharedBatchLookup(userNames)
   for (const hit of hits) {
@@ -2963,11 +2818,8 @@ async function applySharedHits(userNames: string[]) {
 // ---------------------------------------------------------------------------
 // Background location prefetcher
 // ---------------------------------------------------------------------------
-// Trickle location lookups for on-screen accounts in the order they appear in
-// the feed, paced across the rate-limit window and using at most 70% of it, so
-// feed-location display and hide-by-location fill in without the user hovering
-// every profile.
-// See prefetch-queue.ts.
+// Trickle lookups for on-screen accounts in feed order, paced across the
+// rate-limit window and using at most 70% of it. See prefetch-queue.ts.
 const prefetcher = new BackgroundPrefetcher({
   fetch: async (userName) => {
     const data = await fetchLocationData(userName)
@@ -2983,15 +2835,13 @@ const prefetcher = new BackgroundPrefetcher({
   rateState: currentRateState,
 })
 
-// Prefetch exists first and foremost to warm the shared community cache, so
-// opting out of that switches it off too — no point spending the user's lookup
-// budget on accounts they aren't scrolling past. A build with no cache server
-// configured can't be opted out of (the toggle isn't even shown), so there the
-// setting never gates anything.
+// Prefetch exists to warm the shared cache, so opting out of that switches it
+// off too. A build with no cache server can't be opted out of (the toggle isn't
+// shown), so there the setting gates nothing.
 //
-// Settings-level answer only; prefetchWanted() adds the runtime requirement of
-// captured auth headers. Independent of feed display, since warming the cache
-// is worthwhile whether or not locations are shown in the feed.
+// Settings-level answer only — prefetchWanted() adds the runtime requirement of
+// captured headers. Independent of feed display, since the cache is worth warming
+// either way.
 function prefetchAllowedBySettings(): boolean {
   if (!extensionEnabled) return false
   if (!prefetchEnabled) return false
@@ -3018,11 +2868,9 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
     | undefined
   if (!users) return
   void applySharedHits(users.map((u) => u.userName))
-  // Queue whenever the settings allow prefetch (even before auth headers
-  // arrive); the prefetcher only starts draining once syncPrefetcher() sees
-  // headers. The array is in timeline order, and the queue is FIFO, so lookups
-  // follow the feed down. page-script tags each user by where they came from:
-  // feed tweets go to the high queue, a thread's replies to the low one.
+  // Queue even before auth headers arrive; syncPrefetcher() starts the draining.
+  // The array is in timeline order and the queue is FIFO, so lookups follow the
+  // feed down. page-script tags each user with the queue they belong in.
   if (prefetchAllowedBySettings()) {
     prefetcher.enqueue(
       users.map((u) => ({
