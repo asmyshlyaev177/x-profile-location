@@ -1,7 +1,7 @@
 {
   "name": "x-pat",
   "private": true,
-  "version": "1.6.0",
+  "version": "1.6.1",
   "type": "module",
   "scripts": {
     "dev": "concurrently --kill-others \"pnpm proxy\" \"pnpm dev:app\"",
@@ -27,7 +27,6 @@
     "test:e2e:ui": "playwright test --ui",
     "convert:safari": "xcrun safari-web-extension-converter dist/safari --project-location . --app-name $npm_package_name-safari",
     "proxy": "test-proxy-recorder",
-    "proxy:reset": "test-proxy-recorder reset",
     "test:e2e:record": "playwright test --workers 1 --ui; pnpm run scrub",
     "dev:app": "bedframe dev",
     "dev:firefox": "vite build --mode firefox && web-ext run --source-dir dist/firefox --firefox-profile e2e/.auth/firefox-profile --profile-create-if-missing --keep-profile-changes --start-url https://x.com"

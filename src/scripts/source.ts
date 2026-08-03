@@ -8,14 +8,9 @@
 //     "web"                  → browser, no country
 //     null                   → X told us nothing
 //
-// The store country is the strongest location signal X gives out, because a
-// store region is far more work to change than a stated location, which is why
+// The store country is the strongest location signal X gives out — a store
+// region is far more work to change than a stated location — which is why
 // content.tsx prefers it over `account_based_in`.
-//
-// Both mobile platforms used to collapse into one 📱. They are a meaningfully
-// different fact about an account — "Japan App Store" and "Japan Android App"
-// are not the same claim — and X had already told us which, so the distinction
-// was free signal being discarded.
 
 export type SourcePlatform = 'ios' | 'android' | 'web' | 'unknown'
 
@@ -59,15 +54,13 @@ export function sourceCountry(
 }
 
 // --- glyphs -----------------------------------------------------------------
-// Drawn rather than emoji (📱/🍎), because emoji are rendered by the OS: the
-// same character is a different picture on Windows, macOS and Android, and
-// several platforms have no distinct Apple/Android glyph at all. An inline SVG
-// is identical everywhere and inherits `currentColor`, so it also follows X's
-// dim and lights-out themes instead of staying a fixed-colour sticker.
+// Drawn rather than emoji (📱/🍎): the OS renders emoji, so the same character is
+// a different picture per platform and several have no distinct Apple/Android
+// glyph at all. An inline SVG is identical everywhere and inherits
+// `currentColor`, so it follows X's dim and lights-out themes.
 //
-// The platform marks are used to identify the platform they belong to, and are
-// drawn as flat monochrome silhouettes for that reason — no brand colours, no
-// suggestion the extension comes from Apple or Google.
+// Flat monochrome silhouettes — no brand colours, no suggestion the extension
+// comes from Apple or Google.
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 

@@ -4,6 +4,29 @@ Project-specific context for working in this codebase. Read this before editing 
 
 ---
 
+## How to comment
+
+Keep comments short, and write one only when the code cannot say it itself.
+
+A comment earns its place when it records something the reader cannot recover
+from the code: why a non-obvious choice was made, what broke last time, a
+constraint imposed from outside (X's DOM, a browser bug, a spec). One or two
+lines is usually enough.
+
+Do not comment what the line already says. `if (kw.trim() === '') continue`
+needs nothing — a reader can see it skips blanks. Restating it, or explaining
+at length why blanks are bad, is noise the next reader has to wade through.
+
+Some of the older comments in this repo run long. Do not match them; the rule
+above wins over local style. Prune them when you are editing that code anyway,
+but do not go on a comment-deleting pass of your own.
+
+Test names carry the intent. A `describe`/`it` pair that reads as a sentence
+does the job a comment above it would; add a comment only for the fact behind
+the test — the account it regressed on, the spec that forces the answer.
+
+---
+
 ## What this extension does
 
 Shows country flags / region abbreviations / VPN warnings inside X (Twitter) hover cards and tweet articles. Location data comes from X's own **`AboutAccountQuery`** GraphQL endpoint, authenticated with the user's own session headers — no extra credentials.

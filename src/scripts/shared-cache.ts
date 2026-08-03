@@ -10,39 +10,28 @@
 // up whom. The feature is inert unless CACHE_API_BASE is configured and the user
 // has opted in (setSharedCacheEnabled).
 //
-// This layer is best-effort and strictly optional: every request has a timeout,
-// every failure (rate limit, 5xx, network error, timeout) resolves to "no data"
-// so callers fall back to the direct X API, and a circuit breaker backs off
-// after repeated failures so a down/limited server isn't hammered. Nothing here
-// can break the extension's core location/highlighting features.
+// Best-effort and strictly optional: every request has a timeout, every failure
+// resolves to "no data" so callers fall back to the direct X API, and a circuit
+// breaker backs off after repeated failures. Nothing here can break the core.
 
 import type { LocationData } from './cache'
 import { CACHE_API_BASE } from './constants'
 import { DEFAULT_MIN_CONFIDENCE, normalizeMinConfidence } from './countries'
 
-// A location is only trusted once this many distinct clients agree (matches the
-// server's consensus model; see server/README.md).
+// Distinct clients that must agree before a location is trusted (the server's
+// consensus model; see server/README.md).
 //
-// Still 1, deliberately. Confidence only accrues when two installs independently
-// look up the same handle, and at the current user count feeds barely overlap:
-// measured 2026-07-27 on the live server, 52 of 4242 profiles had reached 2.
-// Raising the bar today would drop what the cache can answer by ~99% — and the
-// cache exists to spare X's 50-lookups-per-15-minutes budget, so a threshold
-// that empties it costs more than it protects.
+// Still 1, deliberately: measured 2026-07-27, 52 of 4242 profiles had reached 2,
+// so raising it today would drop what the cache can answer by ~99% — and a cache
+// that answers nothing costs more than it protects. VOTE_CAP keeps only the 10
+// newest votes per handle anyway, so 2 guards against one honest-but-wrong
+// client, not a poisoner who can mint ids.
 //
-// The protection is also narrower than it looks: VOTE_CAP (server/src/index.ts)
-// keeps only the 10 newest votes per handle, so anyone able to mint 10 client ids
-// can evict the honest ones and satisfy any small threshold. A value of 2 guards
-// against a single honest-but-wrong client, not a deliberate poisoner.
+// Flip to 2 once this is a majority:
+// sqlite3 /var/lib/x-loc-cache/x-loc-cache.db 'SELECT COUNT(*) AS profiles, SUM(location_confidence >= 2) AS ready FROM profiles;'
 //
-// Flip to 2 when the overlap is actually there — re-run:
-// sqlite3 /var/lib/x-loc-cache/x-loc-cache.db   'SELECT COUNT(*) AS profiles, SUM(location_confidence >= 2) AS ready FROM profiles;'
-// and switch once the second figure is a majority of the first.
-//
-// Stored rather than compiled in (MIN_CONFIDENCE_KEY), so the threshold can be
-// raised on one install and measured without shipping a build to everyone. The
-// default is unchanged. Read through the live binding at the one call site
-// below, so a change lands on the next lookup without a reload.
+// Stored (MIN_CONFIDENCE_KEY) rather than compiled in, so it can be raised on one
+// install and measured without shipping a build.
 export let minConfidence: number = DEFAULT_MIN_CONFIDENCE
 
 /** Apply the stored threshold. Anything unusable falls back to the default. */
@@ -52,21 +41,17 @@ export function setMinConfidence(value: unknown): void {
 
 const NEG_TTL_MS = 60 * 60 * 1000 // remember "server had nothing" for 1h
 const QUERIED_TTL_MS = 15 * 60 * 1000 // don't re-query the same name within 15m
-// Contributions are buffered and sent as one batched POST. A long window keeps the
-// request count low even while the background prefetcher trickles in dozens of
-// results over a session — they ride out together (or sooner if MAX_CONTRIB is
-// hit, or the tab is hidden; see flushContributions). Sharing is best-effort, so a
-// 30s delay before a result reaches the server is harmless.
+// Contributions ride out as one batched POST, so a session of prefetch results
+// costs a handful of requests. Sent sooner on MAX_CONTRIB or a hidden tab; a 30s
+// delay is harmless for something best-effort.
 export const FLUSH_DELAY_MS = 30_000
 const MAX_CONTRIB = 50
 const MAX_LOOKUP = 100
 const CLIENT_ID_KEY = 'sharedCacheClientId'
 
 const FETCH_TIMEOUT_MS = 5000
-// Circuit breaker: after this many consecutive failures, stop calling the server
-// for a cooldown, so an outage or a hit rate-limit produces one short burst of
-// failed requests rather than a continuous stream. The extension keeps working
-// via the direct X API throughout.
+// Circuit breaker: after this many consecutive failures, back off for a cooldown,
+// so an outage costs one short burst rather than a continuous stream.
 const BREAKER_THRESHOLD = 3
 const BREAKER_COOLDOWN_MS = 10 * 60 * 1000
 
@@ -157,9 +142,8 @@ export interface SharedHit {
 }
 
 /**
- * Look up locations for a set of usernames. Filters out names we asked about
- * recently or that the server is known not to have, so repeated timeline scrolls
- * stay cheap. Returns only confirmed (confidence ≥ minConfidence) hits.
+ * Look up locations for a set of usernames, skipping names asked about recently
+ * or known-missing so repeated scrolls stay cheap. Confirmed hits only.
  */
 export async function sharedBatchLookup(
   userNames: string[],
@@ -243,9 +227,8 @@ function signature(data: LocationData): string {
 }
 
 /**
- * Queue an authoritative AboutAccountQuery result to share. Call only with a
- * real API result (not a cache hit). Deduped: the same value for a user is sent
- * at most once per session; buffered and flushed together.
+ * Queue an authoritative AboutAccountQuery result to share — a real API result,
+ * never a cache hit. Deduped to once per user per session.
  */
 export function contributeLocation(userName: string, data: LocationData): void {
   if (!enabled) return
@@ -280,8 +263,8 @@ async function flush(): Promise<void> {
   const entries = [...outBuffer.values()]
   outBuffer.clear()
 
-  // Server known-down: drop this batch rather than pile on. The data is still in
-  // local IDB and gets re-contributed in a later session (or by other users).
+  // Server known-down: drop the batch. It is still in local IDB and gets
+  // re-contributed in a later session.
   if (breakerOpen(Date.now())) return
 
   try {
@@ -306,9 +289,8 @@ async function flush(): Promise<void> {
 }
 
 /**
- * Force any buffered contributions out now (best-effort). Called when the tab is
- * being hidden or closed, so the long batching window (FLUSH_DELAY_MS) doesn't
- * strand a batch until the next session. No-op when the buffer is empty.
+ * Force buffered contributions out now, so a tab being hidden or closed doesn't
+ * strand a batch until the next session.
  */
 export function flushContributions(): void {
   void flush()

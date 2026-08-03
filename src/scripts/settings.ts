@@ -1,16 +1,11 @@
-// Every user-facing setting, in one place, with the function that makes a
-// stored value safe to use.
+// Every user-facing setting, with the function that makes a stored value safe.
 //
-// This exists because settings are now written from three surfaces (the options
-// page, the popup, and an imported file) and read by a fourth (the content
-// script). Without a registry, "which keys are settings" is a fact spread
-// across four files that drift apart the first time one is added — and an
-// import would happily write a key nobody validates.
+// Settings are written from three surfaces (options page, popup, imported file)
+// and read by a fourth (the content script). Without a registry, "which keys are
+// settings" drifts apart the first time one is added.
 //
-// An imported file is untrusted input: it can be hand-edited, it can come from
-// a much older or newer version, it can be somebody else's. So import never
-// stores a value it was given; it stores the result of putting that value
-// through the same normalizer the extension itself uses on load.
+// An imported file is untrusted input — hand-edited, older, somebody else's — so
+// import stores the normalizer's output, never the value it was given.
 
 import {
   ACCOUNT_AGE_KEY,
@@ -50,9 +45,8 @@ type Normalizer = (value: unknown) => unknown
 
 const asBoolean: Normalizer = (v) => Boolean(v)
 
-// Locations keep the user's own picks — regions are *not* expanded here, since
-// expansion is a content-script concern and baking it into storage would turn
-// one removable chip into fifty-seven.
+// Regions are not expanded here: that is a content-script concern, and baking it
+// into storage would turn one removable chip into fifty-seven.
 const asLocationList: Normalizer = (v) =>
   Array.isArray(v)
     ? [
@@ -115,16 +109,13 @@ export interface SettingsFile {
 }
 
 /**
- * Everything the user has actually set, as a pretty-printed JSON file.
+ * Everything the user has actually set, as pretty-printed JSON. Untouched keys
+ * are left out: an export is a record of decisions, so importing it into a
+ * future version can't pin today's defaults forever.
  *
- * Keys that were never touched are left out rather than exported at their
- * default: an export should be a record of decisions, so that importing it into
- * a future version doesn't silently pin today's defaults forever.
- *
- * Deliberately absent: the anonymous shared-cache client id, and the location
- * cache. The first would let two installs be linked by importing one file into
- * both, which is exactly the correlation the server is designed not to permit.
- * The second is derived data that re-fetches itself.
+ * Deliberately absent: the shared-cache client id, which would let two installs
+ * be linked by importing one file into both, and the location cache, which
+ * re-fetches itself.
  */
 export async function exportSettings(): Promise<SettingsFile> {
   const stored = await chrome.storage.local.get(SETTINGS_KEYS)
@@ -148,12 +139,9 @@ export interface ImportResult {
 export class SettingsImportError extends Error {}
 
 /**
- * Apply a settings file, validating every value on the way in.
- *
- * Merges rather than replaces: a file that omits a key leaves that setting
- * alone. Replacing would mean importing a partial or older export silently
- * resets everything it doesn't mention, which is not what "import my settings"
- * has ever meant to anyone.
+ * Apply a settings file, validating every value on the way in. Merges rather
+ * than replaces, so a partial or older export doesn't silently reset everything
+ * it fails to mention.
  */
 export async function importSettings(raw: string): Promise<ImportResult> {
   let parsed: unknown
@@ -199,10 +187,8 @@ export async function importSettings(raw: string): Promise<ImportResult> {
     throw new SettingsImportError('That file contains no settings to import.')
   }
 
-  // The old highlight list is a mirror of the rule list's highlight bucket (see
-  // writeHighlightExceptions in content.tsx). An import that set one and not
-  // the other would leave the two disagreeing, and the merge-on-read would then
-  // resurrect whatever the stale side still held.
+  // The old highlight list mirrors the rule list's highlight bucket. Setting one
+  // and not the other lets merge-on-read resurrect the stale side.
   if (RULE_EXCEPTIONS_KEY in patch) {
     const rules = patch[RULE_EXCEPTIONS_KEY] as { highlight: string[] }
     patch[HIGHLIGHT_EXCEPTIONS_KEY] = rules.highlight

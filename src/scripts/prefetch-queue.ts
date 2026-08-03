@@ -1,53 +1,30 @@
 // Background location prefetcher.
 //
-// X's AboutAccountQuery endpoint allows 50 lookups per 15-minute window (measured
-// from its x-rate-limit-* response headers). Hovering reveals a location on
-// demand, but feed-location display, hide-by-location, and the shared community
-// cache all benefit from knowing many accounts' locations up front. This queue
-// trickles background lookups for on-screen accounts — in the order they appear
-// on the page — while never letting *total* usage (background + the user's own
-// hovers) pass a reserved share of the window, so a manual hover is never
-// starved by prefetch.
+// X allows 50 AboutAccountQuery lookups per 15-minute window (from its
+// x-rate-limit-* headers). This queue trickles lookups for on-screen accounts to
+// warm the caches, holding a share of the window back so the user's own hovers
+// are never starved.
 //
-// Candidates are split across two queues by PrefetchPriority: the feed the user
-// is scrolling ('high') is drained entirely before a thread's replies ('low').
-// Each queue is plain FIFO — the timeline hands accounts over in the order they
-// are rendered, so looking them up in arrival order means locations fill in from
-// the top of the feed downwards, roughly tracking where the user is reading.
+// Two queues by PrefetchPriority: the feed being scrolled ('high') drains
+// entirely before a thread's replies ('low'). Each is plain FIFO, and the
+// timeline hands accounts over in render order, so locations fill in down the
+// feed roughly where the user is reading.
 //
-// Budget is driven entirely by the live remaining count the content script keeps
-// in sync from the x-rate-limit-* headers (which every AboutAccountQuery — manual
-// or background — decrements). The prefetcher stops as soon as remaining drops to
-// the user's reserved share, i.e. once 70% of the window is spent — the last 15
-// of 50 are held back for hovers.
+// Budget comes from the live remaining count the content script syncs from those
+// headers, which every lookup decrements — hovers included. Default pacing
+// spreads it over the time left in the window (nextDelayMs) and is
+// self-correcting: hovers stretch the gap, a refilled window shrinks it.
 //
-// Default pacing spreads that budget *evenly over the time left in the window*
-// rather than spending it back-to-back and then idling until the window rolls.
-// Before each lookup the gap is recomputed as `msLeftInWindow / budget` (see
-// nextDelayMs), so with the measured 50/15min limit and a 70% share that
-// settles around one lookup every ~26s. The recompute is self-correcting: user
-// hovers eat the shared budget and stretch the gap, a refilled window shrinks it
-// back. Practical upshot — locations keep trickling in for the whole window, and
-// a user who starts hovering mid-window still finds budget left. Both the share
-// and the pacing are user-settable (options page); 'instant' pacing spends the
-// same share at minSpacingMs and then waits out the window.
-//
-// It is deliberately decoupled from the DOM and the content script: all effects
-// (the fetch, the "already known?" check, the live rate-limit snapshot) are
-// injected, so the scheduling/budget logic is unit-testable via runOnce() and
-// nextDelayMs() without timers or a browser.
+// Every effect is injected, so runOnce() and nextDelayMs() are testable without
+// timers or a DOM.
 
 // Type-only, so this module keeps its runtime independence from everything else.
 import type { PrefetchPacing } from './countries'
 
 /**
- * Which of the two queues a candidate lands in. 'high' is drained to exhaustion
- * before 'low' gets a single lookup — see takeNext().
- *
- * 'high' is the feed the user is scrolling (HomeTimeline); 'low' is a thread's
- * replies (TweetDetail), which are many and mostly scrolled past. The tweet the
- * user actually opened never comes through here — processPrimaryTweet() looks it
- * up directly — so nothing the user is looking at waits behind the low queue.
+ * Which queue a candidate lands in. 'high' — the feed being scrolled — drains to
+ * exhaustion before 'low' — a thread's replies — gets a single lookup. The tweet
+ * the user opened never comes through here; processPrimaryTweet() fetches it.
  */
 export type PrefetchPriority = 'high' | 'low'
 
@@ -59,10 +36,8 @@ export interface PrefetchCandidate {
 
 export interface RateState {
   /**
-   * AboutAccountQuery requests left in the current window. The content script
-   * seeds this at `limit` and decrements it on every request (manual or
-   * background), correcting from x-rate-limit-remaining — so it reflects the
-   * user's own hovers too, not just prefetch.
+   * Lookups left in the window. Seeded at `limit`, decremented on every request
+   * and corrected from x-rate-limit-remaining — so hovers count too.
    */
   remaining: number
   /** Per-window total (x-rate-limit-limit). */
@@ -87,36 +62,25 @@ export interface PrefetcherDeps {
 
 export interface PrefetcherOptions {
   /**
-   * Fraction of the window the prefetcher may consume; the remainder is reserved
-   * for the user's own hovers. 0.7 → prefetch stops once 70% of the window is
-   * spent, leaving 30% (15 of 50) for hovers. User-configurable on the options
-   * page, applied live via setReserveFraction().
+   * Fraction of the window prefetch may spend; the rest is reserved for hovers.
+   * 0.7 leaves the last 15 of 50. Options page, live via setReserveFraction().
    */
   reserveFraction?: number
   /**
-   * 'spread' (default) trickles the share evenly over the time left in the
-   * window; 'instant' spends it at minSpacingMs until it runs out, then waits
-   * for the window to roll. Either way the share itself is the same — this only
-   * changes how quickly it is used up. Live-settable via setPacing().
+   * 'spread' (default) trickles the share over the window; 'instant' spends it at
+   * minSpacingMs and then idles. Same share either way.
    */
   pacing?: PrefetchPacing
   /**
-   * Floor on the paced gap, and the whole gap under 'instant' pacing. In
-   * 'spread' it only binds when the window is nearly over and the budget is
-   * still large (spread → 0), keeping the tail a trickle, not a burst.
+   * Floor on the paced gap, and the whole gap under 'instant'. Keeps the tail of
+   * a window a trickle rather than a burst.
    */
   minSpacingMs?: number
-  /**
-   * Ceiling on the paced gap, so a stale window reset or a budget of 1 can't
-   * park the prefetcher for a whole window when there is work to do.
-   */
+  /** Ceiling on the paced gap, so a stale reset can't park a queue with work in it. */
   maxSpacingMs?: number
   /** Window length assumed when X hasn't told us when the budget rolls over. */
   windowMs?: number
-  /**
-   * Max candidates kept queued across both queues. Overflow is dropped from the
-   * bottom of the low queue first, and only then from the bottom of the high one.
-   */
+  /** Max queued across both queues; overflow sheds from `low` first. */
   maxQueue?: number
 }
 
@@ -138,9 +102,8 @@ export class BackgroundPrefetcher {
   private readonly setTimer: (fn: () => void, ms: number) => unknown
   private readonly clearTimer: (handle: unknown) => void
 
-  // Two FIFO queues, each in the order the page handed the accounts over.
-  // `high` drains completely before `low` is touched, so a thread full of
-  // replies can never push the feed the user is scrolling out of the way.
+  // Two FIFO queues in page order. `high` drains completely before `low`, so a
+  // thread full of replies can't push the feed aside.
   private high: PrefetchCandidate[] = []
   private low: PrefetchCandidate[] = []
   // Lowercased name → the queue it currently sits in.
@@ -150,8 +113,7 @@ export class BackgroundPrefetcher {
   private running = false
   private ticking = false
   private timer: unknown = null
-  // Epoch ms of the last issued lookup; -Infinity until the first one, so the
-  // very first candidate goes out immediately instead of waiting a full gap.
+  // -Infinity until the first lookup, so the first candidate goes out at once.
   private lastFetchAt = Number.NEGATIVE_INFINITY
 
   constructor(deps: PrefetcherDeps, opts: PrefetcherOptions = {}) {
@@ -165,11 +127,9 @@ export class BackgroundPrefetcher {
   }
 
   /**
-   * Add on-screen candidates, each appended to the queue its priority names, in
-   * the order given — which is the order the timeline rendered them. Dedups
-   * against what's already queued, keeping the position the name first earned.
-   * A name already queued as 'low' that turns up as 'high' is *promoted* (a
-   * reply author who also appears in the feed); the reverse never demotes.
+   * Append candidates to the queue their priority names, in the order given.
+   * Dedup keeps the slot a name first earned; a 'low' name seen as 'high' is
+   * promoted, never the reverse.
    */
   enqueue(candidates: PrefetchCandidate[]): void {
     let added = false
@@ -181,8 +141,7 @@ export class BackgroundPrefetcher {
       // Already queued at this priority, or already ahead of it — leave it be.
       if (existing === priority || existing === 'high') continue
       if (existing === 'low') {
-        // Promoting (priority can only be 'high' here): drop the low-queue copy,
-        // it is re-added at the back of `high` below.
+        // Promoting: drop the low copy; it is re-added at the back of `high`.
         this.low = this.low.filter((q) => q.userName.toLowerCase() !== key)
       }
 
@@ -196,16 +155,14 @@ export class BackgroundPrefetcher {
 
     this.trimToMaxQueue()
 
-    // Wake the loop if it went idle waiting for candidates — respecting the pace,
-    // so a scroll that queues a fresh batch can't skip ahead of the schedule.
+    // Wake an idle loop, still paced — a fresh batch can't jump the schedule.
     if (this.running && !this.ticking)
       this.scheduleTick(this.delayFromLastFetch())
   }
 
   /**
-   * Drop overflow from the back of each queue — the most recently seen accounts
-   * — emptying `low` before touching `high`. Shedding the tail rather than the
-   * head is what keeps the surviving queue in appearance order.
+   * Drop overflow from the back of each queue, emptying `low` first. Shedding the
+   * tail rather than the head keeps the survivors in appearance order.
    */
   private trimToMaxQueue(): void {
     let overflow = this.high.length + this.low.length - this.opts.maxQueue
@@ -221,10 +178,8 @@ export class BackgroundPrefetcher {
   }
 
   /**
-   * Change the share of the window prefetch may spend (options page). Takes
-   * effect on the next lookup *and* re-times the pending one, so widening the
-   * share speeds the trickle up right away instead of after the current sleep.
-   * Non-finite values are ignored; the rest is clamped to [0.05, 1].
+   * Change the share prefetch may spend. Re-times the pending lookup too, so
+   * widening the share speeds the trickle up now rather than after the sleep.
    */
   setReserveFraction(fraction: number): void {
     if (!Number.isFinite(fraction)) return
@@ -253,9 +208,8 @@ export class BackgroundPrefetcher {
   }
 
   /**
-   * How many background lookups are allowed right now (>= 0). Zero while a hard
-   * backoff is in effect, otherwise however much of the window is left above the
-   * user's reserved share.
+   * Background lookups allowed right now — zero during a hard backoff, else
+   * whatever is left above the user's reserved share.
    */
   budget(now: number = this.now()): number {
     const { remaining, limit, resetAt } = this.deps.rateState()
@@ -265,10 +219,7 @@ export class BackgroundPrefetcher {
     return Math.max(0, remaining - reservedForUser)
   }
 
-  /**
-   * Next candidate to look up (removed), or null when both queues are empty.
-   * The whole high queue goes before the first low one.
-   */
+  /** Next candidate (removed), or null. All of `high` goes before any of `low`. */
   private takeNext(): PrefetchCandidate | null {
     const c = this.high.shift() ?? this.low.shift() ?? null
     if (c) this.queued.delete(c.userName.toLowerCase())
@@ -276,20 +227,16 @@ export class BackgroundPrefetcher {
   }
 
   /**
-   * Perform at most one background lookup. The engine behind both start()'s loop
-   * and the unit tests.
-   *  - 'fetched' — a lookup was issued
-   *  - 'empty'   — nothing left to fetch
-   *  - 'budget'  — prefetch share spent; the rest is reserved for the user
-   *  - 'paused'  — a hard rate-limit backoff is in effect
+   * At most one background lookup — the engine behind start()'s loop and the
+   * tests. 'empty' is an exhausted queue, 'budget' the share spent, 'paused' a
+   * hard rate-limit backoff.
    */
   async runOnce(): Promise<RunStatus> {
     const now = this.now()
     if (this.budget(now) <= 0) {
       return this.deps.rateState().resetAt > now ? 'paused' : 'budget'
     }
-    // Skip already-known accounts without spending budget; keep going until we
-    // find one worth fetching or the queue drains.
+    // Skipping a known account costs no budget, so keep going.
     while (true) {
       const c = this.takeNext()
       if (!c) return 'empty'
@@ -307,8 +254,7 @@ export class BackgroundPrefetcher {
   start(): void {
     if (this.running) return
     this.running = true
-    // First ever start fires immediately (lastFetchAt is -Infinity); a restart
-    // after a stop() resumes on the existing schedule rather than jumping the gun.
+    // First ever start fires at once; a restart resumes the existing schedule.
     this.scheduleTick(this.delayFromLastFetch())
   }
 
@@ -334,13 +280,9 @@ export class BackgroundPrefetcher {
   }
 
   /**
-   * How long to wait before the next background lookup.
-   *
-   *  - hard backoff (429) → until it lifts
-   *  - no budget left     → until the window rolls over and refills it
-   *  - otherwise          → the remaining window divided by the remaining
-   *    budget, so the allowance is spread evenly over the time we have for it
-   *    (clamped to [minSpacingMs, maxSpacingMs])
+   * How long to wait before the next lookup: until a 429 lifts, until the window
+   * refills when the budget is spent, or else the window left over the budget
+   * left, clamped — which is what spreads the share evenly.
    */
   nextDelayMs(now: number = this.now()): number {
     const { resetAt } = this.deps.rateState()

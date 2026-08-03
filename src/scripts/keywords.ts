@@ -113,6 +113,9 @@ export function setKeywords(keywords: string[]): void {
   const textKws: string[] = []
   emojiKeywordGraphemes = []
   for (const kw of keywords) {
+    // An empty alternative matches almost everywhere, and content.tsx passes
+    // raw storage through, so blanks do reach here.
+    if (kw.trim() === '') continue
     if ([...kw].length !== kw.length) {
       emojiKeywordGraphemes.push(toGraphemes(kw))
     } else {
@@ -126,7 +129,11 @@ export function setKeywords(keywords: string[]): void {
     const parts = textKws.map((kw) => kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     // Negative lookbehind/lookahead on \p{L}\p{N}_ gives correct word boundaries
     // for any script (Cyrillic, Arabic, …) without needing grapheme segmentation.
-    const source = `(?<![\\p{L}\\p{N}_])(${parts.join('|')})(?![\\p{L}\\p{N}_])`
+    // The lookahead also rejects \p{M}, so a match cannot end mid-grapheme:
+    // keyword "☭" was firing on "☭⃠", the same symbol crossed out. A mark
+    // *before* the match belongs to the previous cluster, so the lookbehind
+    // leaves it out. ZWJ binds both ways — "⚧" sits inside "🏳️‍⚧️".
+    const source = `(?<![\\p{L}\\p{N}_\\u200d])(${parts.join('|')})(?![\\p{L}\\p{N}_\\p{M}\\u200d])`
     keywordPattern = new RegExp(source, 'iu')
     keywordPatternGlobal = new RegExp(source, 'giu')
   }

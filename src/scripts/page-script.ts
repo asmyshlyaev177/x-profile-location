@@ -10,13 +10,10 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
   let headersCaptured = false
   let storedHeaders: Record<string, string> | null = null
 
-  // Only these (non-secret) headers are forwarded to the content script over the
-  // page-global CustomEvent. The event is observable by the page and any other
-  // extension's content script, so we must never broadcast anything sensitive:
-  //  - x-csrf-token (== the ct0 cookie) is deliberately excluded — the content
-  //    script reads ct0 from document.cookie itself.
-  //  - any other auth/signature header X may attach is dropped by omission, so a
-  //    future X change can't silently start leaking a secret through this event.
+  // The CustomEvent carrying these is observable by the page and by any other
+  // extension, so the list is an allowlist of non-secrets. x-csrf-token (the ct0
+  // cookie) is excluded — the content script reads it from document.cookie — and
+  // anything X adds later is dropped by omission rather than leaked.
   const FORWARDED_HEADERS = [
     'authorization',
     'x-twitter-client-language',
@@ -52,11 +49,9 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
   // ---------------------------------------------------------------------------
   // Bio extraction from timeline/tweet API responses
   // ---------------------------------------------------------------------------
-  // Which GraphQL operations carry user bios, and how urgently their accounts
-  // want a location. HomeTimeline is the feed being scrolled; TweetDetail is a
-  // thread, i.e. mostly replies — many of them, mostly scrolled past. The tweet
-  // the user actually opened doesn't depend on this: content.tsx looks that one
-  // up directly (processPrimaryTweet).
+  // Which GraphQL operations carry bios, and how urgently their accounts want a
+  // location. The tweet the user opened doesn't depend on this — content.tsx
+  // looks that one up directly (processPrimaryTweet).
   const BIO_INTERCEPT: Array<[operation: string, priority: PrefetchPriority]> =
     [
       ['HomeTimeline', 'high'],
@@ -70,12 +65,10 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
     return null
   }
 
-  // page-script runs at document_start but the content script only attaches its
-  // USERS_DATA listener at document_idle, so the first timeline response can be
-  // dispatched before anyone is listening — dropping the first screen's bios and
-  // leaving bio-based keyword highlighting broken until the next fetch. Buffer
-  // captured users (bounded) and replay them when the content script asks, the
-  // same way headers are replayed via REQUEST_HEADERS.
+  // page-script runs at document_start, the content script attaches its
+  // USERS_DATA listener at document_idle — so the first timeline response is
+  // dispatched to nobody, and the first screen highlights nothing until the next
+  // fetch. Buffered (bounded) and replayed on request, like the headers.
   const USER_BUFFER_CAP = 500
   // Users are dispatched (and buffered) carrying the priority of the response
   // they came from, so the content script can queue each one accordingly.
@@ -98,12 +91,11 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
     if (bufferUsers) {
       for (const u of unique) {
         const key = u.userName.toLowerCase()
-        // Whoever the account is in the feed, they stay 'high' — a later thread
-        // response must not bury them behind its replies.
+        // Once 'high', always 'high': a later thread must not bury a feed
+        // account behind its replies.
         const wasHigh = userBuffer.get(key)?.priority === 'high'
-        // set() on an existing key keeps its insertion slot, so a repeat sighting
-        // refreshes the value without losing where the account first appeared —
-        // the replay is consumed as page order by the prefetch queue.
+        // set() keeps the existing insertion slot, so a repeat sighting doesn't
+        // lose where the account first appeared — the replay is page order.
         userBuffer.set(key, wasHigh ? { ...u, priority: 'high' } : u)
         if (userBuffer.size > USER_BUFFER_CAP) {
           userBuffer.delete(userBuffer.keys().next().value as string)
@@ -115,9 +107,8 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
     )
   }
 
-  // Replay users captured before the content script was listening. After the
-  // first request its listener is attached, so live dispatches suffice and we
-  // stop buffering to bound memory.
+  // After the first request the listener is attached, so live dispatches suffice
+  // and buffering stops to bound memory.
   window.addEventListener(EVENTS.REQUEST_USERS, () => {
     bufferUsers = false
     if (userBuffer.size === 0) return
@@ -149,9 +140,8 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
   }
 
   /**
-   * The request's headers as lowercased name → value. fetch() takes them as a
-   * Headers, an array of pairs, or a plain object, and either on the init or
-   * (when called with a Request) on the input — so every shape lands here.
+   * Headers as lowercased name → value. fetch() takes them as a Headers, pairs or
+   * a plain object, on the init or (with a Request) the input — all land here.
    */
   function requestHeaders(
     input: RequestInfo | URL,
