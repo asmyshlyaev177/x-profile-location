@@ -44,6 +44,14 @@ export interface RouteDef {
   faq?: FaqItem[]
 }
 
+/**
+ * The 404 page's path is also its filename in `dist`, which is the whole point
+ * of it: `flatten-routes.mjs` turns the prerendered `404/index.html` into
+ * `404.html`, and that name is what makes Cloudflare Pages serve it with a 404
+ * status instead of falling back to the homepage with a 200.
+ */
+export const NOT_FOUND_PATH = '/404'
+
 export const routes: RouteDef[] = [
   {
     path: '/',
@@ -184,13 +192,27 @@ export const routes: RouteDef[] = [
     description: 'Privacy Policy for the X-Pat browser extension.',
     noindex: true,
   },
+  {
+    path: NOT_FOUND_PATH,
+    sources: ['src/components/NotFound.tsx'],
+    title: 'Page not found — X-Pat',
+    description: 'That page does not exist on this site.',
+    noindex: true,
+  },
 ]
 
-/** Root is the fallback, so an unknown path renders the homepage as before. */
+/**
+ * An unknown path resolves to the 404 route rather than the homepage. Both the
+ * prerendered document and the client render then say the same thing — before
+ * this, the page hydrated into the homepage under whatever URL was typed.
+ */
 export function resolveRoute(pathname: string): RouteDef {
   const path =
     pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname || '/'
-  return routes.find((r) => r.path === path) ?? routes[0]!
+  return (
+    routes.find((r) => r.path === path) ??
+    routes.find((r) => r.path === NOT_FOUND_PATH)!
+  )
 }
 
 /** Paths the prerender plugin should emit. */

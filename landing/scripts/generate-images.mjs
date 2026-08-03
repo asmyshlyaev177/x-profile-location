@@ -1,6 +1,7 @@
 /**
  * Generates static images from SVG templates:
  *   public/og-image.svg      → public/og-image.png           (1200×630, OG + Twitter Card)
+ *   src/data/brand-mark.json → public/favicon.svg            (the one place the site's mark is written)
  *   public/favicon.svg       → public/apple-touch-icon.png   (180×180, iOS home screen)
  *   public/promo-small.svg   → extension_store/promo-small.png   (440×280, Chrome store small tile)
  *   public/promo-marquee.svg → extension_store/promo-marquee.png (1400×560, Chrome store marquee tile)
@@ -11,7 +12,7 @@
  * The rail was pulling ~800 KiB of full-resolution PNG to fill seven thumbnails.
  */
 import sharp from 'sharp'
-import { readFileSync, mkdirSync, statSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -52,6 +53,26 @@ await generate(
   1200,
   630,
 )
+/**
+ * The favicon is *generated*, not hand-written: the site's wordmark draws the
+ * same path, and two hand-copied path strings is two chances to fix a curve in
+ * one of them.
+ * `src/data/brand-mark.json` is the one place it lives — JSON so this plain
+ * Node script can read it without a TypeScript loader.
+ */
+const mark = JSON.parse(
+  readFileSync(join(landingDir, 'src', 'data', 'brand-mark.json'), 'utf8'),
+)
+writeFileSync(
+  join(publicDir, 'favicon.svg'),
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${mark.viewBox}">
+  <rect width="32" height="32" rx="${mark.radius}" fill="${mark.plate}"/>
+  <path d="${mark.path}" fill="${mark.signal}"/>
+</svg>
+`,
+)
+console.log('✓ public/favicon.svg (from src/data/brand-mark.json)')
+
 await generate(
   join(publicDir, 'favicon.svg'),
   join(publicDir, 'apple-touch-icon.png'),

@@ -26,13 +26,22 @@ import {
   LOCATION_ALIASES,
   normalizeHideBlockedMode,
   normalizePopupSection,
+  normalizeRatePrompt,
+  normalizeUsageStats,
   POPUP_SECTION_KEY,
   type PopupSection,
+  RATE_PROMPT_KEY,
   REGION_FLAGS,
   REGION_MEMBERS,
   SHOW_ACCOUNT_CARD_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
+  USAGE_STATS_KEY,
 } from '../scripts/countries'
+import {
+  REVIEW_URL,
+  setRatePromptState,
+  shouldAskForRating,
+} from '../scripts/usage'
 import css from './popup.module.css'
 import { startThemeSync } from './theme'
 
@@ -128,6 +137,55 @@ function Section({
   )
 }
 
+/**
+ * The one thing this extension asks for, and it asks once.
+ *
+ * It waits for `RATE_PROMPT_MIN_DAYS` separate days on which the content script
+ * actually put a flag on screen (see `usage.ts`) rather than days since install,
+ * and both answers are final in the sense that matters: "Later" is a two-week
+ * snooze, "No thanks" never comes back. Nothing here is a modal or an overlay
+ * on X — it lives in a panel the user opened themselves.
+ */
+function RatePrompt({ onAnswer }: { onAnswer: () => void }) {
+  return (
+    <div class={css.rate}>
+      <p class={css.rateText}>Been useful? A store rating helps a lot.</p>
+      <div class={css.rateActions}>
+        <a
+          class={css.rateBtn}
+          href={REVIEW_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => {
+            void setRatePromptState('done')
+            onAnswer()
+          }}
+        >
+          Rate it ★
+        </a>
+        <button
+          class={css.linkBtn}
+          onClick={() => {
+            void setRatePromptState('later')
+            onAnswer()
+          }}
+        >
+          Later
+        </button>
+        <button
+          class={css.linkBtn}
+          onClick={() => {
+            void setRatePromptState('done')
+            onAnswer()
+          }}
+        >
+          No thanks
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function Popup() {
   const [enabled, setEnabled] = useState(true)
   const [inFeed, setInFeed] = useState(false)
@@ -137,6 +195,7 @@ export function Popup() {
   const [keywords, setKeywords] = useState<string[]>([])
   const [section, setSection] = useState<PopupSection | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [askRating, setAskRating] = useState(false)
 
   // The popup has no theme control of its own — it is set once in the options
   // page and every extension page follows it.
@@ -152,6 +211,8 @@ export function Popup() {
         BLOCKED_COUNTRIES_KEY,
         HIGHLIGHT_KEYWORDS_KEY,
         POPUP_SECTION_KEY,
+        USAGE_STATS_KEY,
+        RATE_PROMPT_KEY,
       ])
       .then((r) => {
         setEnabled(
@@ -173,6 +234,12 @@ export function Popup() {
             : [],
         )
         setSection(normalizePopupSection(r[POPUP_SECTION_KEY]))
+        setAskRating(
+          shouldAskForRating(
+            normalizeUsageStats(r[USAGE_STATS_KEY]),
+            normalizeRatePrompt(r[RATE_PROMPT_KEY]),
+          ),
+        )
         setLoaded(true)
       })
   }, [])
@@ -391,10 +458,36 @@ export function Popup() {
         </Section>
       </div>
 
+      {/* Not while paused. Someone who has just switched it off is answering a
+          different question, and the ask keeps — `status` stays 'idle'. */}
+      {askRating && enabled && (
+        <RatePrompt onAnswer={() => setAskRating(false)} />
+      )}
+
       <footer class={css.footer}>
-        <button class={css.linkBtn} onClick={() => void openOptions()}>
+        {/* The one control in this footer that leads somewhere people
+            actually need — given weight to match, since the two beside it are
+            things you do once and never again. */}
+        <button class={css.settingsBtn} onClick={() => void openOptions()}>
           All settings →
         </button>
+        {/* Permanent, unlike the card above: the card is a request and goes
+            away once answered, this is just the way to the listing for anyone
+            who goes looking. Clicking counts as answered — somebody who has
+            been to the review page should not be asked again later. */}
+        <a
+          class={css.linkBtn}
+          href={REVIEW_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Rate X-Pat on the Chrome Web Store"
+          onClick={() => {
+            void setRatePromptState('done')
+            setAskRating(false)
+          }}
+        >
+          Rate ★
+        </a>
         <a
           class={css.linkBtn}
           href={DONATE_URL}

@@ -94,6 +94,8 @@ import {
   __testResetState,
 } from './content'
 import { getCached, mergeCached, clearAllCache } from './cache'
+import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from './countries'
+import { dayKey, __resetUsageMemo } from './usage'
 import { renderShareCard } from './share-card'
 import {
   isSharedCacheConfigured,
@@ -3411,5 +3413,262 @@ describe('where the snapshot puts the location line', () => {
     const nameEl = clone.querySelector('[data-testid="User-Name"]')!
     expect(nameEl.textContent).not.toContain('Japan')
     expect(clone.textContent).toContain('Japan')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The rating ask, on the page
+// ---------------------------------------------------------------------------
+// The popup card only reaches people who open the popup, which after the first
+// day is almost nobody. This is the same ask where they actually are — and it
+// is the one thing the extension puts on screen unbidden, so what it must never
+// do is more interesting than what it does.
+describe('the rating ask on the page', () => {
+  const TODAY = dayKey()
+
+  function seedUsage(activeDays: number, prompt?: unknown) {
+    vi.mocked(chromeGlobal.storage.local.get).mockResolvedValue({
+      [USAGE_STATS_KEY]: { activeDays, lastDay: TODAY },
+      ...(prompt === undefined ? {} : { [RATE_PROMPT_KEY]: prompt }),
+    })
+  }
+
+  function makeHoverCard(userName: string) {
+    const card = document.createElement('div')
+    card.setAttribute('data-testid', 'HoverCard')
+    card.innerHTML = `
+      <div><div><div>
+        <div data-testid="UserName"><a href="/${userName}">Test User</a></div>
+        <span>@${userName}</span>
+      </div></div></div>
+    `
+    return card
+  }
+
+  /** A hover that resolves to a flag, which is what the ask rides in on. */
+  async function hoverWithFlag(userName: string) {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: 'web',
+    })
+    document.body.appendChild(makeHoverCard(userName))
+    await flushAsync()
+    await flushAsync()
+  }
+
+  const bar = () => document.getElementById('x-loc-ask-toast')
+
+  beforeEach(() => {
+    __resetUsageMemo()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.mocked(chromeGlobal.storage.local.get).mockResolvedValue({})
+  })
+
+  it('asks once a flag has been drawn and the days are there', async () => {
+    // After the flag, not before it: the ask interrupts an extension that has
+    // just been useful rather than one that has done nothing yet.
+    seedUsage(5)
+    await hoverWithFlag('someone')
+    expect(bar()).toBeNull()
+
+    await vi.advanceTimersByTimeAsync(7000)
+
+    const buttons = [...bar()!.querySelectorAll('button')].map(
+      (b) => b.textContent,
+    )
+    expect(buttons).toEqual(['Rate it ★', 'Later', 'No thanks'])
+    // Named, on a page it does not own: an unattributed bar over X reads as X
+    // asking, and nobody can rate what they cannot identify.
+    expect(bar()!.textContent).toContain('X-Pat')
+    // The extension's own toolbar icon, inlined — not a drawing of it, and not
+    // the site's mark, which is a different one entirely.
+    const mark = bar()!.querySelector('img')
+    expect(mark?.getAttribute('src')).toMatch(/^data:image\/png;base64,/)
+  })
+
+  it('stays away until the extension has been used for a few days', async () => {
+    seedUsage(1)
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(7000)
+
+    expect(bar()).toBeNull()
+  })
+
+  it('stays away once it has been answered', async () => {
+    seedUsage(30, { status: 'done', snoozeUntil: 0 })
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(7000)
+
+    expect(bar()).toBeNull()
+  })
+
+  it('counts as asked the moment it is shown', async () => {
+    // A page closed on an unanswered ask must not mean the next page asks
+    // again. Being ignored is worth a few days of silence on its own.
+    seedUsage(5)
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(7000)
+
+    const written = vi
+      .mocked(chromeGlobal.storage.local.set)
+      .mock.calls.map((c: unknown[]) => c[0] as Record<string, unknown>)
+      .find((patch: Record<string, unknown>) => RATE_PROMPT_KEY in patch)
+    expect(written![RATE_PROMPT_KEY]).toMatchObject({ status: 'later' })
+  })
+
+  it('goes away on an answer, and records it', async () => {
+    seedUsage(5)
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(7000)
+
+    ;(
+      [...bar()!.querySelectorAll('button')].find(
+        (b) => b.textContent === 'No thanks',
+      ) as HTMLButtonElement
+    ).click()
+    await flushAsync()
+
+    expect(bar()).toBeNull()
+    const last = vi
+      .mocked(chromeGlobal.storage.local.set)
+      .mock.calls.map((c: unknown[]) => c[0] as Record<string, unknown>)
+      .filter((patch: Record<string, unknown>) => RATE_PROMPT_KEY in patch)
+      .pop()
+    expect(last![RATE_PROMPT_KEY]).toMatchObject({ status: 'done' })
+  })
+
+  it('waits for an answer rather than taking the question away', async () => {
+    // It had a 30s dismiss timer, which asked people who happened to be
+    // reading something else and then removed the question before they could
+    // answer. It appears once in the extension's life; it can afford to wait.
+    seedUsage(5)
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(7000)
+
+    await vi.advanceTimersByTimeAsync(10 * 60_000)
+    expect(bar()).not.toBeNull()
+  })
+
+  it('asks at most once per page', async () => {
+    seedUsage(5)
+    await hoverWithFlag('one')
+    await vi.advanceTimersByTimeAsync(7000)
+    bar()!.remove()
+
+    await hoverWithFlag('two')
+    await vi.advanceTimersByTimeAsync(7000)
+    expect(bar()).toBeNull()
+  })
+
+  it('asks a tab that was already open when the days came in', async () => {
+    // The decision is taken once per page, at the first flag. X is the page
+    // people leave open for days, so without re-arming on a storage change a
+    // long-lived tab would be asked exactly once, on the day it was opened.
+    seedUsage(1)
+    await hoverWithFlag('early')
+    await vi.advanceTimersByTimeAsync(7000)
+    expect(bar()).toBeNull()
+
+    seedUsage(5)
+    onChangedCallback({ usageStats: { newValue: {} } }, 'local')
+
+    await hoverWithFlag('later')
+    await vi.advanceTimersByTimeAsync(7000)
+    expect(bar()).not.toBeNull()
+  })
+
+  /** A swipe on a fresh article, which is what puts a toast in the corner. */
+  function swipe(article: Element) {
+    const point = (x: number) => ({ clientX: x, clientY: 100 }) as Touch
+    for (const [type, x] of [
+      ['touchstart', 10],
+      ['touchmove', 90],
+    ] as const) {
+      article.dispatchEvent(
+        new TouchEvent(type, {
+          bubbles: true,
+          touches: [point(x)],
+          changedTouches: [point(x)],
+        }),
+      )
+    }
+  }
+
+  it('gives the corner up to the rate-limit countdown', async () => {
+    // Both are pinned to the same bottom-centre slot. The countdown is
+    // information the user needs; this is a request they did not make.
+    seedUsage(5)
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(7000)
+    expect(bar()).not.toBeNull()
+
+    // The file-level reset clears the captured headers, and without them a
+    // swipe cannot attempt a lookup at all — it dismisses quietly rather than
+    // reporting a rate limit.
+    setApiHeaders({ authorization: 'Bearer t', 'x-csrf-token': 'c' })
+    vi.mocked(getCached).mockResolvedValue(undefined)
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('', {
+        status: 429,
+        headers: {
+          'x-rate-limit-reset': String(Math.ceil(Date.now() / 1000) + 300),
+        },
+      }),
+    )
+    const article = makeTweetArticle('limited')
+    document.body.appendChild(article)
+    swipe(article)
+    await flushAsync()
+
+    expect(document.getElementById('x-loc-rate-toast')).not.toBeNull()
+    expect(bar()).toBeNull()
+  })
+
+  it('gives the corner up to the swipe answer too', async () => {
+    seedUsage(5)
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(7000)
+    expect(bar()).not.toBeNull()
+
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: 'web',
+    })
+    const article = makeTweetArticle('swiped')
+    document.body.appendChild(article)
+    swipe(article)
+    await flushAsync()
+
+    expect(document.getElementById('x-loc-location-toast')).not.toBeNull()
+    expect(bar()).toBeNull()
+  })
+
+  it('is taken off the page when the extension is paused', async () => {
+    // The master switch strips what is already on screen rather than only
+    // skipping new work, and this is on screen.
+    seedUsage(5)
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(7000)
+    expect(bar()).not.toBeNull()
+
+    onChangedCallback({ extensionEnabled: { newValue: false } }, 'local')
+    expect(bar()).toBeNull()
+    onChangedCallback({ extensionEnabled: { newValue: true } }, 'local')
+  })
+
+  it('says nothing at all while the extension is paused', async () => {
+    seedUsage(5)
+    onChangedCallback({ extensionEnabled: { newValue: false } }, 'local')
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(7000)
+
+    expect(bar()).toBeNull()
+    onChangedCallback({ extensionEnabled: { newValue: true } }, 'local')
   })
 })

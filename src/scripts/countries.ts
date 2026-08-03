@@ -1052,6 +1052,62 @@ export function normalizePopupSection(value: unknown): PopupSection | null {
     : null
 }
 
+// ---------------------------------------------------------------------------
+// Use, and the one thing the popup asks for
+// ---------------------------------------------------------------------------
+// Neither key is a setting: they are not exported, not importable, and nothing
+// on the options page edits them. They exist so the rating ask in the popup can
+// wait for the extension to have actually been used, rather than counting the
+// days since it was installed — an install that has never resolved a profile
+// has no opinion to give.
+
+export const USAGE_STATS_KEY = 'usageStats'
+
+export interface UsageStats {
+  /** Local calendar days on which the content script did visible work. */
+  activeDays: number
+  /** The most recent of them, `YYYY-MM-DD`, so a day is counted once. */
+  lastDay: string
+}
+
+export function normalizeUsageStats(value: unknown): UsageStats {
+  const v = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+  const days = finiteNumber(v.activeDays)
+  return {
+    activeDays: days === null || days < 0 ? 0 : Math.floor(days),
+    lastDay: typeof v.lastDay === 'string' ? v.lastDay : '',
+  }
+}
+
+export const RATE_PROMPT_KEY = 'ratePrompt'
+
+/**
+ * `asked` is the only state that can come back: 'later' is a snooze, 'done'
+ * covers both rating and refusing, because a second ask after either one is
+ * the behaviour that makes people uninstall.
+ */
+export interface RatePromptState {
+  status: 'idle' | 'later' | 'done'
+  /** Epoch ms the snooze expires. Meaningless unless status is 'later'. */
+  snoozeUntil: number
+}
+
+export function normalizeRatePrompt(value: unknown): RatePromptState {
+  const v = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+  const until = finiteNumber(v.snoozeUntil)
+  return {
+    status:
+      v.status === 'later' || v.status === 'done'
+        ? (v.status as 'later' | 'done')
+        : 'idle',
+    snoozeUntil: until === null || until < 0 ? 0 : until,
+  }
+}
+
 // The account card (age, affiliation, verification, handle history) under the
 // location row. On by default — the data rides along with responses the
 // extension already receives, so showing it costs nothing.

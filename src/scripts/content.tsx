@@ -35,6 +35,7 @@ import {
   normalizePrefetchShare,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
+  RATE_PROMPT_KEY,
   REGION_ABBR,
   REGION_FLAGS,
   ruleHides,
@@ -45,6 +46,7 @@ import {
   SHOW_EXCEPTION_BUTTON_KEY,
   SHOW_SHARE_BUTTON_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
+  USAGE_STATS_KEY,
 } from './countries'
 import { EVENTS, X_GRAPHQL_PATH } from './constants'
 import {
@@ -67,6 +69,14 @@ import {
 } from './profile'
 import type { AccountFacts } from './profile'
 import { buildSourceGlyph, classifySource, platformLabel } from './source'
+import {
+  noteActiveDay,
+  noteRatingAskShown,
+  ratingAskDue,
+  REVIEW_URL,
+  setRatePromptState,
+} from './usage'
+import toolbarIconUrl from '../assets/icons/icon-32x32.png?inline'
 import { deliverShareCard, renderShareCard } from './share-card'
 import { allowGrowth, snapshotElement } from './snapshot'
 import {
@@ -78,6 +88,7 @@ import {
   KEYWORD_MATCH_ATTR,
   PEOPLE_MATCH_ATTR,
   QUOTE_HIDDEN_ATTR,
+  RATING_ASK_ID,
   TWEET_MARK_ATTR,
 } from './styles'
 
@@ -285,6 +296,7 @@ function stripAllInjections(): void {
   clearKeywordMarks()
   updateKeywordEmojiStyle()
   dismissLocationToast()
+  dismissRatingAsk()
   document.getElementById('x-loc-rate-toast')?.remove()
 }
 
@@ -305,6 +317,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
     syncPrefetcher()
   }
   if (!extensionEnabled) return
+  if (changes[USAGE_STATS_KEY] || changes[RATE_PROMPT_KEY]) {
+    // The ask is decided once per page, at the first flag drawn. Re-arm it when
+    // the two values that decide it move, or a tab open across the day that
+    // earns the ask never asks — and X is precisely the page people leave open
+    // for days at a time. Costs nothing: the re-check is one storage read on
+    // the next flag, and it answers "no" for the rest of the page's life.
+    ratingAskConsidered = false
+  }
   if (changes[BLOCKED_COUNTRIES_KEY]) {
     blockedCountries = toBlockedSet(changes[BLOCKED_COUNTRIES_KEY].newValue)
     // Editing the list can newly block (or unblock) locations already on screen.
@@ -736,6 +756,9 @@ export function __testResetState() {
     clearTimeout(locationToastTimer)
     locationToastTimer = null
   }
+  dismissRatingAsk()
+  ratingAskConsidered = false
+
   feedRowObserver?.disconnect()
   feedRowObserver = null
   pendingFeedRows = new WeakMap()
@@ -772,6 +795,10 @@ function formatCountdown(ms: number): string {
 // Rate limit toast
 // ---------------------------------------------------------------------------
 function showRateLimitToast() {
+  // Both are pinned to the same bottom-centre slot, and a countdown the user
+  // needs beats a request they didn't ask for.
+  dismissRatingAsk()
+
   let toast = document.getElementById('x-loc-rate-toast')
   if (!toast) {
     toast = document.createElement('div')
@@ -833,6 +860,8 @@ function dismissLocationToast() {
 
 function renderLocationToast(text: string, pending = false) {
   dismissLocationToast()
+  // Same slot again: the swipe answer is what the user just asked for.
+  dismissRatingAsk()
 
   const toast = document.createElement('div')
   toast.id = 'x-loc-location-toast'
@@ -849,6 +878,136 @@ function showLocationOverlay(data: LocationData) {
   const text = locationSummaryText(data)
   if (!text) return
   renderLocationToast(text)
+}
+
+// ---------------------------------------------------------------------------
+// The rating ask
+// ---------------------------------------------------------------------------
+// The popup card reaches people who open the popup, which after the first day
+// is almost nobody. This is the same ask where they actually are — once, on a
+// page the extension has already done something useful on.
+//
+// Everything here is built to be easy to be rid of: it appears after a flag has
+// been drawn (so it interrupts a working extension, not a blank one), both ways
+// of saying no are one click, saying nothing at all snoozes it for days, and it
+// gives up the screen to either of the toasts that carry information.
+
+/** Long enough that the flag it is riding on has been read. */
+const RATING_ASK_DELAY_MS = 6000
+
+let ratingAskConsidered = false
+
+function dismissRatingAsk(): void {
+  document.getElementById(RATING_ASK_ID)?.remove()
+}
+
+/**
+ * The toolbar icon itself, inlined at build time.
+ *
+ * `?inline` makes Vite emit it as a data URI, so it needs no entry in
+ * `web_accessible_resources` — the manifest deliberately exposes nothing under
+ * `assets/`, because a fetchable extension URL is something x.com can probe
+ * for, passively, even while the extension is paused.
+ *
+ * It is the same file the manifest ships, which is the whole point: the user is
+ * being asked to rate the thing behind that icon, so it has to be *that* icon
+ * and not a second drawing of it. (The site's mark is a different one — see
+ * `landing/src/data/brand-mark.json`.)
+ */
+function buildBrandMark(): HTMLImageElement {
+  const img = document.createElement('img')
+  img.src = toolbarIconUrl
+  img.width = 16
+  img.height = 16
+  img.alt = ''
+  img.setAttribute('aria-hidden', 'true')
+  return img
+}
+
+function ratingAskButton(
+  label: string,
+  quiet: boolean,
+  onClick: () => void,
+): HTMLButtonElement {
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.textContent = label
+  if (quiet) btn.className = 'x-loc-ask-quiet'
+  btn.addEventListener('click', onClick)
+  return btn
+}
+
+function showRatingAsk(): void {
+  if (document.getElementById(RATING_ASK_ID)) return
+
+  const bar = document.createElement('div')
+  bar.id = RATING_ASK_ID
+  bar.setAttribute('role', 'status')
+
+  // Named and marked, because this appears inside somebody else's page: an
+  // unattributed bar over X reads as X asking, and nobody can rate what they
+  // cannot identify.
+  const message = document.createElement('span')
+  message.className = 'x-loc-ask-msg'
+  message.appendChild(buildBrandMark())
+
+  const brand = document.createElement('strong')
+  brand.textContent = 'X-Pat'
+  message.appendChild(brand)
+
+  const text = document.createElement('span')
+  text.textContent = '— been useful? A store rating helps a lot.'
+  message.appendChild(text)
+  bar.appendChild(message)
+
+  const answer = (status: 'later' | 'done') => {
+    void setRatePromptState(status)
+    dismissRatingAsk()
+  }
+
+  bar.appendChild(
+    ratingAskButton('Rate it ★', false, () => {
+      // window.open rather than a message to the service worker: this is inside
+      // a click, so the popup blocker allows it, and it keeps the ask working
+      // whether or not the worker happens to be alive.
+      window.open(REVIEW_URL, '_blank', 'noopener')
+      answer('done')
+    }),
+  )
+  bar.appendChild(ratingAskButton('Later', true, () => answer('later')))
+  bar.appendChild(ratingAskButton('No thanks', true, () => answer('done')))
+
+  document.body.appendChild(bar)
+  // No dismiss timer: it stays until one of the three buttons is pressed. A
+  // timed one asked people who happened to be reading something else, then took
+  // the question away before they could answer it — and it only ever appears
+  // once, so it can afford to wait.
+  //
+  // Written before it can be answered, so a page navigated away from with the
+  // bar still up counts as asked and does not hound them on the next one. The
+  // answer buttons overwrite this.
+  void noteRatingAskShown()
+}
+
+/**
+ * Called once per page, after the day has been counted — the count is what
+ * decides the ask, so checking before it lands would be a day behind.
+ */
+async function considerRatingAsk(): Promise<void> {
+  if (ratingAskConsidered) return
+  ratingAskConsidered = true
+
+  if (!extensionEnabled) return
+  if (!(await ratingAskDue())) return
+
+  setTimeout(() => {
+    // Both can have changed during the wait, and the other two toasts carry
+    // information where this carries a request.
+    if (!extensionEnabled) return
+    if (document.getElementById('x-loc-rate-toast')) return
+    if (document.getElementById('x-loc-location-toast')) return
+    showRatingAsk()
+  }, RATING_ASK_DELAY_MS)
 }
 
 // ---------------------------------------------------------------------------
@@ -1759,6 +1918,11 @@ function makeIcon(emoji: string, tooltip: string): HTMLElement {
 }
 
 function buildInfoRow(data: LocationData): HTMLElement {
+  // Every surface that shows a flag — feed, hover card, primary tweet, swipe —
+  // goes through here, which makes it the one place that means "the extension
+  // did something visible today". The popup's rating ask counts those days.
+  void noteActiveDay().then(considerRatingAsk)
+
   const row = document.createElement('div')
   row.className = 'x-loc-info'
 

@@ -14,7 +14,8 @@ import { AboutThisAccount } from './components/AboutThisAccount'
 import { EngagementFarming } from './components/EngagementFarming'
 import { Comparison } from './components/Comparison'
 import { ComparisonTeaser } from './components/ComparisonTeaser'
-import { resolveRoute } from './routes'
+import { NotFound } from './components/NotFound'
+import { NOT_FOUND_PATH, resolveRoute } from './routes'
 import './index.css'
 
 interface AppProps {
@@ -36,6 +37,18 @@ export function App({ url }: AppProps) {
   const path =
     url ?? (typeof window !== 'undefined' ? window.location.pathname : '/')
   const route = resolveRoute(path)
+
+  if (route.path === NOT_FOUND_PATH) {
+    return (
+      <>
+        <SiteHeader />
+        <main>
+          <NotFound />
+        </main>
+        <Footer />
+      </>
+    )
+  }
 
   if (route.path === '/privacy-policy') {
     return (

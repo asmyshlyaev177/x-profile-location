@@ -228,6 +228,54 @@
   color: var(--text-dim);
 }
 
+/* The rating ask. Tinted rather than boxed in a border, so it reads as a note
+   in the panel and not as another control to deal with. */
+.rate {
+  margin-top: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: var(--surface-alt);
+}
+
+.rateText {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.rateActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+/* "Rate it" is the primary action and an <a>, since it opens the store; the two
+   dismissals reuse .linkBtn so the panel has one quiet-button style, not two. */
+.rateBtn {
+  display: inline-flex;
+  align-items: center;
+  /* An <a> is content-box by default where a <button> is not, so without this
+     the same min-height and padding make it 16px taller than the two buttons
+     beside it. */
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--link);
+  text-decoration: none;
+}
+
+.rateBtn:hover {
+  text-decoration: underline;
+}
+
+/* Sits after .rate, so its own top margin would double the gap. */
+.rate + .footer {
+  margin-top: 4px;
+}
+
 .footer {
   display: flex;
   align-items: center;
@@ -236,6 +284,26 @@
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--border);
+}
+
+/* The footer's primary action. A third quiet link would have made three equal
+   things, none of which looked like the way out of this panel. */
+.settingsBtn {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface-alt);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 0 12px;
+  min-height: 40px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.settingsBtn:hover {
+  border-color: var(--accent);
 }
 
 .linkBtn {

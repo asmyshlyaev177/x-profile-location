@@ -49,6 +49,11 @@ function serveFlatHtml(): PluginOption {
           const candidate = join(dist, `${path}.html`)
           if (existsSync(candidate)) {
             req.url = query ? `${path}.html?${query}` : `${path}.html`
+          } else if (existsSync(join(dist, '404.html'))) {
+            // Same substitution Pages makes for an unmatched path. The status
+            // stays 200 here — sirv writes its own head — so preview shows the
+            // right document but not the right code; the code is Pages' half.
+            req.url = '/404.html'
           }
         }
         next()

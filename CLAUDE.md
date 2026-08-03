@@ -72,6 +72,7 @@ page-script.ts                      content.tsx
 | `src/scripts/profile.ts`        | Parses `AccountFacts` (age, affiliate badge, verification, handle history, followers) off a User node — timeline or AboutAccountQuery alike.                                  |
 | `src/scripts/source.ts`         | The single place X's `source` string is interpreted: platform (`ios`/`android`/`web`) + store country, plus the drawn SVG glyphs.                                             |
 | `src/scripts/settings.ts`       | Registry of every user-facing setting and its normalizer. Backs import/export.                                                                                                |
+| `src/scripts/usage.ts`          | Days on which the extension did visible work, and the single rule deciding whether the popup asks for a store rating. Pure decision, impure counter.                          |
 | `src/scripts/snapshot.ts`       | Clones a live element, inlines its computed styles and images, renders it to PNG through an SVG `foreignObject`. How a shared post keeps X's own look.                        |
 | `src/scripts/share-card.ts`     | The hand-drawn fallback card, for when a snapshot can't render. Layout is pure (testable); drawing is not.                                                                    |
 | `src/pages/popup.tsx`           | Toolbar popup — master switch, feed flags, account card, filtered-post mode.                                                                                                  |
@@ -351,7 +352,71 @@ SHOW_ACCOUNT_CARD_KEY = 'showAccountCard' // default ON
 SHOW_SHARE_BUTTON_KEY = 'showShareButton' // hover-card "Copy card" button; default ON
 OPTIONS_TAB_KEY = 'optionsTab' // which settings tab is open
 THEME_KEY = 'theme' // 'system' | 'light' | 'dark'; default 'system'; extension pages only
+
+USAGE_STATS_KEY = 'usageStats' // { activeDays, lastDay }; counted by content.tsx
+RATE_PROMPT_KEY = 'ratePrompt' // { status, snoozeUntil }; answer to the rating ask
 ```
+
+The last two are **not settings** and deliberately absent from `SETTINGS_REGISTRY`:
+an export is a record of decisions, and "has used this for five days" is not one —
+importing it into a second install would ask that install for a rating it has not
+earned. The counter lives in `buildInfoRow()` because every surface that shows a
+flag goes through it, which makes it the one place meaning "something visible
+happened today"; `usage.ts` memoises the day so scrolling costs no storage reads.
+
+The popup footer also carries a **permanent** `Rate ★` link, between the
+settings button and the donate link. It is not part of the ask and is not gated
+on anything — the card is a request that goes away once answered, this is just
+the way to the listing. Clicking it records `done`, because somebody who has
+been to the review page should not be asked to go there again. `All settings` is
+the one control in that row with a border and a background: three equal links
+left nothing looking like the way out of the panel.
+
+**Three surfaces show the ask, and `ratingAskDue()` is the only thing that
+decides.** The toolbar badge (service-worker, `chrome.action.setBadgeText`), the
+bar over X (`showRatingAsk` in content.tsx, `RATING_ASK_ID` in styles.ts), and
+the card in the popup. They must agree, or a badge invites a click that opens a
+popup with nothing in it — which is why pausing the extension clears the badge
+too, and why the hover card is **not** one of them: it is transient, React
+re-renders it, and it appears dozens of times a session. An ask that fires on
+every hover is not an ask.
+
+The bar **names itself** — the toolbar icon, then "X-Pat", then the sentence.
+It appears inside a page the extension does not own, where an unattributed bar
+reads as X asking, and nobody can rate what they cannot identify.
+
+The icon is **the shipped PNG**, imported with Vite's `?inline` so it arrives as
+a data URI: `chrome.runtime.getURL` would need it in `web_accessible_resources`,
+and the manifest deliberately exposes nothing under `assets/` because a
+fetchable extension URL is something x.com can probe for passively, even while
+the extension is paused. Same file the manifest points at, deliberately — the
+user is being asked to rate the thing behind that icon, so a second drawing of
+it would be the one detail worth getting right and getting wrong.
+
+⚠ **There are two marks in this repo and they are not the same.** The extension
+icon (`src/assets/icons/*.png`, blue X + question mark, April 2026) and the
+site's mark (`landing/src/data/brand-mark.json`, cyan X on a dark plate, drawn
+by the wordmark and generated into `landing/public/favicon.svg`). The rename to
+X-Pat did not unify them. Anything showing "the icon" to a user must use the
+first; anything on the site uses the second.
+
+The decision is taken **once per page, on the first flag drawn**, and re-armed
+by a `usageStats`/`ratePrompt` storage change. Without the re-arm a tab left
+open across the day that earns the ask never asks — and X is precisely the page
+people leave open for days.
+
+The bar has **no dismiss timer** — it waits for one of its three buttons. A
+timed one asked people who happened to be reading something else and then took
+the question away before they could answer it; it appears once in the
+extension's life, so it can afford to wait.
+
+Ignoring the bar is still an answer: `noteRatingAskShown()` writes a three-day
+snooze the moment it renders, so a page _navigated away from_ with the bar still
+up does not mean the next page asks again. It only ever writes from `idle` —
+shortening a fortnight the user chose would be the one unforgivable version of
+this feature. The bar also **yields the bottom-centre slot**: `showRateLimitToast`
+and `renderLocationToast` dismiss it, because both of those carry information
+and this carries a request.
 
 `THEME_KEY` is applied by `src/pages/theme.ts`, which sets `data-theme` on
 `<html>` — and only that. The palettes are `light-dark()` pairs in each page's
@@ -527,6 +592,16 @@ X's DOM with our injected markup already in it. The stylesheet is not a copy —
 the real thing, so the suite fails when the shipped rules change. Anything a
 fixture needs a rule of its own to look right is a rule that belongs in the
 extension.
+
+`popup.html` is the exception in one respect: it is a fixture of **our own**
+page, not X's, and its stylesheet is a **CSS module**. `openPopupFixture()`
+reads `src/pages/popup.module.css` off disk rather than importing it — Vite
+hashes those class names for the build and Playwright's loader would not resolve
+the import at all — so the fixture carries the plain names the source file uses
+and is styled by the shipped rules. Rename a class in one place only and the
+element goes unstyled, which is why `the fixture is wearing the real stylesheet`
+asserts two concrete values first: several of the layout assertions below it
+would still pass on unstyled markup, and a vacuous suite is worse than none.
 
 Assertions are **layout facts** (boxes, computed styles), never pixel diffs. A
 screenshot baseline compares font rendering as much as layout, so it fails on

@@ -230,6 +230,42 @@ It keeps a profile at `e2e/.auth/firefox-profile`, so you log in to X once.
 Firefox MV3 treats host permissions as user-granted, so allow x.com from the
 extensions button on the first run — real users have to do this too.
 
+## Seeing the rating ask without waiting three days
+
+It shows after three separate days on which a flag was actually drawn, so it
+will not appear on a fresh profile. **Seed the storage rather than patching the
+condition** — a patched `ratingAskDue()` moves the badge and the in-page bar but
+not the popup card, which calls `shouldAskForRating` directly, so you end up
+testing two thirds of it and drawing the wrong conclusion.
+
+In the service worker's console (`chrome://extensions` → **service worker**), or
+any extension page's:
+
+```js
+const d = new Date()
+const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+await chrome.storage.local.set({
+  usageStats: { activeDays: 5, lastDay: day },
+  ratePrompt: { status: 'idle', snoozeUntil: 0 },
+})
+```
+
+`lastDay` has to be the **local** date — `usage.ts` counts local days, so an ISO
+string (UTC) is a different day for half the world and the counter would move
+under you.
+
+The badge appears at once: the write fires `storage.onChanged`, which is what
+the service worker syncs it on. For the bar, reload an x.com tab and hover a
+profile — it needs a flag on screen, then waits six seconds.
+
+Two things that will make it look broken when it isn't:
+
+- **The bar records a three-day snooze the moment it renders.** Re-run the
+  snippet before each attempt or you get exactly one.
+- **`dist/` is not rebuilt for you.** `pnpm dev` rebuilds on save; a plain
+  `pnpm build` is a snapshot, and an extension reloaded against a stale `dist`
+  is the usual reason a change appears to do nothing.
+
 ## Pointing a build at a cache backend
 
 `CACHE_API_BASE` is a **build-time** value, never a source edit:

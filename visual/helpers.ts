@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { CONTENT_CSS } from '../src/scripts/styles'
 
@@ -14,6 +15,39 @@ export async function openFixture(page: Page, name: string): Promise<void> {
   const url = new URL(`./fixtures/${name}.html`, import.meta.url)
   await page.goto(`file://${fileURLToPath(url)}`)
   await page.addStyleTag({ content: CONTENT_CSS })
+}
+
+/**
+ * The same idea for an extension page: fixture markup, the page's real
+ * stylesheet over it.
+ *
+ * Read off disk rather than imported, because `popup.module.css` is a CSS
+ * module — Vite hashes its class names for the build, and Playwright's loader
+ * would not resolve the import at all. The file as written uses the plain
+ * names, so the fixture can carry them and still be styled by the shipped
+ * rules.
+ *
+ * `theme` sets what the popup's own `light-dark()` pairs resolve to. 'system'
+ * writes no attribute, exactly as `theme.ts` does.
+ */
+export async function openPopupFixture(
+  page: Page,
+  theme: 'system' | 'light' | 'dark' = 'light',
+): Promise<void> {
+  const url = new URL('./fixtures/popup.html', import.meta.url)
+  await page.goto(`file://${fileURLToPath(url)}`)
+  await page.addStyleTag({
+    content: readFileSync(
+      fileURLToPath(new URL('../src/pages/popup.module.css', import.meta.url)),
+      'utf-8',
+    ),
+  })
+  if (theme !== 'system') {
+    await page.evaluate(
+      (t) => document.documentElement.setAttribute('data-theme', t),
+      theme,
+    )
+  }
 }
 
 export interface Box {

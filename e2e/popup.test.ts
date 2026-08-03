@@ -23,6 +23,11 @@ import {
   PRIMARY_TWEET,
   readCachedBio,
 } from './helpers'
+import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from '../src/scripts/countries'
+import {
+  RATE_PROMPT_MIN_DAYS,
+  RATE_PROMPT_SNOOZE_MS,
+} from '../src/scripts/usage'
 
 const MRNFT_TWEET = 'https://x.com/MRNFT_X/status/2053116341926629624'
 
@@ -135,5 +140,158 @@ test('a country added in the popup is stored under its canonical name', async ({
   ).toBeVisible({ timeout: 5_000 })
 
   await popup.locator('button[title="Remove United States"]').click()
+  await popup.close()
+})
+
+/**
+ * The rating ask, against real storage.
+ *
+ * The unit tests drive this against a mocked `chrome.storage.local`, which is
+ * exactly the thing that has to work for real: the answer is written by the
+ * popup and read back by the *next* popup, in a different page, after the first
+ * one is gone. Nothing short of the extension actually installed shows that.
+ *
+ * No recording — nothing here touches x.com.
+ */
+async function seedUsage(
+  context: Parameters<typeof openPopupPage>[0],
+  extensionId: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const seed = await openPopupPage(context, extensionId)
+  await seed.evaluate((p) => chrome.storage.local.set(p), patch)
+  await seed.close()
+}
+
+test('the rating ask waits for a few days of actual use', async ({
+  context,
+  extensionId,
+}) => {
+  // Days on which a flag was drawn, not days installed: an install that has
+  // never resolved a profile has no opinion to give.
+  await seedUsage(context, extensionId, {
+    [USAGE_STATS_KEY]: {
+      activeDays: RATE_PROMPT_MIN_DAYS - 1,
+      lastDay: '2026-08-03',
+    },
+  })
+
+  const tooSoon = await openPopupPage(context, extensionId)
+  await expect(tooSoon.getByText(/Rate it/)).toHaveCount(0)
+  await tooSoon.close()
+
+  await seedUsage(context, extensionId, {
+    [USAGE_STATS_KEY]: {
+      activeDays: RATE_PROMPT_MIN_DAYS,
+      lastDay: '2026-08-03',
+    },
+  })
+
+  const earned = await openPopupPage(context, extensionId)
+  await expect(earned.getByText(/Rate it/)).toBeVisible({ timeout: 5_000 })
+  // The store's own id, not chrome.runtime.id — which is a different random
+  // string for every unpacked build, this one included.
+  await expect(earned.getByText(/Rate it/)).toHaveAttribute(
+    'href',
+    /chromewebstore\.google\.com/,
+  )
+  await earned.close()
+})
+
+test('Later puts the ask away, and the next popup honours it', async ({
+  context,
+  extensionId,
+}) => {
+  await seedUsage(context, extensionId, {
+    [USAGE_STATS_KEY]: { activeDays: 30, lastDay: '2026-08-03' },
+  })
+
+  const first = await openPopupPage(context, extensionId)
+  await first.getByText('Later').click()
+  // Gone from the panel it was answered in, without a reload.
+  await expect(first.getByText(/Rate it/)).toHaveCount(0)
+
+  const stored = await first.evaluate(
+    (key) => chrome.storage.local.get(key).then((r) => r[key]),
+    RATE_PROMPT_KEY,
+  )
+  expect(stored).toMatchObject({ status: 'later' })
+  expect((stored as { snoozeUntil: number }).snoozeUntil).toBeGreaterThan(
+    Date.now() + RATE_PROMPT_SNOOZE_MS - 60_000,
+  )
+  await first.close()
+
+  const second = await openPopupPage(context, extensionId)
+  await expect(second.getByText(/Rate it/)).toHaveCount(0)
+  await second.close()
+})
+
+test('No thanks is final', async ({ context, extensionId }) => {
+  // The one behaviour worth being certain about: an extension that asks again
+  // after being told no is one people uninstall rather than answer.
+  await seedUsage(context, extensionId, {
+    [USAGE_STATS_KEY]: { activeDays: 30, lastDay: '2026-08-03' },
+  })
+
+  const first = await openPopupPage(context, extensionId)
+  await first.getByText('No thanks').click()
+  await expect(first.getByText(/Rate it/)).toHaveCount(0)
+  await first.close()
+
+  const second = await openPopupPage(context, extensionId)
+  await expect(second.getByText(/Rate it/)).toHaveCount(0)
+  expect(
+    await second.evaluate(
+      (key) => chrome.storage.local.get(key).then((r) => r[key]),
+      RATE_PROMPT_KEY,
+    ),
+  ).toMatchObject({ status: 'done' })
+  await second.close()
+})
+
+test('the toolbar icon carries the ask, and drops it when answered', async ({
+  context,
+  extensionId,
+}) => {
+  // The badge is the only surface a user who never opens the popup will see,
+  // and the only one no unit test can reach: it is set by the service worker,
+  // off a storage change, through an API that exists nowhere else.
+  await seedUsage(context, extensionId, {
+    [USAGE_STATS_KEY]: { activeDays: 30, lastDay: '2026-08-03' },
+  })
+
+  const popup = await openPopupPage(context, extensionId)
+  const badge = () => popup.evaluate(() => chrome.action.getBadgeText({}))
+
+  await expect.poll(badge, { timeout: 5_000 }).toBe('★')
+
+  await popup.getByText('No thanks').click()
+  // Same rule as the card and the bar on X: answered once means gone
+  // everywhere, or the badge sends people to a popup with nothing in it.
+  await expect.poll(badge, { timeout: 5_000 }).toBe('')
+
+  await popup.close()
+})
+
+test('pausing the extension takes the badge down with it', async ({
+  context,
+  extensionId,
+}) => {
+  // Quiet everywhere while paused, or the badge points at a popup that has
+  // deliberately hidden the card.
+  await seedUsage(context, extensionId, {
+    [USAGE_STATS_KEY]: { activeDays: 30, lastDay: '2026-08-03' },
+  })
+
+  const popup = await openPopupPage(context, extensionId)
+  const badge = () => popup.evaluate(() => chrome.action.getBadgeText({}))
+  await expect.poll(badge, { timeout: 5_000 }).toBe('★')
+
+  await popup.locator('header input[type="checkbox"]').click()
+  await expect.poll(badge, { timeout: 5_000 }).toBe('')
+
+  await popup.locator('header input[type="checkbox"]').click()
+  await expect.poll(badge, { timeout: 5_000 }).toBe('★')
+
   await popup.close()
 })
