@@ -140,7 +140,7 @@ export function EngagementFarming() {
               </p>
             </div>
             <div class="reveal mt-10">
-              <InstallButton size="lg" />
+              <InstallButton size="lg" placement="guide_engagement_farming" />
             </div>
           </div>
         </div>

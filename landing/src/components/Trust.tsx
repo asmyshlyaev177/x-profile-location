@@ -28,7 +28,8 @@ export function Trust() {
             </p>
             <p class="t-body reveal mt-6">
               There’s no analytics or telemetry in the extension. This website
-              does use Google Analytics, for visit counts and nothing else.
+              does use Google Analytics, for visit counts and which install
+              button was clicked — nothing else.
             </p>
             <a
               href="/privacy-policy"

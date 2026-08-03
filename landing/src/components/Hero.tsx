@@ -38,7 +38,7 @@ export function Hero() {
             class="rise mt-9 flex flex-wrap items-center gap-x-6 gap-y-4"
             style="animation-delay:260ms"
           >
-            <InstallButton size="lg" />
+            <InstallButton size="lg" placement="hero" />
             <a
               href="#proof"
               class="text-body hover:text-signal decoration-hair-strong hover:decoration-signal text-[0.9375rem] font-semibold underline decoration-1 underline-offset-[6px] transition-colors duration-150"

@@ -140,7 +140,7 @@ export function Comparison() {
           </div>
 
           <div class="reveal mt-10">
-            <InstallButton size="lg" />
+            <InstallButton size="lg" placement="comparison" />
           </div>
         </div>
       </section>
