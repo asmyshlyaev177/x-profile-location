@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'preact/hooks'
 import { detectBrowser, detectBrowserAsync, STORES } from '../utils/browser'
 import type { SupportedBrowser } from '../utils/browser'
+import { trackEvent } from '../utils/analytics'
+import type { InstallPlacement } from '../utils/analytics'
 
 interface InstallButtonProps {
   size?: 'sm' | 'md' | 'lg'
   /** `signal` on dark surfaces, `void` on the cyan fold. */
   tone?: 'signal' | 'void'
+  /**
+   * Which fold this button sits in, reported to GA. Required so that a new
+   * call site cannot quietly land in the `install_click` total as "unknown".
+   */
+  placement: InstallPlacement
   override?: SupportedBrowser
   class?: string
 }
@@ -25,6 +32,7 @@ const TONES = {
 export function InstallButton({
   size = 'md',
   tone = 'signal',
+  placement,
   override,
   class: cls = '',
 }: InstallButtonProps) {
@@ -52,6 +60,13 @@ export function InstallButton({
   return (
     <a
       href={store.url}
+      onClick={() =>
+        trackEvent('install_click', {
+          placement,
+          browser,
+          store_url: store.url,
+        })
+      }
       class={`group inline-flex items-center justify-center rounded-full font-bold tracking-[-0.01em] transition-[background-color,transform,box-shadow] duration-200 ease-out active:translate-y-px ${SIZES[size]} ${TONES[tone]} ${cls}`}
     >
       <BrowserIcon browser={browser} />

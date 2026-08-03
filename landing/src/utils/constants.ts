@@ -13,3 +13,11 @@ export const CHROME_STORE_URL =
  * and what the extension's popup links to — one destination, three surfaces.
  */
 export const DONATE_URL = 'https://nowpayments.io/donation/asmyshlyaev177'
+
+/**
+ * The extension and the cache server both live here. `src/data/ai-files.ts`
+ * holds its own copy on purpose — that module is read by `vite.config.ts` at
+ * config-load time and stays free of app imports.
+ */
+export const GITHUB_REPO_URL =
+  'https://github.com/asmyshlyaev177/x-profile-location'
