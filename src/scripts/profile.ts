@@ -1,9 +1,14 @@
 // Account facts that ride along with data we already receive.
 //
-// Every field here is on the `__typename: 'User'` nodes in HomeTimeline /
+// Most of this is on the `__typename: 'User'` nodes in HomeTimeline /
 // TweetDetail responses *and* on the AboutAccountQuery result, both of which the
-// extension already handles — so none of it costs an API call. The exception is
-// `handleChanges`, which only AboutAccountQuery carries.
+// extension already handles — so none of it costs an API call. Two are on one
+// side only: `handleChanges` is AboutAccountQuery's alone, `blockedBy` the
+// timeline's.
+//
+// Nothing here reads X's `legacy` object. It still arrives, hollowed out to the
+// counters, but every field this file wants moved off it — and the one counter
+// it was still the source of, `followers_count`, stopped arriving too.
 
 /**
  * The org an account is badged as belonging to — X's affiliate badge.
@@ -31,7 +36,11 @@ export interface AccountFacts {
   /** X verified an actual identity document. */
   identityVerified: boolean | null
   isProtected: boolean | null
-  followers: number | null
+  /**
+   * This account blocks the signed-in user. Timeline nodes only —
+   * AboutAccountQuery carries no relationship at all.
+   */
+  blockedBy: boolean | null
 }
 
 export const EMPTY_FACTS: AccountFacts = {
@@ -43,7 +52,7 @@ export const EMPTY_FACTS: AccountFacts = {
   verified: null,
   identityVerified: null,
   isProtected: null,
-  followers: null,
+  blockedBy: null,
 }
 
 const MONTHS: Record<string, number> = {
@@ -90,6 +99,17 @@ export function parseXDate(value: unknown): number | null {
   const sign = m[6][0] === '-' ? 1 : -1
   const offsetMinutes = Number(m[6].slice(1, 3)) * 60 + Number(m[6].slice(3, 5))
   return utc + sign * offsetMinutes * 60_000
+}
+
+/**
+ * The value X sent, if it sent a boolean at all.
+ *
+ * "Absent" and "false" are different answers here — AboutAccountQuery carries
+ * no relationship at all, and reading that as "does not block you" would be an
+ * answer we were never given.
+ */
+function boolFrom(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null
 }
 
 /** A count X sends as a string ("3"), or null for anything unusable. */
@@ -144,7 +164,6 @@ export function parseAccountFacts(node: unknown): AccountFacts {
   const u = node as Record<string, unknown>
 
   const core = u.core as Record<string, unknown> | undefined
-  const legacy = u.legacy as Record<string, unknown> | undefined
   const privacy = u.privacy as Record<string, unknown> | undefined
   const verification = u.verification as Record<string, unknown> | undefined
   const verificationInfo = u.verification_info as
@@ -152,6 +171,9 @@ export function parseAccountFacts(node: unknown): AccountFacts {
     | undefined
   const about = u.about_profile as Record<string, unknown> | undefined
   const usernameChanges = about?.username_changes as
+    | Record<string, unknown>
+    | undefined
+  const perspectives = u.relationship_perspectives as
     | Record<string, unknown>
     | undefined
 
@@ -162,29 +184,15 @@ export function parseAccountFacts(node: unknown): AccountFacts {
     parseAffiliation(u.identity_profile_labels_highlighted_label)
 
   return {
-    createdAt: parseXDate(core?.created_at ?? legacy?.created_at),
+    createdAt: parseXDate(core?.created_at),
     affiliation,
     handleChanges: countFrom(usernameChanges?.count),
     restId: typeof u.rest_id === 'string' ? u.rest_id : null,
-    blueVerified:
-      typeof u.is_blue_verified === 'boolean' ? u.is_blue_verified : null,
-    verified:
-      typeof verification?.verified === 'boolean'
-        ? verification.verified
-        : typeof legacy?.verified === 'boolean'
-          ? legacy.verified
-          : null,
-    identityVerified:
-      typeof verificationInfo?.is_identity_verified === 'boolean'
-        ? verificationInfo.is_identity_verified
-        : null,
-    isProtected:
-      typeof privacy?.protected === 'boolean'
-        ? privacy.protected
-        : typeof legacy?.protected === 'boolean'
-          ? legacy.protected
-          : null,
-    followers: countFrom(legacy?.followers_count),
+    blueVerified: boolFrom(u.is_blue_verified),
+    verified: boolFrom(verification?.verified),
+    identityVerified: boolFrom(verificationInfo?.is_identity_verified),
+    isProtected: boolFrom(privacy?.protected),
+    blockedBy: boolFrom(perspectives?.blocked_by),
   }
 }
 
@@ -199,14 +207,14 @@ export function hasFacts(facts: AccountFacts): boolean {
     facts.verified !== null ||
     facts.identityVerified !== null ||
     facts.isProtected !== null ||
-    facts.followers !== null
+    facts.blockedBy !== null
   )
 }
 
 /**
  * Only the fields carrying a value, so a merge can't blank what a richer earlier
  * sighting supplied — a timeline node has no `username_changes`, an
- * AboutAccountQuery result no `followers_count`.
+ * AboutAccountQuery result no relationship.
  */
 export function definedFacts(facts: AccountFacts): Partial<AccountFacts> {
   const out: Partial<AccountFacts> = {}
@@ -242,20 +250,4 @@ export function formatAccountAge(
   const months = Math.floor(days / 30)
   if (months < 24) return `${months}mo`
   return `${Math.floor(days / 365)}y`
-}
-
-/** Follower counts the way X itself abbreviates them. */
-export function formatFollowers(
-  count: number | null | undefined,
-): string | null {
-  if (typeof count !== 'number' || !Number.isFinite(count) || count < 0) {
-    return null
-  }
-  if (count < 1000) return String(count)
-  if (count < 1_000_000) {
-    const k = count / 1000
-    return `${k < 10 ? k.toFixed(1).replace(/\.0$/, '') : Math.round(k)}K`
-  }
-  const m = count / 1_000_000
-  return `${m < 10 ? m.toFixed(1).replace(/\.0$/, '') : Math.round(m)}M`
 }

@@ -27,6 +27,13 @@ the test — the account it regressed on, the spec that forces the answer.
 
 ---
 
+## Code quality
+
+1. Avoid common anti-patterns like nested ternaries operators, ifs nested more than 2 levels, and so on.
+2. Need to maintain high readability and low complexity of the code.
+3. Try to reuse common helpers when possible, don't copy-paste blindly.
+4. Write integration Playwright tests, and unit tests for simpler pure functions.
+
 ## What this extension does
 
 Shows country flags / region abbreviations / VPN warnings inside X (Twitter) hover cards and tweet articles. Location data comes from X's own **`AboutAccountQuery`** GraphQL endpoint, authenticated with the user's own session headers — no extra credentials.
@@ -69,7 +76,7 @@ page-script.ts                      content.tsx
 | `src/scripts/cache.ts`          | IndexedDB wrapper (idb-keyval). 30-day TTL. Keys are lowercased usernames.                                                                                                    |
 | `src/scripts/prefetch-queue.ts` | `BackgroundPrefetcher`: two FIFO queues (feed before replies), page order within each, paced evenly over its 70% share of the rate-limit window. Unit-tested via `runOnce()`. |
 | `src/scripts/countries.ts`      | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR`, `REGION_MEMBERS` + every storage key and its normalizer.                                                                      |
-| `src/scripts/profile.ts`        | Parses `AccountFacts` (age, affiliate badge, verification, handle history, followers) off a User node — timeline or AboutAccountQuery alike.                                  |
+| `src/scripts/profile.ts`        | Parses `AccountFacts` (age, affiliate badge, verification, handle history, blocked-by) off a User node — timeline or AboutAccountQuery alike.                                 |
 | `src/scripts/source.ts`         | The single place X's `source` string is interpreted: platform (`ios`/`android`/`web`) + store country, plus the drawn SVG glyphs.                                             |
 | `src/scripts/settings.ts`       | Registry of every user-facing setting and its normalizer. Backs import/export.                                                                                                |
 | `src/scripts/usage.ts`          | Days on which the extension did visible work, and the single rule deciding whether the popup asks for a store rating. Pure decision, impure counter.                          |
@@ -161,12 +168,12 @@ interface AccountFacts {
   verified: boolean | null
   identityVerified: boolean | null
   isProtected: boolean | null
-  followers: number | null // timeline nodes only
+  blockedBy: boolean | null // timeline nodes only; null ≠ false
 }
 ```
 
 **`facts` is merged, never replaced.** Each source knows a different subset — a
-timeline User node carries a follower count and no handle history,
+timeline User node carries the relationship and no handle history,
 AboutAccountQuery the reverse — so `mergeCached` deep-merges that one key while
 shallow-spreading the rest, and `definedFacts()` strips nulls on the way in so a
 thin sighting cannot blank what a richer one already supplied. None of it costs
@@ -185,10 +192,36 @@ next to somebody's name.
 
 - Recurses all object values / array items up to **depth 20** (hard stop).
 - A node is a User if `obj.__typename === 'User'`.
-- **screen_name priority:** `core.screen_name` → `legacy.screen_name`
-- **bio priority:** `profile_bio.description` → `core.description` → `legacy.description`
-- **display name:** `core.name` → `legacy.name`
+- **screen_name:** `core.screen_name`
+- **bio priority:** `profile_bio.description` → `legacy.description`
+- **display name:** `core.name`
 - Returns `[]` for primitives, null, undefined, or if no screen_name is found.
+
+⚠ **X's `legacy` object is not read anywhere any more.** Identity moved to
+`core`, the bio to `profile_bio`, verification to `verification`, privacy to
+`privacy`, the relationship to `relationship_perspectives`. Two measurements,
+August 2026:
+
+- **1021 User nodes** across `e2e/recordings/` (July HARs): `legacy.screen_name`,
+  `legacy.name`, `legacy.verified`, `legacy.protected`, `legacy.created_at`,
+  `legacy.blocked_by` and `core.description` appear **zero** times.
+  `legacy.description` and `legacy.followers_count` appear on 843 — but
+  `legacy.description` was **never** the only bio source.
+- **57 User nodes** off a live logged-in home timeline: `profile_bio.description`
+  on **57/57**, `legacy.description` on **0**, and `legacy` itself **empty on
+  every node**. It has since been hollowed out completely.
+
+`followers` went with it. It was the only thing `legacy` still uniquely carried,
+it had already stopped arriving (a live cache dump showed 0 of 2 records with
+one), and **X shows the follower count natively on its own hover card** — so the
+chip was redundant even when it worked. `formatFollowers` and the `👥` chip are
+gone.
+
+Re-measure before reinstating anything: the recordings check is a depth-20 walk
+for `__typename === 'User'` over every `/i/api/graphql/` response in the HARs;
+the live one hooks **both** `fetch` and `XMLHttpRequest` via
+`Page.addScriptToEvaluateOnNewDocument` — X sends GraphQL over XHR, so a
+fetch-only hook records nothing and looks like a clean result.
 
 ---
 
@@ -206,6 +239,42 @@ These are module-level `let` variables that persist for the life of the content 
 | `highlightKeywords`  | `Set<string>`                   | Same; all lowercased                                                                |
 
 **`__testResetState()`** is exported for tests only — clears `checkedThisSession` and resets `rateLimitResetAt` to 0.
+
+---
+
+## content.tsx — the bio X declined to render
+
+An account that **blocks the signed-in user** gets a stripped hover card: avatar,
+display name, handle and a Grok "Profile Summary" button, and **no bio, no
+follow button, no counts**. The extension judges the highlight rule from the bio
+in the timeline / `TweetDetail` response, which still carries it — so such a post
+is highlighted while the card shows a mark and no reason for it.
+
+Two pieces answer that, both on the account the reader is looking at:
+
+- **`🚫 Blocked you`**, an `accountChips` entry with its own `block` tone rather
+  than the amber `warn` one. Amber means "a trait worth doubting" — a young
+  account, a much-renamed one — and being blocked is not a trait of the account
+  at all, it is where the reader stands with it. It leads the card, because it
+  explains everything else the card is missing.
+- **`syncBioRow()`**, which puts the bio back. It goes _before_ `.x-loc-hover`,
+  not inside it: the account's own words belong under the handle, above anything
+  the extension has to say — and sitting outside that wrapper is also what keeps
+  it in reach of `keywordRangesIn`, so the word that matched gets marked here the
+  way it would in a bio X had rendered.
+
+The row is **not gated on the block**, only on X's card not already showing the
+bio (`bioProbe` / `cardShowsBio`), so it also covers whatever else X strips one
+out of. The probe drops URLs first — a t.co display form is the one part of a
+bio X does not render verbatim, and leaving it in reports a bio as missing from
+a card that is showing it. A probe under four characters is discarded rather
+than guessed with: it would match a display name or one of our own chips.
+
+`syncBioRow` is called twice per card, and **rebuilds rather than appends**, so a
+card React filled in late ends up with X's own bio and not two of them.
+
+`blockedBy` is `null` when X sent no relationship at all — `AboutAccountQuery`
+carries none — and that is deliberately not the same answer as `false`.
 
 ---
 
@@ -566,8 +635,32 @@ everything the content script injects.
 | Suite              | Asks                                   | Needs                          | In CI |
 | ------------------ | -------------------------------------- | ------------------------------ | ----- |
 | `pnpm test`        | Does the logic hold?                   | nothing                        | yes   |
-| `pnpm test:visual` | Does the CSS lay out as intended?      | a headless browser             | yes   |
+| `pnpm test:visual` | Interactions and styles as expected?   | a headless browser             | yes   |
 | `pnpm test:e2e`    | Does any of it survive contact with X? | a session, a display, the HARs | no    |
+
+**What a new feature owes each of them.** The three are not tiers of thoroughness
+to pick from — they answer different questions, and a feature that touches more
+than one surface owes a test to each surface it touches:
+
+- **A pure function** (a matcher, a parser, a formatter) → `pnpm test`, and
+  nothing else. `bioProbe` and `parseAccountFacts` are the shape of this.
+- **Anything the extension draws into X** — a new element, class, chip or tone →
+  a `visual/fixtures/*.html` entry **and** assertions in the matching spec.
+  happy-dom resolves no cascade and reports no boxes, so a unit test cannot see
+  that the thing has a border, sits in the right order, or fits its container.
+  Assert layout facts, never screenshots.
+- **Anything that depends on X's own DOM or responses** — an insertion point, a
+  `data-testid`, a field in a GraphQL response → `pnpm test:e2e`, with a
+  recording. This is the only suite that can notice X changed; the fixtures the
+  other two use are copies of X's markup and a copy cannot report that the
+  original moved.
+
+A feature is not finished when one of them is green. The blocked-account bio
+needed all three: `bioProbe` in `pnpm test`, the injected row's border and
+stacking order in `visual/`, and "X really does strip the bio out of a blocker's
+card" in `e2e/blocked-account.test.ts` — which is the one claim the first two
+are structurally incapable of checking, because both of them are built out of
+markup we wrote ourselves.
 
 `.github/workflows/tests.yml` runs the first two on every push and PR. The
 visual step downloads Playwright's bundled chromium (`playwright install
@@ -653,6 +746,8 @@ Gotchas:
 - Scope options-page locators to their section (`optionsSection(page, 'blocked').locator('select')`). A bare `locator('select')` was unique until the prefetch share dropdown shipped, then failed strict mode — the same trap waits for any `input`/`button` locator.
 - Don't index into the article list — use `TWEET_ARTICLE` / `PRIMARY_TWEET` / `tweetArticles()` / `waitForReplies()` / `nthReply(page, n)` from `helpers.ts`. `nthReply` counts **replies**, sidestepping the off-by-one a raw `.nth()` walks into: when the page's own tweet is itself a reply, its parent renders _above_ it, so replies don't start at a fixed row. `mostLikedReply()` goes further and re-anchors on the author's handle, because X's virtualised timeline recycles rows out from under an `nth()` handle.
 - Which reply a test picks is often pinned by its recording, not free choice — the HAR only holds the pages that were visited at record time. The second-level-reply test needs reply **2** specifically (reply 1 has no thread under it); say so at the call site so nobody "fixes" it to reply 1.
+- A few recordings depend on the **relationship between the recording session and the account under test**, not just on the page. `blocked-account.test.ts` only captures anything worth replaying if `@jpotisch` still blocks the account it records as. When one of these breaks, re-cut the recording (or swap the archetype) rather than loosening the assertions.
+- `addKeyword` / `removeKeyword` live in `helpers.ts`, not in whichever spec first needed them. They open the options page, so they cost no x.com traffic and work in tests with no recording at all.
 - Seeding must launch with `--password-store=basic` — Playwright always does, and cookies encrypted against the OS keyring can't be decrypted without it.
 - Cookies are only committed to SQLite on clean shutdown (or a ~30 s timer), so the browser must be **closed**, not killed.
 - Branded Google Chrome ≥ M137 ignores `--load-extension`; the extension silently never loads. Use Brave or Chromium.

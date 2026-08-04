@@ -45,7 +45,13 @@
  *   node scripts/scrub-recordings.mjs --verbose   per-file detail
  */
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
+import {
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  renameSync,
+  statSync,
+} from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -617,14 +623,36 @@ function main() {
       continue
     }
 
-    const har = JSON.parse(raw)
+    // Named, because the bare parse error says only "Unexpected end of JSON
+    // input" — and the usual cause is scrubbing a recording the proxy is still
+    // flushing, where knowing *which* file is the whole answer.
+    let har
+    try {
+      har = JSON.parse(raw)
+      if (!Array.isArray(har?.log?.entries)) {
+        throw new Error('no log.entries array — not a HAR?')
+      }
+    } catch (err) {
+      console.error(`\n✗ ${path.basename(file)}: ${err.message}`)
+      console.error(
+        '\nIf this recording was just captured, the proxy may not have finished\n' +
+          'writing it. Re-run the scrub; if it persists, re-record that one test.',
+      )
+      process.exit(1)
+    }
+
     const stats = Object.fromEntries(keys.map((k) => [k, 0]))
     for (const entry of har.log.entries) {
       scrubUrls(entry, stats)
       scrubEntry(entry, stats)
     }
     const out = JSON.stringify(har)
-    writeFileSync(file, out)
+    // Written via a temp file and renamed: writeFileSync truncates first, so a
+    // crash mid-write leaves a half-written HAR that fails to parse on the next
+    // run — turning one bad recording into a permanently stuck scrub.
+    const tmp = `${file}.tmp`
+    writeFileSync(tmp, out)
+    renameSync(tmp, file)
     bytesAfter += statSync(file).size
 
     for (const k of keys) totals[k] += stats[k]

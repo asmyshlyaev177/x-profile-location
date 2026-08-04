@@ -7,23 +7,14 @@ import { extractUsers } from './extract-users'
 function makeUser(
   userName: string,
   opts: {
-    via?: 'core' | 'legacy'
-    legacyDesc?: string | null
-    profileBioDesc?: string | null
+    bioDesc?: string | null
   } = {},
 ) {
-  const { via = 'core', legacyDesc, profileBioDesc } = opts
+  const { bioDesc } = opts
   return {
     __typename: 'User',
-    core: via === 'core' ? { screen_name: userName } : undefined,
-    legacy: {
-      ...(via === 'legacy' ? { screen_name: userName } : {}),
-      ...(legacyDesc !== undefined ? { description: legacyDesc } : {}),
-    },
-    profile_bio:
-      profileBioDesc !== undefined
-        ? { description: profileBioDesc }
-        : undefined,
+    core: { screen_name: userName },
+    profile_bio: bioDesc === undefined ? undefined : { description: bioDesc },
   }
 }
 
@@ -76,28 +67,20 @@ describe('base cases', () => {
 // ---------------------------------------------------------------------------
 describe('User node — screen_name from core', () => {
   it('extracts userName from core.screen_name', () => {
-    const user = makeUser('alice', { via: 'core' })
+    const user = makeUser('alice')
     expect(extractUsers(user)).toEqual([
       { userName: 'alice', displayName: null, bio: null, facts: {} },
     ])
   })
 
-  it('falls back to legacy.screen_name when core is absent', () => {
-    const user = makeUser('bob', { via: 'legacy' })
-    expect(extractUsers(user)).toEqual([
-      { userName: 'bob', displayName: null, bio: null, facts: {} },
-    ])
-  })
-
-  it('core.screen_name takes priority over legacy.screen_name when both present', () => {
+  it('ignores a screen_name on the legacy object', () => {
+    // Identity moved to `core`. Reading legacy would resurrect a shape X has
+    // retired — see the bio test below for the live measurement.
     const user = {
       __typename: 'User',
-      core: { screen_name: 'primary' },
       legacy: { screen_name: 'secondary', description: 'bio' },
     }
-    expect(extractUsers(user)).toEqual([
-      { userName: 'primary', displayName: null, bio: 'bio', facts: {} },
-    ])
+    expect(extractUsers(user)).toEqual([])
   })
 
   it('returns [] when __typename is User but no screen_name anywhere', () => {
@@ -110,57 +93,42 @@ describe('User node — screen_name from core', () => {
 // Direct User node — bio source priority
 // ---------------------------------------------------------------------------
 describe('User node — bio extraction', () => {
-  it('returns null bio when no description fields present', () => {
+  it('returns null bio when profile_bio is absent', () => {
     const user = makeUser('charlie')
     expect(extractUsers(user)).toEqual([
       { userName: 'charlie', displayName: null, bio: null, facts: {} },
     ])
   })
 
-  it('uses legacy.description when profile_bio is absent', () => {
-    const user = makeUser('dave', { legacyDesc: 'legacy bio' })
-    expect(extractUsers(user)).toEqual([
-      { userName: 'dave', displayName: null, bio: 'legacy bio', facts: {} },
-    ])
-  })
-
-  it('uses profile_bio.description when present', () => {
-    const user = makeUser('eve', { profileBioDesc: 'profile bio' })
+  it('uses profile_bio.description', () => {
+    const user = makeUser('eve', { bioDesc: 'profile bio' })
     expect(extractUsers(user)).toEqual([
       { userName: 'eve', displayName: null, bio: 'profile bio', facts: {} },
     ])
   })
 
-  it('profile_bio.description takes priority over legacy.description', () => {
-    const user = makeUser('frank', {
-      legacyDesc: 'legacy',
-      profileBioDesc: 'profile',
-    })
+  it('ignores a description on the legacy object', () => {
+    // Measured live against a home timeline (August 2026): every one of 57 User
+    // nodes carried profile_bio.description and an empty legacy.
+    const user = {
+      __typename: 'User',
+      core: { screen_name: 'dave' },
+      legacy: { description: 'legacy bio' },
+    }
     expect(extractUsers(user)).toEqual([
-      { userName: 'frank', displayName: null, bio: 'profile', facts: {} },
+      { userName: 'dave', displayName: null, bio: null, facts: {} },
     ])
   })
 
-  it('falls back to legacy.description when profile_bio.description is null', () => {
-    const user = makeUser('grace', {
-      legacyDesc: 'legacy bio',
-      profileBioDesc: null,
-    })
-    expect(extractUsers(user)).toEqual([
-      { userName: 'grace', displayName: null, bio: 'legacy bio', facts: {} },
-    ])
-  })
-
-  it('returns null bio when both descriptions are null', () => {
-    const user = makeUser('heidi', { legacyDesc: null, profileBioDesc: null })
+  it('returns null bio when profile_bio.description is null', () => {
+    const user = makeUser('heidi', { bioDesc: null })
     expect(extractUsers(user)).toEqual([
       { userName: 'heidi', displayName: null, bio: null, facts: {} },
     ])
   })
 
-  it('handles empty string bio', () => {
-    const user = makeUser('ivan', { legacyDesc: '' })
-    // empty string is falsy but still a valid description value
+  it('keeps an empty-string bio, which is a value and not an absence', () => {
+    const user = makeUser('ivan', { bioDesc: '' })
     expect(extractUsers(user)).toEqual([
       { userName: 'ivan', displayName: null, bio: '', facts: {} },
     ])
@@ -174,7 +142,7 @@ describe('non-User __typename nodes', () => {
   it('recurses into a node with a different __typename', () => {
     const payload = {
       __typename: 'Tweet',
-      author: makeUser('judy', { legacyDesc: 'hi' }),
+      author: makeUser('judy', { bioDesc: 'hi' }),
     }
     expect(extractUsers(payload)).toEqual([
       { userName: 'judy', displayName: null, bio: 'hi', facts: {} },
@@ -192,7 +160,7 @@ describe('non-User __typename nodes', () => {
 // ---------------------------------------------------------------------------
 describe('nested objects', () => {
   it('finds a User nested one level deep', () => {
-    const payload = { data: makeUser('kate', { legacyDesc: 'bio' }) }
+    const payload = { data: makeUser('kate', { bioDesc: 'bio' }) }
     expect(extractUsers(payload)).toEqual([
       { userName: 'kate', displayName: null, bio: 'bio', facts: {} },
     ])
@@ -200,9 +168,9 @@ describe('nested objects', () => {
 
   it('finds multiple Users at different nesting levels', () => {
     const payload = {
-      a: makeUser('user1', { legacyDesc: 'bio1' }),
+      a: makeUser('user1', { bioDesc: 'bio1' }),
       b: {
-        c: makeUser('user2', { legacyDesc: 'bio2' }),
+        c: makeUser('user2', { bioDesc: 'bio2' }),
       },
     }
     const result = extractUsers(payload)
@@ -222,7 +190,7 @@ describe('nested objects', () => {
   })
 
   it('handles null values inside nested objects without throwing', () => {
-    const payload = { a: null, b: makeUser('lena', { legacyDesc: 'ok' }) }
+    const payload = { a: null, b: makeUser('lena', { bioDesc: 'ok' }) }
     expect(extractUsers(payload)).toEqual([
       { userName: 'lena', displayName: null, bio: 'ok', facts: {} },
     ])
@@ -241,7 +209,7 @@ describe('nested objects', () => {
 // ---------------------------------------------------------------------------
 describe('array inputs', () => {
   it('finds a User directly inside an array', () => {
-    const arr = [makeUser('nina', { legacyDesc: 'b' })]
+    const arr = [makeUser('nina', { bioDesc: 'b' })]
     expect(extractUsers(arr)).toEqual([
       { userName: 'nina', displayName: null, bio: 'b', facts: {} },
     ])
@@ -249,8 +217,8 @@ describe('array inputs', () => {
 
   it('finds multiple Users in an array', () => {
     const arr = [
-      makeUser('oscar', { legacyDesc: 'bio-o' }),
-      makeUser('pat', { legacyDesc: 'bio-p' }),
+      makeUser('oscar', { bioDesc: 'bio-o' }),
+      makeUser('pat', { bioDesc: 'bio-p' }),
     ]
     const result = extractUsers(arr)
     expect(result).toHaveLength(2)
@@ -276,7 +244,7 @@ describe('array inputs', () => {
   })
 
   it('handles nested arrays', () => {
-    const arr = [[makeUser('rose', { legacyDesc: 'nested' })]]
+    const arr = [[makeUser('rose', { bioDesc: 'nested' })]]
     expect(extractUsers(arr)).toEqual([
       { userName: 'rose', displayName: null, bio: 'nested', facts: {} },
     ])
@@ -290,21 +258,21 @@ describe('depth limit', () => {
   it('finds a User at exactly depth 20', () => {
     // nest() wraps at depth 1 per layer; extractUsers starts at depth 0 and
     // passes depth+1 for each child traversal, so 20 layers reaches depth 20.
-    const payload = nest(makeUser('sam', { legacyDesc: 'deep' }), 20)
+    const payload = nest(makeUser('sam', { bioDesc: 'deep' }), 20)
     expect(extractUsers(payload)).toEqual([
       { userName: 'sam', displayName: null, bio: 'deep', facts: {} },
     ])
   })
 
   it('does NOT find a User at depth 21', () => {
-    const payload = nest(makeUser('tom', { legacyDesc: 'too deep' }), 21)
+    const payload = nest(makeUser('tom', { bioDesc: 'too deep' }), 21)
     expect(extractUsers(payload)).toEqual([])
   })
 
   it('still finds Users at shallower levels even when deeper nodes are cut off', () => {
     const payload = {
-      shallow: makeUser('uma', { legacyDesc: 'found' }),
-      deep: nest(makeUser('vic', { legacyDesc: 'lost' }), 21),
+      shallow: makeUser('uma', { bioDesc: 'found' }),
+      deep: nest(makeUser('vic', { bioDesc: 'lost' }), 21),
     }
     expect(extractUsers(payload)).toEqual([
       { userName: 'uma', displayName: null, bio: 'found', facts: {} },
@@ -334,7 +302,7 @@ describe('HomeTimeline-like shape', () => {
                             core: {
                               user_results: {
                                 result: makeUser('wendy', {
-                                  legacyDesc: 'Timeline bio',
+                                  bioDesc: 'Timeline bio',
                                 }),
                               },
                             },
@@ -364,7 +332,7 @@ describe('HomeTimeline-like shape', () => {
               __typename: 'Tweet',
               core: {
                 user_results: {
-                  result: makeUser(name, { legacyDesc: bio }),
+                  result: makeUser(name, { bioDesc: bio }),
                 },
               },
             },
@@ -426,7 +394,7 @@ describe('TweetDetail-like shape (replies)', () => {
                           core: {
                             user_results: {
                               result: makeUser('zara', {
-                                legacyDesc: 'primary bio',
+                                bioDesc: 'primary bio',
                               }),
                             },
                           },
@@ -448,7 +416,7 @@ describe('TweetDetail-like shape (replies)', () => {
                                 core: {
                                   user_results: {
                                     result: makeUser('amir', {
-                                      legacyDesc: 'reply bio',
+                                      bioDesc: 'reply bio',
                                     }),
                                   },
                                 },
@@ -497,8 +465,8 @@ describe('account facts', () => {
         created_at: 'Tue Jul 10 21:51:25 +0000 2012',
       },
       is_blue_verified: true,
-      legacy: { followers_count: 33813 },
       privacy: { protected: false },
+      relationship_perspectives: { blocked_by: true },
       rest_id: '632344577',
       affiliates_highlighted_label: {
         label: {
@@ -512,7 +480,7 @@ describe('account facts', () => {
     expect(parsed.userName).toBe('artemis')
     expect(parsed.facts).toEqual({
       createdAt: Date.UTC(2012, 6, 10, 21, 51, 25),
-      followers: 33813,
+      blockedBy: true,
       blueVerified: true,
       isProtected: false,
       restId: '632344577',
@@ -528,6 +496,6 @@ describe('account facts', () => {
     expect(parsed.facts).toEqual({})
     // A merge target must be able to tell "not in this response" from
     // "explicitly nothing" — see mergeCached's facts branch.
-    expect('followers' in parsed.facts).toBe(false)
+    expect('blockedBy' in parsed.facts).toBe(false)
   })
 })

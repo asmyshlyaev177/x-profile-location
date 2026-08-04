@@ -14,14 +14,14 @@
  *
  * All x.com traffic is recorded/replayed via HAR (see fixtures.ts).
  */
-import type { BrowserContext, Locator, Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
-  openOptionsPage,
-  openOptionsTab,
+  addKeyword,
   pickBioWord,
   PRIMARY_TWEET,
   readCachedBio,
+  removeKeyword,
   tweetArticles,
   waitForReplies,
 } from './helpers'
@@ -202,43 +202,4 @@ async function pickHighlightableReply(page: Page): Promise<{
     if (keyword) return { article, link, keyword }
   }
   throw new Error('no reply with a cached bio in this recording')
-}
-
-async function addKeyword(
-  context: BrowserContext,
-  extensionId: string,
-  keyword: string,
-): Promise<void> {
-  const optPage = await openOptionsPage(context, extensionId)
-  // Keyword settings live on the Filters tab. Nothing to expand — the
-  // accordions went away when the options page became a full tab.
-  await openOptionsTab(optPage, 'Filters')
-
-  const input = optPage.getByPlaceholder('Type a keyword or pick a suggestion…')
-  await input.click()
-  await input.fill(keyword)
-  await input.press('Enter')
-
-  // Chip appearing confirms chrome.storage.local.set was called.
-  await optPage
-    .locator(`button[title="Remove ${keyword}"]`)
-    .waitFor({ timeout: 3_000 })
-  await optPage.close()
-}
-
-async function removeKeyword(
-  context: BrowserContext,
-  extensionId: string,
-  keyword: string,
-): Promise<void> {
-  const optPage = await openOptionsPage(context, extensionId)
-  await openOptionsTab(optPage, 'Filters')
-
-  await optPage.locator(`button[title="Remove ${keyword}"]`).click()
-
-  // Chip disappearing confirms chrome.storage.local.set was called.
-  await optPage
-    .locator(`button[title="Remove ${keyword}"]`)
-    .waitFor({ state: 'hidden', timeout: 3_000 })
-  await optPage.close()
 }
