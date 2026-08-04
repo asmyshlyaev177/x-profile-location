@@ -86,6 +86,7 @@ vi.mock('./prefetch-queue', () => ({
 
 import {
   accountChips,
+  bioProbe,
   fetchLocationData,
   isCommittedSwipe,
   keywordRangesIn,
@@ -1431,6 +1432,171 @@ describe('hover card exception button', () => {
     await flushAsync()
 
     expect(card.querySelectorAll('.x-loc-exc-btn').length).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The bio X declined to render
+// ---------------------------------------------------------------------------
+describe('bio injected into a card that carries none', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setApiHeaders(null)
+    document.body.innerHTML = ''
+  })
+
+  afterEach(() => {
+    onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
+  })
+
+  async function addHoverCard(
+    userName: string,
+    bodyHtml = '',
+  ): Promise<HTMLElement> {
+    const card = document.createElement('div')
+    card.setAttribute('data-testid', 'HoverCard')
+    card.innerHTML = `<span>@${userName}</span>${bodyHtml}`
+    document.body.appendChild(card)
+    await flushAsync()
+    return card
+  }
+
+  it('shows the bio when the card has none — the blocked case', async () => {
+    // An account blocking the reader gets a card with no bio, no follow button
+    // and no counts, while the extension still holds the bio from a timeline
+    // response and still highlights on it.
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'Software developer, brooklynite, he/him.',
+    })
+
+    const card = await addHoverCard('jpotisch')
+    await flushAsync()
+
+    expect(card.querySelector('.x-loc-bio')?.textContent).toBe(
+      'Software developer, brooklynite, he/him.',
+    )
+  })
+
+  it('stays out of the way when the card already shows the bio', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'Software developer, brooklynite',
+    })
+
+    const card = await addHoverCard(
+      'jpotisch',
+      '<div>Software developer, brooklynite</div>',
+    )
+    await flushAsync()
+
+    expect(card.querySelector('.x-loc-bio')).toBeNull()
+  })
+
+  it("recognises its own bio through X's emoji images and reflowed whitespace", async () => {
+    // X renders emoji as <img alt> and wraps freely, so a raw string compare
+    // would report the bio missing from a card that is showing it.
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'chess player 🇳🇱 and cook',
+    })
+
+    const card = await addHoverCard(
+      'someone',
+      '<div>chess\n  player <img alt="🇳🇱"> and cook</div>',
+    )
+    await flushAsync()
+
+    expect(card.querySelector('.x-loc-bio')).toBeNull()
+  })
+
+  it('adds nothing when there is no bio to add', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: null,
+    })
+
+    const card = await addHoverCard('someone')
+    await flushAsync()
+
+    expect(card.querySelector('.x-loc-bio')).toBeNull()
+  })
+
+  it('never adds a second copy of itself', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'Software developer, brooklynite',
+    })
+
+    const card = await addHoverCard('jpotisch')
+    await flushAsync()
+    await flushAsync()
+
+    expect(card.querySelectorAll('.x-loc-bio').length).toBe(1)
+  })
+
+  it('marks the keyword in the bio it injected', async () => {
+    // The whole point of putting the bio back: the card is where the reader
+    // finds out why the post is highlighted, and a mark needs text to sit on.
+    onChangedCallback({ highlightKeywords: { newValue: ['he/him'] } }, 'local')
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'Software developer, brooklynite, he/him.',
+    })
+
+    const card = await addHoverCard('jpotisch')
+    await flushAsync()
+
+    const bio = card.querySelector('.x-loc-bio')!
+    expect(keywordRangesIn(card).map(String)).toEqual(['he/him'])
+    expect(keywordRangesIn(bio).map(String)).toEqual(['he/him'])
+  })
+
+  it('goes away with the rest of the injections when the extension is paused', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'Software developer, brooklynite',
+    })
+
+    const card = await addHoverCard('jpotisch')
+    await flushAsync()
+    expect(card.querySelector('.x-loc-bio')).not.toBeNull()
+
+    onChangedCallback({ extensionEnabled: { newValue: false } }, 'local')
+    await flushAsync()
+
+    expect(card.querySelector('.x-loc-bio')).toBeNull()
+    onChangedCallback({ extensionEnabled: { newValue: true } }, 'local')
+  })
+})
+
+describe('bioProbe', () => {
+  it('drops URLs, which X rewrites to a t.co form when it renders them', () => {
+    expect(bioProbe('read more at https://example.com/blog now')).toBe(
+      'read more at now',
+    )
+  })
+
+  it('is empty when nothing distinctive is left to look for', () => {
+    // A three-character probe matches a display name or one of our own chips as
+    // readily as the bio, so there is no safe answer but "don't".
+    expect(bioProbe('https://example.com/blog')).toBe('')
+    expect(bioProbe('hi')).toBe('')
+    expect(bioProbe('   ')).toBe('')
   })
 })
 
@@ -3178,17 +3344,29 @@ describe('the account card', () => {
   it('shows only what X actually returned', () => {
     const chips = accountChips({
       createdAt: daysAgo(400),
-      followers: 33813,
+      handleChanges: 2,
     }).map((c) => c.text)
 
     expect(chips).toContain('🎂 13mo')
-    expect(chips).toContain('👥 34K')
-    // Nothing was said about handle changes, so nothing is claimed about them.
-    expect(chips.join(' ')).not.toContain('handle')
+    expect(chips).toContain('✎ 2 handles')
+    // Nothing was said about verification, so nothing is claimed about it.
+    expect(chips.join(' ')).not.toContain('Verified')
   })
 
   it('says nothing about plain Premium, which X already shows as a blue check', () => {
     expect(accountChips({ blueVerified: true })).toEqual([])
+  })
+
+  it('leads with the block, which explains everything else the card is missing', () => {
+    const chips = accountChips({ blockedBy: true, createdAt: daysAgo(4000) })
+    expect(chips[0].text).toBe('🚫 Blocked you')
+    // Its own tone: amber means "a trait worth doubting", and this is not a
+    // trait of the account at all.
+    expect(chips[0].tone).toBe('block')
+  })
+
+  it('says nothing when X reported the relationship and it was not a block', () => {
+    expect(accountChips({ blockedBy: false })).toEqual([])
   })
 
   it('is empty for an account we know nothing about', () => {

@@ -86,3 +86,72 @@ test('a rate-limited card still renders its countdown', async ({ page }) => {
   const rate = await box(page.locator('#rate'))
   expect(rate.width).toBeGreaterThan(0)
 })
+
+test('the supplied bio reads under the handle, above what we add', async ({
+  page,
+}) => {
+  // It is the account's own words standing in for the ones X withheld, so it
+  // belongs where X would have put them — not below our flags and chips.
+  const handle = await box(page.locator('#blocked-card .handle'))
+  const bio = await box(page.locator('#blocked-bio'))
+  const flags = await box(page.locator('#blocked-info'))
+
+  expect(centreY(handle)).toBeLessThan(centreY(bio))
+  expect(centreY(bio)).toBeLessThan(centreY(flags))
+})
+
+test('a long supplied bio wraps instead of widening the card', async ({
+  page,
+}) => {
+  const card = await box(page.locator('#blocked-card'))
+  const bio = await box(page.locator('#blocked-bio'))
+
+  expect(right(bio)).toBeLessThanOrEqual(right(card) + 1)
+  // Wrapped, so taller than the single line it would be if it hadn't.
+  expect(bio.height).toBeGreaterThan(24)
+})
+
+test('the supplied bio is marked as not being X’s own text', async ({
+  page,
+}) => {
+  // A bio the page never rendered, presented exactly like one it did, is the
+  // extension putting words in X's mouth.
+  const style = await styleOf(page.locator('#blocked-bio'), 'border-left-style')
+  const width = await styleOf(page.locator('#blocked-bio'), 'border-left-width')
+
+  expect(style).toBe('solid')
+  expect(parseFloat(width)).toBeGreaterThan(0)
+})
+
+test('the block chip reads as a state, not as another fact', async ({
+  page,
+}) => {
+  // It sits in a row of chips that are all plain statements about the account;
+  // this one is about the reader, and has to be findable at a glance.
+  const blockBg = await styleOf(
+    page.locator('#blocked-chip'),
+    'background-color',
+  )
+  const warnBg = await styleOf(
+    page.locator('#blocked-warn'),
+    'background-color',
+  )
+  const plainBg = await styleOf(
+    page.locator('#blocked-plain'),
+    'background-color',
+  )
+
+  expect(blockBg).not.toBe(warnBg)
+  expect(blockBg).not.toBe(plainBg)
+  expect(blockBg).not.toBe('rgba(0, 0, 0, 0)')
+})
+
+test('the chips still share a row with the block chip among them', async ({
+  page,
+}) => {
+  const block = await box(page.locator('#blocked-chip'))
+  const warn = await box(page.locator('#blocked-warn'))
+
+  expect(Math.abs(centreY(block) - centreY(warn))).toBeLessThanOrEqual(2)
+  expect(warn.x).toBeGreaterThan(right(block) - 1)
+})

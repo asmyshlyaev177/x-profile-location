@@ -84,6 +84,55 @@ test('an emoji keyword is outlined only on a card the rule fired on', async ({
   )
 })
 
+test('the mark lands on a bio the extension supplied itself', async ({
+  page,
+}) => {
+  // A blocker's card carries no bio of X's, so the only text the mark can sit on
+  // is the one syncBioRow injected. It is a sibling of .x-loc-hover rather than
+  // a child for exactly this reason — keywordRangesIn skips our own furniture,
+  // and a bio built inside the wrapper would be silently unmarkable.
+  await page.addStyleTag({ content: emojiKeywordCss(['🇷🇺']) })
+
+  // The emoji half is a real cascade question: the generated rule is scoped to
+  // [data-x-loc-kw], and this img is nested one level deeper than the one in a
+  // card of X's own.
+  expect(await styleOf(page.locator('#injected-emoji'), 'outline-style')).toBe(
+    'solid',
+  )
+
+  // The text half: a range over a text node inside the injected bio registers
+  // the same way it would inside one of X's.
+  const registered = await page.evaluate((name) => {
+    const bio = document.getElementById('injected-bio')!
+    const node = [...bio.childNodes].find(
+      (n) => n.nodeType === Node.TEXT_NODE && n.nodeValue?.includes('nft'),
+    ) as Text | undefined
+    if (!node) return false
+    const at = node.nodeValue!.indexOf('nft')
+    const range = document.createRange()
+    range.setStart(node, at)
+    range.setEnd(node, at + 3)
+    CSS.highlights.set(name, new Highlight(range))
+    return CSS.highlights.has(name)
+  }, KEYWORD_HIGHLIGHT_NAME)
+
+  expect(registered).toBe(true)
+})
+
+test('the supplied bio reads as the account’s words, not as our furniture', async ({
+  page,
+}) => {
+  // It stands where X's own bio would, above the flags and chips — and carries
+  // the rule that says the page did not write it.
+  const bio = await box(page.locator('#injected-bio'))
+  const ours = await box(page.locator('#blocked-marked .x-loc-hover'))
+
+  expect(bio.y).toBeLessThan(ours.y)
+  expect(
+    await styleOf(page.locator('#injected-bio'), 'border-left-style'),
+  ).toBe('solid')
+})
+
 test('a matched post gets its bar without losing its text', async ({
   page,
 }) => {

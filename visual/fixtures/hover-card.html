@@ -26,7 +26,7 @@
         <div class="x-loc-card" id="card">
           <span class="x-loc-chip x-loc-chip-warn">🎂 3 weeks</span>
           <span class="x-loc-chip">🏢 Some Org</span>
-          <span class="x-loc-chip">👥 12.4K</span>
+          <span class="x-loc-chip">🔒 Protected</span>
         </div>
         <button type="button" class="x-loc-exc-btn" id="exc">
           🚫 Add exception
@@ -49,6 +49,33 @@
         >
           ✓ Exception (undo)
         </button>
+      </div>
+    </div>
+
+    <h4>
+      Blocked by this account — X sends no bio, so the extension supplies it
+    </h4>
+    <div class="hovercard" data-testid="HoverCard" id="blocked-card">
+      <div class="name">joel p</div>
+      <div class="handle">@jpotisch</div>
+      <!-- No .bio: a blocker's card carries no bio, no follow button, no counts. -->
+      <div class="x-loc-bio" id="blocked-bio">
+        Software developer, brooklynite, he/him/m'dude, and this line is long
+        enough to have to wrap inside the card.
+      </div>
+      <div class="x-loc-hover" id="blocked-wrap">
+        <div class="x-loc-info" id="blocked-info">
+          <span class="x-loc-icon x-loc-icon-flag">🇺🇸</span>
+        </div>
+        <div class="x-loc-card">
+          <span class="x-loc-chip x-loc-chip-block" id="blocked-chip"
+            >🚫 Blocked you</span
+          >
+          <span class="x-loc-chip x-loc-chip-warn" id="blocked-warn"
+            >🎂 3 weeks</span
+          >
+          <span class="x-loc-chip" id="blocked-plain">🔒 Protected</span>
+        </div>
       </div>
     </div>
 

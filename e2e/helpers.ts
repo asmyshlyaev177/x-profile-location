@@ -377,6 +377,49 @@ export async function openOptionsPage(
   return optPage
 }
 
+/**
+ * Adds a highlight keyword through the options page, the way a user would.
+ *
+ * The chip appearing is the confirmation: it means the page's
+ * `chrome.storage.local.set` resolved, so the content script's storage listener
+ * has something to react to.
+ */
+export async function addKeyword(
+  context: BrowserContext,
+  extensionId: string,
+  keyword: string,
+): Promise<void> {
+  const optPage = await openOptionsPage(context, extensionId)
+  await openOptionsTab(optPage, 'Filters')
+
+  const input = optPage.getByPlaceholder('Type a keyword or pick a suggestion…')
+  await input.click()
+  await input.fill(keyword)
+  await input.press('Enter')
+
+  await optPage
+    .locator(`button[title="Remove ${keyword}"]`)
+    .waitFor({ timeout: 3_000 })
+  await optPage.close()
+}
+
+/** Removes a keyword added by addKeyword; the chip going is the confirmation. */
+export async function removeKeyword(
+  context: BrowserContext,
+  extensionId: string,
+  keyword: string,
+): Promise<void> {
+  const optPage = await openOptionsPage(context, extensionId)
+  await openOptionsTab(optPage, 'Filters')
+
+  await optPage.locator(`button[title="Remove ${keyword}"]`).click()
+
+  await optPage
+    .locator(`button[title="Remove ${keyword}"]`)
+    .waitFor({ state: 'hidden', timeout: 3_000 })
+  await optPage.close()
+}
+
 // Each section, its heading, and the tab it lives behind. Sections are only in
 // the DOM while their tab is selected, so every locator here selects the tab
 // first — see openOptionsTab.

@@ -287,6 +287,29 @@ article[data-x-loc-highlighted],
   background: rgba(180, 120, 0, 0.1);
   border-color: rgba(180, 120, 0, 0.35);
 }
+/* Its own tone rather than the amber one: amber means "a trait worth doubting"
+   (young account, many handles), and being blocked is not a trait of the
+   account at all — it is where the reader stands with it. Filled, because it
+   has to read as a state at a glance next to chips that are only facts. */
+.x-loc-chip-block {
+  color: rgb(220, 232, 236);
+  background: rgba(190, 40, 60, 0.9);
+  border-color: rgba(190, 40, 60, 0.9);
+}
+/* The bio X declined to render, put back. Deliberately not styled as X's own
+   body text: it is quoted from an API response, and a reader has to be able to
+   tell it is not what the page said. The rule is on the left edge only, so the
+   text still reads as text. */
+.x-loc-bio {
+  margin: 4px 0 2px;
+  padding: 1px 0 1px 8px;
+  border-left: 2px solid rgba(128, 128, 128, 0.45);
+  font-size: 14px;
+  line-height: 19px;
+  color: rgb(113, 118, 123);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .x-loc-exc-btn {
   margin-top: 6px;
   font-size: 12px;

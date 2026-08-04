@@ -25,17 +25,14 @@ export function extractUsers(_obj: unknown, depth = 0): UserBio[] {
 
   if (obj.__typename === 'User') {
     const core = obj.core as Record<string, unknown> | undefined
-    const legacy = obj.legacy as Record<string, unknown> | undefined
     const profileBio = obj.profile_bio as Record<string, unknown> | undefined
-    const userName = (core?.screen_name ?? legacy?.screen_name) as
-      | string
-      | undefined
+    // X's `legacy` object is not read anywhere any more: measured live against
+    // a logged-in home timeline (August 2026), all 57 User nodes carried
+    // `profile_bio.description` and an empty `legacy`.
+    const userName = core?.screen_name as string | undefined
     if (userName) {
-      const displayName = (core?.name ?? legacy?.name ?? null) as string | null
-      const bio = (profileBio?.description ??
-        core?.description ??
-        legacy?.description ??
-        null) as string | null
+      const displayName = (core?.name ?? null) as string | null
+      const bio = (profileBio?.description ?? null) as string | null
       return [
         {
           userName,
