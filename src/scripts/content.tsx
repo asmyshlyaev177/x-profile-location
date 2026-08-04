@@ -64,7 +64,6 @@ import {
   accountAgeDays,
   definedFacts,
   formatAccountAge,
-  formatFollowers,
   parseAccountFacts,
 } from './profile'
 import type { AccountFacts } from './profile'
@@ -287,7 +286,7 @@ function stripAllInjections(): void {
   }
   document
     .querySelectorAll(
-      `.x-loc-info, .${HIDDEN_PLACEHOLDER_CLASS}, .x-loc-exc-btn, .x-loc-card, .x-loc-cell-tag`,
+      `.x-loc-info, .${HIDDEN_PLACEHOLDER_CLASS}, .x-loc-exc-btn, .x-loc-card, .x-loc-cell-tag, .x-loc-bio`,
     )
     .forEach((el) => el.remove())
   document.querySelectorAll(`[${HOVER_CARD_DONE_ATTR}]`).forEach((el) => {
@@ -1152,15 +1151,18 @@ function countFlagsInBio(bio: string): number {
 
 // textContent drops emoji: X renders them as <img alt="🏳️‍⚧️">. Walk the node
 // and substitute each emoji <img> with its alt so keyword matching sees them.
-function textWithEmoji(el: Element): string {
+function textWithEmoji(
+  el: Element,
+  skip?: (child: Element) => boolean,
+): string {
   let out = ''
   for (const node of Array.from(el.childNodes)) {
     if (node.nodeType === Node.TEXT_NODE) {
       out += node.nodeValue ?? ''
     } else if (node instanceof HTMLImageElement) {
       out += node.getAttribute('alt') ?? ''
-    } else if (node instanceof Element) {
-      out += textWithEmoji(node)
+    } else if (node instanceof Element && !skip?.(node)) {
+      out += textWithEmoji(node, skip)
     }
   }
   return out
@@ -2140,7 +2142,7 @@ function syncExceptionButton(
 interface Chip {
   text: string
   title: string
-  tone?: 'plain' | 'warn'
+  tone?: 'plain' | 'warn' | 'block'
 }
 
 /** The chips an account's facts earn, in the order they are worth reading. */
@@ -2150,6 +2152,17 @@ export function accountChips(
 ): Chip[] {
   if (!facts) return []
   const chips: Chip[] = []
+
+  // First, because it changes how the rest of the card reads: X strips the bio,
+  // the follow button and the counts out of a blocker's hover card, so without
+  // this the card looks broken rather than answered.
+  if (facts.blockedBy) {
+    chips.push({
+      text: '🚫 Blocked you',
+      title: 'This account blocks your account',
+      tone: 'block',
+    })
+  }
 
   const age = formatAccountAge(facts.createdAt, now)
   if (age) {
@@ -2198,14 +2211,6 @@ export function accountChips(
     })
   }
 
-  const followers = formatFollowers(facts.followers)
-  if (followers) {
-    chips.push({
-      text: `👥 ${followers}`,
-      title: `${facts.followers} followers`,
-    })
-  }
-
   if (facts.isProtected) {
     chips.push({ text: '🔒 Protected', title: 'Posts are protected' })
   }
@@ -2223,7 +2228,10 @@ function buildAccountCard(
   card.className = 'x-loc-card'
   for (const chip of chips) {
     const el = document.createElement('span')
-    el.className = `x-loc-chip${chip.tone === 'warn' ? ' x-loc-chip-warn' : ''}`
+    el.className =
+      chip.tone && chip.tone !== 'plain'
+        ? `x-loc-chip x-loc-chip-${chip.tone}`
+        : 'x-loc-chip'
     el.textContent = chip.text
     el.title = chip.title
     card.appendChild(el)
@@ -2278,6 +2286,69 @@ function insertIntoCard(card: Element, userName: string, el: HTMLElement) {
 }
 
 // ---------------------------------------------------------------------------
+// The bio X declined to render
+// ---------------------------------------------------------------------------
+// An account that blocks the reader gets a stripped hover card — no bio, no
+// follow button, no counts — but the bio is still in the timeline response the
+// extension already read, and the highlight rule still fires on it. Without
+// this the card carries a mark and no reason for it.
+
+/**
+ * A slice of `bio` distinctive enough to look for in a card, or '' if there
+ * isn't one.
+ *
+ * URLs come out first: they are the one part of a bio X does not render
+ * verbatim — it substitutes a t.co display form — so leaving them in would
+ * report a bio as missing from a card that is showing it.
+ */
+export function bioProbe(bio: string): string {
+  const plain = bio
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/(?:[a-z0-9-]+\.)+[a-z]{2,}\/\S*/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+  // Too short to identify a bio by — a three-character probe matches a display
+  // name or one of our own chips as easily as the bio itself.
+  return plain.length < 4 ? '' : plain.slice(0, 40)
+}
+
+/** Whether the card is already showing this bio, ignoring what we injected. */
+function cardShowsBio(card: Element, probe: string): boolean {
+  const text = textWithEmoji(card, (child) =>
+    child.classList.contains('x-loc-hover'),
+  )
+  return text.replace(/\s+/g, ' ').trim().toLowerCase().includes(probe)
+}
+
+/**
+ * Put the bio back when X's card carries none.
+ *
+ * Rebuilt rather than appended, and run again once the lookup returns, so a
+ * card React filled in late ends up with X's own bio rather than two of them.
+ */
+function syncBioRow(
+  wrap: HTMLElement,
+  card: Element,
+  bio: string | null | undefined,
+): void {
+  card.querySelector('.x-loc-bio')?.remove()
+  if (!bio || !wrap.isConnected) return
+  const probe = bioProbe(bio)
+  if (probe === '' || cardShowsBio(card, probe)) return
+
+  const el = document.createElement('div')
+  el.className = 'x-loc-bio'
+  el.textContent = bio
+  el.title = "Bio from X's API — this card doesn't show one"
+  // Before the wrap, not inside it: this is the account's own words and belongs
+  // under the handle, above anything the extension has to say. Sitting outside
+  // .x-loc-hover also puts it back in reach of keywordRangesIn, so the word that
+  // matched is marked here the way it would be in a bio X had rendered.
+  wrap.before(el)
+}
+
+// ---------------------------------------------------------------------------
 // Process a hover card
 // ---------------------------------------------------------------------------
 const HOVER_CARD_DONE_ATTR = 'data-x-loc-done'
@@ -2303,7 +2374,9 @@ async function processCard(card: Element) {
   // before the lookup — a hover card gets a second or two of attention and the
   // lookup can eat all of it. Synced again below for the other rules.
   const place = (btn: HTMLElement) => wrap.appendChild(btn)
-  syncExceptionButton(wrap, userName, null, await getBioInfo(userName), place)
+  const known = await getBioInfo(userName)
+  syncBioRow(wrap, card, known.bio)
+  syncExceptionButton(wrap, userName, null, known, place)
   void markKeywords()
 
   const data = await fetchLocationData(userName)
@@ -2325,6 +2398,10 @@ async function processCard(card: Element) {
   // shows the follower count the timeline supplied alongside the handle history
   // only AboutAccountQuery carries.
   const info = await getBioInfo(userName)
+
+  // Again, now that React has had the length of the lookup to render the card:
+  // whichever answer is right by this point is the one that stays.
+  syncBioRow(wrap, card, info.bio)
 
   if (showAccountCard) {
     const accountCard = buildAccountCard(info.facts)
@@ -2377,10 +2454,12 @@ function primaryTweetTarget(): {
   return { tweet, userNameEl, userName: m[1] }
 }
 
-// X opens no hover card for the account a status page is *about*, so there the
-// button goes inline under the name line. Synced rather than injected once: the
-// keyword that makes it relevant often arrives long after the page settled, and
-// removing it must take the button away again.
+// The button goes inline under the name line on a status page, because X cannot
+// be relied on to open a hover card for the account the page is *about*. It
+// sometimes does — measured August 2026 — but a control that appears only when
+// X feels like opening a card is not a control. Synced rather than injected
+// once: the keyword that makes it relevant often arrives long after the page
+// settled, and removing it must take the button away again.
 async function syncPrimaryExceptionButton(): Promise<void> {
   const target = primaryTweetTarget()
   if (!target) return

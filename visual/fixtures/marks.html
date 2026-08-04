@@ -31,6 +31,36 @@
       </div>
     </div>
 
+    <h4>Blocker's card — X sent no bio, so the mark has to land on ours</h4>
+    <div
+      class="hovercard"
+      data-testid="HoverCard"
+      data-x-loc-kw="1"
+      id="blocked-marked"
+    >
+      <div class="name">joel p</div>
+      <div class="handle">@jpotisch</div>
+      <!-- No .bio from X. The injected one is a sibling of .x-loc-hover, not a
+           child, which is exactly what keeps it reachable by the marking. -->
+      <div class="x-loc-bio" id="injected-bio">
+        Full time nft guy.
+        <img
+          id="injected-emoji"
+          alt="🇷🇺"
+          src="data:image/gif;base64,R0lGODlhAQABAAAAACw="
+        />
+        based.
+      </div>
+      <div class="x-loc-hover">
+        <div class="x-loc-info">
+          <span class="x-loc-icon x-loc-icon-flag">🇺🇸</span>
+        </div>
+        <div class="x-loc-card">
+          <span class="x-loc-chip x-loc-chip-block">🚫 Blocked you</span>
+        </div>
+      </div>
+    </div>
+
     <h4>Hover card it is not firing on — the same emoji, unmarked</h4>
     <div class="hovercard" data-testid="HoverCard" id="unmarked">
       <div class="name">Normal Person</div>

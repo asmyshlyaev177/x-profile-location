@@ -285,7 +285,7 @@ function homeTimelineResponse(userName: string, bio: string) {
                               result: {
                                 __typename: 'User',
                                 core: { screen_name: userName },
-                                legacy: { description: bio },
+                                profile_bio: { description: bio },
                               },
                             },
                           },
@@ -322,7 +322,7 @@ function tweetDetailResponse(userName: string, bio: string) {
                             result: {
                               __typename: 'User',
                               core: { screen_name: userName },
-                              legacy: { description: bio },
+                              profile_bio: { description: bio },
                             },
                           },
                         },
@@ -392,7 +392,7 @@ describe('fetch — bio extraction', () => {
     expect(ev.detail.users[0].priority).toBe('low')
   })
 
-  it('extracts profile_bio.description over legacy.description', async () => {
+  it('extracts profile_bio.description and ignores the legacy copy', async () => {
     const payload = {
       data: {
         __typename: 'User',
@@ -483,17 +483,17 @@ describe('fetch — user deduplication', () => {
         {
           __typename: 'User',
           core: { screen_name: 'DupeUser' },
-          legacy: { description: 'first' },
+          profile_bio: { description: 'first' },
         },
         {
           __typename: 'User',
           core: { screen_name: 'dupeuser' },
-          legacy: { description: 'second' },
+          profile_bio: { description: 'second' },
         },
         {
           __typename: 'User',
           core: { screen_name: 'UniqueUser' },
-          legacy: { description: 'unique' },
+          profile_bio: { description: 'unique' },
         },
       ],
     }

@@ -160,14 +160,14 @@ describe('mergeCached', () => {
   })
 
   it('merges facts instead of replacing them, so each source keeps what it knew', async () => {
-    // The timeline gave us a follower count; AboutAccountQuery gives handle
+    // The timeline gave us the relationship; AboutAccountQuery gives handle
     // history. A shallow spread would drop whichever arrived first.
     vi.mocked(get).mockResolvedValue({
       data: {
         location: null,
         locationAccurate: true,
         source: null,
-        facts: { followers: 33813, createdAt: 1_700_000_000_000 },
+        facts: { blockedBy: true, createdAt: 1_700_000_000_000 },
       } satisfies LocationData,
       fetchedAt: Date.now() - 1_000,
     })
@@ -179,7 +179,7 @@ describe('mergeCached', () => {
       { data: LocationData },
     ]
     expect(entry.data.facts).toEqual({
-      followers: 33813,
+      blockedBy: true,
       createdAt: 1_700_000_000_000,
       handleChanges: 3,
     })

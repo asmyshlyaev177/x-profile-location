@@ -3,7 +3,6 @@ import {
   definedFacts,
   EMPTY_FACTS,
   formatAccountAge,
-  formatFollowers,
   hasFacts,
   parseAccountFacts,
   parseAffiliation,
@@ -50,8 +49,8 @@ const TIMELINE_USER = {
     screen_name: 'NASAArtemis',
   },
   is_blue_verified: true,
-  legacy: { followers_count: 33813, description: 'bio' },
   privacy: { protected: false },
+  relationship_perspectives: { blocked_by: false },
   rest_id: '632344577',
 }
 
@@ -131,14 +130,14 @@ describe('parseAccountFacts', () => {
     expect(facts.verified).toBe(false)
     expect(facts.isProtected).toBe(false)
     expect(facts.affiliation).toBeNull()
-    // AboutAccountQuery doesn't carry a follower count.
-    expect(facts.followers).toBeNull()
+    // AboutAccountQuery carries no relationship, so it cannot answer this.
+    expect(facts.blockedBy).toBeNull()
   })
 
-  it('reads a timeline User node, which carries followers but no handle history', () => {
+  it('reads a timeline User node, which carries a relationship but no handle history', () => {
     const facts = parseAccountFacts(TIMELINE_USER)
     expect(facts.createdAt).toBe(Date.UTC(2012, 6, 10, 21, 51, 25))
-    expect(facts.followers).toBe(33813)
+    expect(facts.blockedBy).toBe(false)
     expect(facts.affiliation?.handle).toBe('nasa')
     expect(facts.handleChanges).toBeNull()
   })
@@ -159,24 +158,41 @@ describe('parseAccountFacts', () => {
     }
   })
 
+  it('reads blocked_by from relationship_perspectives', () => {
+    expect(
+      parseAccountFacts({ relationship_perspectives: { blocked_by: true } })
+        .blockedBy,
+    ).toBe(true)
+    expect(
+      parseAccountFacts({ relationship_perspectives: { blocked_by: false } })
+        .blockedBy,
+    ).toBe(false)
+  })
+
+  it('is null about blocking when X sent no relationship at all', () => {
+    // AboutAccountQuery carries none, so a hover must not answer "not blocked"
+    // on the strength of it.
+    expect(parseAccountFacts(ABOUT_RESULT).blockedBy).toBeNull()
+  })
+
   it('ignores fields of the wrong type instead of coercing them', () => {
     const facts = parseAccountFacts({
       is_blue_verified: 'yes',
       rest_id: 12345,
       privacy: { protected: 'false' },
-      legacy: { followers_count: 'lots' },
+      relationship_perspectives: { blocked_by: 'yes' },
     })
     expect(facts.blueVerified).toBeNull()
     expect(facts.restId).toBeNull()
     expect(facts.isProtected).toBeNull()
-    expect(facts.followers).toBeNull()
+    expect(facts.blockedBy).toBeNull()
   })
 })
 
 describe('definedFacts', () => {
   it('drops nulls, so a thin sighting cannot blank a richer one', () => {
     const patch = definedFacts(parseAccountFacts(TIMELINE_USER))
-    expect(patch).toHaveProperty('followers', 33813)
+    expect(patch).toHaveProperty('blockedBy', false)
     expect(patch).not.toHaveProperty('handleChanges')
   })
 
@@ -208,24 +224,5 @@ describe('account age', () => {
     expect(formatAccountAge(daysAgo(400), now)).toBe('13mo')
     expect(formatAccountAge(daysAgo(365 * 4), now)).toBe('4y')
     expect(formatAccountAge(null, now)).toBeNull()
-  })
-})
-
-describe('formatFollowers', () => {
-  it('abbreviates the way X does', () => {
-    expect(formatFollowers(0)).toBe('0')
-    expect(formatFollowers(999)).toBe('999')
-    expect(formatFollowers(1000)).toBe('1K')
-    expect(formatFollowers(1500)).toBe('1.5K')
-    expect(formatFollowers(33813)).toBe('34K')
-    expect(formatFollowers(1_500_000)).toBe('1.5M')
-    expect(formatFollowers(23_000_000)).toBe('23M')
-  })
-
-  it('is null for a missing or nonsense count', () => {
-    expect(formatFollowers(null)).toBeNull()
-    expect(formatFollowers(undefined)).toBeNull()
-    expect(formatFollowers(-5)).toBeNull()
-    expect(formatFollowers(NaN)).toBeNull()
   })
 })
