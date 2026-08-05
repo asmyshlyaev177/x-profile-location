@@ -27,17 +27,14 @@ import {
   canonicalLocation,
   CANONICAL_LOCATIONS,
   COUNTRY_FLAGS,
-  DEFAULT_PREFETCH_SHARE,
   EXTENSION_ENABLED_KEY,
   type FilterRule,
   HIDE_BLOCKED_LOCATIONS_KEY,
   type HideBlockedMode,
   normalizeAccountAge,
   normalizeHandle,
-  normalizeHandleList,
   normalizeHideBlockedMode,
   normalizeOptionsTab,
-  normalizePrefetchPacing,
   normalizePrefetchShare,
   normalizeRuleExceptions,
   HIGHLIGHT_EXCEPTIONS_KEY,
@@ -73,8 +70,10 @@ import {
 import { isMobile } from '../scripts/device'
 import { isSharedCacheConfigured } from '../scripts/shared-cache'
 import {
+  defaultSetting,
   exportSettings,
   importSettings,
+  readSetting,
   SettingsImportError,
   settingsFileName,
 } from '../scripts/settings'
@@ -83,7 +82,7 @@ import { applyTheme, startThemeSync } from './theme'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 
-const dedupe = (values: string[]) => [...new Set(values)]
+const DEFAULT_FLAGS = defaultSetting(HIGHLIGHT_FLAGS_KEY)
 
 const TAB_LABELS: Record<OptionsTabId, string> = {
   display: 'Display',
@@ -197,32 +196,54 @@ function Stack({ children }: { children: ComponentChildren }) {
 
 export function Options() {
   const [tab, setTab] = useState<OptionsTabId>('display')
-  const [enabled, setEnabled] = useState(true)
+  const [enabled, setEnabled] = useState(defaultSetting(EXTENSION_ENABLED_KEY))
   const [blocked, setBlocked] = useState<string[]>([])
   const [affiliations, setAffiliations] = useState<string[]>([])
   const [accountAge, setAccountAge] = useState<AccountAgeFilter>(
-    normalizeAccountAge(undefined),
+    defaultSetting(ACCOUNT_AGE_KEY),
   )
   const [keywords, setKeywords] = useState<string[]>([])
-  const [flagsEnabled, setFlagsEnabled] = useState(false)
-  const [flagsThreshold, setFlagsThreshold] = useState(2)
-  const [flagsUniqueOnly, setFlagsUniqueOnly] = useState(true)
-  const [showLocationInFeed, setShowLocationInFeed] = useState(false)
-  const [showAccountCard, setShowAccountCard] = useState(true)
-  const [showShareButton, setShowShareButton] = useState(true)
+  const [flagsEnabled, setFlagsEnabled] = useState(DEFAULT_FLAGS.enabled)
+  const [flagsThreshold, setFlagsThreshold] = useState(DEFAULT_FLAGS.threshold)
+  const [flagsUniqueOnly, setFlagsUniqueOnly] = useState(
+    DEFAULT_FLAGS.uniqueOnly,
+  )
+  const [showLocationInFeed, setShowLocationInFeed] = useState(
+    defaultSetting(SHOW_LOCATION_IN_FEED_KEY),
+  )
+  const [showAccountCard, setShowAccountCard] = useState(
+    defaultSetting(SHOW_ACCOUNT_CARD_KEY),
+  )
+  const [showShareButton, setShowShareButton] = useState(
+    defaultSetting(SHOW_SHARE_BUTTON_KEY),
+  )
   const [exceptions, setExceptions] = useState<RuleExceptions>(
     normalizeRuleExceptions(undefined),
   )
   const [exceptionFilter, setExceptionFilter] = useState('')
   const [alwaysShow, setAlwaysShow] = useState<string[]>([])
-  const [showExceptionButton, setShowExceptionButton] = useState(true)
-  const [sharedCacheEnabled, setSharedCacheEnabled] = useState(true)
-  const [prefetchEnabled, setPrefetchEnabled] = useState(true)
-  const [prefetchShare, setPrefetchShare] = useState(DEFAULT_PREFETCH_SHARE)
-  const [pacing, setPacing] = useState<PrefetchPacing>('spread')
-  const [hideMode, setHideMode] = useState<HideBlockedMode>('off')
+  const [showExceptionButton, setShowExceptionButton] = useState(
+    defaultSetting(SHOW_EXCEPTION_BUTTON_KEY),
+  )
+  const [sharedCacheEnabled, setSharedCacheEnabled] = useState(
+    defaultSetting(SHARED_CACHE_KEY),
+  )
+  const [prefetchEnabled, setPrefetchEnabled] = useState(
+    defaultSetting(BACKGROUND_PREFETCH_KEY),
+  )
+  const [prefetchShare, setPrefetchShare] = useState(
+    defaultSetting(PREFETCH_SHARE_KEY),
+  )
+  const [pacing, setPacing] = useState<PrefetchPacing>(
+    defaultSetting(PREFETCH_PACING_KEY),
+  )
+  const [hideMode, setHideMode] = useState<HideBlockedMode>(
+    defaultSetting(HIDE_BLOCKED_LOCATIONS_KEY),
+  )
   const [cacheCleared, setCacheCleared] = useState(false)
-  const [minConfidence, setMinConfidence] = useState(DEFAULT_MIN_CONFIDENCE)
+  const [minConfidence, setMinConfidence] = useState(
+    defaultSetting(MIN_CONFIDENCE_KEY),
+  )
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [theme, setTheme] = useState<ThemePreference>('system')
   const [transferNote, setTransferNote] = useState<string | null>(null)
@@ -262,73 +283,36 @@ export function Options() {
         THEME_KEY,
       ])
       .then((result) => {
-        setEnabled(
-          EXTENSION_ENABLED_KEY in result
-            ? Boolean(result[EXTENSION_ENABLED_KEY])
-            : true,
-        )
-        // Folded through the alias table so a list saved before an alias
-        // existed ('Czech Republic', 'Czechia') shows as one chip, matching
-        // what the content script blocks.
-        setBlocked(
-          dedupe(
-            ((result[BLOCKED_COUNTRIES_KEY] as string[] | undefined) ?? []).map(
-              canonicalLocation,
-            ),
-          ),
-        )
-        setAffiliations(normalizeHandleList(result[BLOCKED_AFFILIATIONS_KEY]))
-        setAccountAge(normalizeAccountAge(result[ACCOUNT_AGE_KEY]))
-        setKeywords(
-          (result[HIGHLIGHT_KEYWORDS_KEY] as string[] | undefined) ?? [],
-        )
-        const flags = result[HIGHLIGHT_FLAGS_KEY] as
-          | { enabled?: boolean; threshold?: number; uniqueOnly?: boolean }
-          | undefined
-        setFlagsEnabled(flags?.enabled ?? false)
-        setFlagsThreshold(flags?.threshold ?? 2)
-        setFlagsUniqueOnly(flags?.uniqueOnly ?? true)
-        setShowLocationInFeed(Boolean(result[SHOW_LOCATION_IN_FEED_KEY]))
-        setShowAccountCard(
-          SHOW_ACCOUNT_CARD_KEY in result
-            ? Boolean(result[SHOW_ACCOUNT_CARD_KEY])
-            : true,
-        )
-        setShowShareButton(
-          SHOW_SHARE_BUTTON_KEY in result
-            ? Boolean(result[SHOW_SHARE_BUTTON_KEY])
-            : true,
-        )
+        setEnabled(readSetting(EXTENSION_ENABLED_KEY, result))
+        setBlocked(readSetting(BLOCKED_COUNTRIES_KEY, result))
+        setAffiliations(readSetting(BLOCKED_AFFILIATIONS_KEY, result))
+        setAccountAge(readSetting(ACCOUNT_AGE_KEY, result))
+        setKeywords(readSetting(HIGHLIGHT_KEYWORDS_KEY, result))
+        const flags = readSetting(HIGHLIGHT_FLAGS_KEY, result)
+        setFlagsEnabled(flags.enabled)
+        setFlagsThreshold(flags.threshold)
+        setFlagsUniqueOnly(flags.uniqueOnly)
+        setShowLocationInFeed(readSetting(SHOW_LOCATION_IN_FEED_KEY, result))
+        setShowAccountCard(readSetting(SHOW_ACCOUNT_CARD_KEY, result))
+        setShowShareButton(readSetting(SHOW_SHARE_BUTTON_KEY, result))
         setExceptions(
           normalizeRuleExceptions(
             result[RULE_EXCEPTIONS_KEY],
             result[HIGHLIGHT_EXCEPTIONS_KEY],
           ),
         )
-        setAlwaysShow(normalizeHandleList(result[ALWAYS_SHOW_KEY]))
-        setShowExceptionButton(
-          SHOW_EXCEPTION_BUTTON_KEY in result
-            ? Boolean(result[SHOW_EXCEPTION_BUTTON_KEY])
-            : true,
-        )
-        setSharedCacheEnabled(
-          SHARED_CACHE_KEY in result ? Boolean(result[SHARED_CACHE_KEY]) : true,
-        )
-        setPrefetchEnabled(
-          BACKGROUND_PREFETCH_KEY in result
-            ? Boolean(result[BACKGROUND_PREFETCH_KEY])
-            : true,
-        )
-        setPrefetchShare(normalizePrefetchShare(result[PREFETCH_SHARE_KEY]))
-        setPacing(normalizePrefetchPacing(result[PREFETCH_PACING_KEY]))
-        setHideMode(
-          normalizeHideBlockedMode(result[HIDE_BLOCKED_LOCATIONS_KEY]),
-        )
+        setAlwaysShow(readSetting(ALWAYS_SHOW_KEY, result))
+        setShowExceptionButton(readSetting(SHOW_EXCEPTION_BUTTON_KEY, result))
+        setSharedCacheEnabled(readSetting(SHARED_CACHE_KEY, result))
+        setPrefetchEnabled(readSetting(BACKGROUND_PREFETCH_KEY, result))
+        setPrefetchShare(readSetting(PREFETCH_SHARE_KEY, result))
+        setPacing(readSetting(PREFETCH_PACING_KEY, result))
+        setHideMode(readSetting(HIDE_BLOCKED_LOCATIONS_KEY, result))
         setTab(normalizeOptionsTab(result[OPTIONS_TAB_KEY]))
-        setMinConfidence(normalizeMinConfidence(result[MIN_CONFIDENCE_KEY]))
+        setMinConfidence(readSetting(MIN_CONFIDENCE_KEY, result))
         // Only the select's value: painting the page is startThemeSync's job,
         // below, which also keeps it in step with a second tab.
-        setTheme(normalizeTheme(result[THEME_KEY]))
+        setTheme(readSetting(THEME_KEY, result))
 
         // The advanced tab is revealed by opening the options page as
         // `options.html?advanced=1` (and hidden again with `?advanced=0`), then

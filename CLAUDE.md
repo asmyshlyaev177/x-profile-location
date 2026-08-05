@@ -33,6 +33,7 @@ the test — the account it regressed on, the spec that forces the answer.
 2. Need to maintain high readability and low complexity of the code.
 3. Try to reuse common helpers when possible, don't copy-paste blindly.
 4. Write integration Playwright tests, and unit tests for simpler pure functions.
+5. If some option or shared values accessed in few places, should have a single source of truth instead of copy pasting.
 
 ## What this extension does
 
@@ -78,7 +79,7 @@ page-script.ts                      content.tsx
 | `src/scripts/countries.ts`      | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR`, `REGION_MEMBERS` + every storage key and its normalizer.                                                                      |
 | `src/scripts/profile.ts`        | Parses `AccountFacts` (age, affiliate badge, verification, handle history, blocked-by) off a User node — timeline or AboutAccountQuery alike.                                 |
 | `src/scripts/source.ts`         | The single place X's `source` string is interpreted: platform (`ios`/`android`/`web`) + store country, plus the drawn SVG glyphs.                                             |
-| `src/scripts/settings.ts`       | Registry of every user-facing setting and its normalizer. Backs import/export.                                                                                                |
+| `src/scripts/settings.ts`       | Registry of every user-facing setting, its normalizer and its default. The only way to read one (`readSetting` / `settingValue` / `defaultSetting`). Backs import/export.     |
 | `src/scripts/usage.ts`          | Days on which the extension did visible work, and the single rule deciding whether the popup asks for a store rating. Pure decision, impure counter.                          |
 | `src/scripts/snapshot.ts`       | Clones a live element, inlines its computed styles and images, renders it to PNG through an SVG `foreignObject`. How a shared post keeps X's own look.                        |
 | `src/scripts/share-card.ts`     | The hand-drawn fallback card, for when a snapshot can't render. Layout is pure (testable); drawing is not.                                                                    |
@@ -404,7 +405,7 @@ options page shows it muted on the right.
 BLOCKED_COUNTRIES_KEY = 'blockedCountries'
 HIGHLIGHT_KEYWORDS_KEY = 'highlightKeywords'
 HIGHLIGHT_FLAGS_KEY = 'highlightFlags'
-SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed' // default OFF
+SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed' // default ON
 HIDE_BLOCKED_LOCATIONS_KEY = 'hideBlockedLocations' // 'off' | 'collapse' | 'hide'; default 'collapse'
 BACKGROUND_PREFETCH_KEY = 'backgroundPrefetch' // default ON
 PREFETCH_SHARE_KEY = 'prefetchShare' // fraction of the window prefetch may use; default 0.7
@@ -426,7 +427,29 @@ USAGE_STATS_KEY = 'usageStats' // { activeDays, lastDay }; counted by content.ts
 RATE_PROMPT_KEY = 'ratePrompt' // { status, snoozeUntil }; answer to the rating ask
 ```
 
-The last two are **not settings** and deliberately absent from `SETTINGS_REGISTRY`:
+**Nobody reads one of these by hand.** `SETTINGS_REGISTRY` (settings.ts) maps
+each key to the one function that turns whatever storage holds into the value the
+code uses, and because every normalizer answers for `undefined` too, that is also
+where the **default** is written — once, not once per surface. Three readers:
+
+```typescript
+readSetting(SHOW_LOCATION_IN_FEED_KEY, result) // from a chrome.storage.local.get()
+settingValue(SHOW_LOCATION_IN_FEED_KEY, change.newValue) // from an onChanged entry
+defaultSetting(SHOW_LOCATION_IN_FEED_KEY) // before storage has answered
+```
+
+The `KEY in result ? Boolean(result[KEY]) : true` this replaced was written out at
+every reader, and had already drifted: the options page showed the flag-count
+rule's `uniqueOnly` as on while the content script treated it as off. The
+`onChanged` half had a second bug of its own — a key **removed** from storage
+arrives as an undefined `newValue`, which `Boolean()` turned into `false` for
+settings whose absence means `true`. Both fall out of routing through one map.
+
+Only the placeholder that is _deliberately_ not the default stays hand-written:
+content.tsx starts `hideMode` at `'off'` rather than `'collapse'`, so nothing is
+hidden on a guess in the moment before the storage read resolves.
+
+The last two keys above are **not settings** and deliberately absent from `SETTINGS_REGISTRY`:
 an export is a record of decisions, and "has used this for five days" is not one —
 importing it into a second install would ask that install for a rating it has not
 earned. The counter lives in `buildInfoRow()` because every surface that shows a

@@ -1,8 +1,12 @@
-// Every user-facing setting, with the function that makes a stored value safe.
+// Every user-facing setting, with the function that makes a stored value safe —
+// and, because that function also answers for `undefined`, its default.
 //
 // Settings are written from three surfaces (options page, popup, imported file)
-// and read by a fourth (the content script). Without a registry, "which keys are
-// settings" drifts apart the first time one is added.
+// and read by all four. Without a registry, "which keys are settings" drifts
+// apart the first time one is added, and so does what each one means when it has
+// never been set: the content script showing a switch as on while the popup
+// draws it off is one `?? true` written in only two of the three places.
+// Read one with readSetting / settingValue / defaultSetting, never by hand.
 //
 // An imported file is untrusted input — hand-edited, older, somebody else's — so
 // import stores the normalizer's output, never the value it was given.
@@ -43,11 +47,22 @@ import {
 /** A stored value, cleaned. Returning undefined drops the key entirely. */
 type Normalizer = (value: unknown) => unknown
 
-const asBoolean: Normalizer = (v) => Boolean(v)
+/**
+ * A switch, and what it means before the user has touched it. `undefined` is the
+ * only value that can mean "never set" — chrome.storage omits absent keys, and a
+ * removed one arrives as an undefined `newValue` — so the default belongs here
+ * rather than at each of the three surfaces that read it.
+ */
+const asBoolean =
+  (fallback: boolean) =>
+  (value: unknown): boolean =>
+    value === undefined ? fallback : Boolean(value)
 
-// Regions are not expanded here: that is a content-script concern, and baking it
-// into storage would turn one removable chip into fifty-seven.
-const asLocationList: Normalizer = (v) =>
+// Folded through the alias table, so a list saved before an alias existed
+// ('Czech Republic', 'Czechia') is one entry wherever it is read. Regions are
+// *not* expanded here: that is a content-script concern, and baking it into
+// storage would turn one removable chip into fifty-seven.
+const asLocationList = (v: unknown): string[] =>
   Array.isArray(v)
     ? [
         ...new Set(
@@ -58,7 +73,7 @@ const asLocationList: Normalizer = (v) =>
       ]
     : []
 
-const asKeywordList: Normalizer = (v) =>
+const asKeywordList = (v: unknown): string[] =>
   Array.isArray(v)
     ? [
         ...new Set(
@@ -71,33 +86,61 @@ const asKeywordList: Normalizer = (v) =>
     : []
 
 /**
- * The settings an export carries and an import may write, each with the
- * normalizer that has to agree with what the content script does on load.
+ * Every setting, with the one function that turns whatever storage holds — a
+ * stale value, a hand-edited import, nothing at all — into the value the code
+ * uses. Being total is the point: each normalizer answers for `undefined` too,
+ * which is what makes this the single place a default is written down.
  */
-export const SETTINGS_REGISTRY: Record<string, Normalizer> = {
-  [EXTENSION_ENABLED_KEY]: asBoolean,
+export const SETTINGS_REGISTRY = {
+  [EXTENSION_ENABLED_KEY]: asBoolean(true),
   [BLOCKED_COUNTRIES_KEY]: asLocationList,
   [BLOCKED_AFFILIATIONS_KEY]: normalizeHandleList,
   [ACCOUNT_AGE_KEY]: normalizeAccountAge,
   [HIDE_BLOCKED_LOCATIONS_KEY]: normalizeHideBlockedMode,
   [HIGHLIGHT_KEYWORDS_KEY]: asKeywordList,
   [HIGHLIGHT_FLAGS_KEY]: normalizeHighlightFlags,
-  [RULE_EXCEPTIONS_KEY]: (v) => normalizeRuleExceptions(v),
+  [RULE_EXCEPTIONS_KEY]: (v: unknown) => normalizeRuleExceptions(v),
   [HIGHLIGHT_EXCEPTIONS_KEY]: normalizeHandleList,
   [ALWAYS_SHOW_KEY]: normalizeHandleList,
-  [SHOW_LOCATION_IN_FEED_KEY]: asBoolean,
-  [SHOW_ACCOUNT_CARD_KEY]: asBoolean,
-  [SHOW_EXCEPTION_BUTTON_KEY]: asBoolean,
-  [SHOW_SHARE_BUTTON_KEY]: asBoolean,
+  [SHOW_LOCATION_IN_FEED_KEY]: asBoolean(true),
+  [SHOW_ACCOUNT_CARD_KEY]: asBoolean(true),
+  [SHOW_EXCEPTION_BUTTON_KEY]: asBoolean(true),
+  [SHOW_SHARE_BUTTON_KEY]: asBoolean(true),
   [THEME_KEY]: normalizeTheme,
-  [SHARED_CACHE_KEY]: asBoolean,
-  [BACKGROUND_PREFETCH_KEY]: asBoolean,
+  [SHARED_CACHE_KEY]: asBoolean(true),
+  [BACKGROUND_PREFETCH_KEY]: asBoolean(true),
   [PREFETCH_SHARE_KEY]: normalizePrefetchShare,
   [PREFETCH_PACING_KEY]: normalizePrefetchPacing,
   [MIN_CONFIDENCE_KEY]: normalizeMinConfidence,
-}
+} satisfies Record<string, Normalizer>
 
 export const SETTINGS_KEYS = Object.keys(SETTINGS_REGISTRY)
+
+export type SettingKey = keyof typeof SETTINGS_REGISTRY
+export type SettingValue<K extends SettingKey> = ReturnType<
+  (typeof SETTINGS_REGISTRY)[K]
+>
+
+/** What a setting is worth, given the raw value storage handed over. */
+export function settingValue<K extends SettingKey>(
+  key: K,
+  stored: unknown,
+): SettingValue<K> {
+  return SETTINGS_REGISTRY[key](stored) as SettingValue<K>
+}
+
+/** The same, out of a `chrome.storage.local.get()` result. */
+export function readSetting<K extends SettingKey>(
+  key: K,
+  stored: Record<string, unknown>,
+): SettingValue<K> {
+  return settingValue(key, stored[key])
+}
+
+/** What a setting is worth before storage has answered. */
+export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
+  return settingValue(key, undefined)
+}
 
 /** Bumped only if a future shape needs migrating on the way in. */
 export const SETTINGS_FORMAT = 1
@@ -174,7 +217,10 @@ export async function importSettings(raw: string): Promise<ImportResult> {
   const patch: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(settings)) {
-    const normalize = SETTINGS_REGISTRY[key]
+    // A file's keys are arbitrary strings — an older export, a newer one, a typo.
+    const normalize = (SETTINGS_REGISTRY as Record<string, Normalizer>)[key] as
+      | Normalizer
+      | undefined
     if (!normalize) {
       ignored.push(key)
       continue

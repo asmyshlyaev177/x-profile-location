@@ -1,5 +1,5 @@
 /**
- * "Show location in feed 📍" tests — SHOW_LOCATION_IN_FEED_KEY, off by default.
+ * "Show location in feed 📍" tests — SHOW_LOCATION_IN_FEED_KEY, on by default.
  *
  * The setting has two injection paths in content.tsx, one per test:
  *   refreshFeedLocations()      — flipping it on re-walks the timeline and adds a
@@ -37,6 +37,11 @@ test('feed rows appear for cached authors when the setting is switched on, and a
   extensionId,
 }) => {
   await mockLocationApis(page, { account_based_in: 'Germany' })
+
+  // The setting ships on, so this test has to switch it off before it can watch
+  // it come back on.
+  await setShowLocationInFeed(context, extensionId, false)
+  await expect(page.locator(FEED_ROW)).toHaveCount(0, { timeout: 10_000 })
 
   // Hover once to put this author in IDB. The setting is off, so the timeline
   // itself must stay untouched no matter what the hover fetched.
