@@ -1,0 +1,67 @@
+name: Lighthouse
+
+# Only when the landing site changes. It is a separate workflow rather than a
+# step in tests.yml because the two have almost nothing in common: this one
+# builds `landing/`, which no extension change can affect, and pulls in
+# ~100 MB of `lighthouse` that the extension suites have no use for. Keeping it
+# out of tests.yml means an extension-only push does not pay for either.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'landing/**'
+      - '.github/workflows/lighthouse.yml'
+  pull_request:
+    paths:
+      - 'landing/**'
+      - '.github/workflows/lighthouse.yml'
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      # Actions are pinned to a commit SHA, not a tag — see the note in
+      # tests.yml. Keep the two files on the same versions.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 10
+
+      # `cache: pnpm` needs pnpm already on PATH, which is why the step above
+      # comes first. Automatic caching (v6+) only covers npm and is not in play.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      # `chromium` only, and the same 1.59.1 both workspace packages resolve to,
+      # so one download serves the audit browser and nothing else is fetched.
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Builds `landing/` and audits every route in `routes.ts` against the
+      # preview server — six pages, ~50s. The build is part of the suite's
+      # webServer block, so there is no separate build step here.
+      #
+      # Performance is a timing measurement and this runner is shared. The
+      # audits run serially for that reason; if the score starts flaking here
+      # while holding locally, lower that one threshold in the spec rather than
+      # dropping the assertion — the other three categories are deterministic
+      # and are the reason this job exists.
+      - name: Lighthouse audits
+        run: pnpm test:lighthouse
+
+      # Playwright leaves an error context per failure. For a score that only
+      # drops on the runner, that is the only record of which audit gave way.
+      - name: Upload Lighthouse results
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lighthouse-results
+          path: landing/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
