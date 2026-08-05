@@ -8,14 +8,18 @@ import {
   HIGHLIGHT_KEYWORDS_KEY,
   PREFETCH_SHARE_KEY,
   RULE_EXCEPTIONS_KEY,
+  SHOW_LOCATION_IN_FEED_KEY,
 } from './countries'
 import {
+  defaultSetting,
   exportSettings,
   importSettings,
+  readSetting,
   SettingsImportError,
   SETTINGS_FORMAT,
   SETTINGS_KEYS,
   settingsFileName,
+  settingValue,
 } from './settings'
 
 const store: Record<string, unknown> = {}
@@ -149,6 +153,37 @@ describe('importSettings', () => {
       await expect(importSettings(raw)).rejects.toThrow(message)
     }
     expect(Object.keys(store)).toEqual([])
+  })
+})
+
+describe('reading a setting', () => {
+  it('answers with the default when nothing is stored', () => {
+    expect(defaultSetting(SHOW_LOCATION_IN_FEED_KEY)).toBe(true)
+    expect(readSetting(SHOW_LOCATION_IN_FEED_KEY, {})).toBe(true)
+    expect(readSetting(HIDE_BLOCKED_LOCATIONS_KEY, {})).toBe('collapse')
+  })
+
+  it('lets a stored false win, which is the whole point of a default-on switch', () => {
+    expect(
+      readSetting(SHOW_LOCATION_IN_FEED_KEY, {
+        [SHOW_LOCATION_IN_FEED_KEY]: false,
+      }),
+    ).toBe(false)
+  })
+
+  // A key removed from storage arrives as an undefined newValue, and the old
+  // hand-written `Boolean(newValue)` turned that into false for every one of
+  // these — the opposite of what the same key means when absent on load.
+  it('reads a removed key the same way it reads an absent one', () => {
+    expect(settingValue(EXTENSION_ENABLED_KEY, undefined)).toBe(true)
+  })
+
+  it('cleans what it finds, so no reader has to', () => {
+    expect(
+      readSetting(BLOCKED_COUNTRIES_KEY, {
+        [BLOCKED_COUNTRIES_KEY]: ['usa', 'USA', 7],
+      }),
+    ).toEqual(['United States'])
   })
 })
 

@@ -2469,6 +2469,9 @@ describe('swipe-right gesture', () => {
     setApiHeaders(HEADERS)
     document.body.innerHTML = ''
     document.getElementById('x-loc-location-toast')?.remove()
+    // Feed rows off, so a row in an article can only be the swipe's own doing —
+    // the gesture injects one whether or not the setting is on.
+    disableFeedLocation()
   })
 
   function touch(type: string, target: Element, x: number, y: number) {
