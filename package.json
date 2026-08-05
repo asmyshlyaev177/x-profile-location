@@ -19,6 +19,7 @@
     "test": "vitest run --coverage",
     "test:shuffle": "vitest run --sequence.shuffle",
     "test:visual": "playwright test -c playwright.visual.config.ts",
+    "test:lighthouse": "pnpm --filter x-pat-landing test:lighthouse",
     "e2e:profile": "node e2e/scripts/seed-profile.mjs",
     "test:e2e": "xvfb-run --auto-servernum playwright test --retries 1",
     "shots": "SHOOT=1 xvfb-run --auto-servernum playwright test e2e/screenshots.test.ts && node landing/scripts/store-canvas.mjs && cd landing && xvfb-run --auto-servernum node scripts/shoot-options.mjs",

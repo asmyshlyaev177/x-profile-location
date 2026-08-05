@@ -607,11 +607,12 @@ is to ship `[]`, and region expansion makes that materially more urgent.
 pnpm install
 pnpm dev         # watch build for Chrome (default)
 pnpm build       # production build all browsers → dist/<browser>/
-pnpm test        # vitest run --coverage  (happy-dom, Istanbul)
-pnpm test:visual # playwright layout tests — headless, no session, no HARs
-pnpm fix         # oxfmt + oxlint --fix
-pnpm e2e:profile # seed a real-browser profile for the e2e suite (see below)
-pnpm test:e2e    # playwright under xvfb
+pnpm test            # vitest run --coverage  (happy-dom, Istanbul)
+pnpm test:visual     # playwright layout tests — headless, no session, no HARs
+pnpm test:lighthouse # playwright + lighthouse over the built landing site
+pnpm fix             # oxfmt + oxlint --fix
+pnpm e2e:profile     # seed a real-browser profile for the e2e suite (see below)
+pnpm test:e2e        # playwright under xvfb
 ```
 
 Test environment: **Vitest 4 + happy-dom**. Globals enabled (`describe`, `it`, `expect`, `vi` — no imports needed). Coverage via Istanbul to `coverage/`.
@@ -630,17 +631,24 @@ observed callback alive), which is exactly why it went unnoticed for so long:
 the symptom is a test-only, order-dependent, coverage-only disappearance of
 everything the content script injects.
 
-### Three suites, three different questions
+### Four suites, four different questions
 
-| Suite              | Asks                                   | Needs                          | In CI |
-| ------------------ | -------------------------------------- | ------------------------------ | ----- |
-| `pnpm test`        | Does the logic hold?                   | nothing                        | yes   |
-| `pnpm test:visual` | Interactions and styles as expected?   | a headless browser             | yes   |
-| `pnpm test:e2e`    | Does any of it survive contact with X? | a session, a display, the HARs | no    |
+| Suite                  | Asks                                   | Needs                          | In CI             |
+| ---------------------- | -------------------------------------- | ------------------------------ | ----------------- |
+| `pnpm test`            | Does the logic hold?                   | nothing                        | yes               |
+| `pnpm test:visual`     | Interactions and styles as expected?   | a headless browser             | yes               |
+| `pnpm test:e2e`        | Does any of it survive contact with X? | a session, a display, the HARs | no                |
+| `pnpm test:lighthouse` | Does the landing site still score 100? | a headless browser             | `landing/**` only |
 
-**What a new feature owes each of them.** The three are not tiers of thoroughness
-to pick from — they answer different questions, and a feature that touches more
-than one surface owes a test to each surface it touches:
+The last one audits a **different artifact** — `landing/`, not the extension —
+so it sits outside the rule below. It lives in the landing package (config,
+spec and the ~100 MB `lighthouse` dependency all under `landing/`) and runs from
+its own workflow, triggered only by changes under `landing/**`. See
+**Landing site — Lighthouse** further down.
+
+**What a new extension feature owes the other three.** They are not tiers of
+thoroughness to pick from — they answer different questions, and a feature that
+touches more than one surface owes a test to each surface it touches:
 
 - **A pure function** (a matcher, a parser, a formatter) → `pnpm test`, and
   nothing else. `bioProbe` and `parseAccountFacts` are the shape of this.
@@ -777,3 +785,55 @@ model, not a bug, and it applies to real users too.
   headed alike. That kills it: `openOptionsPage()` drives four of the six spec files,
   `extensionId` scrapes `chrome://extensions/`, and `pinExtension()` needs
   `chrome.developerPrivate`.
+
+### Landing site — Lighthouse
+
+`pnpm test:lighthouse` (root) → `landing/tests/lighthouse.spec.ts`, driven by
+`landing/playwright.lighthouse.config.ts`. Everything lives in the landing
+package, including the ~100 MB `lighthouse` dependency, because the extension has
+no use for any of it. `.github/workflows/lighthouse.yml` runs it on changes under
+`landing/**` and nowhere else.
+
+It audits the **production build**, never `vite dev`: the `webServer` block runs
+`pnpm build && pnpm preview:lighthouse` on **port 5174** — deliberately not
+5173, which both `dev` and `preview` use, so a dev server left running cannot be
+silently accepted in place of the build. Preview is also what applies
+`serveFlatHtml`, the rule that makes `/about` resolve to `about.html` the way
+Pages does; under the dev server every subroute falls through to the SPA
+fallback and the suite would audit the homepage six times over.
+
+**Pages come from `routes.ts`, not from a list here.** That file is already the
+site's one source of pages — head, canonical, prerender list and sitemap all
+follow from it, one `app.tsx` branch each — so a new page is audited the moment
+it exists. A hand-written list would be the seventh place to keep in step, and
+the page somebody forgot to add would be the one that never got checked.
+
+**Desktop config, four categories, 100 on each.** Measured August 2026: all six
+pages score 100/100/100/100 on desktop. Mobile is _not_ what runs, and the note
+in `landing/README.md` saying `/` scores 100 there is stale — it reproduces at
+**99** (FCP 0.98, LCP 0.98, three runs), so a mobile gate would need a fudged
+threshold. Lighthouse 13's fifth category, `agentic-browsing`, scores 100
+everywhere but is deliberately not gated: Google is still moving its weights and
+a patch bump would fail the suite for reasons unrelated to the site.
+
+**The two `noindex` pages cannot score 100 on SEO**, and are not asked to.
+`is-crawlable` is worth ~4 of that category's ~23 points and is _meant_ to fail
+on `/privacy-policy` and `/404`. Rather than exempt them and lose the rest of
+the category behind the exemption, the spec names the one audit allowed to fail:
+
+```ts
+expect(failed).toEqual(['is-crawlable'])
+```
+
+That asserts both halves at once — that `noindex: true` in `routes.ts` really
+reached the shipped document, and that nothing else in SEO regressed. Verified
+by mutation: deleting the `robots` meta from `seo.ts` turns it red.
+
+⚠ `opts.onlyCategories` is **pinned explicitly**. `playAudit` otherwise derives
+it from the threshold keys, so dropping `seo` for the `noindex` pages would stop
+that category running at all and take `is-crawlable` with it — the assertion
+would pass against an empty array and check nothing.
+
+⚠ The landing build rewrites the comparison table in the repo `README.md`
+(`readmeComparison` in `landing/vite.config.ts`). A CI job now builds this site,
+so that write has to stay **idempotent** — it was merely convenient before.
