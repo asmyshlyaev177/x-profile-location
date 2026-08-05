@@ -42,6 +42,7 @@ import {
   setRatePromptState,
   shouldAskForRating,
 } from '../scripts/usage'
+import { defaultSetting, readSetting } from '../scripts/settings'
 import css from './popup.module.css'
 import { startThemeSync } from './theme'
 
@@ -187,10 +188,16 @@ function RatePrompt({ onAnswer }: { onAnswer: () => void }) {
 }
 
 export function Popup() {
-  const [enabled, setEnabled] = useState(true)
-  const [inFeed, setInFeed] = useState(false)
-  const [accountCard, setAccountCard] = useState(true)
-  const [hideMode, setHideMode] = useState<HideBlockedMode>('collapse')
+  const [enabled, setEnabled] = useState(defaultSetting(EXTENSION_ENABLED_KEY))
+  const [inFeed, setInFeed] = useState(
+    defaultSetting(SHOW_LOCATION_IN_FEED_KEY),
+  )
+  const [accountCard, setAccountCard] = useState(
+    defaultSetting(SHOW_ACCOUNT_CARD_KEY),
+  )
+  const [hideMode, setHideMode] = useState<HideBlockedMode>(
+    defaultSetting(HIDE_BLOCKED_LOCATIONS_KEY),
+  )
   const [blocked, setBlocked] = useState<string[]>([])
   const [keywords, setKeywords] = useState<string[]>([])
   const [section, setSection] = useState<PopupSection | null>(null)
@@ -215,24 +222,12 @@ export function Popup() {
         RATE_PROMPT_KEY,
       ])
       .then((r) => {
-        setEnabled(
-          EXTENSION_ENABLED_KEY in r ? Boolean(r[EXTENSION_ENABLED_KEY]) : true,
-        )
-        setInFeed(Boolean(r[SHOW_LOCATION_IN_FEED_KEY]))
-        setAccountCard(
-          SHOW_ACCOUNT_CARD_KEY in r ? Boolean(r[SHOW_ACCOUNT_CARD_KEY]) : true,
-        )
-        setHideMode(normalizeHideBlockedMode(r[HIDE_BLOCKED_LOCATIONS_KEY]))
-        setBlocked(
-          Array.isArray(r[BLOCKED_COUNTRIES_KEY])
-            ? (r[BLOCKED_COUNTRIES_KEY] as string[])
-            : [],
-        )
-        setKeywords(
-          Array.isArray(r[HIGHLIGHT_KEYWORDS_KEY])
-            ? (r[HIGHLIGHT_KEYWORDS_KEY] as string[])
-            : [],
-        )
+        setEnabled(readSetting(EXTENSION_ENABLED_KEY, r))
+        setInFeed(readSetting(SHOW_LOCATION_IN_FEED_KEY, r))
+        setAccountCard(readSetting(SHOW_ACCOUNT_CARD_KEY, r))
+        setHideMode(readSetting(HIDE_BLOCKED_LOCATIONS_KEY, r))
+        setBlocked(readSetting(BLOCKED_COUNTRIES_KEY, r))
+        setKeywords(readSetting(HIGHLIGHT_KEYWORDS_KEY, r))
         setSection(normalizePopupSection(r[POPUP_SECTION_KEY]))
         setAskRating(
           shouldAskForRating(

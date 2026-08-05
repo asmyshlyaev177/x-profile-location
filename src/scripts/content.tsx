@@ -22,17 +22,12 @@ import {
   type FilterRule,
   HIDE_BLOCKED_LOCATIONS_KEY,
   type HideBlockedMode,
-  normalizeAccountAge,
-  normalizeHandleList,
-  normalizeHideBlockedMode,
   normalizeRuleExceptions,
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
   LOOKUP_LIMIT_PER_WINDOW,
   MIN_CONFIDENCE_KEY,
-  normalizePrefetchPacing,
-  normalizePrefetchShare,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
   RATE_PROMPT_KEY,
@@ -48,6 +43,7 @@ import {
   SHOW_LOCATION_IN_FEED_KEY,
   USAGE_STATS_KEY,
 } from './countries'
+import { defaultSetting, readSetting, settingValue } from './settings'
 import { EVENTS, X_GRAPHQL_PATH } from './constants'
 import {
   contributeLocation,
@@ -127,22 +123,26 @@ let blockedCountries = new Set<string>()
 // Expansion lives here, not in storage: what the user picked and what that picks
 // out are different things, and only the second belongs in a comparison.
 function toBlockedSet(stored: unknown): Set<string> {
-  return expandLocations(Array.isArray(stored) ? (stored as string[]) : [])
+  return expandLocations(settingValue(BLOCKED_COUNTRIES_KEY, stored))
 }
 
 function isBlockedLocation(loc: string): boolean {
   return blockedCountries.has(canonicalLocation(loc))
 }
 
+// Every default below comes from SETTINGS_REGISTRY, so a default lives in one
+// place rather than here, in the popup and in the options page.
+const DEFAULT_FLAGS = defaultSetting(HIGHLIGHT_FLAGS_KEY)
+
 let highlightKeywords = new Set<string>()
-let highlightFlagsEnabled = false
-let highlightFlagsThreshold = 2
-let highlightFlagsUniqueOnly = false
-let showLocationInFeed = false
+let highlightFlagsEnabled = DEFAULT_FLAGS.enabled
+let highlightFlagsThreshold = DEFAULT_FLAGS.threshold
+let highlightFlagsUniqueOnly = DEFAULT_FLAGS.uniqueOnly
+let showLocationInFeed = defaultSetting(SHOW_LOCATION_IN_FEED_KEY)
 // How to treat tweets whose author's location is on the blocked list. Starts
-// 'off' only as a pre-load placeholder (so nothing is hidden on a guess before
-// settings arrive); the persisted default is 'collapse' — see
-// normalizeHideBlockedMode, applied on the storage load below.
+// 'off' only as a pre-load placeholder — nothing should be hidden on a guess
+// before settings arrive — so this is deliberately not the stored default
+// ('collapse'), which the storage load below applies.
 let hideMode: HideBlockedMode = 'off'
 // Per-rule exemptions: which accounts each filter must skip. `highlight` is the
 // old single-purpose exception list, generalised — see normalizeRuleExceptions.
@@ -152,19 +152,19 @@ let alwaysShow = new Set<string>()
 // Parent-org handles whose badged accounts are filtered.
 let blockedAffiliations = new Set<string>()
 // Filter accounts younger than N days. Off unless the user turns it on.
-let accountAgeFilter: AccountAgeFilter = normalizeAccountAge(undefined)
+let accountAgeFilter: AccountAgeFilter = defaultSetting(ACCOUNT_AGE_KEY)
 // Whether to render the one-click exception button on hover cards.
-let showExceptionButton = true
+let showExceptionButton = defaultSetting(SHOW_EXCEPTION_BUTTON_KEY)
 // Whether hover cards get the account-facts card under the location row.
-let showAccountCard = true
+let showAccountCard = defaultSetting(SHOW_ACCOUNT_CARD_KEY)
 // Whether hover cards get the "Copy card" button.
-let showShareButton = true
-// Whether background location prefetching runs (options toggle; default on).
-let prefetchEnabled = true
+let showShareButton = defaultSetting(SHOW_SHARE_BUTTON_KEY)
+// Whether background location prefetching runs.
+let prefetchEnabled = defaultSetting(BACKGROUND_PREFETCH_KEY)
 // Master switch. Everything this script does is gated on it, and flipping it
 // off strips what is already on screen — a switch that only stopped *new* work
 // would leave the page half-decorated and read as a bug.
-let extensionEnabled = true
+let extensionEnabled = defaultSetting(EXTENSION_ENABLED_KEY)
 
 /** Never filtered, never highlighted — the user said always show this account. */
 function isAlwaysShown(userName: string): boolean {
@@ -201,52 +201,32 @@ chrome.storage.local
   ])
   .then((result) => {
     const r = result as Record<string, unknown>
-    extensionEnabled =
-      EXTENSION_ENABLED_KEY in r ? Boolean(r[EXTENSION_ENABLED_KEY]) : true
+    extensionEnabled = readSetting(EXTENSION_ENABLED_KEY, r)
     blockedCountries = toBlockedSet(r[BLOCKED_COUNTRIES_KEY])
-    highlightKeywords = new Set<string>(
-      Array.isArray(r[HIGHLIGHT_KEYWORDS_KEY])
-        ? (r[HIGHLIGHT_KEYWORDS_KEY] as string[]).map((k) => k.toLowerCase())
-        : [],
-    )
+    highlightKeywords = new Set(readSetting(HIGHLIGHT_KEYWORDS_KEY, r))
     setKeywords([...highlightKeywords])
     updateKeywordEmojiStyle()
-    const flags = r[HIGHLIGHT_FLAGS_KEY] as
-      | { enabled?: boolean; threshold?: number; uniqueOnly?: boolean }
-      | undefined
-    highlightFlagsEnabled = flags?.enabled ?? false
-    highlightFlagsThreshold = flags?.threshold ?? 2
-    highlightFlagsUniqueOnly = flags?.uniqueOnly ?? false
-    // Off by default — the user opts in from the options page. (Mobile users can
-    // still swipe-right on any tweet to reveal a location without this enabled.)
-    showLocationInFeed = Boolean(r[SHOW_LOCATION_IN_FEED_KEY])
+    const flags = readSetting(HIGHLIGHT_FLAGS_KEY, r)
+    highlightFlagsEnabled = flags.enabled
+    highlightFlagsThreshold = flags.threshold
+    highlightFlagsUniqueOnly = flags.uniqueOnly
+    showLocationInFeed = readSetting(SHOW_LOCATION_IN_FEED_KEY, r)
     ruleExceptions = normalizeRuleExceptions(
       r[RULE_EXCEPTIONS_KEY],
       r[HIGHLIGHT_EXCEPTIONS_KEY],
     )
-    alwaysShow = new Set(normalizeHandleList(r[ALWAYS_SHOW_KEY]))
-    blockedAffiliations = new Set(
-      normalizeHandleList(r[BLOCKED_AFFILIATIONS_KEY]),
-    )
-    accountAgeFilter = normalizeAccountAge(r[ACCOUNT_AGE_KEY])
-    showExceptionButton =
-      SHOW_EXCEPTION_BUTTON_KEY in r
-        ? Boolean(r[SHOW_EXCEPTION_BUTTON_KEY])
-        : true
-    showAccountCard =
-      SHOW_ACCOUNT_CARD_KEY in r ? Boolean(r[SHOW_ACCOUNT_CARD_KEY]) : true
-    showShareButton =
-      SHOW_SHARE_BUTTON_KEY in r ? Boolean(r[SHOW_SHARE_BUTTON_KEY]) : true
-    hideMode = normalizeHideBlockedMode(r[HIDE_BLOCKED_LOCATIONS_KEY])
-    prefetchEnabled =
-      BACKGROUND_PREFETCH_KEY in r ? Boolean(r[BACKGROUND_PREFETCH_KEY]) : true
-    prefetcher.setReserveFraction(normalizePrefetchShare(r[PREFETCH_SHARE_KEY]))
-    prefetcher.setPacing(normalizePrefetchPacing(r[PREFETCH_PACING_KEY]))
-    // Shared community cache is opt-in and defaults on; inert unless a server
-    // URL is configured (see CACHE_API_BASE in constants.ts).
-    setSharedCacheEnabled(
-      SHARED_CACHE_KEY in r ? Boolean(r[SHARED_CACHE_KEY]) : true,
-    )
+    alwaysShow = new Set(readSetting(ALWAYS_SHOW_KEY, r))
+    blockedAffiliations = new Set(readSetting(BLOCKED_AFFILIATIONS_KEY, r))
+    accountAgeFilter = readSetting(ACCOUNT_AGE_KEY, r)
+    showExceptionButton = readSetting(SHOW_EXCEPTION_BUTTON_KEY, r)
+    showAccountCard = readSetting(SHOW_ACCOUNT_CARD_KEY, r)
+    showShareButton = readSetting(SHOW_SHARE_BUTTON_KEY, r)
+    hideMode = readSetting(HIDE_BLOCKED_LOCATIONS_KEY, r)
+    prefetchEnabled = readSetting(BACKGROUND_PREFETCH_KEY, r)
+    prefetcher.setReserveFraction(readSetting(PREFETCH_SHARE_KEY, r))
+    prefetcher.setPacing(readSetting(PREFETCH_PACING_KEY, r))
+    // Inert unless a server URL is configured (see CACHE_API_BASE in constants.ts).
+    setSharedCacheEnabled(readSetting(SHARED_CACHE_KEY, r))
     setMinConfidence(r[MIN_CONFIDENCE_KEY])
 
     // Tweets can render before this async load resolves, in which case nothing
@@ -302,7 +282,10 @@ function stripAllInjections(): void {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return
   if (changes[EXTENSION_ENABLED_KEY]) {
-    extensionEnabled = Boolean(changes[EXTENSION_ENABLED_KEY].newValue)
+    extensionEnabled = settingValue(
+      EXTENSION_ENABLED_KEY,
+      changes[EXTENSION_ENABLED_KEY].newValue,
+    )
     if (!extensionEnabled) {
       stripAllInjections()
       prefetcher.stop()
@@ -330,25 +313,31 @@ chrome.storage.onChanged.addListener((changes, area) => {
     refreshHiddenTweets()
   }
   if (changes[HIGHLIGHT_KEYWORDS_KEY]) {
-    const next = changes[HIGHLIGHT_KEYWORDS_KEY].newValue
-    highlightKeywords = new Set<string>(
-      Array.isArray(next) ? (next as string[]).map((k) => k.toLowerCase()) : [],
+    highlightKeywords = new Set(
+      settingValue(
+        HIGHLIGHT_KEYWORDS_KEY,
+        changes[HIGHLIGHT_KEYWORDS_KEY].newValue,
+      ),
     )
     setKeywords([...highlightKeywords])
     updateKeywordEmojiStyle()
     rehighlightAll()
   }
   if (changes[HIGHLIGHT_FLAGS_KEY]) {
-    const next = changes[HIGHLIGHT_FLAGS_KEY].newValue as
-      | { enabled?: boolean; threshold?: number; uniqueOnly?: boolean }
-      | undefined
-    highlightFlagsEnabled = next?.enabled ?? false
-    highlightFlagsThreshold = next?.threshold ?? 2
-    highlightFlagsUniqueOnly = next?.uniqueOnly ?? false
+    const next = settingValue(
+      HIGHLIGHT_FLAGS_KEY,
+      changes[HIGHLIGHT_FLAGS_KEY].newValue,
+    )
+    highlightFlagsEnabled = next.enabled
+    highlightFlagsThreshold = next.threshold
+    highlightFlagsUniqueOnly = next.uniqueOnly
     rehighlightAll()
   }
   if (changes[SHOW_LOCATION_IN_FEED_KEY]) {
-    showLocationInFeed = Boolean(changes[SHOW_LOCATION_IN_FEED_KEY].newValue)
+    showLocationInFeed = settingValue(
+      SHOW_LOCATION_IN_FEED_KEY,
+      changes[SHOW_LOCATION_IN_FEED_KEY].newValue,
+    )
     refreshFeedLocations()
     syncPrefetcher()
   }
@@ -375,31 +364,50 @@ chrome.storage.onChanged.addListener((changes, area) => {
     refreshHiddenTweets()
   }
   if (changes[ALWAYS_SHOW_KEY]) {
-    alwaysShow = new Set(normalizeHandleList(changes[ALWAYS_SHOW_KEY].newValue))
+    alwaysShow = new Set(
+      settingValue(ALWAYS_SHOW_KEY, changes[ALWAYS_SHOW_KEY].newValue),
+    )
     rehighlightAll()
     refreshHiddenTweets()
   }
   if (changes[BLOCKED_AFFILIATIONS_KEY]) {
     blockedAffiliations = new Set(
-      normalizeHandleList(changes[BLOCKED_AFFILIATIONS_KEY].newValue),
+      settingValue(
+        BLOCKED_AFFILIATIONS_KEY,
+        changes[BLOCKED_AFFILIATIONS_KEY].newValue,
+      ),
     )
     refreshHiddenTweets()
   }
   if (changes[ACCOUNT_AGE_KEY]) {
-    accountAgeFilter = normalizeAccountAge(changes[ACCOUNT_AGE_KEY].newValue)
+    accountAgeFilter = settingValue(
+      ACCOUNT_AGE_KEY,
+      changes[ACCOUNT_AGE_KEY].newValue,
+    )
     refreshHiddenTweets()
   }
   if (changes[SHOW_EXCEPTION_BUTTON_KEY]) {
-    showExceptionButton = Boolean(changes[SHOW_EXCEPTION_BUTTON_KEY].newValue)
+    showExceptionButton = settingValue(
+      SHOW_EXCEPTION_BUTTON_KEY,
+      changes[SHOW_EXCEPTION_BUTTON_KEY].newValue,
+    )
   }
   if (changes[SHOW_ACCOUNT_CARD_KEY]) {
-    showAccountCard = Boolean(changes[SHOW_ACCOUNT_CARD_KEY].newValue)
+    showAccountCard = settingValue(
+      SHOW_ACCOUNT_CARD_KEY,
+      changes[SHOW_ACCOUNT_CARD_KEY].newValue,
+    )
   }
   if (changes[SHOW_SHARE_BUTTON_KEY]) {
-    showShareButton = Boolean(changes[SHOW_SHARE_BUTTON_KEY].newValue)
+    showShareButton = settingValue(
+      SHOW_SHARE_BUTTON_KEY,
+      changes[SHOW_SHARE_BUTTON_KEY].newValue,
+    )
   }
   if (changes[SHARED_CACHE_KEY]) {
-    setSharedCacheEnabled(Boolean(changes[SHARED_CACHE_KEY].newValue))
+    setSharedCacheEnabled(
+      settingValue(SHARED_CACHE_KEY, changes[SHARED_CACHE_KEY].newValue),
+    )
     // Opting out of the community cache also stops background prefetch, which
     // exists to warm it — and opting back in restarts it.
     syncPrefetcher()
@@ -408,21 +416,25 @@ chrome.storage.onChanged.addListener((changes, area) => {
     setMinConfidence(changes[MIN_CONFIDENCE_KEY].newValue)
   }
   if (changes[BACKGROUND_PREFETCH_KEY]) {
-    prefetchEnabled = Boolean(changes[BACKGROUND_PREFETCH_KEY].newValue)
+    prefetchEnabled = settingValue(
+      BACKGROUND_PREFETCH_KEY,
+      changes[BACKGROUND_PREFETCH_KEY].newValue,
+    )
     syncPrefetcher()
   }
   if (changes[PREFETCH_SHARE_KEY]) {
     prefetcher.setReserveFraction(
-      normalizePrefetchShare(changes[PREFETCH_SHARE_KEY].newValue),
+      settingValue(PREFETCH_SHARE_KEY, changes[PREFETCH_SHARE_KEY].newValue),
     )
   }
   if (changes[PREFETCH_PACING_KEY]) {
     prefetcher.setPacing(
-      normalizePrefetchPacing(changes[PREFETCH_PACING_KEY].newValue),
+      settingValue(PREFETCH_PACING_KEY, changes[PREFETCH_PACING_KEY].newValue),
     )
   }
   if (changes[HIDE_BLOCKED_LOCATIONS_KEY]) {
-    hideMode = normalizeHideBlockedMode(
+    hideMode = settingValue(
+      HIDE_BLOCKED_LOCATIONS_KEY,
       changes[HIDE_BLOCKED_LOCATIONS_KEY].newValue,
     )
     refreshHiddenTweets()
@@ -710,24 +722,24 @@ async function getBioInfo(userName: string): Promise<ProfileInfo> {
 // and the suite passes only in the order it happens to run. Keep this
 // exhaustive: a module-scope `let` missing here is a new order dependency.
 export function __testResetState() {
-  // settings (defaults must match the declarations above)
+  // settings, back to what the declarations above start them at
   blockedCountries = new Set()
   highlightKeywords = new Set()
   setKeywords([])
-  highlightFlagsEnabled = false
-  highlightFlagsThreshold = 2
-  highlightFlagsUniqueOnly = false
-  showLocationInFeed = false
+  highlightFlagsEnabled = DEFAULT_FLAGS.enabled
+  highlightFlagsThreshold = DEFAULT_FLAGS.threshold
+  highlightFlagsUniqueOnly = DEFAULT_FLAGS.uniqueOnly
+  showLocationInFeed = defaultSetting(SHOW_LOCATION_IN_FEED_KEY)
   hideMode = 'off'
   ruleExceptions = normalizeRuleExceptions(undefined)
   alwaysShow = new Set()
   blockedAffiliations = new Set()
-  accountAgeFilter = normalizeAccountAge(undefined)
-  showAccountCard = true
-  showShareButton = true
-  showExceptionButton = true
-  prefetchEnabled = true
-  extensionEnabled = true
+  accountAgeFilter = defaultSetting(ACCOUNT_AGE_KEY)
+  showAccountCard = defaultSetting(SHOW_ACCOUNT_CARD_KEY)
+  showShareButton = defaultSetting(SHOW_SHARE_BUTTON_KEY)
+  showExceptionButton = defaultSetting(SHOW_EXCEPTION_BUTTON_KEY)
+  prefetchEnabled = defaultSetting(BACKGROUND_PREFETCH_KEY)
+  extensionEnabled = defaultSetting(EXTENSION_ENABLED_KEY)
 
   clearKeywordMarks()
   updateKeywordEmojiStyle()
