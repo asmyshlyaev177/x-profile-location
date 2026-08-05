@@ -9,13 +9,26 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Every action is pinned to a **commit SHA**, with the tag it came from in
+      # the trailing comment. A tag is a movable pointer the action's owner can
+      # repoint at any time, so `@v4` is a promise to run whatever that account
+      # publishes next — and these steps hold a checkout of this repo and the
+      # runner's token. A SHA is the only reference that cannot be changed under
+      # us.
+      #
+      # The comment is the only thing that says which version a SHA is, so keep
+      # the two in step when bumping. Resolve a tag with:
+      #   gh api repos/actions/checkout/commits/v7.0.1 --jq .sha
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      # `cache: pnpm` needs pnpm already on PATH, which is why the step above
+      # comes first. setup-node v6 limited *automatic* caching to npm; passing
+      # `cache` explicitly is unaffected and pnpm is still a supported value.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: pnpm
@@ -72,7 +85,7 @@ jobs:
       # the case where that is worth having.
       - name: Upload visual test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: visual-test-results
           path: test-results/

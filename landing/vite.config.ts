@@ -96,8 +96,11 @@ function aiDiscoveryFiles(): PluginOption {
  * different things in different places is worse than not having one.
  *
  * Writing outside the package during a build is deliberate but narrow: it
- * touches exactly the block between the markers, it is idempotent, and no CI
- * job builds this site, so it cannot dirty a checkout unexpectedly.
+ * touches exactly the block between the markers, and it is idempotent — a
+ * build whose comparison data has not moved writes nothing at all. That last
+ * property used to be a convenience and is now load-bearing: the Lighthouse
+ * workflow builds this site on a runner, so an unconditional write would dirty
+ * every checkout it touched.
  */
 function readmeComparison(): PluginOption {
   const readme = fileURLToPath(new URL('../README.md', import.meta.url))

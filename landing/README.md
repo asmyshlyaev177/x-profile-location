@@ -112,8 +112,15 @@ from what is on the store.
 
 ## Performance
 
-`/` scores 100 across all four Lighthouse categories (mobile, simulated
-throttling). The things holding it there, in case one looks removable:
+All six pages score 100 across all four Lighthouse categories on **desktop**,
+and `pnpm test:lighthouse` asserts it on every change under `landing/**` — see
+**Landing site — Lighthouse** in the repo `CLAUDE.md`.
+
+On mobile with simulated throttling `/` reproduces at **99**, not the 100 this
+file used to claim: FCP 0.98, LCP 0.98, measured three times (August 2026). The
+other five pages hold 100 there. That is why the suite gates on desktop — a
+mobile bar would have to be set at 99 and would teach everyone to re-baseline
+it. The things holding the score up, in case one looks removable:
 
 - **Hydration runs on idle** (`main.tsx`). Every page is prerendered and every
   control works without JS — the install link is a real `<a href>` — so nothing
@@ -149,10 +156,15 @@ throttling). The things holding it there, in case one looks removable:
 - **`public/_headers`** gives Cloudflare Pages the year-long immutable cache for
   `/assets/*` and `/fonts/*`. Without it, repeat visits refetch ~250 kB.
 
-`/privacy-policy` scores 100 / 100 / 100 but 66 on SEO, because it carries
-`noindex: true` in `routes.ts` (which also keeps it out of the sitemap). That is
-a deliberate choice, not a defect — drop the flag if you would rather the policy
-were searchable.
+`/privacy-policy` and `/404` score 100 / 100 / 100 but 66 on SEO, because they
+carry `noindex: true` in `routes.ts` (which also keeps them out of the sitemap).
+That is a deliberate choice, not a defect — drop the flag if you would rather
+the policy were searchable.
+
+The suite does not simply exempt those two from SEO. It asserts that
+`is-crawlable` is the **only** audit in the category that fails, which is both a
+check that `noindex` reached the shipped document and a guard against anything
+else in SEO regressing behind the exemption.
 
 ## Image workflow
 
@@ -177,8 +189,14 @@ The in-page screenshots (`screen_1..4.png`) are still taken by hand from the liv
 ## Dev & deploy
 
 ```bash
-pnpm dev        # vite dev server on :5173
-pnpm build      # generate images + vite build + minify HTML → dist/
-pnpm preview    # preview built dist/ on :5173
-pnpm deploy     # wrangler pages deploy dist/
+pnpm dev             # vite dev server on :5173
+pnpm build           # generate images + vite build + minify HTML → dist/
+pnpm preview         # preview built dist/ on :5173
+pnpm test:lighthouse # build + preview on :5174, then audit every route
+pnpm deploy          # wrangler pages deploy dist/
 ```
+
+`test:lighthouse` uses **:5174** so a `pnpm dev` you left running on :5173
+cannot be picked up in place of the build — auditing the dev server is the one
+thing that suite must never do. Locally a preview already listening on :5174 is
+reused as-is, build and all; kill it to force a rebuild.
