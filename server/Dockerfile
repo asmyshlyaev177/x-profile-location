@@ -41,21 +41,38 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
+# The sqlite3 CLI is for deploy/backup.sh — VACUUM INTO plus the integrity
+# checks. flock and gzip, which it also needs, are already in the base; sqlite3
+# is the only thing missing. Without this the image runs fine and backups are
+# simply impossible, which is a worse failure than a bigger layer.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends sqlite3 \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /app/node_modules ./node_modules
 # schema.sql sits beside src/ because openDatabase() reads it at
 # `import.meta.dirname/../schema.sql`. Keep this layout.
 COPY package.json schema.sql ./
 COPY src ./src
+# The same files the systemd units run — not container-specific copies, so the
+# two deploy shapes cannot drift in how they back up or how they alert.
+COPY deploy/backup.sh ./deploy/backup.sh
+COPY deploy/alert.ts ./deploy/alert.ts
 
-# Two defaults differ from the bare-metal ones, both forced by the container:
-#   XLOC_HOST — 127.0.0.1 is loopback *inside the network namespace*, so a
-#               published port would reach nothing. Bind all interfaces and let
-#               Docker's port mapping (or a compose network) do the confining.
-#   XLOC_DB   — under /data, the one path that outlives the container.
+# Three defaults differ from the bare-metal ones, all forced by the container:
+#   XLOC_HOST       — 127.0.0.1 is loopback *inside the network namespace*, so a
+#                     published port would reach nothing. Bind all interfaces
+#                     and let Docker's port mapping do the confining.
+#   XLOC_DB         — under /data, the one path that outlives the container.
+#   XLOC_BACKUP_DIR — likewise. The script's own default is under
+#                     /var/lib/x-loc-cache, which here is neither writable nor
+#                     persistent, so backups would land in the container layer
+#                     and vanish with it. `docker exec` inherits these.
 # Everything else keeps its code default; override with -e or compose.
 ENV XLOC_HOST=0.0.0.0 \
     XLOC_PORT=8787 \
-    XLOC_DB=/data/x-loc-cache.db
+    XLOC_DB=/data/x-loc-cache.db \
+    XLOC_BACKUP_DIR=/data/backups
 
 # Created here, before USER, so a *named* volume inherits node:node ownership.
 # A bind mount does not — it keeps the host directory's owner, so mounting one

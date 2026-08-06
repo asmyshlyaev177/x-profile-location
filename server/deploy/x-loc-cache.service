@@ -16,6 +16,10 @@ Description=x-loc-cache — shared location cache for the X Profile Location ext
 Documentation=https://github.com/asmyshlyaev177/x-profile-location
 After=network-online.target
 Wants=network-online.target
+# Restart=always means this unit only reaches "failed" once systemd gives up
+# restarting it — a crash loop, not a blip. That is worth an email. Inert until
+# /etc/x-loc-alert.env exists.
+OnFailure=x-loc-alert@%n.service
 
 [Service]
 Type=simple
