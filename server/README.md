@@ -610,15 +610,32 @@ arrived, since a failed `VACUUM INTO` leaves a valid file with no tables in it;
 and comparing that count against the source's own from before the run catches a
 short copy (profiles are only ever inserted or updated — retention deletes
 votes, never profiles — so a snapshot can never legitimately hold fewer). A
-failure keeps the evidence as `*.corrupt`, prunes nothing, and fails the unit.
+failure prunes nothing, fails the unit, and keeps the rejected snapshot as
+evidence — **one** copy, gzipped, at `backups/corrupt-evidence.db.gz`.
 
-**The live database is checked separately**, after the snapshot is safely
-stored. `VACUUM INTO` rebuilds, so a clean snapshot no longer vouches for the
-file it came from — an index inconsistency would be quietly rebuilt away in the
-copy and left in place on the original. That check is the corruption monitor:
-`systemctl --failed` (or `journalctl -u x-loc-backup`) is where a silently
-corrupt database first becomes visible, a day after it happens rather than
-months. When it fires, the run keeps that night's snapshot and prunes nothing.
+That it is one and not one-per-night is deliberate, and was a bug before it was
+a feature. Whatever fails verification is usually permanent, so the branch runs
+again every night; a stamped, uncompressed file per run added a
+database-sized file nightly to the disk the live database writes to. A full
+disk turns "corrupt but still serving reads" into "cannot accept a single
+contribution" — with `/healthz` still green, since it never touches the
+database — and leaves no room for `restore.sh` to unpack into. The first copy
+is kept rather than the newest, being closest to the onset; delete it by hand
+and the next failure captures a fresh one.
+
+**The live database is checked separately**, after the snapshot is stored,
+because neither check subsumes the other. `VACUUM INTO` repacks, so faults in
+free-page accounting are rebuilt away in the copy and left in place on the
+original. But it is **not** the wholesale index rebuild it looks like: an index
+out of sync with its table is carried across verbatim, so that class fails the
+snapshot check instead. Measured on sqlite 3.37 and 3.53 — 102 table rows
+against 100 index entries in, and exactly the same out.
+
+The live check is the corruption monitor: `systemctl --failed` (or
+`journalctl -u x-loc-backup`, or an email if [Alerting](#alerting) is set up) is
+where a silently corrupt database first becomes visible, a day after it happens
+rather than months. When it fires, the run keeps that night's snapshot and
+prunes nothing.
 
 The unit runs as `xloc`, never root — and so must anything else that touches
 the database. The sqlite3 CLI creates `-wal`/`-shm` beside a WAL database when

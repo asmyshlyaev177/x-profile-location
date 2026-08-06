@@ -167,6 +167,14 @@ export interface BackupStats {
   totalMb: number
 }
 
+/**
+ * The archives backup.sh keeps, by their exact stamped name. Matching a looser
+ * `.db.gz` would also pick up `corrupt-evidence.db.gz`, which is the one file
+ * whose presence means backups are *failing* — counting it as a healthy
+ * archive is precisely backwards.
+ */
+const ARCHIVE_NAME = /^x-loc-cache-\d{8}-\d{6}\.db\.gz$/
+
 /** Reads the backups directory directly — no database access, on purpose. */
 export function collectBackupStats(
   backupDir: string,
@@ -174,7 +182,7 @@ export function collectBackupStats(
 ): BackupStats {
   let files: string[] = []
   try {
-    files = readdirSync(backupDir).filter((f) => f.endsWith('.db.gz'))
+    files = readdirSync(backupDir).filter((f) => ARCHIVE_NAME.test(f))
   } catch {
     return { count: 0, newest: null, newestAgeHours: null, totalMb: 0 }
   }

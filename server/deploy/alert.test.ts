@@ -156,6 +156,20 @@ describe('the weekly heartbeat', () => {
     utimesSync(file, when, when)
   }
 
+  it('counts only real archives, never the corruption evidence', () => {
+    // corrupt-evidence.db.gz means backups are *failing*. Counting it as a
+    // healthy archive — which a bare `.db.gz` filter does — would report
+    // "backups healthy" on the strength of the file that proves they are not.
+    dir = mkdtempSync(join(tmpdir(), 'x-loc-hb-'))
+    archive('x-loc-cache-20260806-000000.db.gz', 1_048_576, 3)
+    archive('corrupt-evidence.db.gz', 4_194_304, 1)
+
+    const stats = collectBackupStats(dir, Date.now())
+    expect(stats.count).toBe(1)
+    expect(stats.newest).toBe('x-loc-cache-20260806-000000.db.gz')
+    expect(stats.totalMb).toBe(1)
+  })
+
   it('reports the newest archive and the total on disk', () => {
     dir = mkdtempSync(join(tmpdir(), 'x-loc-hb-'))
     archive('x-loc-cache-20260801-000000.db.gz', 1_048_576, 72)

@@ -65,12 +65,17 @@ fi
 
 STAMP="$(date -u +%Y%m%d-%H%M%S)"
 SNAP="$BACKUP_DIR/x-loc-cache-$STAMP.db"
+# Deliberately unstamped, and deliberately not matching x-loc-cache-*.db.gz:
+# there is at most one, and neither the prune, the orphan sweep, the kept-count
+# nor restore.sh's "available:" listing may see it as an archive.
+EVIDENCE="$BACKUP_DIR/corrupt-evidence.db.gz"
 
 # A run killed too hard for its traps (SIGKILL, power loss) leaves working
 # files nothing else would ever touch — any present now are orphans. The
-# ?-globs match only stamped names, and .corrupt evidence matches neither.
+# ?-globs match only stamped names, so a kept archive is never at risk.
 rm -f "$BACKUP_DIR"/x-loc-cache-????????-??????.db \
-  "$BACKUP_DIR"/x-loc-cache-????????-??????.db.gz.part
+  "$BACKUP_DIR"/x-loc-cache-????????-??????.db.gz.part \
+  "$EVIDENCE.part"
 
 trap 'rm -f "$SNAP" "$SNAP.gz.part"' EXIT
 # dash runs the EXIT trap on exit and SIGINT but not on SIGTERM — which is what
@@ -115,11 +120,23 @@ case "$PROFILES" in
   *) if [ "$PROFILES" -lt "$BEFORE" ]; then SHORT=yes; fi ;;
 esac
 if [ "$CHECK" != "ok" ] || [ -z "$COUNTS" ] || [ "$SHORT" = yes ]; then
-  mv "$SNAP" "$SNAP.corrupt"
   echo "snapshot verification FAILED." >&2
-  echo "Evidence kept at $SNAP.corrupt (never auto-pruned; delete by hand)." >&2
   echo "integrity_check: $CHECK" >&2
   echo "profiles: $PROFILES in snapshot vs $BEFORE in the source before it started" >&2
+  # ONE compressed copy, not one per night. Whatever gets here is usually
+  # permanent — an index out of sync with its table is copied across verbatim
+  # (measured) and nothing in the server ever REINDEXes — so a stamped,
+  # uncompressed file per run would add a database-sized file every night, on
+  # the same disk the live database writes to, until it fills. A full disk
+  # turns "corrupt but still serving reads" into "cannot accept a single
+  # contribution", and leaves no room for restore.sh to unpack into either.
+  # The first copy is the one worth keeping: it is closest to the onset.
+  if [ -e "$EVIDENCE" ]; then
+    echo "Evidence from an earlier failure is already at $EVIDENCE — kept that one." >&2
+  else
+    gzip -c "$SNAP" > "$EVIDENCE.part" && mv "$EVIDENCE.part" "$EVIDENCE"
+    echo "Evidence kept at $EVIDENCE (never auto-pruned; delete by hand)." >&2
+  fi
   exit 1
 fi
 
@@ -128,13 +145,16 @@ mv "$SNAP.gz.part" "$SNAP.gz"
 rm -f "$SNAP"
 trap - EXIT
 
-# Now check the source itself. VACUUM INTO rebuilds instead of copying pages, so
-# a clean snapshot no longer vouches for the database it came from — an index
-# inconsistency would be silently rebuilt away in the copy and left in place on
-# the live file. This is the corruption monitor, so it is the thorough check
-# rather than quick_check (~1.2 s per 236 MB, once a day, in its own process —
-# never on the server's event loop). It runs *after* the snapshot is safely
-# stored: a rebuilt copy of a failing database is worth keeping.
+# Now check the source itself, because neither check subsumes the other.
+# VACUUM INTO repacks, so faults in free-page accounting are rebuilt away in the
+# copy and left in place here; but it is not the wholesale index rebuild it
+# looks like — an index out of sync with its table comes across verbatim, so
+# that class fails the snapshot check above (measured on sqlite 3.37 and 3.53:
+# 102 rows / 100 index entries in, the same out). This is the corruption
+# monitor, so it is the thorough check rather than quick_check (~1.2 s per
+# 236 MB, once a day, in its own process — never on the server's event loop).
+# It runs *after* the snapshot is stored: a copy of a failing database is worth
+# keeping.
 LIVE="$(sqlite3 "$DB" 'PRAGMA integrity_check;' 2>&1)" || true
 if [ "$LIVE" != "ok" ]; then
   echo "the LIVE database failed integrity_check — it is corrupt." >&2
