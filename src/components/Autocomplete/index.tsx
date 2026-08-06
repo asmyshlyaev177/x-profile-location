@@ -74,9 +74,9 @@ export function Autocomplete({
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
 
-  const selectedLower = selected.map((s) => s.toLowerCase())
+  const selectedLower = new Set(selected.map((s) => s.toLowerCase()))
   const available = allOptions.filter(
-    (o) => !selectedLower.includes(o.toLowerCase()),
+    (o) => !selectedLower.has(o.toLowerCase()),
   )
   const suggestions =
     query.length === 0 ? available : rankMatches(available, aliases, query)
@@ -168,13 +168,14 @@ export function Autocomplete({
 
   return (
     <div class={css.autocomplete}>
+      {/* No aria-haspopup: a combobox implies `listbox`, and the popup below is
+          one — so stating it is redundant (ARIA: combobox role). */}
       <input
         ref={inputRef}
         class={css.input}
         value={query}
         role="combobox"
         aria-expanded={isOpen}
-        aria-haspopup="listbox"
         aria-autocomplete="list"
         aria-controls={`${id}-listbox`}
         aria-activedescendant={

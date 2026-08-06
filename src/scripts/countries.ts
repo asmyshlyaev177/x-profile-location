@@ -927,9 +927,10 @@ export const DEFAULT_PREFETCH_SHARE = 0.7
 /** The shares the options page offers, as fractions. */
 export const PREFETCH_SHARE_CHOICES = [0.3, 0.5, 0.7, 0.9] as const
 
-// Numbers from storage, numeric strings from the <select>. Hand-rolled because
-// bare Number() turns null, '' and objects alike into 0.
-function finiteNumber(value: unknown): number | null {
+// Numbers from storage, numeric strings from the <select>, counts X sends as
+// strings ("3"). Hand-rolled because bare Number() turns null, '' and objects
+// alike into 0. Exported for profile.ts, which parses the same shapes.
+export function finiteNumber(value: unknown): number | null {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null
   if (typeof value !== 'string' || value.trim() === '') return null
   const n = Number(value)

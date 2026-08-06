@@ -24,7 +24,6 @@ import {
   BACKGROUND_PREFETCH_KEY,
   BLOCKED_AFFILIATIONS_KEY,
   BLOCKED_COUNTRIES_KEY,
-  canonicalLocation,
   CANONICAL_LOCATIONS,
   COUNTRY_FLAGS,
   EXTENSION_ENABLED_KEY,
@@ -76,6 +75,10 @@ import {
   readSetting,
   SettingsImportError,
   settingsFileName,
+  withKeyword,
+  withLocation,
+  withoutKeyword,
+  withoutLocation,
 } from '../scripts/settings'
 import css from './options.module.css'
 import { applyTheme, startThemeSync } from './theme'
@@ -194,6 +197,11 @@ function Stack({ children }: { children: ComponentChildren }) {
   return <div class={css.stack}>{children}</div>
 }
 
+// A settings page's branches are its settings: one tab guard per tab, one
+// conditional per control that can be disabled or hidden. Getting under the
+// threshold means splitting this into five tab components, which is worth doing
+// on its own terms and is not a change a linter should be driving.
+// oxlint-disable-next-line complexity
 export function Options() {
   const [tab, setTab] = useState<OptionsTabId>('display')
   const [enabled, setEnabled] = useState(defaultSetting(EXTENSION_ENABLED_KEY))
@@ -347,16 +355,8 @@ export function Options() {
     chrome.storage.local.set({ [THEME_KEY]: next })
   }
 
-  function addBlocked(name: string) {
-    const country = canonicalLocation(name)
-    if (blocked.includes(country)) return
-    const next = [...blocked, country]
-    setBlocked(next)
-    chrome.storage.local.set({ [BLOCKED_COUNTRIES_KEY]: next })
-  }
-
-  function removeBlocked(country: string) {
-    const next = blocked.filter((c) => c !== country)
+  function editBlocked(next: string[]) {
+    if (next === blocked) return
     setBlocked(next)
     chrome.storage.local.set({ [BLOCKED_COUNTRIES_KEY]: next })
   }
@@ -381,16 +381,8 @@ export function Options() {
     chrome.storage.local.set({ [ACCOUNT_AGE_KEY]: next })
   }
 
-  function addKeyword(kw: string) {
-    const trimmed = kw.trim().toLowerCase()
-    if (!trimmed || keywords.includes(trimmed)) return
-    const next = [...keywords, trimmed].sort()
-    setKeywords(next)
-    chrome.storage.local.set({ [HIGHLIGHT_KEYWORDS_KEY]: next })
-  }
-
-  function removeKeyword(kw: string) {
-    const next = keywords.filter((k) => k !== kw.trim().toLowerCase())
+  function editKeywords(next: string[]) {
+    if (next === keywords) return
     setKeywords(next)
     chrome.storage.local.set({ [HIGHLIGHT_KEYWORDS_KEY]: next })
   }
@@ -749,7 +741,9 @@ export function Options() {
                       {kw}
                       <button
                         class={css.chipRemove}
-                        onClick={() => removeKeyword(kw)}
+                        onClick={() =>
+                          editKeywords(withoutKeyword(keywords, kw))
+                        }
                         title={`Remove ${kw}`}
                       >
                         ×
@@ -763,7 +757,7 @@ export function Options() {
                 id="keyword"
                 selected={keywords}
                 allOptions={KEYWORD_SUGGESTIONS}
-                onSelect={addKeyword}
+                onSelect={(kw) => editKeywords(withKeyword(keywords, kw))}
                 placeholder="Type a keyword or pick a suggestion…"
                 allowFreeInput
                 closeOnSelect={false}
@@ -799,7 +793,9 @@ export function Options() {
                         )}
                         <button
                           class={css.chipRemove}
-                          onClick={() => removeBlocked(country)}
+                          onClick={() =>
+                            editBlocked(withoutLocation(blocked, country))
+                          }
                           title={`Remove ${country}`}
                         >
                           ×
@@ -815,7 +811,7 @@ export function Options() {
                 selected={blocked}
                 allOptions={CANONICAL_LOCATIONS}
                 aliases={LOCATION_ALIASES}
-                onSelect={addBlocked}
+                onSelect={(name) => editBlocked(withLocation(blocked, name))}
                 placeholder="Search countries and regions — name, code or nickname…"
                 renderOption={(c, alias) => (
                   <>

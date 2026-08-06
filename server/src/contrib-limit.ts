@@ -88,19 +88,24 @@ export function admitContributions(
   }
 
   budgets.set(clientId, budget)
-
-  if (budgets.size > MAX_TRACKED_CLIENTS) {
-    // Drop the stalest entries. Map iterates in insertion order and every touch
-    // re-inserts, so the front of the map is the least recently active.
-    const excess = budgets.size - MAX_TRACKED_CLIENTS
-    let dropped = 0
-    for (const key of budgets.keys()) {
-      budgets.delete(key)
-      if (++dropped >= excess) break
-    }
-  }
+  evictStaleClients()
 
   return accepted
+}
+
+/**
+ * Drop the stalest budgets once the map outgrows MAX_TRACKED_CLIENTS. Map
+ * iterates in insertion order and every touch re-inserts, so the front of the
+ * map is the least recently active.
+ */
+function evictStaleClients(): void {
+  if (budgets.size <= MAX_TRACKED_CLIENTS) return
+  const excess = budgets.size - MAX_TRACKED_CLIENTS
+  let dropped = 0
+  for (const key of budgets.keys()) {
+    budgets.delete(key)
+    if (++dropped >= excess) break
+  }
 }
 
 /** Test seam — the map is process-global. */
