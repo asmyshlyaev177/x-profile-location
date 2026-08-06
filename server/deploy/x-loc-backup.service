@@ -1,0 +1,36 @@
+#  /etc/systemd/system/x-loc-backup.service
+#
+#  Oneshot body of x-loc-backup.timer — see "Backups" in README.md.
+#
+#  Runs as xloc, never root: the sqlite3 CLI creates -wal/-shm beside a WAL
+#  database when they are absent, and root-owned ones stop the main service
+#  writing its own database.
+
+[Unit]
+Description=x-loc-cache — verified SQLite backup with rotation
+Documentation=https://github.com/asmyshlyaev177/x-profile-location
+# No Requires= on the main service: VACUUM INTO snapshots a live WAL database
+# consistently, and a stopped one just as well.
+# Email on any failure — including the ones backup.sh cannot report about
+# itself, like an OOM kill. Inert until /etc/x-loc-alert.env exists.
+OnFailure=x-loc-alert@%n.service
+
+[Service]
+Type=oneshot
+User=xloc
+Group=xloc
+ExecStart=/opt/x-loc-cache/server/deploy/backup.sh
+# The server's env file, so XLOC_DB points both units at the same file.
+EnvironmentFile=/etc/x-loc-cache.env
+# Backups default under the server's StateDirectory; this guarantees it exists
+# and is writable through ProtectSystem=strict below.
+StateDirectory=x-loc-cache
+# Bulk I/O with no deadline — yield to the request path.
+Nice=10
+IOSchedulingClass=idle
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes

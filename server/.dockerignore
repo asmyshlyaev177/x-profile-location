@@ -13,10 +13,18 @@ data
 
 # Not used at runtime.
 src/*.test.ts
+deploy/*.test.ts
 vitest.config.ts
+vitest.deploy.config.ts
 tsconfig.json
 wrangler.toml
-deploy
 README.md
 Dockerfile
 compose.yaml
+
+# deploy/ is systemd wiring the container has no use for — except backup.sh and
+# alert.ts, deliberately the *same* files both deploy shapes run. The negations
+# must follow the exclusion; last match wins.
+deploy
+!deploy/backup.sh
+!deploy/alert.ts
