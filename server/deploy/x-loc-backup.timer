@@ -6,10 +6,14 @@
 Description=Daily x-loc-cache database backup
 
 [Timer]
-OnCalendar=daily
-# Jitter off the midnight crowd; the exact hour doesn't matter.
-RandomizedDelaySec=1h
-# A box that was down at 00:00 takes its backup on boot instead of skipping the day.
+# Server local time, not UTC — snapshot *filenames* are stamped UTC (date -u in
+# backup.sh), so on a non-UTC box the name will not match the hour below.
+OnCalendar=*-*-* 22:30:00
+# No RandomizedDelaySec: this is a time somebody chose, and jitter would only
+# smear it across the following hour. The usual reason for it — spreading many
+# machines off a round hour — does not apply to one box on a bespoke time.
+RandomizedDelaySec=0
+# A box that was down at 22:30 takes its backup on boot instead of skipping the day.
 Persistent=true
 
 [Install]
