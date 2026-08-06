@@ -76,9 +76,11 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
   const userBuffer = new Map<string, PrefetchUser>()
   let bufferUsers = true
 
-  function dispatchUsers(users: UserBio[], priority: PrefetchPriority) {
-    if (users.length === 0) return
-    // Deduplicate by userName (keep first occurrence)
+  /** One entry per account, keeping the first sighting's place in the response. */
+  function dedupeByUserName(
+    users: UserBio[],
+    priority: PrefetchPriority,
+  ): PrefetchUser[] {
     const seen = new Set<string>()
     const unique: PrefetchUser[] = []
     for (const u of users) {
@@ -87,21 +89,29 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
       seen.add(key)
       unique.push({ ...u, priority })
     }
-    if (unique.length === 0) return
-    if (bufferUsers) {
-      for (const u of unique) {
-        const key = u.userName.toLowerCase()
-        // Once 'high', always 'high': a later thread must not bury a feed
-        // account behind its replies.
-        const wasHigh = userBuffer.get(key)?.priority === 'high'
-        // set() keeps the existing insertion slot, so a repeat sighting doesn't
-        // lose where the account first appeared — the replay is page order.
-        userBuffer.set(key, wasHigh ? { ...u, priority: 'high' } : u)
-        if (userBuffer.size > USER_BUFFER_CAP) {
-          userBuffer.delete(userBuffer.keys().next().value as string)
-        }
+    return unique
+  }
+
+  function bufferForReplay(users: PrefetchUser[]) {
+    for (const u of users) {
+      const key = u.userName.toLowerCase()
+      // Once 'high', always 'high': a later thread must not bury a feed account
+      // behind its replies.
+      const wasHigh = userBuffer.get(key)?.priority === 'high'
+      // set() keeps the existing insertion slot, so a repeat sighting doesn't
+      // lose where the account first appeared — the replay is page order.
+      userBuffer.set(key, wasHigh ? { ...u, priority: 'high' } : u)
+      if (userBuffer.size > USER_BUFFER_CAP) {
+        userBuffer.delete(userBuffer.keys().next().value as string)
       }
     }
+  }
+
+  function dispatchUsers(users: UserBio[], priority: PrefetchPriority) {
+    if (users.length === 0) return
+    const unique = dedupeByUserName(users, priority)
+    if (unique.length === 0) return
+    if (bufferUsers) bufferForReplay(unique)
     window.dispatchEvent(
       new CustomEvent(EVENTS.USERS_DATA, { detail: { users: unique } }),
     )
@@ -196,6 +206,7 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
     const _headers: Record<string, string> = {}
 
     const originalOpen = xhr.open.bind(xhr)
+    // oxlint-disable-next-line max-params
     ;(xhr as any).open = function (
       method: string,
       url: string,

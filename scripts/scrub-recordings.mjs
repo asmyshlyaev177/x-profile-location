@@ -299,7 +299,7 @@ const isJsonish = (mime) =>
   /json|text\/plain/.test(mime || '') &&
   !/application\/javascript/.test(mime || '')
 
-const isImage = (mime) => /^image\//.test(mime || '')
+const isImage = (mime) => (mime || '').startsWith('image/')
 
 // Markup, not script: `application/javascript` must never reach the textual pass.
 const isMarkup = (mime) => /^text\/(html|xml)|xhtml/.test(mime || '')

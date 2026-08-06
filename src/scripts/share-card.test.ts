@@ -120,7 +120,7 @@ describe('buildShareLayout', () => {
       { ...input, displayName: '' },
       { measure: measureFont },
     )
-    expect(ops.filter((o) => o.kind === 'text')[0].text).toBe('@someone')
+    expect(ops.find((o) => o.kind === 'text')!.text).toBe('@someone')
   })
 
   it('grows to fit a longer post instead of clipping it', () => {

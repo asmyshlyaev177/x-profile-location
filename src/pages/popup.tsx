@@ -16,7 +16,6 @@ import { useEffect, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import {
   BLOCKED_COUNTRIES_KEY,
-  canonicalLocation,
   CANONICAL_LOCATIONS,
   COUNTRY_FLAGS,
   EXTENSION_ENABLED_KEY,
@@ -42,11 +41,22 @@ import {
   setRatePromptState,
   shouldAskForRating,
 } from '../scripts/usage'
-import { defaultSetting, readSetting } from '../scripts/settings'
+import {
+  defaultSetting,
+  readSetting,
+  withKeyword,
+  withLocation,
+  withoutKeyword,
+  withoutLocation,
+} from '../scripts/settings'
 import css from './popup.module.css'
 import { startThemeSync } from './theme'
 
 const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
+
+function write(key: string, value: unknown) {
+  chrome.storage.local.set({ [key]: value })
+}
 
 /** Crypto donations, via NOWPayments. */
 const DONATE_URL = 'https://nowpayments.io/donation/asmyshlyaev177'
@@ -239,37 +249,17 @@ export function Popup() {
       })
   }, [])
 
-  function write(key: string, value: unknown) {
-    chrome.storage.local.set({ [key]: value })
-  }
-
   // The same writes the options page makes, to the same keys — the content
   // script is already listening on them, so an edit here lands on the timeline
   // behind the popup without it being reopened.
-  function addBlocked(name: string) {
-    const country = canonicalLocation(name)
-    if (blocked.includes(country)) return
-    const next = [...blocked, country]
+  function editBlocked(next: string[]) {
+    if (next === blocked) return
     setBlocked(next)
     write(BLOCKED_COUNTRIES_KEY, next)
   }
 
-  function removeBlocked(country: string) {
-    const next = blocked.filter((c) => c !== country)
-    setBlocked(next)
-    write(BLOCKED_COUNTRIES_KEY, next)
-  }
-
-  function addKeyword(kw: string) {
-    const trimmed = kw.trim().toLowerCase()
-    if (!trimmed || keywords.includes(trimmed)) return
-    const next = [...keywords, trimmed].sort()
-    setKeywords(next)
-    write(HIGHLIGHT_KEYWORDS_KEY, next)
-  }
-
-  function removeKeyword(kw: string) {
-    const next = keywords.filter((k) => k !== kw)
+  function editKeywords(next: string[]) {
+    if (next === keywords) return
     setKeywords(next)
     write(HIGHLIGHT_KEYWORDS_KEY, next)
   }
@@ -376,7 +366,9 @@ export function Popup() {
                     )}
                     <button
                       class={css.chipRemove}
-                      onClick={() => removeBlocked(country)}
+                      onClick={() =>
+                        editBlocked(withoutLocation(blocked, country))
+                      }
                       title={`Remove ${country}`}
                     >
                       ×
@@ -392,7 +384,7 @@ export function Popup() {
             selected={blocked}
             allOptions={CANONICAL_LOCATIONS}
             aliases={LOCATION_ALIASES}
-            onSelect={addBlocked}
+            onSelect={(name) => editBlocked(withLocation(blocked, name))}
             placeholder="Country or region…"
             renderOption={(c, alias) => (
               <>
@@ -427,7 +419,7 @@ export function Popup() {
                   {kw}
                   <button
                     class={css.chipRemove}
-                    onClick={() => removeKeyword(kw)}
+                    onClick={() => editKeywords(withoutKeyword(keywords, kw))}
                     title={`Remove ${kw}`}
                   >
                     ×
@@ -441,7 +433,7 @@ export function Popup() {
             id="popup-keyword"
             selected={keywords}
             allOptions={[]}
-            onSelect={addKeyword}
+            onSelect={(kw) => editKeywords(withKeyword(keywords, kw))}
             placeholder="Add a keyword…"
             allowFreeInput
             closeOnSelect={false}

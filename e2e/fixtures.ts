@@ -79,6 +79,9 @@ type Fixtures = {
 }
 
 export const test = base.extend<Fixtures>({
+  // The empty pattern is Playwright's signature for a fixture that uses none of
+  // the built-in ones; it cannot be written any other way.
+  // oxlint-disable-next-line no-empty-pattern
   context: async ({}, use) => {
     const userDataDir = path.join(os.tmpdir(), `pw-ext-${Date.now()}`)
     const seeded = await readSeededProfile()

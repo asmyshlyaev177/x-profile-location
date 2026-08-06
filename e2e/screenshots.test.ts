@@ -164,8 +164,8 @@ async function mockPostContent(page: Page, text: string): Promise<void> {
     // is identified by shape: a sizeable block inside a post holding no text.
     for (const article of document.querySelectorAll('article')) {
       const blanks = [...article.querySelectorAll('div')].filter((d) => {
-        const box = d.getBoundingClientRect()
-        return !d.textContent?.trim() && box.height > 120 && box.width > 180
+        const rect = d.getBoundingClientRect()
+        return !d.textContent?.trim() && rect.height > 120 && rect.width > 180
       })
       for (const el of blanks) {
         if (el.isConnected) el.remove() // outermost first; the rest go with it
@@ -438,7 +438,7 @@ test('a blocked country, collapsed', async ({ context, extensionId }) => {
       .filter((a) => a.querySelector('[data-testid="tweetText"]'))
       .map((a) => a.getBoundingClientRect())
       .filter((r) => r.height > 40)
-    const above = rects.filter((r) => r.bottom <= bar.top + 4).at(-1)
+    const above = rects.findLast((r) => r.bottom <= bar.top + 4)
     const below = rects.find((r) => r.top >= bar.bottom - 4)
     const top = above ? above.top : Math.max(0, bar.top - 200)
     const bottom = below ? Math.min(below.bottom, top + 900) : bar.bottom

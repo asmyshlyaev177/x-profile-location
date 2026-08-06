@@ -203,7 +203,10 @@ export function Screenshots() {
         </div>
       </div>
 
-      {/* Lightbox */}
+      {/* Lightbox. The click handler is backdrop-to-dismiss; the keyboard path
+          is Escape, which a native <dialog> handles itself and reports through
+          onClose — there is no key event to add here. */}
+      {/* oxlint-disable-next-line click-events-have-key-events */}
       <dialog
         ref={dialogRef}
         class="lightbox"

@@ -20,6 +20,10 @@ import {
   SETTINGS_KEYS,
   settingsFileName,
   settingValue,
+  withKeyword,
+  withLocation,
+  withoutKeyword,
+  withoutLocation,
 } from './settings'
 
 const store: Record<string, unknown> = {}
@@ -184,6 +188,39 @@ describe('reading a setting', () => {
         [BLOCKED_COUNTRIES_KEY]: ['usa', 'USA', 7],
       }),
     ).toEqual(['United States'])
+  })
+})
+
+describe('the list edits both editors make', () => {
+  it('stores a keyword the way the content script matches on it', () => {
+    expect(withKeyword([], '  CRYPTO ')).toEqual(['crypto'])
+    expect(withKeyword(['nft'], 'crypto')).toEqual(['crypto', 'nft'])
+  })
+
+  it('folds a location onto the name X reports', () => {
+    expect(withLocation([], 'usa')).toEqual(['United States'])
+    expect(withLocation(['Japan'], 'Czech Republic')).toEqual([
+      'Japan',
+      'Czechia',
+    ])
+  })
+
+  // Identity is the caller's signal that there is nothing to write — a popup
+  // that stored on every keystroke would wake the content script for nothing.
+  it('hands back the same list when the edit changes nothing', () => {
+    const keywords = ['crypto']
+    expect(withKeyword(keywords, 'CRYPTO')).toBe(keywords)
+    expect(withKeyword(keywords, '   ')).toBe(keywords)
+
+    const blocked = ['United States']
+    expect(withLocation(blocked, 'America')).toBe(blocked)
+  })
+
+  it('removes by the stored form, whatever form was clicked', () => {
+    expect(withoutKeyword(['crypto', 'nft'], ' Crypto ')).toEqual(['nft'])
+    expect(withoutLocation(['United States', 'Japan'], 'USA')).toEqual([
+      'Japan',
+    ])
   })
 })
 

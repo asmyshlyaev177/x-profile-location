@@ -279,8 +279,15 @@ function stripAllInjections(): void {
   document.getElementById('x-loc-rate-toast')?.remove()
 }
 
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local') return
+type StorageChanges = Record<string, chrome.storage.StorageChange>
+
+/**
+ * The master switch, which is not like the others: turning it off strips the
+ * page and skips every remaining setting, turning it back on re-decorates what
+ * is already on screen rather than making the user scroll to trigger the
+ * observer. Returns whether the rest of the changes are worth applying.
+ */
+function applyMasterSwitch(changes: StorageChanges): boolean {
   if (changes[EXTENSION_ENABLED_KEY]) {
     extensionEnabled = settingValue(
       EXTENSION_ENABLED_KEY,
@@ -289,57 +296,22 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (!extensionEnabled) {
       stripAllInjections()
       prefetcher.stop()
-      return
+      return false
     }
-    // Back on: re-decorate what is already on screen rather than making the
-    // user scroll to trigger the observer.
     rehighlightAll()
     refreshFeedLocations()
     refreshHiddenTweets()
     syncPrefetcher()
   }
-  if (!extensionEnabled) return
-  if (changes[USAGE_STATS_KEY] || changes[RATE_PROMPT_KEY]) {
-    // The ask is decided once per page, at the first flag drawn. Re-arm it when
-    // the two values that decide it move, or a tab open across the day that
-    // earns the ask never asks — and X is precisely the page people leave open
-    // for days at a time. Costs nothing: the re-check is one storage read on
-    // the next flag, and it answers "no" for the rest of the page's life.
-    ratingAskConsidered = false
-  }
+  return extensionEnabled
+}
+
+/** Which posts a rule catches, and what happens to one it caught. */
+function applyFilterChanges(changes: StorageChanges): void {
   if (changes[BLOCKED_COUNTRIES_KEY]) {
     blockedCountries = toBlockedSet(changes[BLOCKED_COUNTRIES_KEY].newValue)
     // Editing the list can newly block (or unblock) locations already on screen.
     refreshHiddenTweets()
-  }
-  if (changes[HIGHLIGHT_KEYWORDS_KEY]) {
-    highlightKeywords = new Set(
-      settingValue(
-        HIGHLIGHT_KEYWORDS_KEY,
-        changes[HIGHLIGHT_KEYWORDS_KEY].newValue,
-      ),
-    )
-    setKeywords([...highlightKeywords])
-    updateKeywordEmojiStyle()
-    rehighlightAll()
-  }
-  if (changes[HIGHLIGHT_FLAGS_KEY]) {
-    const next = settingValue(
-      HIGHLIGHT_FLAGS_KEY,
-      changes[HIGHLIGHT_FLAGS_KEY].newValue,
-    )
-    highlightFlagsEnabled = next.enabled
-    highlightFlagsThreshold = next.threshold
-    highlightFlagsUniqueOnly = next.uniqueOnly
-    rehighlightAll()
-  }
-  if (changes[SHOW_LOCATION_IN_FEED_KEY]) {
-    showLocationInFeed = settingValue(
-      SHOW_LOCATION_IN_FEED_KEY,
-      changes[SHOW_LOCATION_IN_FEED_KEY].newValue,
-    )
-    refreshFeedLocations()
-    syncPrefetcher()
   }
   // Both keys arrive in one `changes` object, so the general one wins and the
   // legacy one is only a fallback — that is what makes a *removal* stick.
@@ -386,6 +358,47 @@ chrome.storage.onChanged.addListener((changes, area) => {
     )
     refreshHiddenTweets()
   }
+  if (changes[HIDE_BLOCKED_LOCATIONS_KEY]) {
+    hideMode = settingValue(
+      HIDE_BLOCKED_LOCATIONS_KEY,
+      changes[HIDE_BLOCKED_LOCATIONS_KEY].newValue,
+    )
+    refreshHiddenTweets()
+    syncPrefetcher()
+  }
+}
+
+/** What the extension draws, on a post or on a card. */
+function applyDisplayChanges(changes: StorageChanges): void {
+  if (changes[HIGHLIGHT_KEYWORDS_KEY]) {
+    highlightKeywords = new Set(
+      settingValue(
+        HIGHLIGHT_KEYWORDS_KEY,
+        changes[HIGHLIGHT_KEYWORDS_KEY].newValue,
+      ),
+    )
+    setKeywords([...highlightKeywords])
+    updateKeywordEmojiStyle()
+    rehighlightAll()
+  }
+  if (changes[HIGHLIGHT_FLAGS_KEY]) {
+    const next = settingValue(
+      HIGHLIGHT_FLAGS_KEY,
+      changes[HIGHLIGHT_FLAGS_KEY].newValue,
+    )
+    highlightFlagsEnabled = next.enabled
+    highlightFlagsThreshold = next.threshold
+    highlightFlagsUniqueOnly = next.uniqueOnly
+    rehighlightAll()
+  }
+  if (changes[SHOW_LOCATION_IN_FEED_KEY]) {
+    showLocationInFeed = settingValue(
+      SHOW_LOCATION_IN_FEED_KEY,
+      changes[SHOW_LOCATION_IN_FEED_KEY].newValue,
+    )
+    refreshFeedLocations()
+    syncPrefetcher()
+  }
   if (changes[SHOW_EXCEPTION_BUTTON_KEY]) {
     showExceptionButton = settingValue(
       SHOW_EXCEPTION_BUTTON_KEY,
@@ -404,6 +417,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
       changes[SHOW_SHARE_BUTTON_KEY].newValue,
     )
   }
+}
+
+/** Where a location may come from, and how hard the extension looks for one. */
+function applyLookupChanges(changes: StorageChanges): void {
   if (changes[SHARED_CACHE_KEY]) {
     setSharedCacheEnabled(
       settingValue(SHARED_CACHE_KEY, changes[SHARED_CACHE_KEY].newValue),
@@ -432,14 +449,22 @@ chrome.storage.onChanged.addListener((changes, area) => {
       settingValue(PREFETCH_PACING_KEY, changes[PREFETCH_PACING_KEY].newValue),
     )
   }
-  if (changes[HIDE_BLOCKED_LOCATIONS_KEY]) {
-    hideMode = settingValue(
-      HIDE_BLOCKED_LOCATIONS_KEY,
-      changes[HIDE_BLOCKED_LOCATIONS_KEY].newValue,
-    )
-    refreshHiddenTweets()
-    syncPrefetcher()
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return
+  if (!applyMasterSwitch(changes)) return
+  if (changes[USAGE_STATS_KEY] || changes[RATE_PROMPT_KEY]) {
+    // The ask is decided once per page, at the first flag drawn. Re-arm it when
+    // the two values that decide it move, or a tab open across the day that
+    // earns the ask never asks — and X is precisely the page people leave open
+    // for days at a time. Costs nothing: the re-check is one storage read on
+    // the next flag, and it answers "no" for the rest of the page's life.
+    ratingAskConsidered = false
   }
+  applyFilterChanges(changes)
+  applyDisplayChanges(changes)
+  applyLookupChanges(changes)
 })
 
 function getLocationDisplay(loc: string): {
@@ -1024,6 +1049,47 @@ async function considerRatingAsk(): Promise<void> {
 // ---------------------------------------------------------------------------
 // API fetch
 // ---------------------------------------------------------------------------
+
+/** The captured session headers, as AboutAccountQuery wants them. */
+function aboutAccountHeaders(
+  captured: Record<string, string>,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    authorization: captured.authorization,
+    'content-type': 'application/json',
+    'x-twitter-client-language': captured['x-twitter-client-language'] ?? 'en',
+    'x-twitter-active-user': captured['x-twitter-active-user'] ?? 'yes',
+  }
+  // page-script deliberately never forwards the csrf token, so in practice this
+  // always comes from the ct0 cookie; the header is only used when a caller (a
+  // test, say) supplied one directly.
+  const csrf = captured['x-csrf-token'] || getCookie('ct0')
+  if (csrf) headers['x-csrf-token'] = csrf
+  return headers
+}
+
+/**
+ * An AboutAccountQuery response as a cache record, or null when it carried no
+ * profile at all — which is not the same as a profile saying "no location".
+ */
+function toLocationData(
+  json: any,
+  storedBio: string | null,
+): LocationData | null {
+  const result = json?.data?.user_result_by_screen_name?.result ?? null
+  const profile = result?.about_profile ?? null
+  if (!profile) return null
+  return {
+    bio: storedBio,
+    location: profile.account_based_in ?? null,
+    locationAccurate: profile.location_accurate !== false,
+    source: profile.source ?? null,
+    // Same response, already paid for. This is the only place handle-change
+    // history is available at all — timeline nodes don't carry it.
+    facts: definedFacts(parseAccountFacts(result)),
+  }
+}
+
 export async function fetchLocationData(
   userName: string,
 ): Promise<LocationData | null> {
@@ -1056,25 +1122,10 @@ export async function fetchLocationData(
       const variables = JSON.stringify({ screenName: userName })
       const url = `${ABOUT_ACCOUNT_URL}?variables=${encodeURIComponent(variables)}`
 
-      const headers: Record<string, string> = {
-        authorization: capturedHeaders.authorization,
-        'content-type': 'application/json',
-        'x-twitter-client-language':
-          capturedHeaders['x-twitter-client-language'] ?? 'en',
-        'x-twitter-active-user':
-          capturedHeaders['x-twitter-active-user'] ?? 'yes',
-      }
-
-      // page-script deliberately never forwards the csrf token, so in practice
-      // this always comes from the ct0 cookie; the header is only used when a
-      // caller (a test, say) supplied one directly.
-      const csrf = capturedHeaders['x-csrf-token'] || getCookie('ct0')
-      if (csrf) headers['x-csrf-token'] = csrf
-
       noteRequestSent()
       const resp = await fetch(url, {
         method: 'GET',
-        headers,
+        headers: aboutAccountHeaders(capturedHeaders),
         credentials: 'include',
       })
       readRateHeaders(resp)
@@ -1092,21 +1143,9 @@ export async function fetchLocationData(
 
       checkedThisSession.add(userName.toLowerCase())
 
-      const json = await resp.json()
-      const result = json?.data?.user_result_by_screen_name?.result ?? null
-      const profile = result?.about_profile ?? null
+      const data = toLocationData(await resp.json(), stored?.bio ?? null)
+      if (!data) return stored ?? null
 
-      if (!profile) return stored ?? null
-
-      const data: LocationData = {
-        bio: stored?.bio ?? null,
-        location: profile.account_based_in ?? null,
-        locationAccurate: profile.location_accurate !== false,
-        source: profile.source ?? null,
-        // Same response, already paid for. This is the only place handle-change
-        // history is available at all — timeline nodes don't carry it.
-        facts: definedFacts(parseAccountFacts(result)),
-      }
       rememberBio(userName, null, null, data.facts)
       await mergeCached(userName, data)
       // Share this first-hand result so other users can skip the X call.
@@ -2114,13 +2153,20 @@ function buildExceptionButton(
  * on the lookup — and rebuilt rather than patched, so the label, tooltip and
  * handler always describe the same rule set.
  */
-function syncExceptionButton(
-  host: Element,
-  userName: string,
-  data: LocationData | null | undefined,
-  info: { bio: string | null; displayName: string | null },
-  place: (btn: HTMLElement) => void,
-): void {
+function syncExceptionButton({
+  host,
+  userName,
+  data,
+  info,
+  place,
+}: {
+  host: Element
+  userName: string
+  data: LocationData | null | undefined
+  info: { bio: string | null; displayName: string | null }
+  /** Where in `host` the button goes — every caller puts it somewhere else. */
+  place: (btn: HTMLElement) => void
+}): void {
   const existing = host.querySelector<HTMLElement>('.x-loc-exc-btn')
   const rules = showExceptionButton
     ? activeRulesFor(userName, data, info.displayName ?? '', info.bio)
@@ -2157,77 +2203,101 @@ interface Chip {
   tone?: 'plain' | 'warn' | 'block'
 }
 
-/** The chips an account's facts earn, in the order they are worth reading. */
+type ChipBuilder = (facts: Partial<AccountFacts>, now: number) => Chip | null
+
+// X strips the bio, the follow button and the counts out of a blocker's hover
+// card, so without this the card looks broken rather than answered.
+const blockedByChip: ChipBuilder = (facts) =>
+  facts.blockedBy
+    ? {
+        text: '🚫 Blocked you',
+        title: 'This account blocks your account',
+        tone: 'block',
+      }
+    : null
+
+const ageChip: ChipBuilder = (facts, now) => {
+  const age = formatAccountAge(facts.createdAt, now)
+  if (!age) return null
+  const days = accountAgeDays(facts.createdAt, now) ?? 0
+  const created = new Date(facts.createdAt!).toISOString().slice(0, 10)
+  return {
+    text: `🎂 ${age}`,
+    title: `Account created ${created}`,
+    // Under three months is the one age worth flagging visually: it is the
+    // single strongest tell for a bought or freshly farmed account, and it is
+    // also just what a new user looks like — hence a tint, not a warning.
+    tone: days < 90 ? 'warn' : 'plain',
+  }
+}
+
+const affiliationChip: ChipBuilder = (facts) => {
+  if (!facts.affiliation) return null
+  const { name, handle } = facts.affiliation
+  const shown = name || (handle ? `@${handle}` : null)
+  if (!shown) return null
+  return {
+    text: `🏢 ${shown}`,
+    title: handle
+      ? `X shows an affiliate badge linking to @${handle}`
+      : 'X shows an affiliate badge on this account',
+  }
+}
+
+// No chip for plain Premium: X already draws the blue check. These two earn
+// their place by being invisible otherwise — X renders identity and legacy
+// verification with the same badge as a paid one.
+const verificationChip: ChipBuilder = (facts) => {
+  if (facts.identityVerified) {
+    return { text: '🪪 ID verified', title: 'X verified an identity document' }
+  }
+  if (facts.verified) {
+    return { text: '✔ Verified', title: 'Legacy verification' }
+  }
+  return null
+}
+
+const handleChangesChip: ChipBuilder = (facts) => {
+  const changes = facts.handleChanges
+  if (typeof changes !== 'number' || changes <= 0) return null
+  return {
+    text: `✎ ${changes} handle${changes === 1 ? '' : 's'}`,
+    title: `This account has changed its @handle ${changes} time(s)`,
+    tone: changes >= 3 ? 'warn' : 'plain',
+  }
+}
+
+const protectedChip: ChipBuilder = (facts) =>
+  facts.isProtected
+    ? { text: '🔒 Protected', title: 'Posts are protected' }
+    : null
+
+/**
+ * Every chip an account can earn, in the order they are worth reading — the
+ * blocked-you one first, because it explains everything the card is missing.
+ *
+ * A table rather than a run of `if`s: each rule answers independently from the
+ * same facts, so the order is the only thing they share, and this is the one
+ * place it is stated.
+ */
+const CHIP_BUILDERS: ChipBuilder[] = [
+  blockedByChip,
+  ageChip,
+  affiliationChip,
+  verificationChip,
+  handleChangesChip,
+  protectedChip,
+]
+
+/** The chips an account's facts earn. */
 export function accountChips(
   facts: Partial<AccountFacts> | undefined,
   now: number = Date.now(),
 ): Chip[] {
   if (!facts) return []
-  const chips: Chip[] = []
-
-  // First, because it changes how the rest of the card reads: X strips the bio,
-  // the follow button and the counts out of a blocker's hover card, so without
-  // this the card looks broken rather than answered.
-  if (facts.blockedBy) {
-    chips.push({
-      text: '🚫 Blocked you',
-      title: 'This account blocks your account',
-      tone: 'block',
-    })
-  }
-
-  const age = formatAccountAge(facts.createdAt, now)
-  if (age) {
-    const days = accountAgeDays(facts.createdAt, now) ?? 0
-    const created = new Date(facts.createdAt!).toISOString().slice(0, 10)
-    chips.push({
-      text: `🎂 ${age}`,
-      title: `Account created ${created}`,
-      // Under three months is the one age worth flagging visually: it is the
-      // single strongest tell for a bought or freshly farmed account, and it is
-      // also just what a new user looks like — hence a tint, not a warning.
-      tone: days < 90 ? 'warn' : 'plain',
-    })
-  }
-
-  if (facts.affiliation) {
-    const { name, handle } = facts.affiliation
-    const shown = name || (handle ? `@${handle}` : null)
-    if (shown) {
-      chips.push({
-        text: `🏢 ${shown}`,
-        title: handle
-          ? `X shows an affiliate badge linking to @${handle}`
-          : 'X shows an affiliate badge on this account',
-      })
-    }
-  }
-
-  // No chip for plain Premium: X already draws the blue check. The two below
-  // earn their place by being invisible otherwise — X renders identity and legacy
-  // verification with the same badge as a paid one.
-  if (facts.identityVerified) {
-    chips.push({
-      text: '🪪 ID verified',
-      title: 'X verified an identity document',
-    })
-  } else if (facts.verified) {
-    chips.push({ text: '✔ Verified', title: 'Legacy verification' })
-  }
-
-  if (typeof facts.handleChanges === 'number' && facts.handleChanges > 0) {
-    chips.push({
-      text: `✎ ${facts.handleChanges} handle${facts.handleChanges === 1 ? '' : 's'}`,
-      title: `This account has changed its @handle ${facts.handleChanges} time(s)`,
-      tone: facts.handleChanges >= 3 ? 'warn' : 'plain',
-    })
-  }
-
-  if (facts.isProtected) {
-    chips.push({ text: '🔒 Protected', title: 'Posts are protected' })
-  }
-
-  return chips
+  return CHIP_BUILDERS.map((build) => build(facts, now)).filter(
+    (chip) => chip !== null,
+  )
 }
 
 function buildAccountCard(
@@ -2365,6 +2435,36 @@ function syncBioRow(
 // ---------------------------------------------------------------------------
 const HOVER_CARD_DONE_ATTR = 'data-x-loc-done'
 
+/** The account-facts card: after the flags, before the exception button. */
+function syncAccountCard(
+  wrap: HTMLElement,
+  card: Element,
+  infoRow: HTMLElement | null,
+  facts: Partial<AccountFacts>,
+): void {
+  if (!showAccountCard) return
+  const accountCard = buildAccountCard(facts)
+  if (!accountCard || card.querySelector('.x-loc-card')) return
+  if (infoRow) infoRow.after(accountCard)
+  else wrap.prepend(accountCard)
+}
+
+/**
+ * The "Copy card" button, in the flags row rather than under it: an action on
+ * exactly what that row shows, and a hover card is short on vertical space. No
+ * row means nothing to copy but a handle.
+ */
+function syncShareButton(
+  card: Element,
+  infoRow: HTMLElement | null,
+  userName: string,
+  displayName: string,
+): void {
+  if (!showShareButton || !infoRow) return
+  if (card.querySelector('.x-loc-share-btn')) return
+  infoRow.appendChild(buildShareButton(userName, displayName))
+}
+
 async function processCard(card: Element) {
   if (card.getAttribute(HOVER_CARD_DONE_ATTR)) return
 
@@ -2388,7 +2488,7 @@ async function processCard(card: Element) {
   const place = (btn: HTMLElement) => wrap.appendChild(btn)
   const known = await getBioInfo(userName)
   syncBioRow(wrap, card, known.bio)
-  syncExceptionButton(wrap, userName, null, known, place)
+  syncExceptionButton({ host: wrap, userName, data: null, info: known, place })
   void markKeywords()
 
   const data = await fetchLocationData(userName)
@@ -2415,25 +2515,13 @@ async function processCard(card: Element) {
   // whichever answer is right by this point is the one that stays.
   syncBioRow(wrap, card, info.bio)
 
-  if (showAccountCard) {
-    const accountCard = buildAccountCard(info.facts)
-    if (accountCard && !card.querySelector('.x-loc-card')) {
-      // After the flags, before the exception button.
-      infoRow ? infoRow.after(accountCard) : wrap.prepend(accountCard)
-    }
-  }
-
-  // In the flags row rather than under it: an action on exactly what that row
-  // shows, and a hover card is short on vertical space. No row means nothing to
-  // copy but a handle.
-  if (showShareButton && infoRow && !card.querySelector('.x-loc-share-btn')) {
-    infoRow.appendChild(buildShareButton(userName, info.displayName ?? ''))
-  }
+  syncAccountCard(wrap, card, infoRow, info.facts)
+  syncShareButton(card, infoRow, userName, info.displayName ?? '')
 
   // Now that the country, the badge and the age are known, the button may cover
   // more rules than the bio alone could offer — or become the first thing worth
   // offering at all.
-  syncExceptionButton(wrap, userName, data, info, place)
+  syncExceptionButton({ host: wrap, userName, data, info, place })
   // Again: React often fills the card in after the first pass, and the bio is
   // the part being marked.
   void markKeywords()
@@ -2489,11 +2577,17 @@ async function syncPrimaryExceptionButton(): Promise<void> {
   // Re-queried after the awaits, not before: two rule changes in quick
   // succession put two of these in flight, and a stale handle to "the existing
   // button" means the second run appends a duplicate instead of replacing it.
-  syncExceptionButton(userNameEl, userName, data, info, (btn) => {
-    const anchor =
-      userNameEl.querySelector('.x-loc-info') ?? userNameEl.children[1]
-    if (anchor) anchor.insertAdjacentElement('afterend', btn)
-    else userNameEl.appendChild(btn)
+  syncExceptionButton({
+    host: userNameEl,
+    userName,
+    data,
+    info,
+    place: (btn) => {
+      const anchor =
+        userNameEl.querySelector('.x-loc-info') ?? userNameEl.children[1]
+      if (anchor) anchor.insertAdjacentElement('afterend', btn)
+      else userNameEl.appendChild(btn)
+    },
   })
 }
 
@@ -2844,6 +2938,28 @@ function buildShareButton(userName: string, displayName: string): HTMLElement {
 // ---------------------------------------------------------------------------
 // MutationObserver
 // ---------------------------------------------------------------------------
+/**
+ * `fn` on the node itself when it matches, otherwise on every match inside it.
+ * A node added to the timeline is sometimes the article and sometimes the
+ * container it arrived in, and every caller here has to handle both.
+ */
+function eachMatching(
+  node: Element,
+  selector: string,
+  fn: (el: Element) => void,
+): void {
+  if (node.matches(selector)) fn(node)
+  else node.querySelectorAll<Element>(selector).forEach(fn)
+}
+
+/** Everything the extension does to a tweet the moment it appears. */
+function decorateTweet(article: Element): void {
+  tryHighlightArticle(article)
+  tryInjectFeedLocation(article)
+  tryHideArticle(article)
+  tryMarkArticle(article)
+}
+
 function startObserver() {
   const observer = new MutationObserver((mutations) => {
     // One gate for the whole script: with the master switch off nothing is
@@ -2864,31 +2980,11 @@ function startObserver() {
       .flatMap((m) => Array.from(m.addedNodes))
       .filter((n): n is Element => n instanceof Element)
 
-    // Highlight newly added tweets and inject cached feed locations
     for (const node of nodes) {
-      if (node.matches(SEL_TWEET)) {
-        tryHighlightArticle(node)
-        tryInjectFeedLocation(node)
-        tryHideArticle(node)
-        tryMarkArticle(node)
-      } else {
-        node.querySelectorAll<Element>(SEL_TWEET).forEach((t) => {
-          tryHighlightArticle(t)
-          tryInjectFeedLocation(t)
-          tryHideArticle(t)
-          tryMarkArticle(t)
-        })
-      }
-
+      eachMatching(node, SEL_TWEET, decorateTweet)
       // People rows are their own surface — Followers/Following/search have no
       // tweet articles at all, so they'd otherwise never be looked at.
-      if (node.matches(SEL_USER_CELL)) {
-        void tryMarkPeopleCell(node)
-      } else {
-        node
-          .querySelectorAll<Element>(SEL_USER_CELL)
-          .forEach((c) => void tryMarkPeopleCell(c))
-      }
+      eachMatching(node, SEL_USER_CELL, (cell) => void tryMarkPeopleCell(cell))
     }
 
     for (const node of nodes) {

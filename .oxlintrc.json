@@ -1,8 +1,108 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": null,
-  "categories": {},
-  "rules": {},
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "oxc",
+    "jsx-a11y",
+    "promise",
+    "react",
+    "vitest",
+    "node"
+  ],
+  "categories": {
+    "correctness": "error",
+    "perf": "warn",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "eslint/no-nested-ternary": "error",
+    "eslint/max-depth": [
+      "error",
+      {
+        "max": 3
+      }
+    ],
+    "eslint/max-nested-callbacks": [
+      "error",
+      {
+        "max": 4
+      }
+    ],
+    "eslint/complexity": [
+      "warn",
+      {
+        "max": 20
+      }
+    ],
+    "eslint/max-params": [
+      "warn",
+      {
+        "max": 4
+      }
+    ],
+    "eslint/max-lines-per-function": [
+      "warn",
+      {
+        "max": 150,
+        "skipComments": true,
+        "skipBlankLines": true
+      }
+    ],
+    "eslint/no-await-in-loop": "off",
+    "unicorn/no-array-sort": "off",
+    "react/rules-of-hooks": "error",
+    "react/react-in-jsx-scope": "off",
+    "react/style-prop-object": "off",
+    "promise/always-return": "off",
+    "promise/no-callback-in-promise": "off",
+    "vitest/hoisted-apis-on-top": "off",
+    "jest/no-commented-out-tests": "off",
+    "sonarjs/cognitive-complexity": ["error", 12]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.tsx"],
+      "rules": {
+        "eslint/max-lines-per-function": "off"
+      }
+    },
+    {
+      "files": [
+        "scripts/**",
+        "landing/scripts/**",
+        "e2e/scripts/**",
+        "server/**"
+      ],
+      "rules": {
+        "node/no-path-concat": "error",
+        "node/handle-callback-err": "error"
+      }
+    },
+    {
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "e2e/**",
+        "visual/**",
+        "scripts/**",
+        "landing/scripts/**",
+        "server/bench/**"
+      ],
+      "rules": {
+        "eslint/complexity": "off",
+        "eslint/max-params": "off",
+        "eslint/max-lines-per-function": "off",
+        "eslint/max-nested-callbacks": "off",
+        "unicorn/consistent-function-scoping": "off",
+        "unicorn/prefer-add-event-listener": "off",
+        "oxc/no-map-spread": "off",
+        "react/rules-of-hooks": "off",
+        "sonarjs/cognitive-complexity": "off"
+      }
+    }
+  ],
   "settings": {
     "jsx-a11y": {
       "polymorphicPropName": null,
@@ -36,5 +136,6 @@
     "builtin": true
   },
   "globals": {},
-  "ignorePatterns": []
+  "ignorePatterns": [],
+  "jsPlugins": ["eslint-plugin-sonarjs"]
 }

@@ -358,14 +358,15 @@ function CacheShowcase() {
   )
 }
 
-function CachePreview() {
-  const contributor = (flag: string) => (
-    <span class="bg-hair ring-hair-strong relative grid h-8 w-8 place-items-center rounded-full ring-1">
-      <span class="absolute -right-1 -bottom-1 text-[0.625rem] leading-none">
-        {flag}
-      </span>
+const contributor = (flag: string) => (
+  <span class="bg-hair ring-hair-strong relative grid h-8 w-8 place-items-center rounded-full ring-1">
+    <span class="absolute -right-1 -bottom-1 text-[0.625rem] leading-none">
+      {flag}
     </span>
-  )
+  </span>
+)
+
+function CachePreview() {
   return (
     <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
       <div class="flex flex-col gap-2">

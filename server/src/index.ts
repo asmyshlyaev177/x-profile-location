@@ -170,35 +170,90 @@ async function handleBatch(req: Request, env: Env): Promise<Response> {
   return json({ profiles: (results ?? []).map(toServed) })
 }
 
-async function handleContribute(req: Request, env: Env): Promise<Response> {
-  const body = (await req.json().catch(() => null)) as {
-    clientId?: unknown
-    entries?: unknown
-  } | null
-  const cid =
-    typeof body?.clientId === 'string' ? body.clientId.slice(0, 64) : null
-  const rawEntries = Array.isArray(body?.entries) ? body!.entries : []
-  if (!cid || rawEntries.length === 0) return json({ ok: true })
+interface ParsedVote {
+  u: string
+  loc: string | null
+  src: string | null
+  acc: number
+}
 
-  const now = Date.now()
-  const parsed: {
-    u: string
-    loc: string | null
-    src: string | null
-    acc: number
-  }[] = []
+/**
+ * The entries a request actually carried, cleaned. Everything here is untrusted
+ * input from an install we cannot identify, so anything unrecognisable is
+ * dropped rather than rejected — a poisoner learns nothing from the response.
+ */
+export function parseContribution(body: unknown): ParsedVote[] {
+  const rec = (body ?? {}) as { entries?: unknown }
+  const rawEntries = Array.isArray(rec.entries) ? rec.entries : []
+  const parsed: ParsedVote[] = []
   for (const e of rawEntries.slice(0, MAX_BATCH)) {
     if (!e || typeof e !== 'object') continue
-    const rec = e as Record<string, unknown>
-    const u = normUser(rec.u)
+    const entry = e as Record<string, unknown>
+    const u = normUser(entry.u)
     if (!u) continue
     parsed.push({
       u,
-      loc: sanitizeField(rec.loc),
-      src: sanitizeField(rec.src),
-      acc: rec.acc === false ? 0 : 1,
+      loc: sanitizeField(entry.loc),
+      src: sanitizeField(entry.src),
+      acc: entry.acc === false ? 0 : 1,
     })
   }
+  return parsed
+}
+
+/**
+ * The votes just read, grouped by username and trimmed to VOTE_CAP — newest
+ * kept, the rest handed back for deletion.
+ */
+export function groupAndCapVotes(rows: VoteRow[]): {
+  byUser: Map<string, VoteRow[]>
+  evictions: VoteRow[]
+} {
+  const byUser = new Map<string, VoteRow[]>()
+  for (const r of rows) {
+    const arr = byUser.get(r.username) ?? []
+    arr.push(r)
+    byUser.set(r.username, arr)
+  }
+  const evictions: VoteRow[] = []
+  for (const list of byUser.values()) {
+    if (list.length <= VOTE_CAP + VOTE_CAP_SLACK) continue
+    list.sort((a, b) => b.seen_at - a.seen_at) // newest first
+    evictions.push(...list.splice(VOTE_CAP)) // splice mutates the mapped array
+  }
+  return { byUser, evictions }
+}
+
+/** Whether the profile row already says exactly what the new consensus says. */
+export function alreadyStored(
+  cur: ProfileRow | undefined,
+  c: {
+    location: string | null
+    source: string | null
+    locationAccurate: boolean
+    confidence: number
+  },
+): boolean {
+  return (
+    !!cur &&
+    cur.location === c.location &&
+    cur.source === c.source &&
+    (cur.location_accurate !== 0) === c.locationAccurate &&
+    cur.location_confidence === c.confidence
+  )
+}
+
+async function handleContribute(req: Request, env: Env): Promise<Response> {
+  const body = (await req.json().catch(() => null)) as {
+    clientId?: unknown
+  } | null
+  const cid =
+    typeof body?.clientId === 'string' ? body.clientId.slice(0, 64) : null
+  if (!cid) return json({ ok: true })
+
+  const now = Date.now()
+  const parsed = parseContribution(body)
+  if (parsed.length === 0) return json({ ok: true })
 
   // Charge the distinct handles to this client's budget and keep only what it
   // can still afford (see contrib-limit.ts). Anything over budget is dropped
@@ -244,23 +299,11 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
     .bind(...affectedList)
     .all<VoteRow>()
 
-  const byUser = new Map<string, VoteRow[]>()
-  for (const r of results ?? []) {
-    const arr = byUser.get(r.username) ?? []
-    arr.push(r)
-    byUser.set(r.username, arr)
-  }
-
   // 2a. Enforce the per-username cap (see VOTE_CAP). Rows to drop are computed
   //     from the votes we just read — no extra SELECT — and consensus below is
   //     then taken over what *survives*, so the served profile always reflects
   //     the rows that remain in the table.
-  const evictions: VoteRow[] = []
-  for (const list of byUser.values()) {
-    if (list.length <= VOTE_CAP + VOTE_CAP_SLACK) continue
-    list.sort((a, b) => b.seen_at - a.seen_at) // newest first
-    evictions.push(...list.splice(VOTE_CAP)) // splice mutates the mapped array
-  }
+  const { byUser, evictions } = groupAndCapVotes(results ?? [])
 
   // 3. Current consensus for the affected users, so we can skip rewriting a
   //    profile row whose value hasn't actually changed (e.g. a client
@@ -277,28 +320,37 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
   const current = new Map<string, ProfileRow>()
   for (const r of curRows ?? []) current.set(r.username, r)
 
-  const writes: DbBoundStatement[] = []
-  for (const ev of evictions) {
-    writes.push(
+  const writes = [
+    ...evictions.map((ev) =>
       env.DB.prepare(
         'DELETE FROM location_votes WHERE username = ? AND client_id = ?',
       ).bind(ev.username, ev.client_id),
-    )
-  }
+    ),
+    ...consensusWrites(env, { now, affected: affectedList, byUser, current }),
+  ]
+  if (writes.length > 0) await env.DB.batch(writes)
 
-  for (const u of affectedList) {
-    const c = pickConsensus((byUser.get(u) ?? []).map(toLocationVote))
-    if (!c) continue
-    const cur = current.get(u)
-    if (
-      cur &&
-      cur.location === c.location &&
-      cur.source === c.source &&
-      (cur.location_accurate !== 0) === c.locationAccurate &&
-      cur.location_confidence === c.confidence
-    ) {
-      continue // unchanged consensus — no write needed
-    }
+  return json({ ok: true })
+}
+
+/**
+ * One profile upsert per affected username whose consensus actually moved. A
+ * username whose votes agree on nothing, or whose stored row already says what
+ * they agree on, produces no statement at all — see `alreadyStored`.
+ */
+export function consensusWrites(
+  env: Env,
+  ctx: {
+    now: number
+    affected: string[]
+    byUser: Map<string, VoteRow[]>
+    current: Map<string, ProfileRow>
+  },
+): DbBoundStatement[] {
+  const writes: DbBoundStatement[] = []
+  for (const u of ctx.affected) {
+    const c = pickConsensus((ctx.byUser.get(u) ?? []).map(toLocationVote))
+    if (!c || alreadyStored(ctx.current.get(u), c)) continue
     writes.push(
       env.DB.prepare(
         `INSERT INTO profiles
@@ -316,13 +368,11 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
         c.source,
         c.locationAccurate ? 1 : 0,
         c.confidence,
-        now,
+        ctx.now,
       ),
     )
   }
-  if (writes.length > 0) await env.DB.batch(writes)
-
-  return json({ ok: true })
+  return writes
 }
 
 // ---------------------------------------------------------------------------

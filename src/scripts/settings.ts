@@ -142,6 +142,39 @@ export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
   return settingValue(key, undefined)
 }
 
+// ---------------------------------------------------------------------------
+// The two list edits both editors make
+// ---------------------------------------------------------------------------
+// The popup and the options page edit the same two keys, and had a copy of each
+// of these four functions. They must agree on more than the key: a keyword is
+// stored trimmed, lowercased and sorted, a location canonicalised — get one of
+// those wrong on one side and the same edit means two different things.
+//
+// Pure, and returning the list they were given when nothing changes: a caller
+// comparing by identity knows whether it has anything to write.
+
+export function withKeyword(keywords: string[], keyword: string): string[] {
+  const kw = keyword.trim().toLowerCase()
+  if (!kw || keywords.includes(kw)) return keywords
+  return [...keywords, kw].sort()
+}
+
+export function withoutKeyword(keywords: string[], keyword: string): string[] {
+  const kw = keyword.trim().toLowerCase()
+  return keywords.filter((k) => k !== kw)
+}
+
+export function withLocation(blocked: string[], name: string): string[] {
+  const location = canonicalLocation(name)
+  if (!location || blocked.includes(location)) return blocked
+  return [...blocked, location]
+}
+
+export function withoutLocation(blocked: string[], name: string): string[] {
+  const location = canonicalLocation(name)
+  return blocked.filter((l) => l !== location)
+}
+
 /** Bumped only if a future shape needs migrating on the way in. */
 export const SETTINGS_FORMAT = 1
 

@@ -95,6 +95,8 @@ const DEFAULTS: Required<PrefetcherOptions> = {
   maxQueue: 300,
 }
 
+const names = (queue: PrefetchCandidate[]) => queue.map((c) => c.userName)
+
 export class BackgroundPrefetcher {
   private readonly deps: PrefetcherDeps
   private readonly opts: Required<PrefetcherOptions>
@@ -323,7 +325,6 @@ export class BackgroundPrefetcher {
 
   /** Test-only introspection. `order` is the order lookups will actually go out. */
   __state() {
-    const names = (queue: PrefetchCandidate[]) => queue.map((c) => c.userName)
     return {
       queueLength: this.high.length + this.low.length,
       order: [...names(this.high), ...names(this.low)],

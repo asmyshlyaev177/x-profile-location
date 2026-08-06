@@ -3718,8 +3718,7 @@ describe('the rating ask on the page', () => {
     const last = vi
       .mocked(chromeGlobal.storage.local.set)
       .mock.calls.map((c: unknown[]) => c[0] as Record<string, unknown>)
-      .filter((patch: Record<string, unknown>) => RATE_PROMPT_KEY in patch)
-      .pop()
+      .findLast((patch: Record<string, unknown>) => RATE_PROMPT_KEY in patch)
     expect(last![RATE_PROMPT_KEY]).toMatchObject({ status: 'done' })
   })
 
