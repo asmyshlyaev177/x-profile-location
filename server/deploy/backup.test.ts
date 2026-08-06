@@ -121,10 +121,15 @@ function seed(file: string, profiles: number): void {
   db.close()
 }
 
+/**
+ * Kept archives, by the exact name backup.sh gives them. Matching a bare
+ * `.db.gz` would also sweep in `corrupt-evidence.db.gz`, which is not an
+ * archive and is the one file whose presence means backups are failing.
+ */
 function archives(): string[] {
   if (!existsSync(backupDir)) return []
   return readdirSync(backupDir)
-    .filter((f) => f.endsWith('.db.gz'))
+    .filter((f) => /^x-loc-cache-\d{8}-\d{6}\.db\.gz$/.test(f))
     .sort()
 }
 
@@ -344,10 +349,59 @@ exec ${real} "$@"`,
       )
       expect(r.status).toBe(1)
       expect(r.stderr).toContain('7 in snapshot vs 300 in the source')
-      expect(readdirSync(backupDir).some((f) => f.endsWith('.corrupt'))).toBe(
-        true,
-      )
+      expect(existsSync(join(backupDir, 'corrupt-evidence.db.gz'))).toBe(true)
       expect(archives()).toEqual(['x-loc-cache-20200101-000000.db.gz'])
+    })
+
+    it('keeps ONE evidence file however many nights in a row it fails', () => {
+      // Whatever gets here is usually permanent — an index out of sync with
+      // its table survives VACUUM INTO verbatim — so a stamped file per run
+      // would add a database-sized file every night, on the disk the live
+      // database writes to, until it fills. A full disk stops the server
+      // accepting contributions and leaves no room to restore into.
+      seed(dbPath, 300)
+      const real = spawnSync('sh', ['-c', 'command -v sqlite3'], {
+        encoding: 'utf8',
+      }).stdout.trim()
+      const short = stubs({
+        sqlite3: `
+case "$*" in
+  *"COUNT(*) FROM profiles; SELECT COUNT(*) FROM location_votes"*) echo 7; echo 9; exit 0 ;;
+esac
+exec ${real} "$@"`,
+      })
+
+      for (let night = 0; night < 4; night++) {
+        expect(run(BACKUP, [], short).status).toBe(1)
+      }
+
+      expect(
+        readdirSync(backupDir).filter((f) => f.includes('corrupt')),
+      ).toEqual(['corrupt-evidence.db.gz'])
+      // Compressed, not a raw database-sized copy.
+      const raw = readFileSync(join(backupDir, 'corrupt-evidence.db.gz'))
+      expect([raw[0], raw[1]]).toEqual([0x1f, 0x8b]) // gzip magic
+      expect(readdirSync(backupDir).filter((f) => f.endsWith('.part'))).toEqual(
+        [],
+      )
+    })
+
+    it('never mistakes the evidence for a restorable archive', () => {
+      seed(dbPath, 50)
+      mkdirSync(backupDir, { recursive: true })
+      writeFileSync(join(backupDir, 'corrupt-evidence.db.gz'), 'evidence')
+
+      // A successful run must neither count it nor prune it...
+      const r = run(BACKUP, [], { XLOC_BACKUP_KEEP: '1' })
+      expect(r.status).toBe(0)
+      expect(r.stdout).toContain('1 kept') // the archive, not the evidence
+      expect(existsSync(join(backupDir, 'corrupt-evidence.db.gz'))).toBe(true)
+      expect(archives()).toHaveLength(1)
+
+      // ...and restore.sh must not offer it as something to restore from.
+      const usage = run(RESTORE, [], stubs({ id: 'echo 0' }))
+      expect(usage.stderr).toContain('available:')
+      expect(usage.stderr).not.toContain('corrupt-evidence')
     })
 
     it('reports a corrupt live database after storing the snapshot, and prunes nothing', () => {
