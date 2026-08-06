@@ -563,7 +563,7 @@ sudo cp deploy/x-loc-backup.service deploy/x-loc-backup.timer /etc/systemd/syste
 sudo systemctl daemon-reload
 sudo systemctl enable --now x-loc-backup.timer
 
-# Take the first one now rather than finding out at 22:30 whether it works.
+# Take the first one now rather than finding out at 23:30 whether it works.
 sudo systemctl start x-loc-backup.service
 systemctl status x-loc-backup.service --no-pager   # → Result: success
 ls -lh /var/lib/x-loc-cache/backups/               # → one .db.gz
