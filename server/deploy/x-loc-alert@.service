@@ -1,0 +1,46 @@
+#  /etc/systemd/system/x-loc-alert@.service
+#
+#  Emails a failure report. Not enabled or started directly — it is pulled in by
+#  `OnFailure=x-loc-alert@%n.service` on the units that matter, which passes the
+#  failing unit's name as the instance (%i).
+#
+#  This shape rather than emailing from inside backup.sh: systemd decides what
+#  "failed" means, so this also catches what a script cannot report about its
+#  own death — an OOM kill, a missing interpreter, a timeout, a bad ExecStart.
+#
+#  See "Alerting" in README.md.
+
+[Unit]
+Description=Email alert for %i
+Documentation=https://github.com/asmyshlyaev177/x-profile-location
+After=network-online.target
+Wants=network-online.target
+# No OnFailure= here: a failing alerter must not try to alert about itself.
+
+[Service]
+Type=oneshot
+User=xloc
+Group=xloc
+# Reading the journal of another unit needs this group; it is what lets the
+# alert run unprivileged instead of as root.
+SupplementaryGroups=systemd-journal
+WorkingDirectory=/opt/x-loc-cache/server
+# Credentials. Keep it root:xloc 0640 — it holds an SMTP password.
+EnvironmentFile=/etc/x-loc-alert.env
+# XLOC_BACKUP_DIR for --report; harmless for the failure path.
+EnvironmentFile=-/etc/x-loc-cache.env
+ExecStart=/usr/bin/node --experimental-strip-types /opt/x-loc-cache/server/deploy/alert.ts %i
+
+# An unreachable mail server must not leave the unit hanging around.
+TimeoutStartSec=90
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes

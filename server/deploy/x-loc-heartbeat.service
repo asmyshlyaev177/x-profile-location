@@ -1,0 +1,39 @@
+#  /etc/systemd/system/x-loc-heartbeat.service
+#
+#  The weekly "backups are fine" email. Optional, and the reason to want it is
+#  the gap a failure alert cannot cover: OnFailure= only fires if something ran,
+#  so a backup timer that was masked, disabled, or never enabled fails silently
+#  and forever. This turns that silence into a missing email.
+#
+#  Enable x-loc-heartbeat.timer, not this.
+
+[Unit]
+Description=x-loc-cache — weekly backup heartbeat email
+Documentation=https://github.com/asmyshlyaev177/x-profile-location
+After=network-online.target
+Wants=network-online.target
+# If the heartbeat itself dies, say so through the same channel. This belongs
+# in [Unit] — systemd ignores it in [Service] without complaining.
+OnFailure=x-loc-alert@%n.service
+
+[Service]
+Type=oneshot
+User=xloc
+Group=xloc
+WorkingDirectory=/opt/x-loc-cache/server
+EnvironmentFile=/etc/x-loc-alert.env
+EnvironmentFile=-/etc/x-loc-cache.env
+# Needs to read the backups directory, nothing else.
+StateDirectory=x-loc-cache
+ExecStart=/usr/bin/node --experimental-strip-types /opt/x-loc-cache/server/deploy/alert.ts --report
+
+TimeoutStartSec=90
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes

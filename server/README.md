@@ -128,31 +128,24 @@ so relocations propagate without every client hammering the API.
 
 ## Pointing the extension at a backend
 
-Which backend a build talks to is a build-time variable, never a source edit:
+Which backend a build talks to is a build-time variable
+([`../src/scripts/constants.ts`](../src/scripts/constants.ts)), never a source
+edit:
 
 ```bash
 pnpm build         # self-hosted Node+SQLite  (the default)
 pnpm build:worker  # the Cloudflare Worker
 pnpm build:nocache # shared cache compiled out entirely
-VITE_CACHE_API_BASE=http://127.0.0.1:8787 pnpm build   # a local server
+VITE_CACHE_API_BASE=https://xloc.example.com pnpm build   # any other server
 ```
 
 The default is the self-hosted deployment; D1's free plan caps out around 150
 users on rows-written/day, which is the ceiling that motivated the move. The
 Worker path stays supported and one command away.
 
-`CACHE_API_BASE` is a **build-time** value, not a source edit
-([`../src/scripts/constants.ts`](../src/scripts/constants.ts)):
-
-```bash
-pnpm build                                              # → the Cloudflare Worker (default)
-VITE_CACHE_API_BASE=https://xloc.example.com pnpm build # → a self-hosted box
-VITE_CACHE_API_BASE= pnpm build                         # → shared cache compiled out entirely
-```
-
-The empty case is reachable on purpose: the fallback only applies to an _unset_
-variable, so an explicitly empty value ships a build that never contacts any
-server and hides the options-page toggle.
+The nocache case is reachable on purpose: the fallback only applies to an
+_unset_ `VITE_CACHE_API_BASE`, so an explicitly empty value ships a build that
+never contacts any server and hides the options-page toggle.
 
 ---
 
@@ -546,15 +539,7 @@ sudo journalctl -u x-loc-cache -f
 sudo -u xloc sqlite3 /var/lib/x-loc-cache/x-loc-cache.db 'SELECT COUNT(*) FROM profiles'
 ```
 
-A backup is one file copy — but take it with SQLite's own command, not `cp`,
-which will read a torn page mid-write:
-
-```bash
-sudo -u xloc sqlite3 /var/lib/x-loc-cache/x-loc-cache.db ".backup '/var/lib/x-loc-cache/backup.db'"
-```
-
-Losing the database is recoverable, not fatal: clients re-contribute what they
-hold in IndexedDB as they browse, so the cache refills on its own.
+Backups are covered in [their own section](#backups) below.
 
 To update:
 
@@ -566,6 +551,201 @@ sudo systemctl restart x-loc-cache
 Shutdown is graceful — the listener closes, WAL is checkpointed, then the process
 exits. Re-run `npm install` after a pull only if `server/package.json` changed,
 and re-run it always after a Node **major** upgrade (see the ABI note in step 4).
+
+### Backups
+
+Nightly, verified, rotated. Three files in [`deploy/`](deploy/) wire it up:
+
+```bash
+cd /opt/x-loc-cache/server
+sudo apt install -y sqlite3    # already there if you did step 9
+sudo cp deploy/x-loc-backup.service deploy/x-loc-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now x-loc-backup.timer
+
+# Take the first one now rather than finding out at 00:00 whether it works.
+sudo systemctl start x-loc-backup.service
+systemctl status x-loc-backup.service --no-pager   # → Result: success
+ls -lh /var/lib/x-loc-cache/backups/               # → one .db.gz
+systemctl list-timers x-loc-backup --no-pager      # → a NEXT / LEFT time
+```
+
+Only the two unit files are copied. `backup.sh` runs in place from the checkout
+(`ExecStart=/opt/x-loc-cache/server/deploy/backup.sh`), so `git pull` updates it
+along with the rest of the server and there is nothing to re-copy. Beyond
+`sqlite3` it needs `flock` and `gzip`, both already on any Ubuntu; it checks for
+`flock` and refuses to run unserialised rather than skipping the lock.
+
+Each run ([`deploy/backup.sh`](deploy/backup.sh)) takes a snapshot with
+`VACUUM INTO`, verifies it, gzips it, checks the live database, and only then
+prunes to the newest `XLOC_BACKUP_KEEP` (default 7). Nothing here needs the
+server stopped, and none of it runs on the server's event loop.
+
+**Why `VACUUM INTO` and not `.backup`.** Both are consistent against a live WAL
+database where a plain `cp` reads torn pages mid-write, but SQLite's backup API
+**restarts from scratch whenever another connection writes**, so under a steady
+stream of contributions it never converges. Measured here on a 236 MB database,
+holding its size constant and varying only the concurrent write rate:
+
+| Concurrent writes | `.backup` | `VACUUM INTO` |
+| ----------------- | --------- | ------------- |
+| none              | 0.21 s    | 0.54 s        |
+| 2 writes/s        | 0.25 s    | —             |
+| 10 writes/s       | **88 s**  | 0.57 s        |
+| 200 writes/s      | **88 s**  | 0.56 s        |
+| saturated         | **88 s**  | 0.59 s        |
+
+Those 88 s are not slowness — they are exactly how long the writer had left to
+live. `.backup` finished only once writes stopped, so on a server busy enough to
+matter it would produce no backup at all. `VACUUM INTO` holds a single read
+snapshot and is flat from idle to saturation. It also rebuilds rather than
+copying pages, so the file lands compacted and in rollback-journal mode, with no
+WAL flag to carry into a restore. The one cost is that its read snapshot defers
+WAL checkpointing while it runs — sub-second, so the WAL grows by whatever
+arrives in that window.
+
+**Three checks, because each misses what the others catch.** `integrity_check`
+calls an _empty_ database "ok"; a `COUNT(*)` probe proves the tables actually
+arrived, since a failed `VACUUM INTO` leaves a valid file with no tables in it;
+and comparing that count against the source's own from before the run catches a
+short copy (profiles are only ever inserted or updated — retention deletes
+votes, never profiles — so a snapshot can never legitimately hold fewer). A
+failure keeps the evidence as `*.corrupt`, prunes nothing, and fails the unit.
+
+**The live database is checked separately**, after the snapshot is safely
+stored. `VACUUM INTO` rebuilds, so a clean snapshot no longer vouches for the
+file it came from — an index inconsistency would be quietly rebuilt away in the
+copy and left in place on the original. That check is the corruption monitor:
+`systemctl --failed` (or `journalctl -u x-loc-backup`) is where a silently
+corrupt database first becomes visible, a day after it happens rather than
+months. When it fires, the run keeps that night's snapshot and prunes nothing.
+
+The unit runs as `xloc`, never root — and so must anything else that touches
+the database. The sqlite3 CLI creates `-wal`/`-shm` beside a WAL database when
+they are absent, and root-owned ones stop the service writing its own database.
+`backup.sh` refuses to run as root rather than trusting that. Runs are
+serialised with `flock`, so a hand-run alongside the timer cannot collide.
+
+Two things the rotation does not cover, both cheap:
+
+- Backups land on the same disk as the database, so they insure against
+  corruption and operator error, not against losing the box. They are plain
+  files — `rsync`/`rclone`/`scp` the directory somewhere else if the deployment
+  has grown worth that. (Pulling copies off the box needs nothing; pointing
+  `XLOC_BACKUP_DIR` itself at another disk needs a `ReadWritePaths=` drop-in on
+  the backup unit, whose sandbox writes only under `/var/lib/x-loc-cache` — see
+  the note in [`deploy/x-loc-cache.env.example`](deploy/x-loc-cache.env.example).)
+- `/etc/x-loc-cache.env` is the only other state on the machine; copy it once.
+
+### Restore
+
+```bash
+ls -lh /var/lib/x-loc-cache/backups/
+sudo /opt/x-loc-cache/server/deploy/restore.sh \
+  /var/lib/x-loc-cache/backups/x-loc-cache-<newest>.db.gz
+```
+
+[`deploy/restore.sh`](deploy/restore.sh) verifies the archive and its
+`integrity_check` **before** stopping the service — a bad backup costs no
+downtime — then swaps the database in atomically, restarts, and confirms
+`/healthz` plus the row counts. Whatever was in place is kept beside it as
+`*.replaced-<stamp>`; delete those once the restore has proven out.
+
+Corruption announces itself in one of two places: the nightly backup unit
+failing its integrity check, or `SQLITE_CORRUPT` in
+`journalctl -u x-loc-cache`. Either way, don't repair in place — restore the
+newest good backup. The loss is bounded at a day of contributions, and losing
+even the whole database is recoverable, not fatal: clients re-contribute what
+they hold in IndexedDB as they browse, so the cache refills on its own.
+
+Set up [Alerting](#alerting) and neither of those has to be noticed by hand.
+
+### Alerting
+
+Email on failure, and a weekly heartbeat. Optional: with no config file the
+alert unit logs "nothing to send" and exits 0, so nothing here fails a
+deployment that does not want email.
+
+```bash
+cd /opt/x-loc-cache/server
+sudo cp deploy/x-loc-alert@.service /etc/systemd/system/
+
+# Holds an SMTP password, so unlike x-loc-cache.env this one is not
+# world-readable — root writes it, the xloc service user reads it.
+sudo install -m 0640 -o root -g xloc deploy/x-loc-alert.env.example /etc/x-loc-alert.env
+sudo editor /etc/x-loc-alert.env
+sudo systemctl daemon-reload
+
+# Prove it before trusting it. This sends a real email.
+sudo systemctl start x-loc-heartbeat.service   # after the heartbeat step below
+```
+
+`OnFailure=x-loc-alert@%n.service` is already on `x-loc-backup.service` and
+`x-loc-cache.service`, so installing the template above is all the wiring
+needed. Doing it through systemd rather than emailing from inside `backup.sh`
+is what makes it cover the failures a script cannot report about its own death
+— an OOM kill, a missing interpreter, a timeout, a bad `ExecStart`. The main
+service only reaches a failed state once systemd gives up restarting it, so an
+email from that one means a crash loop, not a blip.
+
+The subject distinguishes the two things worth knowing apart:
+
+```text
+[x-pat-cache] x-loc-backup.service failed on vps-1     ← the run broke
+[x-pat-cache] DATABASE CORRUPTION on vps-1             ← the data is suspect
+```
+
+The second is chosen by matching what `backup.sh` prints when verification
+fails, and a corruption email leads with the restore command and the fact that
+nothing was pruned. A test asserts those strings still exist in `backup.sh`, so
+rewording a message there cannot silently downgrade the alert.
+
+Credentials use the ordinary nodemailer variable names
+([`deploy/x-loc-alert.env.example`](deploy/x-loc-alert.env.example)) — copy
+them from an existing notifier if you have one. Gmail needs an
+[App Password](https://myaccount.google.com/apppasswords), not the account
+password. `SMTP_HOST` alone turns alerting on; setting it while leaving
+`SMTP_USER` / `SMTP_PASS` / `NOTIFY_TO` empty fails loudly on purpose, because
+half-configured alerting looks like it is working.
+
+#### The weekly heartbeat
+
+`OnFailure=` can only fire if something ran. A backup timer that was never
+enabled, or got masked, fails **silently and forever** — no email, no backups.
+The heartbeat closes that: one message a week, and its absence is the signal.
+
+```bash
+sudo cp deploy/x-loc-heartbeat.service deploy/x-loc-heartbeat.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now x-loc-heartbeat.timer
+sudo systemctl start x-loc-heartbeat.service    # send one now
+```
+
+It reads the backups directory and nothing else — no database access, so it
+cannot itself be blocked by whatever is wrong with the database:
+
+```text
+Subject: [x-pat-cache] backups healthy on vps-1
+Archives kept:   7
+Newest:          x-loc-cache-20260806-030000.db.gz
+Newest age:      6.2h
+Total on disk:   271.4 MB
+```
+
+Past 48 hours without a fresh archive the subject becomes
+`backups are STALE`, which catches a timer that stopped without ever failing.
+
+The alerter deliberately touches no SQLite. `nodemailer` is pure JavaScript
+with no native module, so it still sends when `better-sqlite3` is the thing
+that broke — a Node major upgrade without `npm install` takes the server down,
+and that is exactly the outage the email has to survive.
+
+To rehearse a restore without touching the service:
+
+```bash
+gunzip -c /var/lib/x-loc-cache/backups/x-loc-cache-<stamp>.db.gz > /tmp/rehearse.db
+sqlite3 /tmp/rehearse.db 'PRAGMA integrity_check; SELECT COUNT(*) FROM profiles;'
+```
 
 ### Performance at 10k users
 
@@ -772,23 +952,101 @@ docker run --rm -i -v x-loc-data:/data alpine \
 docker compose start
 ```
 
-Backing it up, which does **not** need a stop — `.backup` takes a consistent
-snapshot of a live WAL database, where copying the file would not:
-
-```bash
-docker run --rm -v x-loc-data:/data -v "$PWD":/out alpine \
-  sh -c 'apk add -q sqlite && sqlite3 /data/x-loc-cache.db ".backup /out/x-loc-cache.bak"'
-```
-
 The volume is named `x-loc-data` in both deploy shapes because `compose.yaml`
 pins it — compose would otherwise call it `server_x-loc-data` after the project
 directory, and every command above would quietly address a different, empty
 database.
 
+### Backups (container)
+
+The image ships the **same** [`deploy/backup.sh`](deploy/backup.sh) the systemd
+timer runs, plus the `sqlite3` CLI it needs (`flock` and `gzip` are already in
+the base). It is the same script on purpose — the two deploy shapes cannot
+drift in how they take a backup. No stop, no flags: `XLOC_DB` and
+`XLOC_BACKUP_DIR` are set in the image and `docker exec` inherits them.
+
+```bash
+docker compose exec x-loc-cache /app/deploy/backup.sh
+# backup ok: /data/backups/x-loc-cache-20260806-182459.db.gz (4.0K, 3 profiles / 3 votes), 1 kept
+docker compose exec x-loc-cache ls -lh /data/backups
+```
+
+Snapshots land in `/data/backups`, inside the same named volume as the
+database — so they survive `docker compose down`, and sit on the same disk,
+with the same caveat as the bare-metal deploy. Verification, rotation and the
+corruption monitor all behave as described under [Backups](#backups);
+`XLOC_BACKUP_KEEP` goes in `compose.yaml`'s `environment:` block.
+
+There is no timer inside the container. Schedule it from the host, which is
+also where the exit status is visible:
+
+```bash
+# /etc/cron.d/x-loc-backup
+17 4 * * * root docker compose -f /opt/x-loc-cache/server/compose.yaml exec -T x-loc-cache /app/deploy/backup.sh
+```
+
+`-T` is required: without it `exec` wants a TTY and fails under cron.
+
+### Restore (container)
+
+`restore.sh` is deliberately **not** in the image — it drives `systemctl`. The
+container equivalent is the same shape: verify first, then stop, swap, start.
+
+```bash
+docker compose stop
+docker run --rm -v x-loc-data:/data x-loc-cache:latest sh -c '
+  set -e
+  gunzip -c /data/backups/x-loc-cache-<stamp>.db.gz > /data/restore.tmp.db
+  sqlite3 /data/restore.tmp.db "PRAGMA integrity_check;"
+  mv /data/x-loc-cache.db /data/x-loc-cache.db.replaced
+  rm -f /data/x-loc-cache.db-wal /data/x-loc-cache.db-shm
+  mv /data/restore.tmp.db /data/x-loc-cache.db'
+docker compose start
+curl -s localhost:8787/healthz
+```
+
+⚠ **Removing `-wal`/`-shm` is not tidiness — skip it and you lose the
+database.** They describe the file being replaced, and SQLite will happily
+recover those frames over the one you just restored. Measured: a restored
+database with a foreign WAL beside it does not open at all, failing with
+`database disk image is malformed`. This is why `restore.sh` moves them aside
+on the bare-metal path.
+
+Running it through the `x-loc-cache` image rather than `alpine` is what
+supplies `sqlite3`, and writes the new file as uid 1000 so the server can open
+it. Keep `x-loc-cache.db.replaced` until the restore has proven out.
+
+### Alerting (container)
+
+`deploy/alert.ts` is in the image too, so the weekly heartbeat works the same
+way — put the SMTP variables from
+[`deploy/x-loc-alert.env.example`](deploy/x-loc-alert.env.example) in an
+`env_file:` on the service (not `environment:`, which lands the password in
+`docker inspect`), and run it from the host:
+
+```bash
+docker compose exec -T x-loc-cache node --experimental-strip-types deploy/alert.ts --report
+```
+
+Failure alerting has no `OnFailure=` here, because there is no systemd in the
+container. Chain it off the backup's exit status in the same host cron entry:
+
+```bash
+17 4 * * * root cd /opt/x-loc-cache/server && docker compose exec -T x-loc-cache /app/deploy/backup.sh \
+  || docker compose exec -T x-loc-cache node --experimental-strip-types deploy/alert.ts x-loc-backup
+```
+
+One honest limitation: the container has no journal, so that email carries the
+subject and context but an empty journal section — the backup's own output is
+in `docker compose logs` instead. On a host that does run systemd, wrapping the
+`docker compose exec` in a `.service` with `OnFailure=` gets the full bare-metal
+behaviour back.
+
 ## Dev / test
 
 ```bash
 pnpm test        # consensus + full SQLite round-trip against the real handlers
+pnpm test:deploy # the backup/restore scripts, including under write load
 pnpm typecheck
 pnpm dev         # local Worker at http://localhost:8787 (uses local D1)
 pnpm db:init:local
@@ -798,3 +1056,15 @@ pnpm start       # local Node+SQLite server, db in ./data (XLOC_* env vars apply
 [`src/sqlite.test.ts`](src/sqlite.test.ts) drives `worker.fetch` through a real
 in-memory SQLite database, so it covers the handlers and the D1 adapter together
 — that is what keeps the two backends honest about behaving identically.
+
+[`deploy/backup.test.ts`](deploy/backup.test.ts) runs the shipped shell scripts
+against real databases on disk — sqlite3, gzip, flock and dash included, since
+the thing under test _is_ the script. It has its own config
+(`vitest.deploy.config.ts`) and is **not** part of `pnpm test` or CI: it takes
+tens of seconds and needs those binaries present. It skips itself where they
+are not.
+
+The load cases are why the file exists. They start a writer against the
+database and assert the backup finishes **while writes are still arriving** —
+the failure `.backup` had, which no idle test can see, because with an idle
+database the broken and the fixed version are both fast and both correct.

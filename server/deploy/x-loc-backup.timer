@@ -1,0 +1,16 @@
+#  /etc/systemd/system/x-loc-backup.timer
+#
+#  sudo systemctl enable --now x-loc-backup.timer
+
+[Unit]
+Description=Daily x-loc-cache database backup
+
+[Timer]
+OnCalendar=daily
+# Jitter off the midnight crowd; the exact hour doesn't matter.
+RandomizedDelaySec=1h
+# A box that was down at 00:00 takes its backup on boot instead of skipping the day.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
