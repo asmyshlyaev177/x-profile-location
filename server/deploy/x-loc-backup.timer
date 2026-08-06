@@ -8,12 +8,12 @@ Description=Daily x-loc-cache database backup
 [Timer]
 # Server local time, not UTC — snapshot *filenames* are stamped UTC (date -u in
 # backup.sh), so on a non-UTC box the name will not match the hour below.
-OnCalendar=*-*-* 22:30:00
+OnCalendar=*-*-* 23:30:00
 # No RandomizedDelaySec: this is a time somebody chose, and jitter would only
 # smear it across the following hour. The usual reason for it — spreading many
 # machines off a round hour — does not apply to one box on a bespoke time.
 RandomizedDelaySec=0
-# A box that was down at 22:30 takes its backup on boot instead of skipping the day.
+# A box that was down at 23:30 takes its backup on boot instead of skipping the day.
 Persistent=true
 
 [Install]
