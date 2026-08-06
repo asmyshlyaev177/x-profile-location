@@ -87,7 +87,9 @@ function generate(db: SqliteDb): void {
 
     // A fifth of handles are "popular" and sit at the vote cap; the rest have
     // one or two. Averages ~2.4 votes/handle.
-    const nVotes = i % 20 === 0 ? 10 : i % 3 === 0 ? 3 : 2
+    let nVotes = 2
+    if (i % 20 === 0) nVotes = 10
+    else if (i % 3 === 0) nVotes = 3
     insProfile.run(username, loc, src, 1, Math.min(nVotes, 10), seenAt)
     for (let j = 0; j < nVotes; j++) {
       insVote.run(

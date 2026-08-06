@@ -10,6 +10,8 @@
 // counters, but every field this file wants moved off it — and the one counter
 // it was still the source of, `followers_count`, stopped arriving too.
 
+import { finiteNumber } from './countries'
+
 /**
  * The org an account is badged as belonging to — X's affiliate badge.
  *
@@ -112,14 +114,6 @@ function boolFrom(value: unknown): boolean | null {
   return typeof value === 'boolean' ? value : null
 }
 
-/** A count X sends as a string ("3"), or null for anything unusable. */
-function countFrom(value: unknown): number | null {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null
-  if (typeof value !== 'string' || value.trim() === '') return null
-  const n = Number(value)
-  return Number.isFinite(n) ? n : null
-}
-
 const RE_PROFILE_URL =
   /^https?:\/\/(?:www\.)?(?:twitter|x)\.com\/([A-Za-z0-9_]{1,50})\/?$/
 
@@ -186,7 +180,8 @@ export function parseAccountFacts(node: unknown): AccountFacts {
   return {
     createdAt: parseXDate(core?.created_at),
     affiliation,
-    handleChanges: countFrom(usernameChanges?.count),
+    // X sends this count as a string ("3").
+    handleChanges: finiteNumber(usernameChanges?.count),
     restId: typeof u.rest_id === 'string' ? u.rest_id : null,
     blueVerified: boolFrom(u.is_blue_verified),
     verified: boolFrom(verification?.verified),

@@ -228,8 +228,10 @@ export function measureClone(
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error('could not read image'))
+    reader.addEventListener('load', () => resolve(String(reader.result)))
+    reader.addEventListener('error', () =>
+      reject(new Error('could not read image')),
+    )
     reader.readAsDataURL(blob)
   })
 }
@@ -393,14 +395,14 @@ function loadImage(
       () => reject(new Error('snapshot timed out')),
       timeoutMs,
     )
-    img.onload = () => {
+    img.addEventListener('load', () => {
       clearTimeout(timer)
       resolve(img)
-    }
-    img.onerror = () => {
+    })
+    img.addEventListener('error', () => {
       clearTimeout(timer)
       reject(new Error('snapshot did not render'))
-    }
+    })
     img.src = src
   })
 }

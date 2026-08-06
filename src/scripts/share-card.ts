@@ -68,6 +68,26 @@ const MAX_BODY_LINES = 12
  * longer than the line overflows on its own line instead of being cut — a
  * truncated link is worse than a wide one.
  */
+function wrapParagraph(
+  paragraph: string,
+  maxWidth: number,
+  measure: (s: string) => number,
+): string[] {
+  const lines: string[] = []
+  let line = ''
+  for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+    const candidate = line ? `${line} ${word}` : word
+    if (line && measure(candidate) > maxWidth) {
+      lines.push(line)
+      line = word
+    } else {
+      line = candidate
+    }
+  }
+  if (line) lines.push(line)
+  return lines
+}
+
 export function wrapText(
   text: string,
   maxWidth: number,
@@ -76,21 +96,8 @@ export function wrapText(
 ): string[] {
   const lines: string[] = []
   for (const paragraph of text.split('\n')) {
-    if (paragraph.trim() === '') {
-      lines.push('')
-      continue
-    }
-    let line = ''
-    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
-      const candidate = line ? `${line} ${word}` : word
-      if (line && measure(candidate) > maxWidth) {
-        lines.push(line)
-        line = word
-      } else {
-        line = candidate
-      }
-    }
-    if (line) lines.push(line)
+    if (paragraph.trim() === '') lines.push('')
+    else lines.push(...wrapParagraph(paragraph, maxWidth, measure))
   }
 
   if (lines.length > maxLines) {
@@ -184,41 +191,56 @@ export function buildShareLayout(
   const chips = shareChips(input.data)
   if (chips.length > 0) {
     y += 24
-    // Wrap rather than shrink or drop: silently omitting the VPN caveat for want
-    // of width is the one failure mode that actually misleads.
-    let x = PAD
-    const chipHeight = 44
-    for (const chip of chips) {
-      const width = measure(chip, CHIP_FONT) + 32
-      if (x > PAD && x + width > WIDTH - PAD) {
-        x = PAD
-        y += chipHeight + 12
-      }
-      ops.push({
-        kind: 'rect',
-        x,
-        y,
-        width,
-        height: chipHeight,
-        radius: 22,
-        fill: chip.startsWith('⚠')
-          ? 'rgba(244,165,42,0.16)'
-          : 'rgba(29,155,240,0.16)',
-      })
-      ops.push({
-        kind: 'text',
-        text: chip,
-        x: x + 16,
-        y: y + 29,
-        font: CHIP_FONT,
-        color: chip.startsWith('⚠') ? WARN : ACCENT,
-      })
-      x += width + 12
-    }
-    y += chipHeight
+    const row = chipOps(chips, y, (text) => measure(text, CHIP_FONT))
+    ops.push(...row.ops)
+    y = row.bottom
   }
 
   return { width: WIDTH, height: y + PAD, ops }
+}
+
+const CHIP_HEIGHT = 44
+
+/**
+ * The chip row, starting at `top`. Chips wrap rather than shrinking or being
+ * dropped: silently omitting the VPN caveat for want of width is the one
+ * failure mode that actually misleads.
+ */
+function chipOps(
+  chips: string[],
+  top: number,
+  measure: (text: string) => number,
+): { ops: DrawOp[]; bottom: number } {
+  const ops: DrawOp[] = []
+  let x = PAD
+  let y = top
+  for (const chip of chips) {
+    const width = measure(chip) + 32
+    if (x > PAD && x + width > WIDTH - PAD) {
+      x = PAD
+      y += CHIP_HEIGHT + 12
+    }
+    const warn = chip.startsWith('⚠')
+    ops.push({
+      kind: 'rect',
+      x,
+      y,
+      width,
+      height: CHIP_HEIGHT,
+      radius: 22,
+      fill: warn ? 'rgba(244,165,42,0.16)' : 'rgba(29,155,240,0.16)',
+    })
+    ops.push({
+      kind: 'text',
+      text: chip,
+      x: x + 16,
+      y: y + 29,
+      font: CHIP_FONT,
+      color: warn ? WARN : ACCENT,
+    })
+    x += width + 12
+  }
+  return { ops, bottom: y + CHIP_HEIGHT }
 }
 
 /** Paint a layout onto a canvas and hand back a PNG. */

@@ -54,6 +54,7 @@ function isWordChar(g: string): boolean {
  * moment it finds anything, and marking — which is cosmetic and runs on one
  * hover card at a time — has no business slowing that down.
  */
+/* jscpd:ignore-start -- the duplicated scan is the point; see above. */
 export function graphemeIndicesOf(
   haystack: string[],
   needle: string[],
@@ -70,9 +71,15 @@ export function graphemeIndicesOf(
   }
   return out
 }
+/* jscpd:ignore-end */
 
 // Like graphemeIncludes but only matches at word boundaries.
 // Adjacent letters/digits/underscores prevent a match; symbols like # $ . do not.
+//
+// One tight loop on purpose: this runs against every bio the extension sees, and
+// the boundary test needs five values that only make sense at the candidate
+// position — passing them to a helper is an object per candidate on a hot path.
+// oxlint-disable-next-line sonarjs/cognitive-complexity
 export function graphemeIncludesWord(
   haystack: string[],
   needle: string[],
@@ -159,6 +166,28 @@ export interface KeywordMatch {
  * not fire on, and the answer to "why is this account highlighted?" is always
  * the word actually responsible.
  */
+/** Where each emoji keyword sits in `text`, as code-unit offsets. */
+function emojiMatchesIn(text: string): KeywordMatch[] {
+  const matches: KeywordMatch[] = []
+  const graphemes = toGraphemes(text)
+  // Grapheme index → code-unit offset. One entry longer than the text, so the
+  // end of the last grapheme is addressable.
+  const offsets: number[] = []
+  let at = 0
+  for (const grapheme of graphemes) {
+    offsets.push(at)
+    at += grapheme.length
+  }
+  offsets.push(at)
+
+  for (const needle of emojiKeywordGraphemes) {
+    for (const i of graphemeIndicesOf(graphemes, needle)) {
+      matches.push({ start: offsets[i], end: offsets[i + needle.length] })
+    }
+  }
+  return matches
+}
+
 export function findKeywordMatches(text: string): KeywordMatch[] {
   const matches: KeywordMatch[] = []
 
@@ -171,24 +200,7 @@ export function findKeywordMatches(text: string): KeywordMatch[] {
     }
   }
 
-  if (emojiKeywordGraphemes.length > 0) {
-    const graphemes = toGraphemes(text)
-    // Grapheme index → code-unit offset. One entry longer than the text, so the
-    // end of the last grapheme is addressable.
-    const offsets: number[] = []
-    let at = 0
-    for (const grapheme of graphemes) {
-      offsets.push(at)
-      at += grapheme.length
-    }
-    offsets.push(at)
-
-    for (const needle of emojiKeywordGraphemes) {
-      for (const i of graphemeIndicesOf(graphemes, needle)) {
-        matches.push({ start: offsets[i], end: offsets[i + needle.length] })
-      }
-    }
-  }
+  if (emojiKeywordGraphemes.length > 0) matches.push(...emojiMatchesIn(text))
 
   return matches.sort((a, b) => a.start - b.start)
 }

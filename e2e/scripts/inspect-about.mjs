@@ -20,7 +20,6 @@ async function dumpAbout(screenName) {
   const page = await ctx.newPage()
   await page.goto(`https://x.com/${screenName}/about`)
   await page.waitForTimeout(3000)
-  const html = await page.locator('main').innerHTML()
   console.log(`\n=== ${screenName} ===\n`)
   // Print only the pivot rows (concise)
   const pivots = await page.locator('[data-testid="pivot"]').all()
