@@ -53,8 +53,12 @@ export function buildAiFiles(ctx: AiFileContext): Record<string, string> {
   }
 }
 
-/** The file names, so `robots-ai.txt` and `ai.txt` can list each other. */
-const DISCOVERY = [
+/**
+ * The file names, so `robots-ai.txt` and `ai.txt` can list each other — and so
+ * `robots.txt`, written in `vite.config.ts`, points at the same set rather than
+ * a hand-kept second copy of it.
+ */
+export const DISCOVERY = [
   'llms.txt',
   'ai.txt',
   'ai.json',
