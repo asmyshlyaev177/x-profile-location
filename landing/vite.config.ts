@@ -11,7 +11,7 @@ import {
   getContentLastModified,
   getRouteLastmods,
 } from './scripts/build-date.mjs'
-import { buildAiFiles } from './src/data/ai-files'
+import { buildAiFiles, DISCOVERY } from './src/data/ai-files'
 import { comparisonMarkdown } from './src/data/comparison-markdown'
 
 // The extension's version, not the landing page's — so the badge can never
@@ -87,6 +87,50 @@ function aiDiscoveryFiles(): PluginOption {
 }
 
 /**
+ * Writes `dist/robots.txt`.
+ *
+ * `vite-plugin-sitemap` generates one by default, but its schema is only
+ * User-agent / Allow / Disallow / Crawl-delay / Clean-param — there is no slot
+ * for the `Content-Signal` line, and its `closeBundle` write lands after this
+ * plugin's `emitFile` and would overwrite whatever was emitted. So its
+ * generator is switched off below and the whole file is authored here.
+ *
+ * The signals say what may be *done* with the content; Allow/Disallow only say
+ * what may be *fetched*. Both are granted here: an assistant answering "which
+ * extension shows where an X account posts from" citing this page is the
+ * distribution channel, not a leak.
+ */
+function robotsTxt(): PluginOption {
+  const base = siteUrl.replace(/\/$/, '')
+  return {
+    name: 'robots-txt',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'robots.txt',
+        source: `\
+# Content Signals — https://contentsignals.org/
+#   search   = indexing this site and showing links plus short excerpts
+#   ai-train = training or fine-tuning a model
+#   ai-input = grounding a generative answer at request time (RAG)
+User-agent: *
+Content-Signal: search=yes, ai-train=yes, ai-input=yes
+Allow: /
+
+# The AI discovery file set published on this host
+# (https://www.ai-visibility.org.uk/specifications/). Listed as comments
+# because robots.txt has no directive for them; agents find them at their
+# well-known paths.
+${DISCOVERY.map((f) => `#   ${base}/${f}`).join('\n')}
+
+Sitemap: ${base}/sitemap.xml
+`,
+      })
+    },
+  }
+}
+
+/**
  * Rewrites the comparison table in the repo README between its markers.
  *
  * The table exists on three surfaces — this site's homepage, the comparison
@@ -153,8 +197,12 @@ export default defineConfig({
       // plugin's default is `new Date()`, which stamps every URL with the build
       // time and tells a crawler the whole site changed whenever any of it did.
       lastmod: routeLastmods,
+      // `robotsTxt()` below writes robots.txt instead — this plugin's schema
+      // cannot express `Content-Signal`, and its write would clobber ours.
+      generateRobotsTxt: false,
     }),
     aiDiscoveryFiles(),
+    robotsTxt(),
     readmeComparison(),
   ],
   base: '/',
