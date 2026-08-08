@@ -234,7 +234,7 @@ chrome.storage.local
     // is decorated without waiting for a scroll.
     rehighlightAll()
     refreshFeedLocations()
-    refreshHiddenTweets()
+    void refreshHiddenTweets()
     syncPrefetcher()
     window.dispatchEvent(new CustomEvent(EVENTS.REQUEST_USERS))
   })
@@ -300,7 +300,7 @@ function applyMasterSwitch(changes: StorageChanges): boolean {
     }
     rehighlightAll()
     refreshFeedLocations()
-    refreshHiddenTweets()
+    void refreshHiddenTweets()
     syncPrefetcher()
   }
   return extensionEnabled
@@ -311,7 +311,7 @@ function applyFilterChanges(changes: StorageChanges): void {
   if (changes[BLOCKED_COUNTRIES_KEY]) {
     blockedCountries = toBlockedSet(changes[BLOCKED_COUNTRIES_KEY].newValue)
     // Editing the list can newly block (or unblock) locations already on screen.
-    refreshHiddenTweets()
+    void refreshHiddenTweets()
   }
   // Both keys arrive in one `changes` object, so the general one wins and the
   // legacy one is only a fallback — that is what makes a *removal* stick.
@@ -324,7 +324,7 @@ function applyFilterChanges(changes: StorageChanges): void {
       changes[RULE_EXCEPTIONS_KEY].newValue,
     )
     rehighlightAll()
-    refreshHiddenTweets()
+    void refreshHiddenTweets()
   } else if (changes[HIGHLIGHT_EXCEPTIONS_KEY]) {
     // The old key moving on its own: an install still running the previous
     // version in another tab, or storage edited by hand.
@@ -333,14 +333,14 @@ function applyFilterChanges(changes: StorageChanges): void {
       changes[HIGHLIGHT_EXCEPTIONS_KEY].newValue,
     )
     rehighlightAll()
-    refreshHiddenTweets()
+    void refreshHiddenTweets()
   }
   if (changes[ALWAYS_SHOW_KEY]) {
     alwaysShow = new Set(
       settingValue(ALWAYS_SHOW_KEY, changes[ALWAYS_SHOW_KEY].newValue),
     )
     rehighlightAll()
-    refreshHiddenTweets()
+    void refreshHiddenTweets()
   }
   if (changes[BLOCKED_AFFILIATIONS_KEY]) {
     blockedAffiliations = new Set(
@@ -349,21 +349,21 @@ function applyFilterChanges(changes: StorageChanges): void {
         changes[BLOCKED_AFFILIATIONS_KEY].newValue,
       ),
     )
-    refreshHiddenTweets()
+    void refreshHiddenTweets()
   }
   if (changes[ACCOUNT_AGE_KEY]) {
     accountAgeFilter = settingValue(
       ACCOUNT_AGE_KEY,
       changes[ACCOUNT_AGE_KEY].newValue,
     )
-    refreshHiddenTweets()
+    void refreshHiddenTweets()
   }
   if (changes[HIDE_BLOCKED_LOCATIONS_KEY]) {
     hideMode = settingValue(
       HIDE_BLOCKED_LOCATIONS_KEY,
       changes[HIDE_BLOCKED_LOCATIONS_KEY].newValue,
     )
-    refreshHiddenTweets()
+    void refreshHiddenTweets()
     syncPrefetcher()
   }
 }
@@ -570,6 +570,33 @@ function activeMatches(
   return ruleMatches(data).filter((m) => !isExcepted(m.rule, userName))
 }
 
+// Every hide judgement made this session, so the next sighting of the same
+// account can be answered without waiting on IndexedDB. X recreates article
+// nodes as you scroll — nothing the extension sets survives the unmount — and
+// a post that comes back at full height and collapses a cache read later is a
+// resize, which is what moves the page (see whenSafeToResize). Answered from
+// here, it is collapsed in the microtask the node arrives in and never laid out
+// at any other height.
+//
+// Bounded LRU-by-write like bioCache, and only ever a fast path: the answer is
+// recomputed from the cache whenever it is missing, and dropped wholesale by
+// refreshHiddenTweets, which every rule change goes through.
+const HIDE_VERDICT_CAP = 1000
+const hideVerdicts = new Map<string, FilterMatch | null>()
+
+function rememberHideVerdict(
+  userName: string,
+  match: FilterMatch | null,
+): void {
+  const key = userName.toLowerCase()
+  hideVerdicts.delete(key) // re-insert to refresh LRU order
+  hideVerdicts.set(key, match)
+  if (hideVerdicts.size > HIDE_VERDICT_CAP) {
+    const oldest = hideVerdicts.keys().next().value
+    if (oldest !== undefined) hideVerdicts.delete(oldest)
+  }
+}
+
 /**
  * The rule a post is hidden for, or null — the first that both fires and is
  * allowed to hide. An account matching only a marking rule (age) must not have
@@ -579,7 +606,13 @@ function hideMatchFor(
   userName: string,
   data: LocationData | undefined,
 ): FilterMatch | null {
-  return activeMatches(userName, data).find((m) => ruleHides(m.rule)) ?? null
+  const match =
+    activeMatches(userName, data).find((m) => ruleHides(m.rule)) ?? null
+  // Only a judgement made on a record we actually have. An account nothing is
+  // known about yet has not been judged not to match — it has not been looked
+  // up, and remembering that as "no" would keep it from ever being hidden.
+  if (data) rememberHideVerdict(userName, match)
+  return match
 }
 
 /** The rule a post is marked for: the first one acting that does not hide. */
@@ -803,6 +836,11 @@ export function __testResetState() {
   feedRowObserver?.disconnect()
   feedRowObserver = null
   pendingFeedRows = new WeakMap()
+
+  resizeObserverIO?.disconnect()
+  resizeObserverIO = null
+  pendingResizes = new WeakMap()
+  hideVerdicts.clear()
 }
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -1634,6 +1672,11 @@ function refreshFeedLocations() {
 // Collapse behind a placeholder rather than removing: a visible, reversible
 // trace, and an attribute plus CSS survives React's re-renders where surgery on
 // its nodes would not.
+/** Everything of `match` a placeholder shows — so a change to it is visible. */
+function placeholderKey(match: FilterMatch): string {
+  return `${match.rule}|${match.icon}|${match.label}`
+}
+
 function buildHiddenPlaceholder(
   target: Element,
   userName: string,
@@ -1642,6 +1685,11 @@ function buildHiddenPlaceholder(
 ): HTMLElement {
   const ph = document.createElement('div')
   ph.className = HIDDEN_PLACEHOLDER_CLASS
+  // What this placeholder says, for hideArticle to compare against. Rebuilding
+  // it on every refresh is what used to churn every post on the page for an
+  // exception that concerned one account; never rebuilding it would leave it
+  // naming a rule that has since stopped being the one that caught this post.
+  ph.dataset.match = placeholderKey(match)
 
   const labelEl = document.createElement('span')
   labelEl.className = 'x-loc-hidden-label'
@@ -1680,38 +1728,175 @@ const FILTER_RULE_LABEL: Record<FilterRule, string> = {
   age: 'account age',
 }
 
+// --- resizing a post without moving the scroll ------------------------------
+// Collapsing a post takes height out of the page from its top edge down. While
+// that edge is above the viewport top the height leaves the scrollport, and X's
+// timeline answers by scrolling the window itself to compensate. It issues one
+// `window.scrollBy` per cell it saw resize, and each carries the running total
+// for the batch rather than that cell's own delta — so one cell at a time is
+// exact, and k cells resizing in the same frame scroll by roughly k× the height
+// actually removed. Measured on a status page: seven replies collapsed together
+// took out 2065px of content and moved the scroll 8244px. Growth is the same in
+// reverse — eleven posts expanded at once added 774px and scrolled 13982px.
+//
+// Nothing above the fold has to be resized on the spot, so a change that would
+// resize up there is parked until the post's top edge is back in view, where it
+// only moves content the user can see and X compensates for nothing at all.
+// The same deal pendingFeedRows strikes for the row it injects.
+// `let` rather than `const` only so __testResetState can swap in fresh state.
+let pendingResizes = new WeakMap<Element, () => void>()
+let resizeObserverIO: IntersectionObserver | null = null
+
+// Every 5%, rather than the quarters the feed row settles for. A post taller
+// than the viewport holds a constant intersection ratio for the whole time its
+// top edge is climbing to the fold, so coarse steps leave it parked well past
+// the moment it became safe.
+const RESIZE_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20)
+
+/** True when resizing `target` would take height out of the scrollport. */
+function resizeAboveFold(target: Element): boolean {
+  return target.getBoundingClientRect().top < 0
+}
+
+function getResizeObserver(): IntersectionObserver {
+  if (resizeObserverIO) return resizeObserverIO
+  resizeObserverIO = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        const target = entry.target
+        const apply = pendingResizes.get(target)
+        if (!apply) {
+          resizeObserverIO!.unobserve(target)
+          continue
+        }
+        // Re-read rather than trust entry.boundingClientRect: an earlier apply
+        // in this same batch may have pushed this one back above the fold.
+        if (resizeAboveFold(target)) continue
+        pendingResizes.delete(target)
+        resizeObserverIO!.unobserve(target)
+        apply()
+      }
+    },
+    { threshold: RESIZE_THRESHOLDS },
+  )
+  return resizeObserverIO
+}
+
+/**
+ * Run `apply` now when it won't move the scroll, otherwise when `target` next
+ * has its top edge in view. Parking again replaces the pending call, so it is
+ * always the newest verdict that lands.
+ */
+function whenSafeToResize(target: Element, apply: () => void): void {
+  if (!resizeAboveFold(target)) {
+    cancelPendingResize(target)
+    apply()
+    return
+  }
+  const parked = pendingResizes.has(target)
+  pendingResizes.set(target, apply)
+  if (!parked) getResizeObserver().observe(target)
+}
+
+/** Drop a parked change — the post was revealed, or no longer matches a rule. */
+function cancelPendingResize(target: Element): void {
+  if (!pendingResizes.has(target)) return
+  pendingResizes.delete(target)
+  resizeObserverIO?.unobserve(target)
+}
+
+/**
+ * whenSafeToResize's counterpart for a node that has just been inserted and not
+ * yet laid out. There is no height to change there — the post is collapsed
+ * before it has ever been anything else — so there is nothing to wait for, and
+ * waiting would itself create the resize this is all trying to avoid.
+ */
+function runNow(_target: Element, apply: () => void): void {
+  apply()
+}
+
 function hideArticle(
   article: Element,
   userName: string,
   match: FilterMatch,
+  bornHidden = false,
 ): void {
   if (article.hasAttribute(HIDDEN_REVEALED_ATTR)) return
+  const schedule = bornHidden ? runNow : whenSafeToResize
 
   if (hideMode === 'hide') {
-    // Silent: CSS collapses the whole article, no placeholder.
-    article.setAttribute(HIDDEN_ATTR, 'hide')
+    // Silent: CSS takes the whole article, so this mode has no placeholder —
+    // and one left behind by collapse mode has to go with it. `display: none`
+    // hides it either way, which is why it could sit there unnoticed; switching
+    // back would then find it and build a second one underneath.
+    if (isHiddenSilently(article, HIDDEN_ATTR)) return
+    schedule(article, () => {
+      article.setAttribute(HIDDEN_ATTR, 'hide')
+      ownPlaceholder(article)?.remove()
+    })
     return
   }
 
-  // collapse: re-inject the placeholder if a React re-render dropped it but left
-  // our attr; otherwise mark and inject once.
-  if (article.getAttribute(HIDDEN_ATTR) === 'collapse') {
-    if (!article.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)) {
-      article.appendChild(
-        buildHiddenPlaceholder(article, userName, match, revealArticle),
-      )
+  // collapse: build the placeholder when there isn't one — a React re-render
+  // dropped it, or the post was in 'hide' mode until now — and when the one
+  // there names a rule that is no longer the one catching this post. Otherwise
+  // leave it exactly as it is, which is what keeps a rule change off every
+  // post it doesn't concern.
+  if (isCollapsedFor(article, HIDDEN_ATTR, match)) return
+  schedule(article, () => {
+    article.setAttribute(HIDDEN_ATTR, 'collapse')
+    ownPlaceholder(article)?.remove()
+    article.appendChild(
+      buildHiddenPlaceholder(article, userName, match, revealArticle),
+    )
+  })
+}
+
+/**
+ * The placeholder this target owns — a direct child, which is how they are
+ * built. A plain descendant query would also find the one a collapsed quote
+ * inside the article owns, and answer for the wrong post.
+ */
+function ownPlaceholder(target: Element): HTMLElement | null {
+  for (const child of Array.from(target.children)) {
+    if (child.classList.contains(HIDDEN_PLACEHOLDER_CLASS)) {
+      return child as HTMLElement
     }
-    return
   }
-  article.setAttribute(HIDDEN_ATTR, 'collapse')
-  article.appendChild(
-    buildHiddenPlaceholder(article, userName, match, revealArticle),
-  )
+  return null
+}
+
+/** Silently hidden already, with no placeholder left over from collapse mode. */
+function isHiddenSilently(target: Element, attr: string): boolean {
+  return target.getAttribute(attr) === 'hide' && !ownPlaceholder(target)
+}
+
+/** Already collapsed behind a placeholder saying what `match` would say. */
+function isCollapsedFor(
+  target: Element,
+  attr: string,
+  match: FilterMatch,
+): boolean {
+  if (target.getAttribute(attr) !== 'collapse') return false
+  return ownPlaceholder(target)?.dataset.match === placeholderKey(match)
+}
+
+/** Take back a collapse the rules no longer call for; a no-op if there was none. */
+function unhideArticle(article: Element): void {
+  cancelPendingResize(article)
+  if (!article.hasAttribute(HIDDEN_ATTR)) return
+  whenSafeToResize(article, () => {
+    article.removeAttribute(HIDDEN_ATTR)
+    article.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
+  })
 }
 
 // User clicked "Show" on a collapsed tweet: reveal it and never re-hide it (the
 // marker lives only as long as this DOM node, which X recycles on scroll).
+// Deliberately immediate, parked change dropped: the click came from the
+// placeholder, so the post is on screen and the user is waiting on it.
 function revealArticle(article: Element): void {
+  cancelPendingResize(article)
   article.removeAttribute(HIDDEN_ATTR)
   article.setAttribute(HIDDEN_REVEALED_ATTR, '1')
   article.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
@@ -1722,29 +1907,80 @@ function revealArticle(article: Element): void {
 // the whole row for the quoted account takes away a post the user never filtered
 // (X-Posed shipped that and had to fix it), so the quote collapses alone.
 
-function hideQuote(quote: Element, userName: string, match: FilterMatch): void {
+function hideQuote(
+  quote: Element,
+  userName: string,
+  match: FilterMatch,
+  bornHidden = false,
+): void {
   if (quote.hasAttribute(QUOTE_REVEALED_ATTR)) return
+  const schedule = bornHidden ? runNow : whenSafeToResize
 
   if (hideMode === 'hide') {
-    quote.setAttribute(QUOTE_HIDDEN_ATTR, 'hide')
+    if (isHiddenSilently(quote, QUOTE_HIDDEN_ATTR)) return
+    schedule(quote, () => {
+      quote.setAttribute(QUOTE_HIDDEN_ATTR, 'hide')
+      ownPlaceholder(quote)?.remove()
+    })
     return
   }
-  if (quote.getAttribute(QUOTE_HIDDEN_ATTR) === 'collapse') {
-    if (!quote.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)) {
-      quote.appendChild(
-        buildHiddenPlaceholder(quote, userName, match, revealQuote),
-      )
-    }
-    return
-  }
-  quote.setAttribute(QUOTE_HIDDEN_ATTR, 'collapse')
-  quote.appendChild(buildHiddenPlaceholder(quote, userName, match, revealQuote))
+  if (isCollapsedFor(quote, QUOTE_HIDDEN_ATTR, match)) return
+  schedule(quote, () => {
+    quote.setAttribute(QUOTE_HIDDEN_ATTR, 'collapse')
+    ownPlaceholder(quote)?.remove()
+    quote.appendChild(
+      buildHiddenPlaceholder(quote, userName, match, revealQuote),
+    )
+  })
+}
+
+/** The quoted-post half of unhideArticle. */
+function unhideQuote(quote: Element): void {
+  cancelPendingResize(quote)
+  if (!quote.hasAttribute(QUOTE_HIDDEN_ATTR)) return
+  whenSafeToResize(quote, () => {
+    quote.removeAttribute(QUOTE_HIDDEN_ATTR)
+    quote.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
+  })
 }
 
 function revealQuote(quote: Element): void {
+  cancelPendingResize(quote)
   quote.removeAttribute(QUOTE_HIDDEN_ATTR)
   quote.setAttribute(QUOTE_REVEALED_ATTR, '1')
   quote.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
+}
+
+/**
+ * Collapse a just-inserted post when this account has already been judged this
+ * session, in the same microtask the node arrived in.
+ *
+ * X recreates article nodes as you scroll, and nothing the extension sets
+ * survives the unmount — of eighteen tagged articles, none came back. So a post
+ * that was collapsed returns at full height, and collapsing it again one
+ * IndexedDB read later is a resize above the fold, which is what moves the page
+ * on the way back up. Judged from hideVerdicts instead, the post is collapsed
+ * before it is ever laid out and there is no height change at all: measured
+ * over a sixteen-step scroll, that is the difference between 2188px of
+ * uncommanded scroll and none.
+ */
+function applyKnownHide(article: Element): void {
+  if (hideMode === 'off') return
+
+  const quote = getQuotedTweetEl(article)
+  if (quote && !quote.hasAttribute(QUOTE_HIDDEN_ATTR)) {
+    const quoted = extractQuotedTweetUserInfo(quote).userName
+    const known = quoted ? hideVerdicts.get(quoted.toLowerCase()) : null
+    if (known && quoted) hideQuote(quote, quoted, known, true)
+  }
+
+  if (article.matches(SEL_PRIMARY_TWEET)) return
+  if (article.hasAttribute(HIDDEN_ATTR)) return
+  const { userName } = extractTweetUserInfo(article)
+  if (!userName) return
+  // undefined (never judged) and null (judged, not hidden) both mean "leave it".
+  const known = hideVerdicts.get(userName.toLowerCase())
+  if (known) hideArticle(article, userName, known, true)
 }
 
 async function tryHideQuote(article: Element) {
@@ -1805,35 +2041,104 @@ function hideTweetsForUser(userName: string, data: LocationData): void {
   })
 }
 
-// Re-evaluate every on-screen tweet after a rule change: strip what the last
-// answer put there, then ask again. User-revealed tweets are left alone.
-function refreshHiddenTweets() {
+/** What the rules say about one post, with the cache reads already done. */
+interface PostVerdict {
+  article: Element
+  quote: Element | null
+  userName: string | null
+  quoteUserName: string | null
+  articleHide: FilterMatch | null
+  quoteHide: FilterMatch | null
+  articleMark: FilterMatch | null
+  quoteMark: FilterMatch | null
+}
+
+/** Everything the rules have to say about one post — DOM untouched. */
+async function judgePost(article: Element): Promise<PostVerdict> {
+  const quote = getQuotedTweetEl(article)
+  const { userName } = extractTweetUserInfo(article)
+  const quoteUserName = quote
+    ? extractQuotedTweetUserInfo(quote).userName
+    : null
+  const [data, quoteData] = await Promise.all([
+    userName ? getCached(userName) : undefined,
+    quoteUserName ? getCached(quoteUserName) : undefined,
+  ])
+  // The post a status page is about is never collapsed — but it is still
+  // marked, which is the whole difference between the two kinds of rule.
+  const collapsible = hideMode !== 'off' && !article.matches(SEL_PRIMARY_TWEET)
+  return {
+    article,
+    quote,
+    userName,
+    quoteUserName,
+    articleHide: collapsible && userName ? hideMatchFor(userName, data) : null,
+    quoteHide:
+      hideMode !== 'off' && quoteUserName
+        ? hideMatchFor(quoteUserName, quoteData)
+        : null,
+    articleMark: userName ? markMatchFor(userName, data) : null,
+    quoteMark: quoteUserName ? markMatchFor(quoteUserName, quoteData) : null,
+  }
+}
+
+/** A mark is a left border, so it costs no height and needs no scroll care. */
+function setMark(target: Element, match: FilterMatch | null): void {
+  if (!match) {
+    target.removeAttribute(TWEET_MARK_ATTR)
+    return
+  }
+  if (target.getAttribute(TWEET_MARK_ATTR) !== match.rule) {
+    target.setAttribute(TWEET_MARK_ATTR, match.rule)
+  }
+}
+
+function applyPostVerdict(v: PostVerdict): void {
+  if (v.articleHide && v.userName) {
+    hideArticle(v.article, v.userName, v.articleHide)
+  } else {
+    unhideArticle(v.article)
+  }
+
+  if (v.quote) {
+    if (v.quoteHide && v.quoteUserName) {
+      hideQuote(v.quote, v.quoteUserName, v.quoteHide)
+    } else {
+      unhideQuote(v.quote)
+    }
+    setMark(v.quote, v.quoteMark)
+  }
+  setMark(v.article, v.articleMark)
+}
+
+// Re-evaluate every on-screen tweet after a rule change.
+//
+// Ask first, mutate second, and only where the answer changed. Stripping every
+// attribute up front and asking the cache afterwards — which is what this did —
+// sprang every collapsed post back to full height for as long as an IndexedDB
+// read takes, then collapsed them all again: two page-wide resize storms, and
+// the worst possible input to X's scroll compensation (see whenSafeToResize).
+// An exception added for one account would move the whole page. Now it touches
+// that account's posts and leaves every other post's DOM exactly as it was.
+async function refreshHiddenTweets(): Promise<void> {
   if (!extensionEnabled) return
+  // Every rule change comes through here, and every one of them can change what
+  // a remembered verdict should have been — so this is where they are dropped.
+  // judgePost re-fills the map as it goes.
+  hideVerdicts.clear()
   // The one button covers these rules too, so a change to any of them can make
   // it appear, change what it offers, or go away — the same reason
   // rehighlightAll syncs it for the keyword rules.
   void syncPrimaryExceptionButton()
 
   const articles = Array.from(document.querySelectorAll<Element>(SEL_TWEET))
-  articles.forEach((a) => {
-    if (a.hasAttribute(HIDDEN_ATTR)) {
-      a.removeAttribute(HIDDEN_ATTR)
-      a.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
-    }
-    const quote = getQuotedTweetEl(a)
-    if (quote?.hasAttribute(QUOTE_HIDDEN_ATTR)) {
-      quote.removeAttribute(QUOTE_HIDDEN_ATTR)
-      quote.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
-    }
-    a.removeAttribute(TWEET_MARK_ATTR)
-    quote?.removeAttribute(TWEET_MARK_ATTR)
-
-    if (hideMode !== 'off') void tryHideArticle(a)
-    // Not gated on hideMode: that setting says what to do with posts a filter
-    // caught, and a rule that marks never catches one in that sense. Someone
-    // running with hiding switched off entirely still wants the mark.
-    void tryMarkArticle(a)
-  })
+  const verdicts = await Promise.all(articles.map(judgePost))
+  // Bottom-up: collapsing a post moves everything after it, so working from the
+  // end leaves each post's geometry — which whenSafeToResize is about to read —
+  // untouched by the changes already applied.
+  for (let i = verdicts.length - 1; i >= 0; i--) {
+    if (verdicts[i].article.isConnected) applyPostVerdict(verdicts[i])
+  }
   void refreshPeopleCells()
 }
 
@@ -2178,7 +2483,7 @@ function buildExceptionButton(
     // Both, because the button now covers rules on either side of that line:
     // highlighting is re-run, and anything hidden or collapsed is re-judged.
     rehighlightAll()
-    refreshHiddenTweets()
+    void refreshHiddenTweets()
   })
 
   return btn
@@ -2991,6 +3296,10 @@ function eachMatching(
 
 /** Everything the extension does to a tweet the moment it appears. */
 function decorateTweet(article: Element): void {
+  // First, and synchronously: a post whose account is already judged is
+  // collapsed here, before this node has been laid out even once. Everything
+  // below waits on a cache read, by which time collapsing it is a resize.
+  applyKnownHide(article)
   tryHighlightArticle(article)
   tryInjectFeedLocation(article)
   tryHideArticle(article)

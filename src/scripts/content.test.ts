@@ -2386,6 +2386,240 @@ describe('hide tweets by blocked location', () => {
     expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
     expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
   })
+
+  it('an exception for one account leaves every other post untouched', async () => {
+    // The refresh used to strip every attribute and ask the cache afterwards,
+    // so an exception for one account tore down and rebuilt the placeholder on
+    // all of them — every collapsed post back to full height for the length of
+    // an IndexedDB read, which is what moved the page. Node identity is the
+    // assertion: the bystander's placeholder must be the very same element.
+    vi.mocked(getCached).mockImplementation(async (userName: string) =>
+      userName.toLowerCase() === 'exceptme'
+        ? {
+            location: 'India',
+            locationAccurate: true,
+            source: 'web',
+            bio: null,
+          }
+        : {
+            location: 'Nigeria',
+            locationAccurate: true,
+            source: 'web',
+            bio: null,
+          },
+    )
+
+    const target = makeTweetArticle('exceptme')
+    const bystander = makeTweetArticle('bystander')
+    document.body.append(target, bystander)
+    await flushAsync()
+
+    expect(target.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    expect(bystander.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    const untouched = bystander.querySelector('.x-loc-hidden-ph')
+    expect(untouched).not.toBeNull()
+
+    target
+      .querySelector<HTMLElement>('.x-loc-hidden-ph .x-loc-exc-btn')!
+      .click()
+    await flushAsync()
+
+    expect(target.getAttribute('data-x-loc-hidden')).toBeNull()
+    expect(target.querySelector('.x-loc-hidden-ph')).toBeNull()
+    expect(bystander.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    expect(bystander.querySelector('.x-loc-hidden-ph')).toBe(untouched)
+  })
+
+  it('parks a collapse that would resize above the fold until the post is in view', async () => {
+    // Taking height out of the page above the viewport top makes X's timeline
+    // compensate by scrolling, once per cell resized in the frame and each time
+    // by the running total — so a batch of collapses flings the page. happy-dom
+    // reports all-zero rects, so drive the geometry and the observer by hand.
+    const observed: Element[] = []
+    let ioCallback: IntersectionObserverCallback = () => {}
+    class MockIO {
+      constructor(cb: IntersectionObserverCallback) {
+        ioCallback = cb
+      }
+      observe(el: Element) {
+        observed.push(el)
+      }
+      unobserve(el: Element) {
+        const i = observed.indexOf(el)
+        if (i >= 0) observed.splice(i, 1)
+      }
+      disconnect() {
+        observed.length = 0
+      }
+      takeRecords() {
+        return []
+      }
+    }
+    ;(globalThis as unknown as Record<string, unknown>).IntersectionObserver =
+      MockIO
+
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('scrolledpasthide')
+    let top = -400 // top edge above the viewport — collapsing here moves the scroll
+    vi.spyOn(article, 'getBoundingClientRect').mockImplementation(
+      () => ({ top }) as unknown as DOMRect,
+    )
+    document.body.appendChild(article)
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+    expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
+    expect(observed).toContain(article)
+
+    // Scrolled back so the top edge is in view: collapsing now only moves what
+    // the user can see, and X compensates for nothing.
+    top = 120
+    ioCallback(
+      [
+        {
+          target: article,
+          isIntersecting: true,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    expect(article.querySelector('.x-loc-hidden-ph')).not.toBeNull()
+    expect(observed).not.toContain(article)
+    delete (globalThis as unknown as Record<string, unknown>)
+      .IntersectionObserver
+  })
+
+  it('collapses a re-rendered post from the remembered verdict, with no cache read', async () => {
+    // X throws article nodes away and builds new ones as you scroll, and none
+    // of our attributes survive that. A post that comes back at full height and
+    // collapses one IndexedDB read later is a resize above the fold — the jump
+    // on the way back up. The verdict from the first sighting has to be enough.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const first = makeTweetArticle('recycled')
+    document.body.appendChild(first)
+    await flushAsync()
+    expect(first.getAttribute('data-x-loc-hidden')).toBe('collapse')
+
+    // The node X discards, and the one it renders in its place — this time with
+    // the cache unreachable, so only a remembered verdict can answer.
+    first.remove()
+    vi.mocked(getCached).mockReturnValue(new Promise(() => {}))
+    const second = makeTweetArticle('recycled')
+    document.body.appendChild(second)
+    await flushAsync()
+
+    expect(second.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    expect(second.querySelector('.x-loc-hidden-ph')?.textContent).toContain(
+      'India',
+    )
+    vi.mocked(getCached).mockResolvedValue(undefined)
+  })
+
+  it('forgets a remembered verdict when the rules change under it', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const first = makeTweetArticle('changedmind')
+    document.body.appendChild(first)
+    await flushAsync()
+    expect(first.getAttribute('data-x-loc-hidden')).toBe('collapse')
+
+    // Scrolled away — X has thrown the node out — and then the rule changes.
+    // With nothing by this account on screen, no re-judge can correct the
+    // verdict it left behind, so the refresh has to drop it.
+    first.remove()
+    setBlockedCountries([])
+    await flushAsync()
+
+    const second = makeTweetArticle('changedmind')
+    document.body.appendChild(second)
+    await flushAsync()
+    expect(second.getAttribute('data-x-loc-hidden')).toBeNull()
+    expect(second.querySelector('.x-loc-hidden-ph')).toBeNull()
+  })
+
+  it('switching from collapse to hide takes the placeholder with it', async () => {
+    // Hide mode drops the whole article, so a placeholder left over from
+    // collapse is invisible — and still in the DOM. Switching back then found
+    // it and built a second one underneath.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('modeswap')
+    document.body.appendChild(article)
+    await flushAsync()
+    expect(article.querySelector('.x-loc-hidden-ph')).not.toBeNull()
+
+    setHideMode('hide')
+    await flushAsync()
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('hide')
+    expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
+
+    setHideMode('collapse')
+    await flushAsync()
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    expect(article.querySelectorAll('.x-loc-hidden-ph')).toHaveLength(1)
+  })
+
+  it('rebuilds the placeholder when a different rule becomes the one hiding the post', async () => {
+    // The placeholder names the rule that caught the post, and the refresh only
+    // touches what changed — so "what changed" has to include the post still
+    // being hidden, but for another reason than the one it is naming.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+      facts: {
+        affiliation: { handle: 'someorg', name: 'Some Org', badgeUrl: null },
+      },
+    })
+    pushSettings({
+      blockedCountries: ['India'],
+      blockedAffiliations: ['someorg'],
+      hideBlockedLocations: 'collapse',
+    })
+    await flushAsync()
+
+    const article = makeTweetArticle('twoRules')
+    document.body.appendChild(article)
+    await flushAsync()
+    expect(article.querySelector('.x-loc-hidden-label')?.textContent).toContain(
+      'India',
+    )
+
+    // Location stops applying; the affiliation rule still hides it.
+    pushSettings({ blockedCountries: [] })
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    expect(article.querySelectorAll('.x-loc-hidden-ph')).toHaveLength(1)
+    expect(article.querySelector('.x-loc-hidden-label')?.textContent).toContain(
+      'Some Org',
+    )
+  })
 })
 
 // ---------------------------------------------------------------------------
