@@ -639,6 +639,10 @@ const checkedThisSession = new Set<string>()
 const pendingMap = new NormalizedMap<Promise<LocationData | null>>()
 let rateLimitResetAt = 0
 let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null
+// The reset time of the window whose toast the user clicked away. Every blocked
+// lookup calls showRateLimitToast, so without this the very next hover would
+// undo the click.
+let rateLimitToastDismissedUntil = 0
 
 // Live AboutAccountQuery budget: seeded at the limit, decremented by every
 // request (hover, swipe, prefetch alike) and corrected from x-rate-limit-*.
@@ -779,6 +783,7 @@ export function __testResetState() {
 
   // rate-limit window
   rateLimitResetAt = 0
+  rateLimitToastDismissedUntil = 0
   rateWindowLimit = LOOKUP_LIMIT_PER_WINDOW
   rateWindowRemaining = LOOKUP_LIMIT_PER_WINDOW
   rateWindowResetAt = 0
@@ -830,7 +835,26 @@ function formatCountdown(ms: number): string {
 // ---------------------------------------------------------------------------
 // Rate limit toast
 // ---------------------------------------------------------------------------
-function showRateLimitToast() {
+/** A click closes the countdown and keeps it closed for this window. */
+function dismissRateLimitToast(): void {
+  rateLimitToastDismissedUntil = rateLimitResetAt
+  if (rateLimitToastInterval) clearInterval(rateLimitToastInterval)
+  rateLimitToastInterval = null
+  document.getElementById('x-loc-rate-toast')?.remove()
+}
+
+/**
+ * `force` un-dismisses first: an explicit gesture (a swipe) is the user asking
+ * again, so the countdown comes back — and a click puts it away again. Passive
+ * lookups (hover, prefetch) never force.
+ */
+function showRateLimitToast(force = false) {
+  if (force) rateLimitToastDismissedUntil = 0
+
+  // Closed by the user, and still the same window — the reset time hasn't
+  // moved. A fresh window carries a later reset and shows again.
+  if (rateLimitResetAt <= rateLimitToastDismissedUntil) return
+
   // Both are pinned to the same bottom-centre slot, and a countdown the user
   // needs beats a request they didn't ask for.
   dismissRatingAsk()
@@ -839,6 +863,19 @@ function showRateLimitToast() {
   if (!toast) {
     toast = document.createElement('div')
     toast.id = 'x-loc-rate-toast'
+    // Interactive now, so it has to be reachable: a real role and tab stop,
+    // and keys doing what the click does. The ticking text stays the
+    // accessible name — the countdown is the content.
+    toast.title = 'Click to dismiss'
+    toast.setAttribute('role', 'button')
+    toast.tabIndex = 0
+    toast.addEventListener('click', dismissRateLimitToast)
+    toast.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        dismissRateLimitToast()
+      }
+    })
     document.body.appendChild(toast)
   }
 
@@ -3043,9 +3080,15 @@ async function revealLocationForSwipe(article: Element) {
     // Separate "X knows nothing about this account" from "we couldn't ask":
     // the rate-limit toast owns the same corner and explains itself, and a
     // swipe before the session headers land is transient.
-    const couldNotAsk = rateLimitResetAt > Date.now() || apiHeaders === null
-    if (couldNotAsk) dismissLocationToast()
-    else renderLocationToast('No location')
+    const rateLimited = rateLimitResetAt > Date.now()
+    if (rateLimited || apiHeaders === null) {
+      dismissLocationToast()
+      // The explanation the corner promises, even if the user clicked it away
+      // earlier — the swipe asked for it back.
+      if (rateLimited) showRateLimitToast(true)
+    } else {
+      renderLocationToast('No location')
+    }
     return
   }
 

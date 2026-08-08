@@ -226,6 +226,16 @@ test('rate limit: toast shown on 429, badge in hover card, no further API calls'
     .locator('.x-loc-icon-flag, .x-loc-store-block, .x-loc-icon-vpn')
     .first()
     .waitFor({ timeout: 10_000 })
+
+  // Click the toast away. A real click, through the real stylesheet — this is
+  // the assertion that pointer-events are on; the unit suite cannot see CSS.
+  await toast.click()
+  await expect(toast).toBeHidden()
+
+  // A further blocked hover leaves the dismissal alone.
+  await replyLink(4).hover()
+  await page.waitForTimeout(1_500)
+  await expect(toast).toBeHidden()
 })
 
 test('clear cache button empties IDB and forces fresh API call on re-hover', async ({
