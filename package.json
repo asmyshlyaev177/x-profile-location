@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently --kill-others \"pnpm proxy\" \"pnpm dev:app\"",
-    "build": "bedframe build",
+    "build": "bedframe build && bedframe zip",
     "build:worker": "VITE_CACHE_API_BASE=https://x-loc-cache.asmyshlyaev177.workers.dev bedframe build",
     "build:nocache": "VITE_CACHE_API_BASE= bedframe build",
     "preview": "vite preview",
