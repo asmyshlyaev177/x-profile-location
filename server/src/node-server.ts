@@ -123,6 +123,24 @@ function clientIp(req: IncomingMessage): string {
 // ---------------------------------------------------------------------------
 const BODYLESS = new Set(['GET', 'HEAD', 'OPTIONS', 'DELETE'])
 
+/**
+ * Methods a fetch Request cannot represent: undici throws rather than
+ * constructing one. Nothing legitimate sends them here — TRACE and TRACK are
+ * probes for cross-site tracing, CONNECT for an open proxy — so they get the
+ * flat 405 the spec wants instead of being carried into the adapter.
+ *
+ * In practice only TRACE arrives: node:http routes CONNECT to the server's
+ * `connect` event, and its parser answers TRACK itself with a bare 400. The set
+ * lists all three because it describes what `new Request` rejects, and which of
+ * them node happens to intercept first is not ours to depend on.
+ */
+const UNSUPPORTED_METHODS = new Set(['CONNECT', 'TRACE', 'TRACK'])
+
+/** Request path minus the query, the shape the stats counters key on. */
+function pathOf(req: IncomingMessage): string {
+  return (req.url ?? '/').split('?')[0]!
+}
+
 /** Cheap pre-check: reject on the declared length before reading a byte. */
 function declaredTooLarge(req: IncomingMessage, limit: number): boolean {
   const len = Number(req.headers['content-length'])
@@ -146,20 +164,38 @@ async function readBody(
   return Buffer.concat(chunks).toString('utf8')
 }
 
-function toRequest(req: IncomingMessage, body: string | null): Request {
+/**
+ * Null when the request has no fetch equivalent, which the caller answers 400.
+ *
+ * node:http accepts more than `new Request` does, and scanners live in the gap:
+ * a request target of `//` parses as a scheme-relative URL with no host, and
+ * header names node's parser tolerates can still be rejected by `Headers`.
+ * Anything that throws in here is malformed input, not a server fault, so it is
+ * caught wholesale — otherwise a port scan surfaced as a 500 and an entry in
+ * the error counter.
+ */
+function toHeaders(req: IncomingMessage): Headers {
   const headers = new Headers()
   for (const [key, value] of Object.entries(req.headers)) {
     if (Array.isArray(value)) for (const v of value) headers.append(key, v)
     else if (value !== undefined) headers.set(key, value)
   }
-  // The handlers only read `url.pathname`, so the authority is cosmetic — but it
-  // has to parse, and req.headers.host is attacker-controlled.
-  const url = new URL(req.url ?? '/', 'http://localhost')
-  return new Request(url, {
-    method: req.method,
-    headers,
-    body: body === null || body === '' ? undefined : body,
-  })
+  return headers
+}
+
+function toRequest(req: IncomingMessage, body: string | null): Request | null {
+  try {
+    // The handlers only read `url.pathname`, so the authority is cosmetic — but
+    // it has to parse, and req.headers.host is attacker-controlled.
+    const url = new URL(req.url ?? '/', 'http://localhost')
+    return new Request(url, {
+      method: req.method,
+      headers: toHeaders(req),
+      body: body === null || body === '' ? undefined : body,
+    })
+  } catch {
+    return null
+  }
 }
 
 /** Returns the serialised body, which the caller feeds to the stats counters. */
@@ -315,6 +351,15 @@ const server = createServer((req, res) => {
           'retry-after': String(retryAfter),
         })
       }
+      // Rejected ahead of the adapter, and counted as `other` alongside the
+      // 404s: these are scanner traffic, which is a thing to have a number for,
+      // not an error to page anyone about.
+      if (UNSUPPORTED_METHODS.has(req.method ?? '')) {
+        stats.noteRequest(pathOf(req), '', '', Date.now() - startedAt)
+        return plain(res, 405, 'Method Not Allowed', {
+          allow: 'GET, POST, OPTIONS',
+        })
+      }
       if (declaredTooLarge(req, config.maxBodyBytes)) {
         stats.noteTooLarge()
         return rejectTooLarge(req, res)
@@ -327,16 +372,14 @@ const server = createServer((req, res) => {
         return rejectTooLarge(req, res)
       }
 
-      const responseBody = await send(
-        res,
-        await worker.fetch(toRequest(req, body), env),
-      )
-      stats.noteRequest(
-        (req.url ?? '/').split('?')[0]!,
-        body,
-        responseBody,
-        Date.now() - startedAt,
-      )
+      const request = toRequest(req, body)
+      if (request === null) {
+        stats.noteRequest(pathOf(req), '', '', Date.now() - startedAt)
+        return plain(res, 400, 'Bad Request')
+      }
+
+      const responseBody = await send(res, await worker.fetch(request, env))
+      stats.noteRequest(pathOf(req), body, responseBody, Date.now() - startedAt)
     } catch (err) {
       stats.noteError()
       console.error('[x-loc-cache] request failed:', err)
