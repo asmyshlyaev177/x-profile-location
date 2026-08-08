@@ -137,6 +137,7 @@ export const CONTENT_CSS = `
   border-radius: 4px;
   padding: 2px 5px;
 }
+/* Clickable, unlike the swipe answer: a click closes the countdown. */
 #x-loc-rate-toast {
   position: fixed;
   bottom: 24px;
@@ -149,7 +150,8 @@ export const CONTENT_CSS = `
   font-size: 13px;
   font-weight: 600;
   z-index: 2147483647;
-  pointer-events: none;
+  cursor: pointer;
+  user-select: none;
   white-space: nowrap;
   border: 1px solid rgba(220, 38, 38, 0.55);
 }
@@ -175,8 +177,8 @@ export const CONTENT_CSS = `
 }
 /* The rating ask. The only thing the extension puts on screen that the user did
    not ask for, so: the same pill as the other two rather than a shape of its
-   own, wrapping instead of overflowing on a phone, and pointer-events back on
-   because unlike them it has to be clickable. */
+   own, wrapping instead of overflowing on a phone, and pointer-events on
+   because, like the rate-limit countdown, it has to be clickable. */
 #${RATING_ASK_ID} {
   position: fixed;
   bottom: 24px;

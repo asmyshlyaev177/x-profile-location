@@ -542,6 +542,130 @@ describe('fetchLocationData — error responses', () => {
 })
 
 // ---------------------------------------------------------------------------
+// The rate-limit toast — closable by click
+// ---------------------------------------------------------------------------
+describe('the rate-limit toast', () => {
+  const HEADERS = {
+    authorization: 'Bearer token123',
+    'x-csrf-token': 'csrf123',
+  }
+  const toast = () => document.getElementById('x-loc-rate-toast')
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setApiHeaders(HEADERS)
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  /** Every API call from here on gets a 429 resetting this far from now. */
+  function respondRateLimited(resetInSeconds: number) {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, {
+        status: 429,
+        headers: {
+          'x-rate-limit-reset': String(
+            Math.ceil(Date.now() / 1000) + resetInSeconds,
+          ),
+        },
+      }),
+    )
+  }
+
+  it('closes on click', async () => {
+    respondRateLimited(300)
+    await fetchLocationData('rl_click')
+    expect(toast()).not.toBeNull()
+
+    toast()!.click()
+    expect(toast()).toBeNull()
+
+    // The countdown died with it — a later tick must not resurrect anything.
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(toast()).toBeNull()
+  })
+
+  it('stays closed for the rest of the window', async () => {
+    respondRateLimited(300)
+    await fetchLocationData('rl_dismissed')
+    toast()!.click()
+
+    // Still inside the window, so the lookup is refused — quietly now.
+    await fetchLocationData('rl_blocked')
+    expect(toast()).toBeNull()
+  })
+
+  it('is put back by a blocked lookup when it was not clicked away', async () => {
+    // Removal alone (the master switch strips the page) is not a dismissal;
+    // only a click is. The next blocked lookup restores the countdown.
+    respondRateLimited(300)
+    await fetchLocationData('rl_stripped')
+    toast()!.remove()
+
+    await fetchLocationData('rl_restored')
+    expect(toast()).not.toBeNull()
+  })
+
+  it('returns for the next window', async () => {
+    respondRateLimited(300)
+    await fetchLocationData('rl_window_one')
+    toast()!.click()
+
+    // The window rolls over, the next lookup earns a fresh 429 with a later
+    // reset, and the old dismissal does not carry across.
+    await vi.advanceTimersByTimeAsync(301_000)
+    respondRateLimited(300)
+    await fetchLocationData('rl_window_two')
+    expect(toast()).not.toBeNull()
+  })
+
+  it('closes on Enter and Space too', async () => {
+    // It went from inert pill to control, and a control a click can reach the
+    // keyboard must reach as well.
+    respondRateLimited(300)
+    await fetchLocationData('rl_keyboard')
+    expect(toast()!.getAttribute('role')).toBe('button')
+    expect(toast()!.tabIndex).toBe(0)
+
+    toast()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+    expect(toast()).toBeNull()
+  })
+
+  it('is brought back by a swipe, which asks for it', async () => {
+    // The swipe path deliberately shows no answer of its own while rate
+    // limited — the corner belongs to this toast. A dismissal must not turn
+    // that into a gesture that silently does nothing for the whole window.
+    respondRateLimited(300)
+    await fetchLocationData('rl_swipe_seed')
+    toast()!.click()
+    expect(toast()).toBeNull()
+
+    const article = makeTweetArticle('rl_swiped')
+    document.body.appendChild(article)
+    const point = (x: number) => ({ clientX: x, clientY: 100 }) as Touch
+    for (const [type, x] of [
+      ['touchstart', 10],
+      ['touchmove', 90],
+    ] as const) {
+      article.dispatchEvent(
+        new TouchEvent(type, {
+          bubbles: true,
+          touches: [point(x)],
+          changedTouches: [point(x)],
+        }),
+      )
+    }
+    await flushAsync()
+
+    expect(toast()).not.toBeNull()
+    expect(document.getElementById('x-loc-location-toast')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
 // chrome.runtime.onMessage — CLEAR_CACHE
 // ---------------------------------------------------------------------------
 describe('chrome.runtime.onMessage — CLEAR_CACHE', () => {
