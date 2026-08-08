@@ -11,7 +11,7 @@
  *
  * All x.com traffic is recorded/replayed via HAR (see fixtures.ts).
  */
-import type { BrowserContext } from '@playwright/test'
+import type { BrowserContext, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
   mockAboutAccount,
@@ -19,6 +19,8 @@ import {
   mostLikedReply,
   openOptionsPage,
   optionsSection,
+  TWEET_ARTICLE,
+  waitForReplies,
 } from './helpers'
 import { CACHE_API_BASE } from '../src/scripts/constants'
 
@@ -133,6 +135,147 @@ test('hide mode drops the tweet silently, and switching off brings it back', asy
   await setHideMode(context, extensionId, 'off')
   await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 10_000 })
   await expect(article).toBeVisible()
+})
+
+// ---------------------------------------------------------------------------
+// The page must not move under the reader
+// ---------------------------------------------------------------------------
+// X's virtualised timeline compensates for a cell resizing above the viewport
+// by scrolling the window itself — and it issues one `window.scrollBy` per cell
+// it saw resize, each carrying the running total for the batch rather than that
+// cell's own delta. One cell at a time is exact; several in a frame scroll by a
+// multiple of the height that actually changed. Collapsing seven replies
+// together moved the scroll 8244px for 2065px of content.
+//
+// Only a real browser running X's own timeline can show that, which is why
+// these two live here and not in the unit or visual suites: there is nothing to
+// assert about our CSS or our DOM, only about where the page ended up.
+
+/** Anything larger than this is the bug; the bug measured in the hundreds. */
+const JUMP_TOLERANCE_PX = 60
+
+test('a filter change with posts hidden above the fold does not move the page', async ({
+  page,
+  context,
+  extensionId,
+}) => {
+  // The strongest form of the bug: switching the mode re-judges every post at
+  // once, so every one of them resizes in the same frame. What made that move
+  // the page was the refresh springing them all back to full height before
+  // asking the cache whether they were still hidden.
+  //
+  // Driven by a setting rather than by scrolling far enough to load more
+  // replies, because a HAR only holds the pages visited when it was cut: a
+  // replayed thread stops paginating, and a scroll-only version of this passes
+  // whatever the extension does.
+  await mockSharedCache(page, FROM_INDIA)
+  await mockAboutAccount(page, { account_based_in: 'India' })
+
+  await page.goto(NASA_TWEET)
+  await waitForReplies(page)
+  await expect(
+    page.locator(`${TWEET_ARTICLE}[${HIDDEN}="collapse"]`).first(),
+  ).toBeAttached({ timeout: 15_000 })
+
+  // Far enough in that collapsed posts sit above the viewport — those are the
+  // ones whose resize the timeline compensates for, and over-compensates.
+  await page.evaluate(() => window.scrollBy(0, window.innerHeight * 3))
+  await page.waitForTimeout(2_000)
+
+  const hiddenAbove = await countHiddenAboveFold(page)
+  expect(
+    hiddenAbove,
+    'nothing collapsed above the viewport — the case this test is about',
+  ).toBeGreaterThanOrEqual(2)
+
+  for (const mode of ['off', 'collapse'] as const) {
+    const before = await page.evaluate(() => Math.round(window.scrollY))
+    await setHideMode(context, extensionId, mode)
+    await page.waitForTimeout(2_500)
+    const moved =
+      (await page.evaluate(() => Math.round(window.scrollY))) - before
+    expect(
+      Math.abs(moved),
+      `the page moved ${moved}px when the mode became '${mode}'`,
+    ).toBeLessThanOrEqual(JUMP_TOLERANCE_PX)
+  }
+})
+
+/** Collapsed or hidden posts whose whole box is above the viewport top. */
+function countHiddenAboveFold(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      [
+        ...document.querySelectorAll(
+          'article[data-testid="tweet"][data-x-loc-hidden]',
+        ),
+      ].filter((a) => a.getBoundingClientRect().bottom < 0).length,
+  )
+}
+
+test('adding an exception moves nothing but the post it spares', async ({
+  page,
+}) => {
+  // The refresh behind this used to strip every post back to full height and
+  // collapse them all again one cache read later — two page-wide resize storms,
+  // and the worst possible input to that compensation. An exception for one
+  // account moved the whole page.
+  await mockSharedCache(page, FROM_INDIA)
+  await mockAboutAccount(page, { account_based_in: 'India' })
+
+  await page.goto(NASA_TWEET)
+  await waitForReplies(page)
+  await expect(
+    page.locator(`${TWEET_ARTICLE}[${HIDDEN}="collapse"]`).first(),
+  ).toBeAttached({ timeout: 15_000 })
+
+  // Scrolled well in, so there are collapsed posts above the viewport — those
+  // are the ones whose resize moves the scroll.
+  await page.evaluate(() => window.scrollBy(0, window.innerHeight * 3))
+  await page.waitForTimeout(2_000)
+
+  // Clicked from inside the page rather than through Playwright, whose click
+  // scrolls the target into view first — which would be indistinguishable from
+  // the movement this test exists to detect.
+  const result = await page.evaluate(async () => {
+    const btn = [
+      ...document.querySelectorAll<HTMLElement>(
+        'article[data-testid="tweet"][data-x-loc-hidden="collapse"] .x-loc-hidden-ph .x-loc-exc-btn',
+      ),
+    ].find((el) => {
+      const r = el.getBoundingClientRect()
+      return r.top > 40 && r.bottom < window.innerHeight - 40
+    })
+    if (!btn) return { found: false, hiddenAbove: 0, moved: 0 }
+
+    const hiddenAbove = [
+      ...document.querySelectorAll(
+        'article[data-testid="tweet"][data-x-loc-hidden]',
+      ),
+    ].filter((a) => a.getBoundingClientRect().bottom < 0).length
+
+    const before = Math.round(window.scrollY)
+    btn.click()
+    await new Promise((r) => setTimeout(r, 2_000))
+    return {
+      found: true,
+      hiddenAbove,
+      moved: Math.round(window.scrollY) - before,
+    }
+  })
+
+  expect(
+    result.found,
+    'no collapsed post in view to add an exception from',
+  ).toBe(true)
+  expect(
+    result.hiddenAbove,
+    'nothing collapsed above the viewport — the case this test is about',
+  ).toBeGreaterThanOrEqual(2)
+  expect(
+    Math.abs(result.moved),
+    `the page moved ${result.moved}px when one account was excepted`,
+  ).toBeLessThanOrEqual(JUMP_TOLERANCE_PX)
 })
 
 // ---------------------------------------------------------------------------
