@@ -1,0 +1,608 @@
+{
+  "localeTag": {
+    "message": "fr"
+  },
+  "appName": {
+    "message": "X-Pat — lieu, filtres et surlignage de profils X"
+  },
+  "appShortName": {
+    "message": "X-Pat"
+  },
+  "appDesc": {
+    "message": "Affiche le pays depuis lequel publie tout profil X — drapeaux, avertissements VPN et filtres par pays, issus des données de X."
+  },
+  "actionTitle": {
+    "message": "X-Pat"
+  },
+  "menuSharePost": {
+    "message": "Copier le post avec les drapeaux de localisation"
+  },
+  "popupPaused": {
+    "message": "En pause. X s'affiche exactement comme si l'extension était désinstallée."
+  },
+  "popupOn": {
+    "message": "Actif"
+  },
+  "popupOff": {
+    "message": "Inactif"
+  },
+  "popupMasterSwitchTitle": {
+    "message": "Tout désactiver pour le moment"
+  },
+  "popupFlagsInFeed": {
+    "message": "Drapeaux dans le fil 📍"
+  },
+  "popupAccountDetails": {
+    "message": "Détails du compte au survol 🪪"
+  },
+  "popupCountryPlaceholder": {
+    "message": "Pays ou région…"
+  },
+  "popupNothingBlocked": {
+    "message": "Aucun blocage — tous les drapeaux affichés tels quels."
+  },
+  "popupHighlightKeywords": {
+    "message": "Surligner les mots-clés"
+  },
+  "popupKeywordPlaceholder": {
+    "message": "Ajouter un mot-clé…"
+  },
+  "popupNoKeywords": {
+    "message": "Aucun mot-clé — rien n'est surligné."
+  },
+  "popupAllSettings": {
+    "message": "Tous les réglages →"
+  },
+  "popupRate": {
+    "message": "Noter ★"
+  },
+  "popupRateTitle": {
+    "message": "Noter X-Pat sur le Chrome Web Store"
+  },
+  "popupDonate": {
+    "message": "Faire un don 💜"
+  },
+  "popupDonateTitle": {
+    "message": "Soutenir le développement"
+  },
+  "removeItem": {
+    "message": "Retirer $1"
+  },
+  "removeHandle": {
+    "message": "Retirer @$1"
+  },
+  "openHandle": {
+    "message": "Ouvrir @$1 sur X"
+  },
+  "rateAskText": {
+    "message": "Utile ? Une note sur le store aide beaucoup."
+  },
+  "rateAskInline": {
+    "message": " — utile ? Une note sur le store aide beaucoup."
+  },
+  "rateAskYes": {
+    "message": "Noter ★"
+  },
+  "rateAskLater": {
+    "message": "Plus tard"
+  },
+  "rateAskNo": {
+    "message": "Non merci"
+  },
+  "optionsTitle": {
+    "message": "Réglages de X-Pat"
+  },
+  "optionsEnabled": {
+    "message": "Activé"
+  },
+  "optionsPaused": {
+    "message": "En pause"
+  },
+  "optionsPausedBanner": {
+    "message": "En pause — rien de ce qui suit n'est appliqué à X pour le moment."
+  },
+  "tabDisplay": {
+    "message": "Affichage"
+  },
+  "tabFilters": {
+    "message": "Filtres"
+  },
+  "tabExceptions": {
+    "message": "Exceptions"
+  },
+  "tabData": {
+    "message": "Données et confidentialité"
+  },
+  "tabAdvanced": {
+    "message": "Avancé"
+  },
+  "ruleHighlight": {
+    "message": "Surlignage par mot-clé / drapeau"
+  },
+  "ruleLocation": {
+    "message": "Lieux bloqués"
+  },
+  "ruleAffiliation": {
+    "message": "Affiliations bloquées"
+  },
+  "ruleAge": {
+    "message": "Âge du compte"
+  },
+  "cardOnPage": {
+    "message": "Sur la page"
+  },
+  "cardOnPageDesc": {
+    "message": "Ce que X-Pat affiche sur X. Rien de cela ne change quels posts sont filtrés."
+  },
+  "setShowInFeed": {
+    "message": "Afficher le lieu dans le fil"
+  },
+  "setShowInFeedDesc": {
+    "message": "Un drapeau sous chaque nom dans le fil, pas seulement au survol."
+  },
+  "setAccountCard": {
+    "message": "Afficher les détails du compte au survol"
+  },
+  "setAccountCardDesc": {
+    "message": "Âge du compte, badge d'affiliation, vérification, changements de pseudo et nombre d'abonnés — issus des données déjà envoyées par X, sans requête supplémentaire."
+  },
+  "setCopyButton": {
+    "message": "Bouton « Copier » sur les fiches de survol"
+  },
+  "setCopyButtonDesc": {
+    "message": "Un petit bouton « Copier » dans la ligne des drapeaux. Copie le post survolé avec les drapeaux sous forme d'image — rendu dans votre navigateur, rien n'est envoyé. Un clic droit sur un post fait la même chose."
+  },
+  "setExceptionButton": {
+    "message": "Bouton d'exception sur les fiches de survol"
+  },
+  "setExceptionButtonDesc": {
+    "message": "Une exemption en un clic pour le compte consulté, pour toutes les règles qui s'y appliquent — surlignage par mot-clé, pays, badge d'affiliation, âge. L'infobulle indique lesquelles."
+  },
+  "hintSwipe": {
+    "message": "👉 Balayez un post vers la droite pour obtenir son lieu."
+  },
+  "cardAppearance": {
+    "message": "Apparence"
+  },
+  "cardAppearanceDesc": {
+    "message": "Concerne les écrans propres à X-Pat — cette page et le popup. Les drapeaux et marques affichés sur X suivent plutôt le thème de X, pour ne jamais détonner dans le fil."
+  },
+  "setTheme": {
+    "message": "Thème"
+  },
+  "themeSystem": {
+    "message": "Suivre le système"
+  },
+  "themeLight": {
+    "message": "Clair"
+  },
+  "themeDark": {
+    "message": "Sombre"
+  },
+  "setLanguage": {
+    "message": "Langue"
+  },
+  "setLanguageDesc": {
+    "message": "Couvre le texte propre à X-Pat et les noms de pays qu'il affiche. En choisir un recharge cette page."
+  },
+  "languageAuto": {
+    "message": "Suivre le navigateur"
+  },
+  "cardKeyword": {
+    "message": "Surligner par mot-clé"
+  },
+  "cardKeywordDesc": {
+    "message": "Marque les posts dont le nom ou la bio de l'auteur contient l'un de ces termes. Le surlignage marque un post, il ne le masque jamais."
+  },
+  "keywordPlaceholder": {
+    "message": "Saisir un mot-clé ou choisir une suggestion…"
+  },
+  "emptyNoKeywords": {
+    "message": "Aucun mot-clé défini — tous les posts sont affichés normalement."
+  },
+  "cardLocations": {
+    "message": "Lieux"
+  },
+  "cardLocationsDesc": {
+    "message": "Ceux-ci affichent ⚠️ au lieu de leur drapeau. Se base sur le pays du store, ou sur le lieu du compte s'il n'est pas signalé comme VPN. Ne s'applique jamais au post que vous avez ouvert."
+  },
+  "locationPlaceholder": {
+    "message": "Rechercher pays et régions — nom, code ou surnom…"
+  },
+  "regionCountries": {
+    "message": "région · $1 pays"
+  },
+  "emptyNoLocations": {
+    "message": "Aucun lieu sélectionné — tous les drapeaux affichés tels quels."
+  },
+  "cardFiltered": {
+    "message": "Que faire d'un post filtré"
+  },
+  "cardFilteredDesc": {
+    "message": "S'applique aux deux filtres qui retirent un post — lieux bloqués et affiliations bloquées. L'âge du compte et le surlignage par mot-clé marquent le post quel que soit ce réglage. Un post cité est replié seul, pour que le post qui le cite reste lisible, et les listes de personnes sont marquées plutôt que masquées — en retirer des lignes fausserait les compteurs."
+  },
+  "filteredPosts": {
+    "message": "Posts filtrés"
+  },
+  "hideModeOff": {
+    "message": "Afficher normalement"
+  },
+  "hideModeCollapse": {
+    "message": "Replier"
+  },
+  "hideModeCollapseLong": {
+    "message": "Replier (« Afficher » pour ouvrir)"
+  },
+  "hideModeHide": {
+    "message": "Masquer"
+  },
+  "hideModeHideLong": {
+    "message": "Masquer complètement"
+  },
+  "cardAffiliations": {
+    "message": "Affiliations"
+  },
+  "cardAffiliationsDesc": {
+    "message": "X badge certains comptes comme appartenant à une organisation. Saisissez le pseudo du compte parent pour filtrer d'un coup tous les comptes qui en portent le badge."
+  },
+  "affiliationPlaceholder": {
+    "message": "Pseudo du compte parent, ex. nasa…"
+  },
+  "emptyNoAffiliations": {
+    "message": "Aucune affiliation bloquée. Survolez un compte pour voir s'il porte un badge."
+  },
+  "cardAge": {
+    "message": "Âge du compte"
+  },
+  "cardAgeDesc": {
+    "message": "Depuis combien de temps le compte existe, d'après la date de création rapportée par X. Celui-ci marque les posts et ne les masque jamais, quel que soit le réglage ci-dessus."
+  },
+  "setMarkYoung": {
+    "message": "Marquer les comptes récents"
+  },
+  "setMarkYoungDesc": {
+    "message": "Marque leurs posts comme le ferait une correspondance de mot-clé, avec la barre orange sur le côté. Ce n'est pas un hasard : un compte récent est le signal le plus fort d'un compte acheté ou industriel, et c'est aussi exactement ce à quoi ressemble une personne qui s'est inscrite le mois dernier — une raison trop faible pour lui retirer ses réponses."
+  },
+  "setMarkYoungerThan": {
+    "message": "Marquer les comptes de moins de"
+  },
+  "cardFlags": {
+    "message": "Surligner par drapeaux"
+  },
+  "cardFlagsDesc": {
+    "message": "Marque les posts dont la bio de l'auteur est truffée d'émojis drapeau."
+  },
+  "setHighlightFlagHeavy": {
+    "message": "Surligner les bios riches en drapeaux"
+  },
+  "setFlagThreshold": {
+    "message": "Plus de ce nombre de drapeaux"
+  },
+  "setUniqueFlags": {
+    "message": "Ne compter que les drapeaux uniques"
+  },
+  "cardAlwaysShow": {
+    "message": "Toujours afficher"
+  },
+  "cardAlwaysShowDesc": {
+    "message": "Exempté de toutes les règles à la fois — jamais masqué, jamais replié, jamais surligné, quels que soient les filtres."
+  },
+  "usernamePlaceholder": {
+    "message": "Ajouter un pseudo (sans @)…"
+  },
+  "emptyNoAllowlist": {
+    "message": "Personne sur la liste blanche — chaque compte est jugé selon les règles."
+  },
+  "cardPerRule": {
+    "message": "Exceptions par règle"
+  },
+  "cardPerRuleDesc": {
+    "message": "Exemptez un compte d'une règle mais pas des autres — pour quelqu'un qui utilise un mot-clé suivi de façon sarcastique (« non NAFO »), ou qui poste depuis un pays bloqué que vous voulez quand même lire."
+  },
+  "searchExceptions": {
+    "message": "Rechercher des exceptions…"
+  },
+  "searchExceptionsLabel": {
+    "message": "Rechercher des exceptions"
+  },
+  "emptyNoMatch": {
+    "message": "Aucun résultat pour « $1 »."
+  },
+  "emptyNoExceptions": {
+    "message": "Aucune exception."
+  },
+  "cardLookups": {
+    "message": "Requêtes en arrière-plan"
+  },
+  "cardLookupsDesc": {
+    "message": "X autorise environ $1 requêtes de compte toutes les $2 minutes. Ces réglages déterminent combien X-Pat peut en utiliser pour remplir les drapeaux pour vous, et combien sont réservées aux comptes que vous survolez vous-même."
+  },
+  "setSharedCache": {
+    "message": "Utiliser le cache communautaire partagé"
+  },
+  "setSharedCacheDesc": {
+    "message": "Partage les drapeaux que vous consultez pour que tout le monde évite les requêtes en double. Seuls les pseudos publics et leur drapeau sont envoyés — aucune donnée de compte ou personnelle."
+  },
+  "setPrefetch": {
+    "message": "Précharger les lieux en arrière-plan"
+  },
+  "setPrefetchDesc": {
+    "message": "Consulte les comptes de votre fil, dans l'ordre où ils apparaissent, pour que les drapeaux s'affichent sans survol."
+  },
+  "setShare": {
+    "message": "Part du quota de requêtes utilisable"
+  },
+  "setShareDesc": {
+    "message": "$1 pour le préchargement, $2 restants pour vos survols."
+  },
+  "setSpread": {
+    "message": "Répartir les requêtes sur les $1 minutes"
+  },
+  "setSpreadDesc": {
+    "message": "Environ une requête toutes les $1s, au lieu de tout d'un coup."
+  },
+  "cardBackup": {
+    "message": "Sauvegarde et restauration"
+  },
+  "cardBackupDesc": {
+    "message": "Transférez vos réglages vers un autre navigateur, ou gardez une copie avant d'expérimenter."
+  },
+  "btnExport": {
+    "message": "Exporter les réglages"
+  },
+  "btnImport": {
+    "message": "Importer les réglages"
+  },
+  "hintImportMerge": {
+    "message": "L'import fusionne : les réglages que le fichier ne mentionne pas sont laissés tels quels. Chaque valeur est revérifiée à l'entrée, de sorte qu'un fichier modifié à la main ne peut pas mettre l'extension dans un état irrécupérable."
+  },
+  "noteExported": {
+    "message": "$1 réglages exportés. L'identifiant du cache partagé et vos lieux en cache ne sont pas inclus."
+  },
+  "noteImported": {
+    "message": "$1 réglages importés."
+  },
+  "noteImportedSkipped": {
+    "message": "$1 clé(s) inconnue(s) ignorée(s)."
+  },
+  "errImportFailed": {
+    "message": "Ce fichier n'a pas pu être importé."
+  },
+  "errNotJson": {
+    "message": "Ce fichier n'est pas du JSON valide."
+  },
+  "errNotExport": {
+    "message": "Ce fichier n'est pas un export de réglages."
+  },
+  "errNoSection": {
+    "message": "La section « settings » est absente de ce fichier, il ne s'agit donc pas d'un export de cette extension."
+  },
+  "errNewerFormat": {
+    "message": "Ce fichier a été écrit par une version plus récente (format $1). Mettez d'abord l'extension à jour."
+  },
+  "errNoSettings": {
+    "message": "Ce fichier ne contient aucun réglage à importer."
+  },
+  "cardCache": {
+    "message": "Cache local"
+  },
+  "cardCacheDesc": {
+    "message": "Les lieux que vous avez consultés sont conservés dans ce navigateur pendant 30 jours, leur réaffichage ne coûte donc rien."
+  },
+  "btnClearCache": {
+    "message": "Vider le cache des lieux"
+  },
+  "btnCacheCleared": {
+    "message": "Cache vidé"
+  },
+  "cardTrust": {
+    "message": "Confiance du cache partagé"
+  },
+  "cardTrustDesc": {
+    "message": "Nombre de signalements indépendants du même lieu requis par cette installation avant de lui faire confiance. Plus c'est élevé, plus c'est difficile à empoisonner, mais cela répond bien moins : aujourd'hui, seul 1 profil en cache sur 80 environ a été signalé deux fois, donc au-dessus de 1, on retombe surtout sur une requête du compte sur X et on consomme votre quota. Laissez à $1 sauf si vous mesurez cela."
+  },
+  "setTrustAfter": {
+    "message": "Faire confiance à un lieu partagé après"
+  },
+  "trustReports1": {
+    "message": "1 signalement"
+  },
+  "trustReports2": {
+    "message": "2 signalements"
+  },
+  "trustReports3": {
+    "message": "3 signalements"
+  },
+  "ageDays": {
+    "message": "$1 jours"
+  },
+  "ageMonths": {
+    "message": "$1 mois"
+  },
+  "ageYear": {
+    "message": "1 an"
+  },
+  "ageYears": {
+    "message": "$1 ans"
+  },
+  "ageToday": {
+    "message": "aujourd'hui"
+  },
+  "ageShortDays": {
+    "message": "$1j"
+  },
+  "ageShortMonths": {
+    "message": "$1m"
+  },
+  "ageShortYears": {
+    "message": "$1a"
+  },
+  "toastDismiss": {
+    "message": "Cliquer pour fermer"
+  },
+  "toastRateLimit": {
+    "message": "⚠ Quota atteint · réinitialisation dans $1"
+  },
+  "countdownMinSec": {
+    "message": "$1m $2s"
+  },
+  "countdownSec": {
+    "message": "$1s"
+  },
+  "rateLimitBadgeTitle": {
+    "message": "Quota de l'API X atteint — requêtes de lieu en pause jusqu'à la réinitialisation"
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN"
+  },
+  "vpnTitle": {
+    "message": "VPN utilisé, le lieu peut être inexact"
+  },
+  "storeRegionLabel": {
+    "message": "Région $1 : $2"
+  },
+  "platformWeb": {
+    "message": "Web"
+  },
+  "platformUnknown": {
+    "message": "Inconnu"
+  },
+  "hiddenLabel": {
+    "message": "🚫 Masqué · $1 $2"
+  },
+  "hiddenShow": {
+    "message": "Afficher"
+  },
+  "hiddenShowTitle": {
+    "message": "Afficher ce post ($1 : $2)"
+  },
+  "cellTagTitle": {
+    "message": "Correspond à votre $1 — affiché, non masqué"
+  },
+  "ruleNameHighlight": {
+    "message": "règle de surlignage"
+  },
+  "ruleNameLocation": {
+    "message": "lieu bloqué"
+  },
+  "ruleNameAffiliation": {
+    "message": "affiliation bloquée"
+  },
+  "ruleNameAge": {
+    "message": "âge du compte"
+  },
+  "excAdd": {
+    "message": "🚫 Ajouter une exception"
+  },
+  "excUndo": {
+    "message": "✓ Exception (annuler)"
+  },
+  "excAddTitle": {
+    "message": "Exempter @$1 de $2"
+  },
+  "excUndoTitle": {
+    "message": "@$1 est exempté de $2 — cliquer pour annuler"
+  },
+  "excPhraseHighlight": {
+    "message": "le surlignage par mot-clé et drapeau"
+  },
+  "excPhraseLocation": {
+    "message": "le filtre des lieux bloqués"
+  },
+  "excPhraseAffiliation": {
+    "message": "le filtre des affiliations bloquées"
+  },
+  "excPhraseAge": {
+    "message": "le filtre d'âge du compte"
+  },
+  "joinAnd": {
+    "message": "$1 et $2"
+  },
+  "chipBlockedYou": {
+    "message": "🚫 Vous a bloqué"
+  },
+  "chipBlockedYouTitle": {
+    "message": "Ce compte bloque votre compte"
+  },
+  "chipAge": {
+    "message": "🎂 $1"
+  },
+  "chipAgeTitle": {
+    "message": "Compte créé le $1"
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1"
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "X affiche un badge d'affiliation lié à @$1"
+  },
+  "chipAffiliationTitle": {
+    "message": "X affiche un badge d'affiliation sur ce compte"
+  },
+  "chipIdVerified": {
+    "message": "🪪 ID vérifié"
+  },
+  "chipIdVerifiedTitle": {
+    "message": "X a vérifié une pièce d'identité"
+  },
+  "chipVerified": {
+    "message": "✔ Vérifié"
+  },
+  "chipVerifiedTitle": {
+    "message": "Vérification héritée"
+  },
+  "chipHandle1": {
+    "message": "✎ 1 pseudo"
+  },
+  "chipHandles": {
+    "message": "✎ $1 pseudos"
+  },
+  "chipHandlesTitle": {
+    "message": "Ce compte a changé de pseudo $1 fois"
+  },
+  "chipProtected": {
+    "message": "🔒 Protégé"
+  },
+  "chipProtectedTitle": {
+    "message": "Les posts sont protégés"
+  },
+  "bioTitle": {
+    "message": "Bio issue de l'API X — cette fiche n'en affiche pas"
+  },
+  "shareBtn": {
+    "message": "🖼 Copier"
+  },
+  "shareBtnTitle": {
+    "message": "Copier ce post et ce que X rapporte pour @$1 sous forme d'image"
+  },
+  "toastRendering": {
+    "message": "Rendu de @$1 …"
+  },
+  "toastCopied": {
+    "message": "✓ Copié dans le presse-papier"
+  },
+  "toastSaved": {
+    "message": "✓ Image enregistrée"
+  },
+  "toastRenderFail": {
+    "message": "Impossible de produire cette fiche"
+  },
+  "toastRightClick": {
+    "message": "Faites un clic droit sur un post pour le partager"
+  },
+  "toastReadFail": {
+    "message": "Impossible de lire ce post"
+  },
+  "toastNoLocation": {
+    "message": "Aucun lieu"
+  },
+  "toastLookingUp": {
+    "message": "@$1 …"
+  },
+  "regionEastAsiaPacific": {
+    "message": "Asie de l'Est et Pacifique"
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "Europe de l'Est (hors UE)"
+  }
+}

@@ -1,0 +1,608 @@
+{
+  "localeTag": {
+    "message": "ja"
+  },
+  "appName": {
+    "message": "X-Pat — Xプロフィールの位置情報、フィルター、ハイライト"
+  },
+  "appShortName": {
+    "message": "X-Pat"
+  },
+  "appDesc": {
+    "message": "Xのプロフィールがどの国から投稿しているかを表示 — 国旗、VPN警告、国フィルターをX自身のデータから読み取ります。"
+  },
+  "actionTitle": {
+    "message": "X-Pat"
+  },
+  "menuSharePost": {
+    "message": "位置情報フラグ付きで投稿をコピー"
+  },
+  "popupPaused": {
+    "message": "一時停止中。拡張機能をアンインストールした状態と同じようにXが表示されます。"
+  },
+  "popupOn": {
+    "message": "オン"
+  },
+  "popupOff": {
+    "message": "オフ"
+  },
+  "popupMasterSwitchTitle": {
+    "message": "すべての機能を一時的にオフにする"
+  },
+  "popupFlagsInFeed": {
+    "message": "フィードに国旗を表示 📍"
+  },
+  "popupAccountDetails": {
+    "message": "ホバーでアカウント詳細を表示 🪪"
+  },
+  "popupCountryPlaceholder": {
+    "message": "国または地域…"
+  },
+  "popupNothingBlocked": {
+    "message": "ブロックなし — すべての国旗がそのまま表示されます。"
+  },
+  "popupHighlightKeywords": {
+    "message": "キーワードをハイライト"
+  },
+  "popupKeywordPlaceholder": {
+    "message": "キーワードを追加…"
+  },
+  "popupNoKeywords": {
+    "message": "キーワードなし — ハイライトされていません。"
+  },
+  "popupAllSettings": {
+    "message": "すべての設定 →"
+  },
+  "popupRate": {
+    "message": "評価 ★"
+  },
+  "popupRateTitle": {
+    "message": "ChromeウェブストアでX-Patを評価"
+  },
+  "popupDonate": {
+    "message": "寄付 💜"
+  },
+  "popupDonateTitle": {
+    "message": "開発をサポート"
+  },
+  "removeItem": {
+    "message": "$1を削除"
+  },
+  "removeHandle": {
+    "message": "@$1を削除"
+  },
+  "openHandle": {
+    "message": "Xで@$1を開く"
+  },
+  "rateAskText": {
+    "message": "お役に立ちましたか？ストアでの評価が励みになります。"
+  },
+  "rateAskInline": {
+    "message": "— お役に立ちましたか？ストアでの評価が励みになります。"
+  },
+  "rateAskYes": {
+    "message": "評価する ★"
+  },
+  "rateAskLater": {
+    "message": "あとで"
+  },
+  "rateAskNo": {
+    "message": "結構です"
+  },
+  "optionsTitle": {
+    "message": "X-Pat 設定"
+  },
+  "optionsEnabled": {
+    "message": "有効"
+  },
+  "optionsPaused": {
+    "message": "一時停止中"
+  },
+  "optionsPausedBanner": {
+    "message": "一時停止中 — 以下の設定は現在Xに適用されていません。"
+  },
+  "tabDisplay": {
+    "message": "表示"
+  },
+  "tabFilters": {
+    "message": "フィルター"
+  },
+  "tabExceptions": {
+    "message": "例外"
+  },
+  "tabData": {
+    "message": "データとプライバシー"
+  },
+  "tabAdvanced": {
+    "message": "詳細"
+  },
+  "ruleHighlight": {
+    "message": "キーワード / 国旗ハイライト"
+  },
+  "ruleLocation": {
+    "message": "ブロック中の地域"
+  },
+  "ruleAffiliation": {
+    "message": "ブロック中の所属"
+  },
+  "ruleAge": {
+    "message": "アカウント年齢"
+  },
+  "cardOnPage": {
+    "message": "ページ上の表示"
+  },
+  "cardOnPageDesc": {
+    "message": "X-PatがX上に描画するものです。フィルター対象の投稿には影響しません。"
+  },
+  "setShowInFeed": {
+    "message": "フィードに位置情報を表示"
+  },
+  "setShowInFeedDesc": {
+    "message": "タイムラインのすべての名前の下に国旗を表示します（ホバー時以外も）。"
+  },
+  "setAccountCard": {
+    "message": "ホバーでアカウント詳細を表示"
+  },
+  "setAccountCardDesc": {
+    "message": "アカウント年齢、所属バッジ、認証、ハンドル変更履歴、フォロワー数 — Xが既に送信しているデータから読み取るため、追加の検索は発生しません。"
+  },
+  "setCopyButton": {
+    "message": "ホバーカードに「コピー」ボタン"
+  },
+  "setCopyButtonDesc": {
+    "message": "国旗行に小さな「コピー」ボタンを表示。ホバー元の投稿を国旗とともに画像としてコピーします — ブラウザ内で描画され、アップロードは一切ありません。投稿を右クリックしても同じ操作ができます。"
+  },
+  "setExceptionButton": {
+    "message": "ホバーカードに例外ボタン"
+  },
+  "setExceptionButtonDesc": {
+    "message": "閲覧中のアカウントを、適用されているルールからワンクリックで除外 — キーワードハイライト、国、所属バッジ、年齢。ツールチップに該当ルールが表示されます。"
+  },
+  "hintSwipe": {
+    "message": "👉 投稿を右にスワイプすると位置情報を取得できます。"
+  },
+  "cardAppearance": {
+    "message": "外観"
+  },
+  "cardAppearanceDesc": {
+    "message": "X-Pat自身の画面（このページとツールバーポップアップ）が対象です。X上に描画される国旗やマークはXのテーマに従うため、タイムラインと衝突することはありません。"
+  },
+  "setTheme": {
+    "message": "テーマ"
+  },
+  "themeSystem": {
+    "message": "システムに合わせる"
+  },
+  "themeLight": {
+    "message": "ライト"
+  },
+  "themeDark": {
+    "message": "ダーク"
+  },
+  "setLanguage": {
+    "message": "言語"
+  },
+  "setLanguageDesc": {
+    "message": "X-Pat自身のテキストと表示される国名に適用されます。選択するとこのページが再読み込みされます。"
+  },
+  "languageAuto": {
+    "message": "ブラウザーに合わせる"
+  },
+  "cardKeyword": {
+    "message": "キーワードでハイライト"
+  },
+  "cardKeywordDesc": {
+    "message": "投稿者の名前またはプロフィールにこれらのキーワードが含まれる投稿をマークします。ハイライトは投稿を目立たせるだけで、非表示にはしません。"
+  },
+  "keywordPlaceholder": {
+    "message": "キーワードを入力、または候補から選択…"
+  },
+  "emptyNoKeywords": {
+    "message": "キーワード未設定 — すべての投稿が通常通り表示されます。"
+  },
+  "cardLocations": {
+    "message": "地域"
+  },
+  "cardLocationsDesc": {
+    "message": "国旗の代わりに⚠️を表示します。ストアの国、またはVPNフラグがない場合はアカウントの位置情報に基づきます。開いた投稿には適用されません。"
+  },
+  "locationPlaceholder": {
+    "message": "国や地域を検索 — 名前、コード、通称…"
+  },
+  "regionCountries": {
+    "message": "地域 · $1カ国"
+  },
+  "emptyNoLocations": {
+    "message": "地域未選択 — すべての国旗がそのまま表示されます。"
+  },
+  "cardFiltered": {
+    "message": "フィルターされた投稿の処理"
+  },
+  "cardFilteredDesc": {
+    "message": "投稿を非表示にする2つのフィルター（ブロック中の地域・所属）に適用されます。アカウント年齢とキーワードハイライトは、この設定に関わらず投稿をマークするだけです。引用投稿は個別に折りたたまれるため、引用元の投稿は読みやすいままです。また、ユーザーリストでは行を削除するとカウントが崩れるため、非表示ではなくマークされます。"
+  },
+  "filteredPosts": {
+    "message": "フィルター対象の投稿"
+  },
+  "hideModeOff": {
+    "message": "通常表示"
+  },
+  "hideModeCollapse": {
+    "message": "折りたたむ"
+  },
+  "hideModeCollapseLong": {
+    "message": "折りたたむ（「表示」で開く）"
+  },
+  "hideModeHide": {
+    "message": "非表示"
+  },
+  "hideModeHideLong": {
+    "message": "完全に非表示"
+  },
+  "cardAffiliations": {
+    "message": "所属"
+  },
+  "cardAffiliationsDesc": {
+    "message": "Xは一部のアカウントに組織所属バッジを付与します。親アカウントのハンドルを入力すると、そのバッジが付いたすべてのアカウントを一括フィルターできます。"
+  },
+  "affiliationPlaceholder": {
+    "message": "親アカウントのハンドル（例: nasa）…"
+  },
+  "emptyNoAffiliations": {
+    "message": "ブロック中の所属はありません。アカウントにホバーするとバッジの有無を確認できます。"
+  },
+  "cardAge": {
+    "message": "アカウント年齢"
+  },
+  "cardAgeDesc": {
+    "message": "Xが報告する作成日から、アカウントの存続期間を判定します。この機能は投稿をマークするだけで、上の設定に関わらず非表示にはしません。"
+  },
+  "setMarkYoung": {
+    "message": "新しいアカウントをマーク"
+  },
+  "setMarkYoungDesc": {
+    "message": "キーワード一致と同様に、オレンジのバーで投稿をマークします。ここで留めるのには理由があります。新しいアカウントは購入・育成アカウントの最も強いシグナルである一方、先月参加したばかりの普通のユーザーも同じ特徴を持つからです — 返信を奪うには根拠が薄すぎます。"
+  },
+  "setMarkYoungerThan": {
+    "message": "以下の期間より新しいアカウントをマーク"
+  },
+  "cardFlags": {
+    "message": "国旗でハイライト"
+  },
+  "cardFlagsDesc": {
+    "message": "プロフィールに国旗絵文字が多数含まれる投稿者をマークします。"
+  },
+  "setHighlightFlagHeavy": {
+    "message": "国旗の多いプロフィールをハイライト"
+  },
+  "setFlagThreshold": {
+    "message": "この数より多い国旗"
+  },
+  "setUniqueFlags": {
+    "message": "ユニークな国旗のみカウント"
+  },
+  "cardAlwaysShow": {
+    "message": "常に表示"
+  },
+  "cardAlwaysShowDesc": {
+    "message": "すべてのルールから一括除外 — フィルター設定に関わらず、非表示・折りたたみ・ハイライトのいずれも適用されません。"
+  },
+  "usernamePlaceholder": {
+    "message": "ユーザー名を追加（@なし）…"
+  },
+  "emptyNoAllowlist": {
+    "message": "許可リストに登録なし — すべてのアカウントがルールで判定されます。"
+  },
+  "cardPerRule": {
+    "message": "ルール別の例外"
+  },
+  "cardPerRuleDesc": {
+    "message": "特定のルールのみアカウントを除外 — 追跡キーワードを皮肉で使っている場合（「no NAFO」）や、ブロック中の国からでも読みたい投稿がある場合に。"
+  },
+  "searchExceptions": {
+    "message": "例外を検索…"
+  },
+  "searchExceptionsLabel": {
+    "message": "例外を検索"
+  },
+  "emptyNoMatch": {
+    "message": "「$1」に一致するものはありません。"
+  },
+  "emptyNoExceptions": {
+    "message": "例外はありません。"
+  },
+  "cardLookups": {
+    "message": "バックグラウンド検索"
+  },
+  "cardLookupsDesc": {
+    "message": "Xは約$2分ごとに約$1件のアカウント検索を許可しています。この設定で、そのうちどの程度をX-Patが国旗表示のために使えるか、どの程度を自分でホバーしたアカウント用に残すかを決めます。"
+  },
+  "setSharedCache": {
+    "message": "共有コミュニティキャッシュを使用"
+  },
+  "setSharedCacheDesc": {
+    "message": "あなたが検索した国旗を共有し、他のユーザーが重複検索をスキップできるようにします。送信されるのは公開ハンドルとその国旗のみで、アカウント情報や個人データは一切含まれません。"
+  },
+  "setPrefetch": {
+    "message": "バックグラウンドで位置情報を先読み"
+  },
+  "setPrefetchDesc": {
+    "message": "フィード内のアカウントを表示順に検索し、ホバーせずに国旗を表示できるようにします。"
+  },
+  "setShare": {
+    "message": "使用できる検索枠の割り当て"
+  },
+  "setShareDesc": {
+    "message": "先読み用に$1件、自分のホバー用に$2件残します。"
+  },
+  "setSpread": {
+    "message": "$1分間全体に検索を分散"
+  },
+  "setSpreadDesc": {
+    "message": "一度にまとめてではなく、約$1秒ごとに1件ずつ検索します。"
+  },
+  "cardBackup": {
+    "message": "バックアップと復元"
+  },
+  "cardBackupDesc": {
+    "message": "設定を別のブラウザに移行したり、試す前にコピーを保存したりできます。"
+  },
+  "btnExport": {
+    "message": "設定をエクスポート"
+  },
+  "btnImport": {
+    "message": "設定をインポート"
+  },
+  "hintImportMerge": {
+    "message": "インポートはマージ方式です。ファイルに記載のない設定はそのまま残ります。すべての値は取り込み時に再チェックされるため、手動編集したファイルで拡張機能が回復不能な状態になることはありません。"
+  },
+  "noteExported": {
+    "message": "$1件の設定をエクスポートしました。共有キャッシュIDとキャッシュされた位置情報は含まれません。"
+  },
+  "noteImported": {
+    "message": "$1件の設定をインポートしました。"
+  },
+  "noteImportedSkipped": {
+    "message": "$1個の不明なキーがスキップされました。"
+  },
+  "errImportFailed": {
+    "message": "このファイルはインポートできませんでした。"
+  },
+  "errNotJson": {
+    "message": "このファイルは有効なJSONではありません。"
+  },
+  "errNotExport": {
+    "message": "このファイルは設定エクスポートファイルではありません。"
+  },
+  "errNoSection": {
+    "message": "このファイルに\"settings\"セクションがないため、この拡張機能のエクスポートファイルではありません。"
+  },
+  "errNewerFormat": {
+    "message": "このファイルは新しいバージョン（フォーマット$1）で作成されています。先に拡張機能を更新してください。"
+  },
+  "errNoSettings": {
+    "message": "このファイルにはインポート可能な設定が含まれていません。"
+  },
+  "cardCache": {
+    "message": "ローカルキャッシュ"
+  },
+  "cardCacheDesc": {
+    "message": "検索した位置情報はこのブラウザに30日間保存され、再表示にコストはかかりません。"
+  },
+  "btnClearCache": {
+    "message": "位置情報キャッシュをクリア"
+  },
+  "btnCacheCleared": {
+    "message": "キャッシュをクリアしました"
+  },
+  "cardTrust": {
+    "message": "共有キャッシュの信頼度"
+  },
+  "cardTrustDesc": {
+    "message": "同じ位置情報を信頼するために必要な独立した報告の数です。数値を上げると改ざんは困難になりますが、回答数が大幅に減ります。現在、キャッシュされたプロフィールの約80件に1件しか2回報告されていないため、1より上にするとほとんどがXへの直接検索に戻り、レート制限を消費します。計測目的でなければ$1のままにしてください。"
+  },
+  "setTrustAfter": {
+    "message": "共有位置情報を信頼するまでの報告数"
+  },
+  "trustReports1": {
+    "message": "1件の報告"
+  },
+  "trustReports2": {
+    "message": "2件の報告"
+  },
+  "trustReports3": {
+    "message": "3件の報告"
+  },
+  "ageDays": {
+    "message": "$1日"
+  },
+  "ageMonths": {
+    "message": "$1ヶ月"
+  },
+  "ageYear": {
+    "message": "1年"
+  },
+  "ageYears": {
+    "message": "$1年"
+  },
+  "ageToday": {
+    "message": "今日"
+  },
+  "ageShortDays": {
+    "message": "$1日"
+  },
+  "ageShortMonths": {
+    "message": "$1ヶ月"
+  },
+  "ageShortYears": {
+    "message": "$1年"
+  },
+  "toastDismiss": {
+    "message": "クリックで閉じる"
+  },
+  "toastRateLimit": {
+    "message": "⚠ レート制限に達しました · $1後にリセット"
+  },
+  "countdownMinSec": {
+    "message": "$1分 $2秒"
+  },
+  "countdownSec": {
+    "message": "$1秒"
+  },
+  "rateLimitBadgeTitle": {
+    "message": "X APIのレート制限に達しました — リセットまで位置情報検索を一時停止"
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN"
+  },
+  "vpnTitle": {
+    "message": "VPN使用中、位置情報が不正確な可能性があります"
+  },
+  "storeRegionLabel": {
+    "message": "$1地域: $2"
+  },
+  "platformWeb": {
+    "message": "Web"
+  },
+  "platformUnknown": {
+    "message": "不明"
+  },
+  "hiddenLabel": {
+    "message": "🚫 非表示 · $1 $2"
+  },
+  "hiddenShow": {
+    "message": "表示"
+  },
+  "hiddenShowTitle": {
+    "message": "この投稿を表示（$1: $2）"
+  },
+  "cellTagTitle": {
+    "message": "$1に一致 — 表示中（非表示ではありません）"
+  },
+  "ruleNameHighlight": {
+    "message": "ハイライトルール"
+  },
+  "ruleNameLocation": {
+    "message": "ブロック中の地域"
+  },
+  "ruleNameAffiliation": {
+    "message": "ブロック中の所属"
+  },
+  "ruleNameAge": {
+    "message": "アカウント年齢"
+  },
+  "excAdd": {
+    "message": "🚫 例外を追加"
+  },
+  "excUndo": {
+    "message": "✓ 例外（取り消し）"
+  },
+  "excAddTitle": {
+    "message": "@$1を$2から除外"
+  },
+  "excUndoTitle": {
+    "message": "@$1は$2から除外されています — クリックで取り消し"
+  },
+  "excPhraseHighlight": {
+    "message": "キーワードと国旗ハイライト"
+  },
+  "excPhraseLocation": {
+    "message": "ブロック地域フィルター"
+  },
+  "excPhraseAffiliation": {
+    "message": "ブロック所属フィルター"
+  },
+  "excPhraseAge": {
+    "message": "アカウント年齢フィルター"
+  },
+  "joinAnd": {
+    "message": "$1、$2"
+  },
+  "chipBlockedYou": {
+    "message": "🚫 あなたをブロック"
+  },
+  "chipBlockedYouTitle": {
+    "message": "このアカウントはあなたをブロックしています"
+  },
+  "chipAge": {
+    "message": "🎂 $1"
+  },
+  "chipAgeTitle": {
+    "message": "アカウント作成日: $1"
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1"
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "Xが@$1への所属バッジを表示しています"
+  },
+  "chipAffiliationTitle": {
+    "message": "Xがこのアカウントに所属バッジを表示しています"
+  },
+  "chipIdVerified": {
+    "message": "🪪 本人確認済み"
+  },
+  "chipIdVerifiedTitle": {
+    "message": "Xが本人確認書類を確認済み"
+  },
+  "chipVerified": {
+    "message": "✔ 認証済み"
+  },
+  "chipVerifiedTitle": {
+    "message": "旧認証"
+  },
+  "chipHandle1": {
+    "message": "✎ 1回のハンドル変更"
+  },
+  "chipHandles": {
+    "message": "✎ $1回のハンドル変更"
+  },
+  "chipHandlesTitle": {
+    "message": "このアカウントは@ハンドルを$1回変更しています"
+  },
+  "chipProtected": {
+    "message": "🔒 非公開"
+  },
+  "chipProtectedTitle": {
+    "message": "投稿は非公開です"
+  },
+  "bioTitle": {
+    "message": "XのAPIからのプロフィール — このカードには表示されません"
+  },
+  "shareBtn": {
+    "message": "🖼 コピー"
+  },
+  "shareBtnTitle": {
+    "message": "この投稿とXが@$1について報告する情報を画像としてコピー"
+  },
+  "toastRendering": {
+    "message": "@$1を描画中…"
+  },
+  "toastCopied": {
+    "message": "✓ クリップボードにコピーしました"
+  },
+  "toastSaved": {
+    "message": "✓ 画像を保存しました"
+  },
+  "toastRenderFail": {
+    "message": "そのカードを描画できませんでした"
+  },
+  "toastRightClick": {
+    "message": "投稿を右クリックで共有"
+  },
+  "toastReadFail": {
+    "message": "その投稿を読み取れませんでした"
+  },
+  "toastNoLocation": {
+    "message": "位置情報なし"
+  },
+  "toastLookingUp": {
+    "message": "@$1 …"
+  },
+  "regionEastAsiaPacific": {
+    "message": "東アジア・太平洋"
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "東ヨーロッパ（非EU）"
+  }
+}

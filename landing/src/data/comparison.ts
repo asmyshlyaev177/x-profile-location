@@ -8,7 +8,13 @@
  * entire value is being trusted as fair.
  *
  * Deliberately free of JSX imports for the same reason `routes.ts` is: the Vite
- * config loads this at config time to generate the README block.
+ * config loads this at build time to generate the README block.
+ *
+ * Since the site went multilingual this file holds the *verifiable* half of a
+ * row — which product does what — and the readable half (`label`, `note`) lives
+ * in `i18n/dict/*` under `comparison.rows.<id>`. The split is not cosmetic: a
+ * cell is a checkable claim about someone else's software and must stay
+ * identical in every language, while the sentence describing it must not.
  *
  * ── Rules for editing ────────────────────────────────────────────────────────
  *
@@ -19,12 +25,16 @@
  *    it renders as "not stated" rather than a cross. Closed-source extensions
  *    get the benefit of the doubt; the alternative is calling a feature absent
  *    because its author did not write a sentence about it.
- * 3. Rows X-Pat loses stay in. `losses` below is the honest-broker section, and
- *    it is the reason the rest of the page is believable. A comparison page that
- *    wins every row reads as marketing and converts like marketing.
+ * 3. Rows X-Pat loses stay in. `LOSS_IDS` below is the honest-broker section,
+ *    and it is the reason the rest of the page is believable. A comparison page
+ *    that wins every row reads as marketing and converts like marketing.
  * 4. Re-check `SCRAPED` before shipping any edit. Install counts move, and a
  *    stale figure presented as current is the one error that looks deliberate.
+ * 5. Adding a row means adding its `id` here *and* a `comparison.rows.<id>`
+ *    entry to all fifteen dictionaries. TypeScript enforces the second half.
  */
+
+import type { Dict } from '../i18n/dict/en'
 
 /** `yes` renders a check, `no` a cross, `unstated` a muted dash. */
 export type Cell = 'yes' | 'no' | 'unstated' | string
@@ -39,10 +49,11 @@ export interface Competitor {
   repoUrl: string | null
 }
 
+export type RowId = keyof Dict['comparison']['rows']
+
 export interface Row {
-  label: string
-  /** Shown under the label on the full page; omitted on the condensed table. */
-  note?: string
+  /** Key into `Dict['comparison']['rows']`, where the label and note live. */
+  id: RowId
   /** Keyed by `Competitor.short`, plus `'X-Pat'` for our own column. */
   cells: Record<string, Cell>
   /** Included in the homepage and README subset. */
@@ -85,8 +96,7 @@ export const SELF = 'X-Pat'
 
 export const ROWS: Row[] = [
   {
-    label: 'Country shown inline, without opening a menu',
-    note: "Read from X's own “About this account” data, not guessed from an IP address.",
+    id: 'inlineCountry',
     cells: {
       'X-Pat': 'yes',
       'X-Posed': 'yes',
@@ -95,10 +105,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Warning when X cannot verify the location',
-    // No backticks in `note` — these strings render as plain text on the page,
-    // so markdown syntax arrives as literal punctuation.
-    note: 'X marks some accounts as having a location it cannot verify. That is X declining to confirm the country — not proof of a VPN, and nobody here can prove one.',
+    id: 'vpnWarning',
     headline: true,
     cells: {
       'X-Pat': 'yes',
@@ -108,7 +115,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Sign-up source — Apple, Google Play or web',
+    id: 'signupSource',
     cells: {
       'X-Pat': 'yes',
       'X-Posed': 'yes',
@@ -117,7 +124,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Account age',
+    id: 'accountAge',
     cells: {
       'X-Pat': 'yes',
       'X-Posed': 'yes',
@@ -126,7 +133,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Handle-change count',
+    id: 'handleChanges',
     cells: {
       'X-Pat': 'yes',
       'X-Posed': 'yes',
@@ -135,8 +142,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Hide or collapse by country and region',
-    note: 'Collapse behind a “Show” button is the default here, because a timeline that silently drops posts is one you cannot audit.',
+    id: 'hideByCountry',
     cells: {
       'X-Pat': 'yes',
       'X-Posed': 'yes',
@@ -145,8 +151,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Language filter',
-    note: "X's per-post language field is unreliable enough that shipping a filter on top of it generates bug reports. Deliberately not built yet.",
+    id: 'languageFilter',
     cells: {
       'X-Pat': 'no',
       'X-Posed': 'yes',
@@ -155,7 +160,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Always-show allowlist and per-rule exceptions',
+    id: 'allowlist',
     cells: {
       'X-Pat': 'yes',
       'X-Posed': 'yes',
@@ -164,8 +169,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Shared cache, so flags survive the rate limit',
-    note: 'X allows one browser about 50 profile lookups per 15 minutes. Without a shared cache that ceiling is the whole experience.',
+    id: 'sharedCache',
     headline: true,
     cells: {
       'X-Pat': 'yes',
@@ -175,8 +179,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Cache server source published',
-    note: 'The server that receives contributions, not just the extension that sends them. Ours is in the same repo, with deploy docs — you can read it, or run your own.',
+    id: 'cacheServerSource',
     headline: true,
     cells: {
       'X-Pat': 'yes',
@@ -186,8 +189,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Cached entries cross-checked between installs',
-    note: 'Ours keeps per-install votes and serves the consensus, with a confidence threshold you can raise. X-Posed documents storing the last accepted value for a handle.',
+    id: 'crossChecked',
     headline: true,
     cells: {
       'X-Pat': 'yes',
@@ -197,7 +199,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Extension source published',
+    id: 'extensionSource',
     cells: {
       'X-Pat': 'yes',
       'X-Posed': 'yes',
@@ -206,18 +208,20 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'Automated test suite in the repo',
-    note: 'Unit, end-to-end against recorded traffic, and visual regression. The number is what CI runs on every push.',
+    id: 'testSuite',
     headline: true,
     cells: {
-      'X-Pat': '609 tests',
+      // Not a tick but a count, and it is copy as much as data — so the string
+      // itself comes from the dictionary, where "609 tests" can become
+      // "609 اختبارات" without the row's meaning moving.
+      'X-Pat': 'testCount',
       'X-Posed': 'none',
       'Flags & Time': 'n/a',
       'Region Blocker': 'n/a',
     },
   },
   {
-    label: 'Firefox',
+    id: 'firefox',
     cells: {
       'X-Pat': 'no',
       'X-Posed': 'yes',
@@ -226,7 +230,7 @@ export const ROWS: Row[] = [
     },
   },
   {
-    label: 'iPhone / iPad companion app',
+    id: 'iosApp',
     cells: {
       'X-Pat': 'no',
       'X-Posed': 'yes',
@@ -237,24 +241,16 @@ export const ROWS: Row[] = [
 ]
 
 /**
- * Where the competition is genuinely ahead.
+ * Where the competition is genuinely ahead, in render order.
  *
  * This section is load-bearing. A reader arriving from “x-posed alternative”
  * already suspects the page is a sales pitch, and the fastest way to lose them
  * is a grid of fifteen ticks. Naming the three things X-Posed does better buys
- * the credibility that the rows above spend.
+ * the credibility that the rows above spend. The prose is in the dictionaries
+ * under `comparison.losses`.
  */
-export const LOSSES: { title: string; body: string }[] = [
-  {
-    title: 'X-Posed is the mature one',
-    body: 'Roughly 7,000 Chrome installs against our handful, four years of releases, and a community cache holding millions of profiles where ours holds thousands. A bigger cache genuinely means more instant flags on day one. That is a real advantage and it is not close.',
-  },
-  {
-    title: 'It ships on more surfaces',
-    body: 'Firefox desktop, Firefox for Android, and a companion iPhone app. X-Pat is Chromium-only today — Chrome, Edge, Brave, and Lemur on Android. Firefox is planned, iOS is not.',
-  },
-  {
-    title: 'It has a language filter',
-    body: "We do not, on purpose. X's per-post language field is wrong often enough that filtering on it produces posts vanishing for no visible reason. That is a defensible call rather than a missing feature — but if filtering by language is what you came for, X-Posed has it and we do not.",
-  },
-]
+export const LOSS_IDS = [
+  'mature',
+  'surfaces',
+  'languageFilter',
+] as const satisfies readonly (keyof Dict['comparison']['losses'])[]

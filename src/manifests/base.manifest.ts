@@ -19,14 +19,24 @@ export const baseManifest = {
   // 48 characters. **AMO caps the name at 50** and Chrome at 75, so the
   // Firefox limit is the binding one — check any future edit against 50, not
   // 75. (Edge Add-ons caps at 45, but we publish to Chrome and AMO only.)
-  name: 'X-Pat — X profile location, filter and highlight',
-  short_name: 'X-Pat',
+  //
+  // The text itself now lives in `public/_locales/*/messages.json`, which is
+  // what makes the *store listing* localized as well as the UI: Chrome and AMO
+  // resolve `__MSG_*__` against the same catalogue the extension reads, so a
+  // translated `appName` reaches the search result, not just the popup.
+  // `messages.test.ts` holds `appDesc` to `pkg.description`, so the two can't
+  // drift the way a hand-copied string would.
+  name: '__MSG_appName__',
+  short_name: '__MSG_appShortName__',
   version: pkg.version,
   manifest_version: 3,
+  // Required alongside any `__MSG_*__` above: without it Chrome refuses to
+  // load the extension at all, rather than falling back to the raw token.
+  default_locale: 'en',
 
   // Recommended
   // - - - - - - - - -
-  description: pkg.description,
+  description: '__MSG_appDesc__',
   icons: {
     16: 'assets/icons/icon-16x16.png',
     32: 'assets/icons/icon-32x32.png',
@@ -42,7 +52,7 @@ export const baseManifest = {
     },
     // Toolbar tooltip. Was `pkg.name`, which is now the npm-style `x-pat` —
     // correct as a package name, wrong as something a user reads.
-    default_title: 'X-Pat',
+    default_title: '__MSG_actionTitle__',
     // Its own page since the Phase 2 options redesign. Pointing this at
     // options.html made the settings page unable to grow past what fits in a
     // popup panel.

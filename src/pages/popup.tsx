@@ -12,7 +12,7 @@
 
 import type { ComponentChildren } from 'preact'
 import { render } from 'preact'
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import {
   BLOCKED_COUNTRIES_KEY,
@@ -49,6 +49,13 @@ import {
   withoutKeyword,
   withoutLocation,
 } from '../scripts/settings'
+import { initI18n, t } from '../scripts/i18n'
+import {
+  aliasNote,
+  localizedLocation,
+  sortByLocalizedName,
+  withLocalizedAliases,
+} from '../scripts/location-names'
 import css from './popup.module.css'
 import { startThemeSync } from './theme'
 
@@ -160,7 +167,7 @@ function Section({
 function RatePrompt({ onAnswer }: { onAnswer: () => void }) {
   return (
     <div class={css.rate}>
-      <p class={css.rateText}>Been useful? A store rating helps a lot.</p>
+      <p class={css.rateText}>{t('rateAskText')}</p>
       <div class={css.rateActions}>
         <a
           class={css.rateBtn}
@@ -172,7 +179,7 @@ function RatePrompt({ onAnswer }: { onAnswer: () => void }) {
             onAnswer()
           }}
         >
-          Rate it ★
+          {t('rateAskYes')}
         </a>
         <button
           class={css.linkBtn}
@@ -181,7 +188,7 @@ function RatePrompt({ onAnswer }: { onAnswer: () => void }) {
             onAnswer()
           }}
         >
-          Later
+          {t('rateAskLater')}
         </button>
         <button
           class={css.linkBtn}
@@ -190,7 +197,7 @@ function RatePrompt({ onAnswer }: { onAnswer: () => void }) {
             onAnswer()
           }}
         >
-          No thanks
+          {t('rateAskNo')}
         </button>
       </div>
     </div>
@@ -213,6 +220,17 @@ export function Popup() {
   const [section, setSection] = useState<PopupSection | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [askRating, setAskRating] = useState(false)
+
+  // Once per mount — see the same pair in options.tsx. A popup cannot outlive
+  // a language change: choosing one happens on the settings page.
+  const pickerOptions = useMemo(
+    () => sortByLocalizedName(CANONICAL_LOCATIONS),
+    [],
+  )
+  const pickerAliases = useMemo(
+    () => withLocalizedAliases(LOCATION_ALIASES),
+    [],
+  )
 
   // The popup has no theme control of its own — it is set once in the options
   // page and every extension page follows it.
@@ -273,7 +291,7 @@ export function Popup() {
     <div class={css.popup}>
       <header class={css.header}>
         <span class={css.brand}>X-Pat</span>
-        <label class={css.masterSwitch} title="Turn everything off for now">
+        <label class={css.masterSwitch} title={t('popupMasterSwitchTitle')}>
           <input
             type="checkbox"
             checked={enabled}
@@ -284,15 +302,11 @@ export function Popup() {
               write(EXTENSION_ENABLED_KEY, next)
             }}
           />
-          <span>{enabled ? 'On' : 'Off'}</span>
+          <span>{enabled ? t('popupOn') : t('popupOff')}</span>
         </label>
       </header>
 
-      {!enabled && (
-        <p class={css.offNotice}>
-          Paused. X looks exactly as it would with the extension uninstalled.
-        </p>
-      )}
+      {!enabled && <p class={css.offNotice}>{t('popupPaused')}</p>}
 
       <div class={enabled ? undefined : css.dimmed}>
         <label class={css.row}>
@@ -306,7 +320,7 @@ export function Popup() {
               write(SHOW_LOCATION_IN_FEED_KEY, next)
             }}
           />
-          <span>Flags in the feed 📍</span>
+          <span>{t('popupFlagsInFeed')}</span>
         </label>
 
         <label class={css.row}>
@@ -320,11 +334,11 @@ export function Popup() {
               write(SHOW_ACCOUNT_CARD_KEY, next)
             }}
           />
-          <span>Account details on hover 🪪</span>
+          <span>{t('popupAccountDetails')}</span>
         </label>
 
         <label class={css.selectRow}>
-          <span>Filtered posts</span>
+          <span>{t('filteredPosts')}</span>
           <select
             value={hideMode}
             disabled={!enabled}
@@ -336,15 +350,15 @@ export function Popup() {
               write(HIDE_BLOCKED_LOCATIONS_KEY, next)
             }}
           >
-            <option value="off">Show normally</option>
-            <option value="collapse">Collapse</option>
-            <option value="hide">Hide</option>
+            <option value="off">{t('hideModeOff')}</option>
+            <option value="collapse">{t('hideModeCollapse')}</option>
+            <option value="hide">{t('hideModeHide')}</option>
           </select>
         </label>
 
         <Section
           id="locations"
-          title="Blocked locations"
+          title={t('ruleLocation')}
           count={blocked.length}
           open={section === 'locations'}
           onOpen={openSection}
@@ -358,7 +372,7 @@ export function Popup() {
                     <span class={css.chipFlag}>
                       {ALL_FLAGS[country] ?? '🌐'}
                     </span>
-                    {country}
+                    {localizedLocation(country)}
                     {members && (
                       <span class={css.chipNote} title={members.join(', ')}>
                         +{members.length}
@@ -369,7 +383,7 @@ export function Popup() {
                       onClick={() =>
                         editBlocked(withoutLocation(blocked, country))
                       }
-                      title={`Remove ${country}`}
+                      title={t('removeItem', localizedLocation(country))}
                     >
                       ×
                     </button>
@@ -382,32 +396,35 @@ export function Popup() {
           <Autocomplete
             id="popup-country"
             selected={blocked}
-            allOptions={CANONICAL_LOCATIONS}
-            aliases={LOCATION_ALIASES}
+            allOptions={pickerOptions}
+            aliases={pickerAliases}
             onSelect={(name) => editBlocked(withLocation(blocked, name))}
-            placeholder="Country or region…"
-            renderOption={(c, alias) => (
-              <>
-                <span class={css.dropdownFlag}>{ALL_FLAGS[c] ?? '🌐'}</span>
-                <span>{c}</span>
-                {REGION_MEMBERS[c] && (
-                  <span class={css.dropdownNote}>
-                    +{REGION_MEMBERS[c].length}
-                  </span>
-                )}
-                {alias && <span class={css.dropdownNote}>{alias}</span>}
-              </>
-            )}
+            placeholder={t('popupCountryPlaceholder')}
+            renderOption={(c, alias) => {
+              const note = aliasNote(c, alias)
+              return (
+                <>
+                  <span class={css.dropdownFlag}>{ALL_FLAGS[c] ?? '🌐'}</span>
+                  <span>{localizedLocation(c)}</span>
+                  {REGION_MEMBERS[c] && (
+                    <span class={css.dropdownNote}>
+                      +{REGION_MEMBERS[c].length}
+                    </span>
+                  )}
+                  {note && <span class={css.dropdownNote}>{note}</span>}
+                </>
+              )
+            }}
           />
 
           {blocked.length === 0 && (
-            <p class={css.empty}>Nothing blocked — all flags shown as-is.</p>
+            <p class={css.empty}>{t('popupNothingBlocked')}</p>
           )}
         </Section>
 
         <Section
           id="keywords"
-          title="Highlight keywords"
+          title={t('popupHighlightKeywords')}
           count={keywords.length}
           open={section === 'keywords'}
           onOpen={openSection}
@@ -420,7 +437,7 @@ export function Popup() {
                   <button
                     class={css.chipRemove}
                     onClick={() => editKeywords(withoutKeyword(keywords, kw))}
-                    title={`Remove ${kw}`}
+                    title={t('removeItem', kw)}
                   >
                     ×
                   </button>
@@ -434,13 +451,13 @@ export function Popup() {
             selected={keywords}
             allOptions={[]}
             onSelect={(kw) => editKeywords(withKeyword(keywords, kw))}
-            placeholder="Add a keyword…"
+            placeholder={t('popupKeywordPlaceholder')}
             allowFreeInput
             closeOnSelect={false}
           />
 
           {keywords.length === 0 && (
-            <p class={css.empty}>No keywords — nothing is highlighted.</p>
+            <p class={css.empty}>{t('popupNoKeywords')}</p>
           )}
         </Section>
       </div>
@@ -456,7 +473,7 @@ export function Popup() {
             actually need — given weight to match, since the two beside it are
             things you do once and never again. */}
         <button class={css.settingsBtn} onClick={() => void openOptions()}>
-          All settings →
+          {t('popupAllSettings')}
         </button>
         {/* Permanent, unlike the card above: the card is a request and goes
             away once answered, this is just the way to the listing for anyone
@@ -467,26 +484,26 @@ export function Popup() {
           href={REVIEW_URL}
           target="_blank"
           rel="noopener noreferrer"
-          title="Rate X-Pat on the Chrome Web Store"
+          title={t('popupRateTitle')}
           onClick={() => {
             void setRatePromptState('done')
             setAskRating(false)
           }}
         >
-          Rate ★
+          {t('popupRate')}
         </a>
         <a
           class={css.linkBtn}
           href={DONATE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          title="Support development"
+          title={t('popupDonateTitle')}
         >
-          Donate 💜
+          {t('popupDonate')}
         </a>
       </footer>
     </div>
   )
 }
 
-render(<Popup />, document.body)
+void initI18n().then(() => render(<Popup />, document.body))

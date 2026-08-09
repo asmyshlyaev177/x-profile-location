@@ -44,6 +44,8 @@ import {
   USAGE_STATS_KEY,
 } from './countries'
 import { defaultSetting, readSetting, settingValue } from './settings'
+import { initI18n, t, UI_LANGUAGE_KEY } from './i18n'
+import { localizedLocation } from './location-names'
 import { EVENTS, X_GRAPHQL_PATH } from './constants'
 import {
   contributeLocation,
@@ -452,8 +454,30 @@ function applyLookupChanges(changes: StorageChanges): void {
   }
 }
 
+/**
+ * Everything on screen, redrawn.
+ *
+ * A language change is the one setting that alters text the extension has
+ * already written into somebody else's page, and none of the incremental
+ * refreshes notice: they compare a post's *rule* against what the placeholder
+ * says it was built for, and the rule has not moved — only the words have. So
+ * this takes the injections away and lets them be built again, which is what
+ * the master switch already does for the same reason.
+ */
+function relocalize(): void {
+  if (!extensionEnabled) return
+  stripAllInjections()
+  rehighlightAll()
+  refreshFeedLocations()
+  void refreshHiddenTweets()
+}
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return
+  if (changes[UI_LANGUAGE_KEY]) {
+    void initI18n().then(relocalize)
+    return
+  }
   if (!applyMasterSwitch(changes)) return
   if (changes[USAGE_STATS_KEY] || changes[RATE_PROMPT_KEY]) {
     // The ask is decided once per page, at the first flag drawn. Re-arm it when
@@ -473,19 +497,23 @@ function getLocationDisplay(loc: string): {
   label: string
   isText?: boolean
 } {
-  if (isBlockedLocation(loc)) return { emoji: '⚠️', label: loc }
   // Flags are looked up by canonical name, so an alias X hasn't used before
-  // ("Russia", "Vietnam") still gets its flag instead of the 🌐 fallback. The
-  // label stays whatever X actually said.
+  // ("Russia", "Vietnam") still gets its flag instead of the 🌐 fallback.
   const key = canonicalLocation(loc)
-  if (COUNTRY_FLAGS[key]) return { emoji: COUNTRY_FLAGS[key], label: loc }
+  // The label is the one thing here that is for reading rather than matching,
+  // so it is the one thing translated. A name X used that isn't a country the
+  // extension knows comes back unchanged.
+  const label = localizedLocation(key)
+
+  if (isBlockedLocation(loc)) return { emoji: '⚠️', label }
+  if (COUNTRY_FLAGS[key]) return { emoji: COUNTRY_FLAGS[key], label }
   if (REGION_FLAGS[key]) {
     const abbr = REGION_ABBR[key]
     return abbr
-      ? { emoji: abbr, label: loc, isText: true }
-      : { emoji: REGION_FLAGS[key], label: loc }
+      ? { emoji: abbr, label, isText: true }
+      : { emoji: REGION_FLAGS[key], label }
   }
-  return { emoji: '🌐', label: loc }
+  return { emoji: '🌐', label }
 }
 
 // Which blocked location a profile is hidden for, or null. The store country is
@@ -868,7 +896,7 @@ function formatCountdown(ms: number): string {
   const s = Math.ceil(ms / 1000)
   const m = Math.floor(s / 60)
   const sec = s % 60
-  return m > 0 ? `${m}m ${sec}s` : `${sec}s`
+  return m > 0 ? t('countdownMinSec', m, sec) : t('countdownSec', sec)
 }
 
 // ---------------------------------------------------------------------------
@@ -905,7 +933,7 @@ function showRateLimitToast(force = false) {
     // Interactive now, so it has to be reachable: a real role and tab stop,
     // and keys doing what the click does. The ticking text stays the
     // accessible name — the countdown is the content.
-    toast.title = 'Click to dismiss'
+    toast.title = t('toastDismiss')
     toast.setAttribute('role', 'button')
     toast.tabIndex = 0
     toast.addEventListener('click', dismissRateLimitToast)
@@ -922,14 +950,14 @@ function showRateLimitToast(force = false) {
 
   function tick() {
     const remaining = rateLimitResetAt - Date.now()
-    const t = document.getElementById('x-loc-rate-toast')
-    if (remaining <= 0 || !t) {
+    const el = document.getElementById('x-loc-rate-toast')
+    if (remaining <= 0 || !el) {
       if (rateLimitToastInterval) clearInterval(rateLimitToastInterval)
       rateLimitToastInterval = null
-      t?.remove()
+      el?.remove()
       return
     }
-    t.textContent = `⚠ Rate limit hit · resets in ${formatCountdown(remaining)}`
+    el.textContent = t('toastRateLimit', formatCountdown(remaining))
   }
 
   tick()
@@ -955,8 +983,12 @@ export function locationSummaryText(data: LocationData): string {
   const country = sourceCountry ?? data.location
 
   const parts: string[] = []
-  if (country) parts.push(`${getLocationDisplay(country).emoji} ${country}`)
-  if (data.locationAccurate === false && !corroborated) parts.push('⚠ VPN')
+  if (country) {
+    const { emoji, label } = getLocationDisplay(country)
+    parts.push(`${emoji} ${label}`)
+  }
+  if (data.locationAccurate === false && !corroborated)
+    parts.push(t('vpnBadge'))
   return parts.join(' · ')
 }
 
@@ -1068,7 +1100,7 @@ function showRatingAsk(): void {
   message.appendChild(brand)
 
   const text = document.createElement('span')
-  text.textContent = '— been useful? A store rating helps a lot.'
+  text.textContent = t('rateAskInline')
   message.appendChild(text)
   bar.appendChild(message)
 
@@ -1078,7 +1110,7 @@ function showRatingAsk(): void {
   }
 
   bar.appendChild(
-    ratingAskButton('Rate it ★', false, () => {
+    ratingAskButton(t('rateAskYes'), false, () => {
       // window.open rather than a message to the service worker: this is inside
       // a click, so the popup blocker allows it, and it keeps the ask working
       // whether or not the worker happens to be alive.
@@ -1086,8 +1118,10 @@ function showRatingAsk(): void {
       answer('done')
     }),
   )
-  bar.appendChild(ratingAskButton('Later', true, () => answer('later')))
-  bar.appendChild(ratingAskButton('No thanks', true, () => answer('done')))
+  bar.appendChild(
+    ratingAskButton(t('rateAskLater'), true, () => answer('later')),
+  )
+  bar.appendChild(ratingAskButton(t('rateAskNo'), true, () => answer('done')))
 
   document.body.appendChild(bar)
   // No dismiss timer: it stays until one of the three buttons is pressed. A
@@ -1694,16 +1728,20 @@ function buildHiddenPlaceholder(
 
   const labelEl = document.createElement('span')
   labelEl.className = 'x-loc-hidden-label'
-  labelEl.textContent = `🚫 Hidden · ${match.icon} ${match.label}`
+  labelEl.textContent = t('hiddenLabel', match.icon, matchLabel(match))
 
   const btn = document.createElement('button')
   btn.type = 'button'
   btn.className = 'x-loc-hidden-show'
-  btn.textContent = 'Show'
+  btn.textContent = t('hiddenShow')
   // Naming the rule matters more now that four of them can produce this
   // placeholder: "hidden — 🌱 3d old" is only actionable if you know which
   // setting to go and change.
-  btn.title = `Reveal this post (${FILTER_RULE_LABEL[match.rule]}: ${match.label})`
+  btn.title = t(
+    'hiddenShowTitle',
+    FILTER_RULE_LABEL[match.rule](),
+    matchLabel(match),
+  )
   btn.addEventListener('click', (e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -1722,11 +1760,27 @@ function buildHiddenPlaceholder(
   return ph
 }
 
-const FILTER_RULE_LABEL: Record<FilterRule, string> = {
-  highlight: 'highlight rule',
-  location: 'blocked location',
-  affiliation: 'blocked affiliation',
-  age: 'account age',
+// Thunks rather than a map of strings: read at call time, because the reader
+// can change the extension's language from the options page and this script
+// stays loaded across it — and still spelled `t('key')`, so messages.test.ts
+// can see which messages are used.
+const FILTER_RULE_LABEL: Record<FilterRule, () => string> = {
+  highlight: () => t('ruleNameHighlight'),
+  location: () => t('ruleNameLocation'),
+  affiliation: () => t('ruleNameAffiliation'),
+  age: () => t('ruleNameAge'),
+}
+
+/**
+ * What a match names, for reading. Only the location rule carries something
+ * translatable — an org name and an age are already the account's own — and
+ * localizedLocation returns anything else unchanged, so this is safe for all
+ * four.
+ */
+function matchLabel(match: FilterMatch): string {
+  return match.rule === 'location'
+    ? localizedLocation(canonicalLocation(match.label))
+    : match.label
 }
 
 // --- resizing a post without moving the scroll ------------------------------
@@ -2231,8 +2285,8 @@ async function tryMarkPeopleCell(cell: Element) {
   if (cell.querySelector('.x-loc-cell-tag')) return
   const tag = document.createElement('span')
   tag.className = 'x-loc-cell-tag'
-  tag.textContent = `${match.icon} ${match.label}`
-  tag.title = `Matches your ${FILTER_RULE_LABEL[match.rule]} — shown, not hidden`
+  tag.textContent = `${match.icon} ${matchLabel(match)}`
+  tag.title = t('cellTagTitle', FILTER_RULE_LABEL[match.rule]())
   const nameEl = getNameEl(cell) ?? cell
   nameEl.insertAdjacentElement('beforeend', tag)
 }
@@ -2334,7 +2388,11 @@ function buildInfoRow(data: LocationData): HTMLElement {
     block.title = data.source!
     block.setAttribute(
       'aria-label',
-      `${platformLabel(platform)} region: ${sourceCountry}`,
+      t(
+        'storeRegionLabel',
+        platformLabel(platform),
+        getLocationDisplay(sourceCountry).label,
+      ),
     )
 
     const glyph = buildSourceGlyph(platform)
@@ -2359,8 +2417,8 @@ function buildInfoRow(data: LocationData): HTMLElement {
   if (data?.locationAccurate === false) {
     const vpn = document.createElement('span')
     vpn.className = 'x-loc-icon-vpn'
-    vpn.title = 'VPN used, location can be inaccurate'
-    vpn.textContent = '⚠ VPN'
+    vpn.title = t('vpnTitle')
+    vpn.textContent = t('vpnBadge')
     row.appendChild(vpn)
   }
 
@@ -2422,16 +2480,16 @@ export function activeRulesFor(
 }
 
 // What the tooltip calls each rule, phrased to read after "exempt @user from".
-const RULE_EXCEPTION_PHRASE: Record<FilterRule, string> = {
-  highlight: 'keyword and flag highlighting',
-  location: 'the blocked-location filter',
-  affiliation: 'the blocked-affiliation filter',
-  age: 'the account-age filter',
+const RULE_EXCEPTION_PHRASE: Record<FilterRule, () => string> = {
+  highlight: () => t('excPhraseHighlight'),
+  location: () => t('excPhraseLocation'),
+  affiliation: () => t('excPhraseAffiliation'),
+  age: () => t('excPhraseAge'),
 }
 
 function joinPhrases(items: string[]): string {
   if (items.length < 2) return items[0] ?? ''
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+  return t('joinAnd', items.slice(0, -1).join(', '), items[items.length - 1])
 }
 
 /** Already exempt from everything the button covers — so it reads as "undo". */
@@ -2454,14 +2512,14 @@ function buildExceptionButton(
 
   function render() {
     const excepted = exceptedFromAll(userName, rules)
-    const phrase = joinPhrases(rules.map((rule) => RULE_EXCEPTION_PHRASE[rule]))
+    const phrase = joinPhrases(rules.map((r) => RULE_EXCEPTION_PHRASE[r]()))
     // The label stays the same whatever the rule; only the tooltip names it.
     // Four different labels would make the same control look like four, which
     // is the thing this button exists to avoid.
-    btn.textContent = excepted ? '✓ Exception (undo)' : '🚫 Add exception'
+    btn.textContent = excepted ? t('excUndo') : t('excAdd')
     btn.title = excepted
-      ? `@${userName} is exempt from ${phrase} — click to undo`
-      : `Exempt @${userName} from ${phrase}`
+      ? t('excUndoTitle', userName, phrase)
+      : t('excAddTitle', userName, phrase)
     btn.classList.toggle('x-loc-exc-active', excepted)
     // Read back by syncExceptionButton: a click here settles the state locally,
     // and the sync the resulting storage write triggers must not then rebuild
@@ -2553,8 +2611,8 @@ type ChipBuilder = (facts: Partial<AccountFacts>, now: number) => Chip | null
 const blockedByChip: ChipBuilder = (facts) =>
   facts.blockedBy
     ? {
-        text: '🚫 Blocked you',
-        title: 'This account blocks your account',
+        text: t('chipBlockedYou'),
+        title: t('chipBlockedYouTitle'),
         tone: 'block',
       }
     : null
@@ -2565,8 +2623,8 @@ const ageChip: ChipBuilder = (facts, now) => {
   const days = accountAgeDays(facts.createdAt, now) ?? 0
   const created = new Date(facts.createdAt!).toISOString().slice(0, 10)
   return {
-    text: `🎂 ${age}`,
-    title: `Account created ${created}`,
+    text: t('chipAge', age),
+    title: t('chipAgeTitle', created),
     // Under three months is the one age worth flagging visually: it is the
     // single strongest tell for a bought or freshly farmed account, and it is
     // also just what a new user looks like — hence a tint, not a warning.
@@ -2580,10 +2638,10 @@ const affiliationChip: ChipBuilder = (facts) => {
   const shown = name || (handle ? `@${handle}` : null)
   if (!shown) return null
   return {
-    text: `🏢 ${shown}`,
+    text: t('chipAffiliation', shown),
     title: handle
-      ? `X shows an affiliate badge linking to @${handle}`
-      : 'X shows an affiliate badge on this account',
+      ? t('chipAffiliationTitleHandle', handle)
+      : t('chipAffiliationTitle'),
   }
 }
 
@@ -2592,10 +2650,10 @@ const affiliationChip: ChipBuilder = (facts) => {
 // verification with the same badge as a paid one.
 const verificationChip: ChipBuilder = (facts) => {
   if (facts.identityVerified) {
-    return { text: '🪪 ID verified', title: 'X verified an identity document' }
+    return { text: t('chipIdVerified'), title: t('chipIdVerifiedTitle') }
   }
   if (facts.verified) {
-    return { text: '✔ Verified', title: 'Legacy verification' }
+    return { text: t('chipVerified'), title: t('chipVerifiedTitle') }
   }
   return null
 }
@@ -2604,15 +2662,15 @@ const handleChangesChip: ChipBuilder = (facts) => {
   const changes = facts.handleChanges
   if (typeof changes !== 'number' || changes <= 0) return null
   return {
-    text: `✎ ${changes} handle${changes === 1 ? '' : 's'}`,
-    title: `This account has changed its @handle ${changes} time(s)`,
+    text: changes === 1 ? t('chipHandle1') : t('chipHandles', changes),
+    title: t('chipHandlesTitle', changes),
     tone: changes >= 3 ? 'warn' : 'plain',
   }
 }
 
 const protectedChip: ChipBuilder = (facts) =>
   facts.isProtected
-    ? { text: '🔒 Protected', title: 'Posts are protected' }
+    ? { text: t('chipProtected'), title: t('chipProtectedTitle') }
     : null
 
 /**
@@ -2670,7 +2728,7 @@ function buildRateLimitRow(): HTMLElement {
 
   const badge = document.createElement('span')
   badge.className = 'x-loc-icon-ratelimit'
-  badge.title = 'X API rate limit reached — location lookups paused until reset'
+  badge.title = t('rateLimitBadgeTitle')
   badge.textContent = `⏱ ${formatCountdown(rateLimitResetAt - Date.now())}`
   row.appendChild(badge)
 
@@ -2765,7 +2823,7 @@ function syncBioRow(
   const el = document.createElement('div')
   el.className = 'x-loc-bio'
   el.textContent = bio
-  el.title = "Bio from X's API — this card doesn't show one"
+  el.title = t('bioTitle')
   // Before the wrap, not inside it: this is the account's own words and belongs
   // under the handle, above anything the extension has to say. Sitting outside
   // .x-loc-hover also puts it back in reach of keywordRangesIn, so the word that
@@ -3087,14 +3145,18 @@ function buildSnapshotLocationRow(data: LocationData): HTMLElement {
       block.appendChild(glyph)
     }
     const label = document.createElement('span')
-    label.textContent = `${flagEmojiFor(storeCountry)} ${storeCountry}`
+    label.textContent = `${flagEmojiFor(storeCountry)} ${localizedLocation(
+      canonicalLocation(storeCountry),
+    )}`
     block.appendChild(label)
     row.appendChild(block)
   }
 
   if (data.location) {
     const loc = document.createElement('span')
-    loc.textContent = `${flagEmojiFor(data.location)} ${data.location}`
+    loc.textContent = `${flagEmojiFor(data.location)} ${localizedLocation(
+      canonicalLocation(data.location),
+    )}`
     row.appendChild(loc)
   }
 
@@ -3107,7 +3169,7 @@ function buildSnapshotLocationRow(data: LocationData): HTMLElement {
         'background:rgba(220,38,38,0.15);color:rgb(200,25,25);' +
         'border:1px solid rgba(220,38,38,0.4);border-radius:4px;padding:2px 6px;',
     )
-    vpn.textContent = '⚠ VPN'
+    vpn.textContent = t('vpnBadge')
     row.appendChild(vpn)
   }
 
@@ -3181,7 +3243,7 @@ async function shareCardFor(
   displayName: string,
   article: Element | null,
 ): Promise<void> {
-  renderLocationToast(`Rendering @${userName} …`, true)
+  renderLocationToast(t('toastRendering', userName), true)
 
   // Whatever is already known. A share must not trigger a lookup: it would
   // spend a slice of the rate-limit window on a card, which is the one thing
@@ -3195,7 +3257,7 @@ async function shareCardFor(
   const deliver = async (blob: Blob) => {
     const where = await deliverShareCard(blob, `x-pat-${userName}.png`)
     renderLocationToast(
-      where === 'clipboard' ? '✓ Copied to clipboard' : '✓ Image saved',
+      where === 'clipboard' ? t('toastCopied') : t('toastSaved'),
     )
   }
 
@@ -3237,7 +3299,7 @@ async function shareCardFor(
       }),
     )
   } catch {
-    renderLocationToast('Could not render that card')
+    renderLocationToast(t('toastRenderFail'))
   }
 }
 
@@ -3246,13 +3308,13 @@ async function shareLastRightClickedPost(): Promise<void> {
   const article =
     lastRightClickedTweet ?? document.querySelector(SEL_PRIMARY_TWEET)
   if (!article) {
-    renderLocationToast('Right-click a post to share it')
+    renderLocationToast(t('toastRightClick'))
     return
   }
 
   const { userName, displayName } = extractTweetUserInfo(article)
   if (!userName) {
-    renderLocationToast('Could not read that post')
+    renderLocationToast(t('toastReadFail'))
     return
   }
 
@@ -3271,8 +3333,8 @@ function buildShareButton(userName: string, displayName: string): HTMLElement {
   const btn = document.createElement('button')
   btn.className = 'x-loc-share-btn'
   btn.type = 'button'
-  btn.textContent = '🖼 Copy'
-  btn.title = `Copy this post and what X reports for @${userName} as an image`
+  btn.textContent = t('shareBtn')
+  btn.title = t('shareBtnTitle', userName)
 
   btn.addEventListener('click', (e) => {
     e.preventDefault()
@@ -3388,7 +3450,7 @@ async function revealLocationForSwipe(article: Element) {
 
   // Acknowledge the gesture now; the lookup may take a network round trip and
   // a swipe that appears to do nothing invites the user to swipe again.
-  renderLocationToast(`@${userName} …`, true)
+  renderLocationToast(t('toastLookingUp', userName), true)
 
   const data = await fetchLocationData(userName)
   if (!data || !locationSummaryText(data)) {
@@ -3402,7 +3464,7 @@ async function revealLocationForSwipe(article: Element) {
       // earlier — the swipe asked for it back.
       if (rateLimited) showRateLimitToast(true)
     } else {
-      renderLocationToast('No location')
+      renderLocationToast(t('toastNoLocation'))
     }
     return
   }
@@ -3615,6 +3677,12 @@ injectStyles()
 startObserver()
 startSwipeListener()
 cleanupCache()
+// The browser's own language is already right for most readers and needs no
+// waiting, so nothing here is gated on this — it only redraws when the reader
+// has chosen a language the browser would not have picked.
+void initI18n().then((chosen) => {
+  if (chosen) relocalize()
+})
 // Send any buffered community-cache contributions before the tab goes away, so
 // the long 30s batching window doesn't strand a batch until the next session.
 document.addEventListener('visibilitychange', () => {

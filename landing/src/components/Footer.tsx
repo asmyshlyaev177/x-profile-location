@@ -4,54 +4,69 @@ import {
   GITHUB_REPO_URL,
 } from '../utils/constants'
 import { Wordmark } from './Wordmark'
-
-const LINKS: { heading: string; items: { label: string; href: string }[] }[] = [
-  {
-    heading: 'The extension',
-    items: [
-      { label: 'Screenshots', href: '/#proof' },
-      { label: 'How it works', href: '/#how' },
-      { label: 'Features', href: '/#features' },
-      { label: 'Chrome Web Store', href: CHROME_STORE_URL },
-      { label: 'Source on GitHub', href: GITHUB_REPO_URL },
-      { label: 'Support the project', href: DONATE_URL },
-    ],
-  },
-  {
-    heading: 'Guides',
-    items: [
-      { label: 'X “About this account”', href: '/x-about-this-account' },
-      {
-        label: 'Spotting engagement farming',
-        href: '/spot-engagement-farming',
-      },
-      { label: 'Compared with X-Posed', href: '/x-posed-alternative' },
-    ],
-  },
-  {
-    heading: 'Small print',
-    items: [
-      { label: 'Privacy policy', href: '/privacy-policy' },
-      { label: 'What is not collected', href: '/#privacy' },
-      { label: 'Contact', href: 'mailto:asmyshlyaev177+x-ext@gmail.com' },
-    ],
-  },
-]
+import { useI18n } from '../i18n/context'
 
 export function Footer() {
+  const { t, href } = useI18n()
+
+  const groups: {
+    heading: string
+    items: { label: string; href: string }[]
+  }[] = [
+    {
+      heading: t.footer.groupExtension,
+      items: [
+        { label: t.nav.screenshots, href: `${href('/')}#proof` },
+        { label: t.nav.howItWorks, href: `${href('/')}#how` },
+        { label: t.nav.features, href: `${href('/')}#features` },
+        { label: t.footer.chromeWebStore, href: CHROME_STORE_URL },
+        { label: t.nav.sourceOnGitHub, href: GITHUB_REPO_URL },
+        { label: t.footer.supportProject, href: DONATE_URL },
+      ],
+    },
+    {
+      heading: t.footer.groupGuides,
+      items: [
+        {
+          label: t.footer.guideAboutAccount,
+          href: href('/x-about-this-account'),
+        },
+        {
+          label: t.footer.guideEngagementFarming,
+          href: href('/spot-engagement-farming'),
+        },
+        { label: t.footer.guideComparison, href: href('/x-posed-alternative') },
+      ],
+    },
+    {
+      heading: t.footer.groupSmallPrint,
+      items: [
+        // English-only, so it is linked without a locale prefix on purpose —
+        // `href()` would point at a page that was never rendered.
+        { label: t.footer.privacyPolicy, href: '/privacy-policy' },
+        { label: t.footer.whatIsNotCollected, href: `${href('/')}#privacy` },
+        {
+          label: t.footer.contact,
+          href: 'mailto:asmyshlyaev177+x-ext@gmail.com',
+        },
+      ],
+    },
+  ]
+
   return (
     <footer class="border-hair border-t">
       <div class="shell grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <Wordmark />
           <p class="text-faint mt-4 max-w-[34ch] text-[0.8125rem] leading-relaxed">
-            A country flag on every X profile, taken from X’s own data. Built by
-            one person, with no company behind it.
+            {t.footer.tagline}
           </p>
-          <p class="t-data mt-5">Version {__EXT_VERSION__}</p>
+          <p class="t-data mt-5">
+            {t.footer.version} {__EXT_VERSION__}
+          </p>
         </div>
 
-        {LINKS.map((group) => (
+        {groups.map((group) => (
           <nav key={group.heading} aria-label={group.heading}>
             <h2 class="t-data">{group.heading}</h2>
             <ul class="mt-4 space-y-2.5">
@@ -74,10 +89,7 @@ export function Footer() {
         <p class="text-faint text-[0.8125rem]">
           © {new Date().getFullYear()} X-Pat
         </p>
-        <p class="text-faint text-[0.8125rem]">
-          Not affiliated with X Corp. Location data comes from X’s own public
-          endpoints.
-        </p>
+        <p class="text-faint text-[0.8125rem]">{t.footer.notAffiliated}</p>
       </div>
     </footer>
   )

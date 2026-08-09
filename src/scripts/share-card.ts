@@ -11,6 +11,8 @@
 import type { LocationData } from './cache'
 import { canonicalLocation, COUNTRY_FLAGS, REGION_FLAGS } from './countries'
 import { classifySource, platformLabel } from './source'
+import { t } from './i18n'
+import { localizedLocation } from './location-names'
 import { drawWatermark } from './watermark'
 
 export interface ShareInput {
@@ -115,6 +117,11 @@ function flagFor(location: string): string {
   return COUNTRY_FLAGS[key] ?? REGION_FLAGS[key] ?? '🌐'
 }
 
+/** The flag and the country, the country in the reader's language. */
+function locationChip(location: string): string {
+  return `${flagFor(location)} ${localizedLocation(canonicalLocation(location))}`
+}
+
 /**
  * The chips the card carries: what X said, in X's words. The VPN chip reads
  * exactly as the on-page badge does, so the image and the extension don't
@@ -126,15 +133,15 @@ export function shareChips(data: LocationData): string[] {
   const { platform, country } = classifySource(data.source)
 
   if (data.location) {
-    chips.push(`${flagFor(data.location)} ${data.location}`)
+    chips.push(locationChip(data.location))
   }
   if (country) {
-    chips.push(`${platformLabel(platform)} · ${flagFor(country)} ${country}`)
+    chips.push(`${platformLabel(platform)} · ${locationChip(country)}`)
   } else if (platform === 'web') {
-    chips.push('Web')
+    chips.push(t('platformWeb'))
   }
   if (data.locationAccurate === false) {
-    chips.push('⚠ VPN')
+    chips.push(t('vpnBadge'))
   }
   return chips
 }
@@ -221,7 +228,10 @@ function chipOps(
       x = PAD
       y += CHIP_HEIGHT + 12
     }
-    const warn = chip.startsWith('⚠')
+    // Compared against the message rather than sniffed for a leading '⚠': a
+    // translator who drops the emoji must not silently lose the amber tint that
+    // is the whole reason the caveat is on the card.
+    const warn = chip === t('vpnBadge')
     ops.push({
       kind: 'rect',
       x,

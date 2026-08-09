@@ -1,0 +1,608 @@
+{
+  "localeTag": {
+    "message": "ar"
+  },
+  "appName": {
+    "message": "X-Pat — موقع ملف X الشخصي وتصفيته وتمييزه"
+  },
+  "appShortName": {
+    "message": "X-Pat"
+  },
+  "appDesc": {
+    "message": "اعرف بلد أي حساب على X — أعلام الدول وتحذيرات VPN وتصفية حسب البلد، من بيانات X نفسها."
+  },
+  "actionTitle": {
+    "message": "X-Pat"
+  },
+  "menuSharePost": {
+    "message": "نسخ المنشور مع أعلام الموقع"
+  },
+  "popupPaused": {
+    "message": "متوقف مؤقتًا. يبدو X تمامًا كما لو أن الإضافة غير مثبتة."
+  },
+  "popupOn": {
+    "message": "تشغيل"
+  },
+  "popupOff": {
+    "message": "إيقاف"
+  },
+  "popupMasterSwitchTitle": {
+    "message": "إيقاف كل شيء مؤقتًا"
+  },
+  "popupFlagsInFeed": {
+    "message": "أعلام في الخلاصة 📍"
+  },
+  "popupAccountDetails": {
+    "message": "تفاصيل الحساب عند التمرير 🪪"
+  },
+  "popupCountryPlaceholder": {
+    "message": "بلد أو منطقة…"
+  },
+  "popupNothingBlocked": {
+    "message": "لا شيء محظور — كل الأعلام تظهر كما هي."
+  },
+  "popupHighlightKeywords": {
+    "message": "تمييز الكلمات المفتاحية"
+  },
+  "popupKeywordPlaceholder": {
+    "message": "أضف كلمة مفتاحية…"
+  },
+  "popupNoKeywords": {
+    "message": "لا كلمات مفتاحية — لا شيء مُميّز."
+  },
+  "popupAllSettings": {
+    "message": "كل الإعدادات ←"
+  },
+  "popupRate": {
+    "message": "قيّم ★"
+  },
+  "popupRateTitle": {
+    "message": "قيّم X-Pat على Chrome Web Store"
+  },
+  "popupDonate": {
+    "message": "تبرع 💜"
+  },
+  "popupDonateTitle": {
+    "message": "ادعم التطوير"
+  },
+  "removeItem": {
+    "message": "إزالة $1"
+  },
+  "removeHandle": {
+    "message": "إزالة @$1"
+  },
+  "openHandle": {
+    "message": "فتح @$1 على X"
+  },
+  "rateAskText": {
+    "message": "أفادتك الإضافة؟ تقييمك في المتجر يساعد كثيرًا."
+  },
+  "rateAskInline": {
+    "message": "— أفادتك الإضافة؟ تقييمك في المتجر يساعد كثيرًا."
+  },
+  "rateAskYes": {
+    "message": "قيّمها ★"
+  },
+  "rateAskLater": {
+    "message": "لاحقًا"
+  },
+  "rateAskNo": {
+    "message": "لا شكرًا"
+  },
+  "optionsTitle": {
+    "message": "إعدادات X-Pat"
+  },
+  "optionsEnabled": {
+    "message": "مُفعلة"
+  },
+  "optionsPaused": {
+    "message": "متوقفة"
+  },
+  "optionsPausedBanner": {
+    "message": "متوقفة — لا شيء مما يلي يُطبق على X حاليًا."
+  },
+  "tabDisplay": {
+    "message": "العرض"
+  },
+  "tabFilters": {
+    "message": "التصفية"
+  },
+  "tabExceptions": {
+    "message": "الاستثناءات"
+  },
+  "tabData": {
+    "message": "البيانات والخصوصية"
+  },
+  "tabAdvanced": {
+    "message": "متقدم"
+  },
+  "ruleHighlight": {
+    "message": "تمييز الكلمات المفتاحية والأعلام"
+  },
+  "ruleLocation": {
+    "message": "المواقع المحظورة"
+  },
+  "ruleAffiliation": {
+    "message": "الجهات المحظورة"
+  },
+  "ruleAge": {
+    "message": "عمر الحساب"
+  },
+  "cardOnPage": {
+    "message": "على الصفحة"
+  },
+  "cardOnPageDesc": {
+    "message": "ما يرسمه X-Pat على X. لا يغير أي من هذا المنشورات التي تُصفى."
+  },
+  "setShowInFeed": {
+    "message": "إظهار الموقع في الخلاصة"
+  },
+  "setShowInFeedDesc": {
+    "message": "علم تحت كل اسم في الخط الزمني، وليس فقط عند التمرير."
+  },
+  "setAccountCard": {
+    "message": "إظهار تفاصيل الحساب عند التمرير"
+  },
+  "setAccountCardDesc": {
+    "message": "عمر الحساب وشارة الانتماء والتوثيق وتغييرات المعرف وعدد المتابعين — مقروءة من بيانات أرسلها X مسبقًا، فلا تكلف بحثًا إضافيًا."
+  },
+  "setCopyButton": {
+    "message": "زر \"نسخ\" على بطاقات التمرير"
+  },
+  "setCopyButtonDesc": {
+    "message": "زر \"نسخ\" صغير في صف الأعلام. ينسخ المنشور الذي مررت عليه مع الأعلام كصورة — تُنشأ في متصفحك ولا يُرفع شيء. النقر بزر الفأرة الأيمن على منشور يفعل الشيء نفسه."
+  },
+  "setExceptionButton": {
+    "message": "زر الاستثناء على بطاقات التمرير"
+  },
+  "setExceptionButtonDesc": {
+    "message": "استثناء بنقرة واحدة للحساب الذي تنظر إليه من أي قاعدة تنطبق عليه — تمييز الكلمات المفتاحية والبلد وشارة الانتماء والعمر. يوضح تلميحه أيًا منها."
+  },
+  "hintSwipe": {
+    "message": "👉 اسحب لليمين على أي منشور لجلب موقعه."
+  },
+  "cardAppearance": {
+    "message": "المظهر"
+  },
+  "cardAppearanceDesc": {
+    "message": "يغطي شاشات X-Pat نفسها — هذه الصفحة والنافذة المنبثقة. الأعلام والعلامات المرسومة على X تتبع سمة X بدلاً من ذلك، فلا تتعارض مع الخط الزمني."
+  },
+  "setTheme": {
+    "message": "السمة"
+  },
+  "themeSystem": {
+    "message": "مطابقة النظام"
+  },
+  "themeLight": {
+    "message": "فاتح"
+  },
+  "themeDark": {
+    "message": "داكن"
+  },
+  "setLanguage": {
+    "message": "اللغة"
+  },
+  "setLanguageDesc": {
+    "message": "يغطي نصوص X-Pat وأسماء الدول التي يعرضها. اختيار لغة يعيد تحميل هذه الصفحة."
+  },
+  "languageAuto": {
+    "message": "مطابقة المتصفح"
+  },
+  "cardKeyword": {
+    "message": "التمييز بالكلمات المفتاحية"
+  },
+  "cardKeywordDesc": {
+    "message": "يعلِّم المنشورات التي يحتوي اسم كاتبها أو نبذته على أيٍّ من هذه. التمييز يعلِّم المنشور فقط ولا يخفيه أبدًا."
+  },
+  "keywordPlaceholder": {
+    "message": "اكتب كلمة مفتاحية أو اختر اقتراحًا…"
+  },
+  "emptyNoKeywords": {
+    "message": "لم تُضبط كلمات مفتاحية — كل المنشورات تظهر طبيعيًا."
+  },
+  "cardLocations": {
+    "message": "المواقع"
+  },
+  "cardLocationsDesc": {
+    "message": "هذه تُظهر ⚠️ بدل علمها. يعتمد على بلد المتجر أو موقع الحساب إن لم يُعلم كـ VPN. لا ينطبق أبدًا على المنشور الذي فتحته."
+  },
+  "locationPlaceholder": {
+    "message": "ابحث عن دول ومناطق — بالاسم أو الرمز أو اللقب…"
+  },
+  "regionCountries": {
+    "message": "منطقة · $1 دولة"
+  },
+  "emptyNoLocations": {
+    "message": "لم تُحدد مواقع — كل الأعلام تظهر كما هي."
+  },
+  "cardFiltered": {
+    "message": "ما يحدث للمنشور المُصفى"
+  },
+  "cardFilteredDesc": {
+    "message": "ينطبق على المرشحين اللذين يخفيان المنشورات — المواقع المحظورة والجهات المحظورة. عمر الحساب والكلمات المفتاحية يعلّمان المنشور مهما كان هذا الإعداد. المنشور المقتبس يُطوى وحده ليبقى المُقتبِس مقروءًا، وقوائم الأشخاص تُعلَّم بدل إخفائها — حذف الصفوف هناك يُفسد الأعداد."
+  },
+  "filteredPosts": {
+    "message": "المنشورات المُصفاة"
+  },
+  "hideModeOff": {
+    "message": "إظهار عادي"
+  },
+  "hideModeCollapse": {
+    "message": "طي"
+  },
+  "hideModeCollapseLong": {
+    "message": "طي (\"إظهار\" للفتح)"
+  },
+  "hideModeHide": {
+    "message": "إخفاء"
+  },
+  "hideModeHideLong": {
+    "message": "إخفاء كامل"
+  },
+  "cardAffiliations": {
+    "message": "الجهات"
+  },
+  "cardAffiliationsDesc": {
+    "message": "يُعلم X بعض الحسابات بأنها تابعة لجهة. أدخل معرف الحساب الأم لتصفية كل حساب موسوم به دفعة واحدة."
+  },
+  "affiliationPlaceholder": {
+    "message": "معرف الحساب الأم، مثل nasa…"
+  },
+  "emptyNoAffiliations": {
+    "message": "لا جهات محظورة. مرر على حساب لترى إن كان يحمل شارة."
+  },
+  "cardAge": {
+    "message": "عمر الحساب"
+  },
+  "cardAgeDesc": {
+    "message": "مدة وجود الحساب من تاريخ الإنشاء الذي يبلغه X. هذا يعلّم المنشورات ولا يخفيها أبدًا، مهما كان الإعداد أعلاه."
+  },
+  "setMarkYoung": {
+    "message": "تعليم الحسابات الحديثة"
+  },
+  "setMarkYoungDesc": {
+    "message": "يعلّم منشوراتها كما تفعل مطابقة الكلمات المفتاحية، بشريط برتقالي على الجانب. يقف عند هذا الحد عن قصد: الحساب الحديث هو أقوى إشارة لحساب مشترى أو مزروع، وهو أيضًا ما يبدو عليه من انضم الشهر الماضي تمامًا — عذر أضعف من أن يُسكت ردودهم."
+  },
+  "setMarkYoungerThan": {
+    "message": "تعليم الحسابات الأحدث من"
+  },
+  "cardFlags": {
+    "message": "التمييز بالأعلام"
+  },
+  "cardFlagsDesc": {
+    "message": "يعلّم المنشورات التي تمتلئ نبذة كاتبها برموز الأعلام."
+  },
+  "setHighlightFlagHeavy": {
+    "message": "تمييز النبذات المليئة بالأعلام"
+  },
+  "setFlagThreshold": {
+    "message": "أكثر من هذا العدد من الأعلام"
+  },
+  "setUniqueFlags": {
+    "message": "عدّ الأعلام الفريدة فقط"
+  },
+  "cardAlwaysShow": {
+    "message": "إظهار دائم"
+  },
+  "cardAlwaysShowDesc": {
+    "message": "مستثنى من كل القواعد — لا يُخفى ولا يُطوى ولا يُميّز، مهما قالت المرشحات."
+  },
+  "usernamePlaceholder": {
+    "message": "أضف اسم مستخدم (بدون @)…"
+  },
+  "emptyNoAllowlist": {
+    "message": "لا أحد في قائمة السماح — كل حساب يُحكم بالقواعد."
+  },
+  "cardPerRule": {
+    "message": "استثناءات لكل قاعدة"
+  },
+  "cardPerRuleDesc": {
+    "message": "استثنِ حسابًا من قاعدة واحدة دون الأخريات — لمن يستخدم كلمة مفتاحية بسخرية (\"no NAFO\")، أو ينشر من بلد محظور وتريد قراءته."
+  },
+  "searchExceptions": {
+    "message": "ابحث في الاستثناءات…"
+  },
+  "searchExceptionsLabel": {
+    "message": "البحث في الاستثناءات"
+  },
+  "emptyNoMatch": {
+    "message": "لا شيء يطابق \"$1\"."
+  },
+  "emptyNoExceptions": {
+    "message": "لا استثناءات."
+  },
+  "cardLookups": {
+    "message": "البحث في الخلفية"
+  },
+  "cardLookupsDesc": {
+    "message": "يسمح X بحوالي $1 بحثًا عن حسابات كل $2 دقيقة. هذه الإعدادات تحدد كم منها قد يستخدمه X-Pat لملء الأعلام لك، وكم يُحجز للحسابات التي تمرر عليها بنفسك."
+  },
+  "setSharedCache": {
+    "message": "استخدام الذاكرة المؤقتة المشتركة"
+  },
+  "setSharedCacheDesc": {
+    "message": "يشارك الأعلام التي تبحث عنها ليتجنب الجميع البحث المتكرر. لا يُرسل إلا المعرفات العامة وعلمها — لا بيانات حساب أو شخصية."
+  },
+  "setPrefetch": {
+    "message": "جلب مسبق للمواقع في الخلفية"
+  },
+  "setPrefetchDesc": {
+    "message": "يبحث عن الحسابات في خلاصتك بترتيب ظهورها، فتظهر الأعلام دون تمرير."
+  },
+  "setShare": {
+    "message": "حصة حد البحث التي قد يستخدمها"
+  },
+  "setShareDesc": {
+    "message": "$1 للجلب المسبق، $2 متبقية لتمريراتك."
+  },
+  "setSpread": {
+    "message": "توزيع البحث على كامل $1 دقيقة"
+  },
+  "setSpreadDesc": {
+    "message": "بحث واحد تقريبًا كل $1 ثانية، بدل البحث دفعة واحدة."
+  },
+  "cardBackup": {
+    "message": "نسخ احتياطي واستعادة"
+  },
+  "cardBackupDesc": {
+    "message": "انقل إعداداتك لمتصفح آخر، أو احتفظ بنسخة قبل التجريب."
+  },
+  "btnExport": {
+    "message": "تصدير الإعدادات"
+  },
+  "btnImport": {
+    "message": "استيراد الإعدادات"
+  },
+  "hintImportMerge": {
+    "message": "الاستيراد يدمج: الإعدادات التي لا يذكرها الملف تُترك كما هي. كل قيمة يُعاد التحقق منها عند الإدخال، فلا يمكن لملف معدل يدويًا أن يضع الإضافة في حالة لا تستطيع التعافي منها."
+  },
+  "noteExported": {
+    "message": "صُدِّر $1 إعدادًا. معرف الذاكرة المشتركة ومواقعك المخزنة غير مشمولة."
+  },
+  "noteImported": {
+    "message": "استُورد $1 إعدادًا."
+  },
+  "noteImportedSkipped": {
+    "message": "تم تخطي $1 مفتاحًا غير معروف."
+  },
+  "errImportFailed": {
+    "message": "تعذر استيراد ذلك الملف."
+  },
+  "errNotJson": {
+    "message": "ذلك الملف ليس JSON صالحًا."
+  },
+  "errNotExport": {
+    "message": "ذلك الملف ليس تصديرًا للإعدادات."
+  },
+  "errNoSection": {
+    "message": "يفتقد ذلك الملف قسم \"settings\"، لذا فهو ليس تصديرًا من هذه الإضافة."
+  },
+  "errNewerFormat": {
+    "message": "كُتب ذلك الملف بنسخة أحدث (تنسيق $1). حدّث الإضافة أولاً."
+  },
+  "errNoSettings": {
+    "message": "لا يحتوي ذلك الملف على إعدادات لاستيرادها."
+  },
+  "cardCache": {
+    "message": "الذاكرة المحلية"
+  },
+  "cardCacheDesc": {
+    "message": "المواقع التي بحثت عنها تُحفظ في هذا المتصفح لمدة 30 يومًا، فلا يكلف عرضها مجددًا شيئًا."
+  },
+  "btnClearCache": {
+    "message": "مسح ذاكرة المواقع"
+  },
+  "btnCacheCleared": {
+    "message": "مُسحت الذاكرة"
+  },
+  "cardTrust": {
+    "message": "الثقة بالذاكرة المشتركة"
+  },
+  "cardTrustDesc": {
+    "message": "عدد التقارير المستقلة عن نفس الموقع التي تحتاجها هذه النسخة قبل الوثوق به. الرقم الأعلى أصعب في التسميم لكنه يجيب أقل بكثير: اليوم حوالي 1 من كل 80 ملفًا مخزنًا أُبلغ عنه مرتين، لذا أي رقم فوق 1 يعود غالبًا للبحث عن الحساب على X ويستهلك حدك. اتركه على $1 إلا إذا كنت تقيس هذا."
+  },
+  "setTrustAfter": {
+    "message": "الوثوق بموقع مشترك بعد"
+  },
+  "trustReports1": {
+    "message": "تقرير واحد"
+  },
+  "trustReports2": {
+    "message": "تقريران"
+  },
+  "trustReports3": {
+    "message": "3 تقارير"
+  },
+  "ageDays": {
+    "message": "$1 يومًا"
+  },
+  "ageMonths": {
+    "message": "$1 شهرًا"
+  },
+  "ageYear": {
+    "message": "سنة واحدة"
+  },
+  "ageYears": {
+    "message": "$1 سنة"
+  },
+  "ageToday": {
+    "message": "اليوم"
+  },
+  "ageShortDays": {
+    "message": "$1 ي"
+  },
+  "ageShortMonths": {
+    "message": "$1 ش"
+  },
+  "ageShortYears": {
+    "message": "$1 س"
+  },
+  "toastDismiss": {
+    "message": "انقر للإغلاق"
+  },
+  "toastRateLimit": {
+    "message": "⚠ تم بلوغ الحد · يعود بعد $1"
+  },
+  "countdownMinSec": {
+    "message": "$1د $2ث"
+  },
+  "countdownSec": {
+    "message": "$1ث"
+  },
+  "rateLimitBadgeTitle": {
+    "message": "تم بلوغ حد X API — توقف البحث عن المواقع حتى إعادة التعيين"
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN"
+  },
+  "vpnTitle": {
+    "message": "مستخدم VPN، قد يكون الموقع غير دقيق"
+  },
+  "storeRegionLabel": {
+    "message": "منطقة $1: $2"
+  },
+  "platformWeb": {
+    "message": "ويب"
+  },
+  "platformUnknown": {
+    "message": "غير معروف"
+  },
+  "hiddenLabel": {
+    "message": "🚫 مخفي · $1 $2"
+  },
+  "hiddenShow": {
+    "message": "إظهار"
+  },
+  "hiddenShowTitle": {
+    "message": "إظهار هذا المنشور ($1: $2)"
+  },
+  "cellTagTitle": {
+    "message": "يطابق $1 لديك — معروض وليس مخفيًا"
+  },
+  "ruleNameHighlight": {
+    "message": "قاعدة التمييز"
+  },
+  "ruleNameLocation": {
+    "message": "موقع محظور"
+  },
+  "ruleNameAffiliation": {
+    "message": "جهة محظورة"
+  },
+  "ruleNameAge": {
+    "message": "عمر الحساب"
+  },
+  "excAdd": {
+    "message": "🚫 إضافة استثناء"
+  },
+  "excUndo": {
+    "message": "✓ استثناء (تراجع)"
+  },
+  "excAddTitle": {
+    "message": "استثناء @$1 من $2"
+  },
+  "excUndoTitle": {
+    "message": "@$1 مستثنى من $2 — انقر للتراجع"
+  },
+  "excPhraseHighlight": {
+    "message": "تمييز الكلمات المفتاحية والأعلام"
+  },
+  "excPhraseLocation": {
+    "message": "مرشح المواقع المحظورة"
+  },
+  "excPhraseAffiliation": {
+    "message": "مرشح الجهات المحظورة"
+  },
+  "excPhraseAge": {
+    "message": "مرشح عمر الحساب"
+  },
+  "joinAnd": {
+    "message": "$1 و$2"
+  },
+  "chipBlockedYou": {
+    "message": "🚫 حظرك"
+  },
+  "chipBlockedYouTitle": {
+    "message": "هذا الحساب يحظر حسابك"
+  },
+  "chipAge": {
+    "message": "🎂 $1"
+  },
+  "chipAgeTitle": {
+    "message": "أُنشئ الحساب $1"
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1"
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "يُظهر X شارة انتماء تشير إلى @$1"
+  },
+  "chipAffiliationTitle": {
+    "message": "يُظهر X شارة انتماء على هذا الحساب"
+  },
+  "chipIdVerified": {
+    "message": "🪪 هوية موثقة"
+  },
+  "chipIdVerifiedTitle": {
+    "message": "وثّق X وثيقة هوية"
+  },
+  "chipVerified": {
+    "message": "✔ موثق"
+  },
+  "chipVerifiedTitle": {
+    "message": "توثيق قديم"
+  },
+  "chipHandle1": {
+    "message": "✎ معرف واحد"
+  },
+  "chipHandles": {
+    "message": "✎ $1 معرفًا"
+  },
+  "chipHandlesTitle": {
+    "message": "غيّر هذا الحساب معرفه $1 مرة"
+  },
+  "chipProtected": {
+    "message": "🔒 محمي"
+  },
+  "chipProtectedTitle": {
+    "message": "المنشورات محمية"
+  },
+  "bioTitle": {
+    "message": "نبذة من X API — هذه البطاقة لا تظهرها"
+  },
+  "shareBtn": {
+    "message": "🖼 نسخ"
+  },
+  "shareBtnTitle": {
+    "message": "نسخ هذا المنشور وما يبلغه X عن @$1 كصورة"
+  },
+  "toastRendering": {
+    "message": "جارٍ إنشاء @$1 …"
+  },
+  "toastCopied": {
+    "message": "✓ نُسخ إلى الحافظة"
+  },
+  "toastSaved": {
+    "message": "✓ حُفظت الصورة"
+  },
+  "toastRenderFail": {
+    "message": "تعذر إنشاء تلك البطاقة"
+  },
+  "toastRightClick": {
+    "message": "انقر بزر الفأرة الأيمن على منشور لمشاركته"
+  },
+  "toastReadFail": {
+    "message": "تعذرت قراءة ذلك المنشور"
+  },
+  "toastNoLocation": {
+    "message": "لا موقع"
+  },
+  "toastLookingUp": {
+    "message": "@$1 …"
+  },
+  "regionEastAsiaPacific": {
+    "message": "شرق آسيا والمحيط الهادئ"
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "أوروبا الشرقية (خارج الاتحاد الأوروبي)"
+  }
+}

@@ -1,4 +1,6 @@
 import { COMPETITORS, SELF, type Cell, type Row } from '../data/comparison'
+import { useT } from '../i18n/context'
+import type { Dict } from '../i18n/dict/en'
 
 /**
  * The comparison grid. Shared by /x-posed-alternative (every row) and the
@@ -10,8 +12,19 @@ import { COMPETITORS, SELF, type Cell, type Row } from '../data/comparison'
  * loose symbols.
  */
 
+/**
+ * Two cells hold a measured value rather than a verdict, and both are copy —
+ * "609 tests" and "none" have to be sayable in fifteen languages. `comparison.ts`
+ * stores the dictionary key; this resolves it.
+ */
+function measured(value: Cell, t: Dict): string | null {
+  if (value === 'testCount') return t.comparison.testCount
+  if (value === 'none') return t.comparison.none
+  return null
+}
+
 /** Symbol plus a word, never a symbol alone — see `cellLabel`. */
-function CellMark({ value }: { value: Cell }) {
+function CellMark({ value, t }: { value: Cell; t: Dict }) {
   if (value === 'yes') {
     return (
       <span class="text-signal text-[1.125rem] leading-none" aria-hidden="true">
@@ -39,9 +52,11 @@ function CellMark({ value }: { value: Cell }) {
       </span>
     )
   }
-  // A measured value ("518 tests", "none") says more than a tick could.
+  // A measured value ("609 tests", "none") says more than a tick could.
   return (
-    <span class="text-text font-mono text-[0.75rem] font-medium">{value}</span>
+    <span class="text-text font-mono text-[0.75rem] font-medium">
+      {measured(value, t) ?? value}
+    </span>
   )
 }
 
@@ -50,12 +65,12 @@ function CellMark({ value }: { value: Cell }) {
  * "no" on purpose: for the two closed-source extensions it means their listing
  * is silent, which is not the same claim as the feature being absent.
  */
-function cellLabel(value: Cell): string {
-  if (value === 'yes') return 'yes'
-  if (value === 'no') return 'no'
-  if (value === 'unstated') return 'not stated'
-  if (value === 'n/a') return 'not applicable'
-  return value
+function cellLabel(value: Cell, t: Dict): string {
+  if (value === 'yes') return t.table.yes
+  if (value === 'no') return t.table.no
+  if (value === 'unstated') return t.table.notStated
+  if (value === 'n/a') return t.table.notApplicable
+  return measured(value, t) ?? value
 }
 
 interface Props {
@@ -65,6 +80,7 @@ interface Props {
 }
 
 export function ComparisonTable({ rows, showNotes = false }: Props) {
+  const t = useT()
   const columns = [SELF, ...COMPETITORS.map((c) => c.short)]
 
   return (
@@ -72,14 +88,12 @@ export function ComparisonTable({ rows, showNotes = false }: Props) {
     // scrolls inside its own box. Without this the whole page scrolls sideways
     // on a phone, which breaks every other section too.
     <div class="border-hair bg-ink-1 overflow-x-auto rounded-2xl border">
-      <table class="w-full min-w-[42rem] border-collapse text-left">
-        <caption class="sr-only">
-          X-Pat compared with the three most-installed X location extensions
-        </caption>
+      <table class="w-full min-w-[42rem] border-collapse text-start">
+        <caption class="sr-only">{t.table.caption}</caption>
         <thead>
           <tr class="border-hair border-b">
             <th scope="col" class="t-data px-5 py-4 font-normal">
-              Feature
+              {t.table.feature}
             </th>
             {columns.map((col) => (
               <th
@@ -95,35 +109,38 @@ export function ComparisonTable({ rows, showNotes = false }: Props) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.label} class="border-hair/60 border-b last:border-0">
-              <th
-                scope="row"
-                class="text-text max-w-[26rem] px-5 py-4 text-[0.875rem] leading-snug font-medium"
-              >
-                {row.label}
-                {showNotes && row.note ? (
-                  <span class="text-faint mt-1.5 block text-[0.8125rem] leading-relaxed font-normal">
-                    {row.note}
-                  </span>
-                ) : null}
-              </th>
-              {columns.map((col) => {
-                const value = row.cells[col] ?? 'unstated'
-                return (
-                  <td
-                    key={col}
-                    class={`px-4 py-4 text-center align-middle ${
-                      col === SELF ? 'bg-signal/[0.04]' : ''
-                    }`}
-                  >
-                    <CellMark value={value} />
-                    <span class="sr-only">{cellLabel(value)}</span>
-                  </td>
-                )
-              })}
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const copy = t.comparison.rows[row.id]
+            return (
+              <tr key={row.id} class="border-hair/60 border-b last:border-0">
+                <th
+                  scope="row"
+                  class="text-text max-w-[26rem] px-5 py-4 text-[0.875rem] leading-snug font-medium"
+                >
+                  {copy.label}
+                  {showNotes && copy.note ? (
+                    <span class="text-faint mt-1.5 block text-[0.8125rem] leading-relaxed font-normal">
+                      {copy.note}
+                    </span>
+                  ) : null}
+                </th>
+                {columns.map((col) => {
+                  const value = row.cells[col] ?? 'unstated'
+                  return (
+                    <td
+                      key={col}
+                      class={`px-4 py-4 text-center align-middle ${
+                        col === SELF ? 'bg-signal/[0.04]' : ''
+                      }`}
+                    >
+                      <CellMark value={value} t={t} />
+                      <span class="sr-only">{cellLabel(value, t)}</span>
+                    </td>
+                  )
+                })}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
