@@ -98,7 +98,9 @@ export function getRouteLastmods(routes) {
   /** @type {Record<string, Date>} */
   const out = {}
   for (const route of routes) {
-    const stamps = (route.sources ?? []).map((s) => dates.get(s)).filter(Boolean)
+    const stamps = (route.sources ?? [])
+      .map((s) => dates.get(s))
+      .filter(Boolean)
     const newest = stamps.length
       ? stamps.reduce((a, b) => (a > b ? a : b))
       : fallback
