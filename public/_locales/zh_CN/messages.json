@@ -1,0 +1,608 @@
+{
+  "localeTag": {
+    "message": "zh-CN"
+  },
+  "appName": {
+    "message": "X-Pat — X 资料定位、筛选与标记"
+  },
+  "appShortName": {
+    "message": "X-Pat"
+  },
+  "appDesc": {
+    "message": "查看 X 资料的发帖来源国家 — 国旗、VPN 警告与国家筛选，数据均来自 X 自身。"
+  },
+  "actionTitle": {
+    "message": "X-Pat"
+  },
+  "menuSharePost": {
+    "message": "复制带位置标记的帖子"
+  },
+  "popupPaused": {
+    "message": "已暂停。X 显示效果与卸载扩展时完全一致。"
+  },
+  "popupOn": {
+    "message": "开"
+  },
+  "popupOff": {
+    "message": "关"
+  },
+  "popupMasterSwitchTitle": {
+    "message": "暂时关闭所有功能"
+  },
+  "popupFlagsInFeed": {
+    "message": "信息流中显示旗标 📍"
+  },
+  "popupAccountDetails": {
+    "message": "悬停时显示账号详情 🪪"
+  },
+  "popupCountryPlaceholder": {
+    "message": "国家或地区…"
+  },
+  "popupNothingBlocked": {
+    "message": "未屏蔽任何地区 — 所有旗标照常显示。"
+  },
+  "popupHighlightKeywords": {
+    "message": "高亮关键词"
+  },
+  "popupKeywordPlaceholder": {
+    "message": "添加关键词…"
+  },
+  "popupNoKeywords": {
+    "message": "无关键词 — 未高亮任何内容。"
+  },
+  "popupAllSettings": {
+    "message": "全部设置 →"
+  },
+  "popupRate": {
+    "message": "评分 ★"
+  },
+  "popupRateTitle": {
+    "message": "在 Chrome 网上应用店评价 X-Pat"
+  },
+  "popupDonate": {
+    "message": "捐赠 💜"
+  },
+  "popupDonateTitle": {
+    "message": "支持开发"
+  },
+  "removeItem": {
+    "message": "移除 $1"
+  },
+  "removeHandle": {
+    "message": "移除 @$1"
+  },
+  "openHandle": {
+    "message": "在 X 上打开 @$1"
+  },
+  "rateAskText": {
+    "message": "对您有帮助？应用商店评分对我们很重要。"
+  },
+  "rateAskInline": {
+    "message": "——对您有帮助？应用商店评分对我们很重要。"
+  },
+  "rateAskYes": {
+    "message": "去评分 ★"
+  },
+  "rateAskLater": {
+    "message": "稍后"
+  },
+  "rateAskNo": {
+    "message": "不用了"
+  },
+  "optionsTitle": {
+    "message": "X-Pat 设置"
+  },
+  "optionsEnabled": {
+    "message": "已启用"
+  },
+  "optionsPaused": {
+    "message": "已暂停"
+  },
+  "optionsPausedBanner": {
+    "message": "已暂停 — 以下设置当前均未应用于 X。"
+  },
+  "tabDisplay": {
+    "message": "显示"
+  },
+  "tabFilters": {
+    "message": "过滤"
+  },
+  "tabExceptions": {
+    "message": "例外"
+  },
+  "tabData": {
+    "message": "数据与隐私"
+  },
+  "tabAdvanced": {
+    "message": "高级"
+  },
+  "ruleHighlight": {
+    "message": "关键词 / 旗标高亮"
+  },
+  "ruleLocation": {
+    "message": "已屏蔽地区"
+  },
+  "ruleAffiliation": {
+    "message": "已屏蔽隶属关系"
+  },
+  "ruleAge": {
+    "message": "账号年龄"
+  },
+  "cardOnPage": {
+    "message": "页面显示"
+  },
+  "cardOnPageDesc": {
+    "message": "X-Pat 在 X 上绘制的内容。这不会改变哪些帖子被过滤。"
+  },
+  "setShowInFeed": {
+    "message": "在信息流中显示位置"
+  },
+  "setShowInFeedDesc": {
+    "message": "在时间线中每个名称下方显示旗标，不仅限于悬停时。"
+  },
+  "setAccountCard": {
+    "message": "悬停时显示账号详情"
+  },
+  "setAccountCardDesc": {
+    "message": "账号年龄、隶属徽章、认证状态、用户名变更记录和粉丝数——数据来自 X 已发送的内容，无需额外查询。"
+  },
+  "setCopyButton": {
+    "message": "悬停卡片上的\"复制\"按钮"
+  },
+  "setCopyButtonDesc": {
+    "message": "旗标行中的小型\"复制\"按钮。将您悬停的帖子连同旗标一起复制为图片——在浏览器中渲染，不上传任何数据。右键点击帖子也可实现相同效果。"
+  },
+  "setExceptionButton": {
+    "message": "悬停卡片上的例外按钮"
+  },
+  "setExceptionButtonDesc": {
+    "message": "一键将当前查看的账号从所有生效规则中豁免——包括关键词高亮、国家、隶属徽章、年龄。提示信息会说明具体豁免了哪些。"
+  },
+  "hintSwipe": {
+    "message": "👉 在任意帖子上右滑即可获取其位置。"
+  },
+  "cardAppearance": {
+    "message": "外观"
+  },
+  "cardAppearanceDesc": {
+    "message": "涵盖 X-Pat 自身的界面——本页面和工具栏弹窗。绘制在 X 上的旗标和标记会跟随 X 的主题，不会与时间线产生冲突。"
+  },
+  "setTheme": {
+    "message": "主题"
+  },
+  "themeSystem": {
+    "message": "跟随系统"
+  },
+  "themeLight": {
+    "message": "浅色"
+  },
+  "themeDark": {
+    "message": "深色"
+  },
+  "setLanguage": {
+    "message": "语言"
+  },
+  "setLanguageDesc": {
+    "message": "涵盖 X-Pat 自身的文本及其显示的国家名称。选择后此页面将重新加载。"
+  },
+  "languageAuto": {
+    "message": "跟随浏览器"
+  },
+  "cardKeyword": {
+    "message": "关键词高亮"
+  },
+  "cardKeywordDesc": {
+    "message": "标记作者名称或简介中包含任意关键词的帖子。高亮仅作标记，不会隐藏帖子。"
+  },
+  "keywordPlaceholder": {
+    "message": "输入关键词或选择建议…"
+  },
+  "emptyNoKeywords": {
+    "message": "未设置关键词 — 所有帖子正常显示。"
+  },
+  "cardLocations": {
+    "message": "地区"
+  },
+  "cardLocationsDesc": {
+    "message": "这些地区将显示 ⚠️ 而非旗标。以商店所属国家为准，若未标记为 VPN 则以账号所在地为准。始终不适用于您打开的帖子。"
+  },
+  "locationPlaceholder": {
+    "message": "搜索国家和地区——名称、代码或昵称…"
+  },
+  "regionCountries": {
+    "message": "地区 · $1 个国家"
+  },
+  "emptyNoLocations": {
+    "message": "未选择地区 — 所有旗标照常显示。"
+  },
+  "cardFiltered": {
+    "message": "被过滤帖子的处理方式"
+  },
+  "cardFilteredDesc": {
+    "message": "适用于两项移除帖子的过滤规则——已屏蔽地区和已屏蔽隶属关系。账号年龄和关键词高亮仅作标记，不受此设置影响。被引用的帖子会单独收起，引用它的帖子仍可正常阅读；用户列表会标记而非隐藏——移除行会导致计数错误。"
+  },
+  "filteredPosts": {
+    "message": "被过滤的帖子"
+  },
+  "hideModeOff": {
+    "message": "正常显示"
+  },
+  "hideModeCollapse": {
+    "message": "折叠"
+  },
+  "hideModeCollapseLong": {
+    "message": "折叠（点击\"显示\"展开）"
+  },
+  "hideModeHide": {
+    "message": "隐藏"
+  },
+  "hideModeHideLong": {
+    "message": "完全隐藏"
+  },
+  "cardAffiliations": {
+    "message": "隶属关系"
+  },
+  "cardAffiliationsDesc": {
+    "message": "X 会将某些账号标记为属于某个组织。输入母账号的用户名，即可一次性过滤所有带有该徽章的账号。"
+  },
+  "affiliationPlaceholder": {
+    "message": "母账号用户名，例：nasa…"
+  },
+  "emptyNoAffiliations": {
+    "message": "未屏蔽任何隶属关系。悬停在账号上即可查看其是否带有徽章。"
+  },
+  "cardAge": {
+    "message": "账号年龄"
+  },
+  "cardAgeDesc": {
+    "message": "根据 X 报告的创建日期判断账号存在时长。此规则仅标记帖子，无论上方设置如何，均不会隐藏。"
+  },
+  "setMarkYoung": {
+    "message": "标记新账号"
+  },
+  "setMarkYoungDesc": {
+    "message": "以与关键词匹配相同的方式标记其帖子——侧边显示橙色竖条。仅此而已，这是有意为之：新账号是购买或刷量账号的最强信号，但也恰好是上月新注册用户的特征——不足以成为移除其回复的理由。"
+  },
+  "setMarkYoungerThan": {
+    "message": "标记创建时间短于"
+  },
+  "cardFlags": {
+    "message": "旗标高亮"
+  },
+  "cardFlagsDesc": {
+    "message": "标记作者简介中含有大量国旗表情的帖子。"
+  },
+  "setHighlightFlagHeavy": {
+    "message": "高亮含大量国旗的简介"
+  },
+  "setFlagThreshold": {
+    "message": "国旗数量超过"
+  },
+  "setUniqueFlags": {
+    "message": "仅统计不重复的国旗"
+  },
+  "cardAlwaysShow": {
+    "message": "始终显示"
+  },
+  "cardAlwaysShowDesc": {
+    "message": "一次性豁免所有规则——不会被隐藏、折叠或高亮，无论过滤规则如何设置。"
+  },
+  "usernamePlaceholder": {
+    "message": "添加用户名（不含 @）…"
+  },
+  "emptyNoAllowlist": {
+    "message": "白名单为空 — 所有账号均按规则判断。"
+  },
+  "cardPerRule": {
+    "message": "逐规则例外"
+  },
+  "cardPerRuleDesc": {
+    "message": "将某个账号从特定规则中豁免，其他规则仍然生效——适用于有人用被追踪的关键词进行反讽（\"no NAFO\"），或从被屏蔽国家发帖但您仍想阅读的情况。"
+  },
+  "searchExceptions": {
+    "message": "搜索例外…"
+  },
+  "searchExceptionsLabel": {
+    "message": "搜索例外"
+  },
+  "emptyNoMatch": {
+    "message": "无匹配\"$1\"的结果。"
+  },
+  "emptyNoExceptions": {
+    "message": "无例外。"
+  },
+  "cardLookups": {
+    "message": "后台查询"
+  },
+  "cardLookupsDesc": {
+    "message": "X 每 $2 分钟允许约 $1 次账号查询。这些设置决定 X-Pat 可将其中多少用于为您填充旗标，多少留给您自行悬停查询的账号。"
+  },
+  "setSharedCache": {
+    "message": "使用共享社区缓存"
+  },
+  "setSharedCacheDesc": {
+    "message": "分享您查询的旗标，让所有人避免重复查询。仅发送公开用户名及其旗标——不涉及账号或个人数据。"
+  },
+  "setPrefetch": {
+    "message": "后台预取地理位置"
+  },
+  "setPrefetchDesc": {
+    "message": "按出现顺序查询信息流中的账号，无需悬停即可显示旗标。"
+  },
+  "setShare": {
+    "message": "可使用的查询配额比例"
+  },
+  "setShareDesc": {
+    "message": "预取 $1 次，$2 次留作自行悬停查询。"
+  },
+  "setSpread": {
+    "message": "将查询分散到整个 $1 分钟内"
+  },
+  "setSpreadDesc": {
+    "message": "约每 $1 秒查询一次，而非一次性全部查询。"
+  },
+  "cardBackup": {
+    "message": "备份与恢复"
+  },
+  "cardBackupDesc": {
+    "message": "将设置迁移至其他浏览器，或在调整前保留副本。"
+  },
+  "btnExport": {
+    "message": "导出设置"
+  },
+  "btnImport": {
+    "message": "导入设置"
+  },
+  "hintImportMerge": {
+    "message": "导入采用合并方式：文件中未提及的设置保持不变。每个值在导入时均经过校验，确保手动编辑的文件不会使扩展进入无法恢复的状态。"
+  },
+  "noteExported": {
+    "message": "已导出 $1 项设置。共享缓存 ID 和已缓存的位置数据未包含在内。"
+  },
+  "noteImported": {
+    "message": "已导入 $1 项设置。"
+  },
+  "noteImportedSkipped": {
+    "message": "已跳过 $1 个未知键。"
+  },
+  "errImportFailed": {
+    "message": "无法导入该文件。"
+  },
+  "errNotJson": {
+    "message": "该文件不是有效的 JSON。"
+  },
+  "errNotExport": {
+    "message": "该文件不是设置导出文件。"
+  },
+  "errNoSection": {
+    "message": "该文件缺少\"settings\"节，因此不是来自此扩展的导出文件。"
+  },
+  "errNewerFormat": {
+    "message": "该文件由更高版本创建（格式 $1）。请先更新扩展。"
+  },
+  "errNoSettings": {
+    "message": "该文件不包含可导入的设置。"
+  },
+  "cardCache": {
+    "message": "本地缓存"
+  },
+  "cardCacheDesc": {
+    "message": "您查询过的位置在此浏览器中保留 30 天，再次显示不消耗任何资源。"
+  },
+  "btnClearCache": {
+    "message": "清除位置缓存"
+  },
+  "btnCacheCleared": {
+    "message": "缓存已清除"
+  },
+  "cardTrust": {
+    "message": "共享缓存信任度"
+  },
+  "cardTrustDesc": {
+    "message": "本安装版本信任同一位置所需的独立上报次数。数值越高越难被污染，但响应比例也大幅降低：目前缓存资料中仅约八十分之一被上报过两次，因此超过 1 的任何值基本上都会回退到在 X 上查询账号，消耗您的速率配额。除非您正在测试，请保持 $1。"
+  },
+  "setTrustAfter": {
+    "message": "信任共享位置需"
+  },
+  "trustReports1": {
+    "message": "1 次上报"
+  },
+  "trustReports2": {
+    "message": "2 次上报"
+  },
+  "trustReports3": {
+    "message": "3 次上报"
+  },
+  "ageDays": {
+    "message": "$1 天"
+  },
+  "ageMonths": {
+    "message": "$1 个月"
+  },
+  "ageYear": {
+    "message": "1 年"
+  },
+  "ageYears": {
+    "message": "$1 年"
+  },
+  "ageToday": {
+    "message": "今天"
+  },
+  "ageShortDays": {
+    "message": "$1天"
+  },
+  "ageShortMonths": {
+    "message": "$1月"
+  },
+  "ageShortYears": {
+    "message": "$1年"
+  },
+  "toastDismiss": {
+    "message": "点击关闭"
+  },
+  "toastRateLimit": {
+    "message": "⚠ 达到速率上限 · $1 后重置"
+  },
+  "countdownMinSec": {
+    "message": "$1分 $2秒"
+  },
+  "countdownSec": {
+    "message": "$1秒"
+  },
+  "rateLimitBadgeTitle": {
+    "message": "X API 速率上限已达 — 位置查询已暂停，等待重置"
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN"
+  },
+  "vpnTitle": {
+    "message": "使用了 VPN，位置可能不准确"
+  },
+  "storeRegionLabel": {
+    "message": "$1 地区：$2"
+  },
+  "platformWeb": {
+    "message": "网页"
+  },
+  "platformUnknown": {
+    "message": "未知"
+  },
+  "hiddenLabel": {
+    "message": "🚫 已隐藏 · $1 $2"
+  },
+  "hiddenShow": {
+    "message": "显示"
+  },
+  "hiddenShowTitle": {
+    "message": "显示此帖（$1：$2）"
+  },
+  "cellTagTitle": {
+    "message": "匹配您的 $1 — 已标记而非隐藏"
+  },
+  "ruleNameHighlight": {
+    "message": "高亮规则"
+  },
+  "ruleNameLocation": {
+    "message": "已屏蔽地区"
+  },
+  "ruleNameAffiliation": {
+    "message": "已屏蔽隶属关系"
+  },
+  "ruleNameAge": {
+    "message": "账号年龄"
+  },
+  "excAdd": {
+    "message": "🚫 添加例外"
+  },
+  "excUndo": {
+    "message": "✓ 已添加例外（撤销）"
+  },
+  "excAddTitle": {
+    "message": "将 @$1 从 $2 中豁免"
+  },
+  "excUndoTitle": {
+    "message": "@$1 已从 $2 中豁免 — 点击撤销"
+  },
+  "excPhraseHighlight": {
+    "message": "关键词和旗标高亮"
+  },
+  "excPhraseLocation": {
+    "message": "已屏蔽地区过滤"
+  },
+  "excPhraseAffiliation": {
+    "message": "已屏蔽隶属关系过滤"
+  },
+  "excPhraseAge": {
+    "message": "账号年龄过滤"
+  },
+  "joinAnd": {
+    "message": "$1 和 $2"
+  },
+  "chipBlockedYou": {
+    "message": "🚫 已屏蔽您"
+  },
+  "chipBlockedYouTitle": {
+    "message": "此账号已屏蔽您的账号"
+  },
+  "chipAge": {
+    "message": "🎂 $1"
+  },
+  "chipAgeTitle": {
+    "message": "账号创建于 $1"
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1"
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "X 显示指向 @$1 的隶属徽章"
+  },
+  "chipAffiliationTitle": {
+    "message": "X 在此账号上显示隶属徽章"
+  },
+  "chipIdVerified": {
+    "message": "🪪 已实名认证"
+  },
+  "chipIdVerifiedTitle": {
+    "message": "X 已验证身份证明文件"
+  },
+  "chipVerified": {
+    "message": "✔ 已认证"
+  },
+  "chipVerifiedTitle": {
+    "message": "旧版认证"
+  },
+  "chipHandle1": {
+    "message": "✎ 1 次改名"
+  },
+  "chipHandles": {
+    "message": "✎ $1 次改名"
+  },
+  "chipHandlesTitle": {
+    "message": "此账号已更改 @用户名 $1 次"
+  },
+  "chipProtected": {
+    "message": "🔒 已保护"
+  },
+  "chipProtectedTitle": {
+    "message": "帖子已保护"
+  },
+  "bioTitle": {
+    "message": "来自 X API 的简介 — 此卡片未显示"
+  },
+  "shareBtn": {
+    "message": "🖼 复制"
+  },
+  "shareBtnTitle": {
+    "message": "将本帖及 X 对 @$1 的报告复制为图片"
+  },
+  "toastRendering": {
+    "message": "正在渲染 @$1 …"
+  },
+  "toastCopied": {
+    "message": "✓ 已复制到剪贴板"
+  },
+  "toastSaved": {
+    "message": "✓ 图片已保存"
+  },
+  "toastRenderFail": {
+    "message": "无法渲染该卡片"
+  },
+  "toastRightClick": {
+    "message": "右键点击帖子即可分享"
+  },
+  "toastReadFail": {
+    "message": "无法读取该帖子"
+  },
+  "toastNoLocation": {
+    "message": "无位置信息"
+  },
+  "toastLookingUp": {
+    "message": "@$1 …"
+  },
+  "regionEastAsiaPacific": {
+    "message": "东亚及太平洋"
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "东欧（非欧盟）"
+  }
+}

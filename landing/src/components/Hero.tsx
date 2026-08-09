@@ -1,8 +1,13 @@
 import { useEffect, useRef } from 'preact/hooks'
 import { SUPPORTED_ANDROID, SUPPORTED_DESKTOP } from '../utils/browser'
 import { InstallButton } from './InstallButton'
+import { useI18n } from '../i18n/context'
+import { headlineGap, headlineStop } from '../i18n/locales'
+import type { Dict } from '../i18n/dict/en'
 
 export function Hero() {
+  const { t, href, locale } = useI18n()
+
   return (
     <section class="relative overflow-hidden">
       <div class="graticule" aria-hidden="true" />
@@ -20,18 +25,19 @@ export function Hero() {
       <div class="shell relative grid items-center gap-9 pt-[clamp(3.25rem,6vw,5.25rem)] pb-[clamp(3.5rem,5vw,5rem)] lg:grid-cols-[minmax(0,1fr)_27rem] lg:gap-12">
         {/* ── Argument ── */}
         <div>
-          <h1
-            class="t-display rise"
-            style="animation-delay:60ms;max-width:19ch"
-          >
-            See where any X profile is{' '}
-            <span class="text-signal">really from</span>.
+          {/* No `max-width:19ch` any more: `ch` is measured on the rendered
+              font, and the same 19 characters are a comfortable two lines in
+              English, four in German and barely one in Thai. The clamp is on
+              the container instead. */}
+          <h1 class="t-display rise max-w-[19ch]" style="animation-delay:60ms">
+            {t.hero.titleLead}
+            {headlineGap(locale.script, t.hero.titleLead, t.hero.titleAccent)}
+            <span class="text-signal">{t.hero.titleAccent}</span>
+            {headlineStop(locale.script)}
           </h1>
 
           <p class="t-lead rise mt-7" style="animation-delay:170ms">
-            X already knows which country an account posts from. It just doesn’t
-            show you. This puts the flag in the hover card, and lets you
-            collapse or hide the countries you’d rather not read.
+            {t.hero.lead}
           </p>
 
           <div
@@ -40,10 +46,10 @@ export function Hero() {
           >
             <InstallButton size="lg" placement="hero" />
             <a
-              href="#proof"
+              href={`${href('/')}#proof`}
               class="text-body hover:text-signal decoration-hair-strong hover:decoration-signal text-[0.9375rem] font-semibold underline decoration-1 underline-offset-[6px] transition-colors duration-150"
             >
-              See it running
+              {t.hero.seeItRunning}
             </a>
           </div>
 
@@ -53,14 +59,14 @@ export function Hero() {
             style="animation-delay:350ms"
           >
             {[
-              ['Works in', SUPPORTED_DESKTOP],
-              ['On Android', SUPPORTED_ANDROID],
-              ['Account / API key', 'Neither'],
-              ['Version', `v${__EXT_VERSION__}`],
+              [t.hero.railWorksIn, SUPPORTED_DESKTOP],
+              [t.hero.railAndroid, SUPPORTED_ANDROID],
+              [t.hero.railAccount, t.hero.railAccountValue],
+              [t.hero.railVersion, `v${__EXT_VERSION__}`],
             ].map(([k, v]) => (
               <div
                 key={k}
-                class="border-hair sm:border-l sm:pr-6 sm:pl-6 sm:first:border-l-0 sm:first:pl-0"
+                class="border-hair sm:border-s sm:ps-6 sm:pe-6 sm:first:border-s-0 sm:first:ps-0"
               >
                 <dt class="t-data">{k}</dt>
                 <dd class="text-text mt-1 text-[0.8125rem] font-semibold">
@@ -73,7 +79,7 @@ export function Hero() {
 
         {/* ── Evidence ── */}
         <div class="rise" style="animation-delay:180ms">
-          <XPanel />
+          <XPanel t={t} />
         </div>
       </div>
 
@@ -86,8 +92,12 @@ export function Hero() {
    A legible mock of X with the extension running: an inline flag in the feed,
    the injected row inside a hover card, and a VPN warning. Three states, one
    image — the panel does the job a feature list would otherwise have to.
+
+   The names and countries inside it are examples rather than UI, so they are
+   the same in every language; only the two words X itself renders — Following,
+   Followers — and the extension's own "Hidden / Show" come from the dictionary.
    ─────────────────────────────────────────────────────────────────────────── */
-function XPanel() {
+function XPanel({ t }: { t: Dict }) {
   const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -139,6 +149,10 @@ function XPanel() {
       class="mx-auto w-full max-w-108"
       style="perspective:1400px"
       aria-hidden="true"
+      // The mock is a picture of X's own interface, which is LTR whatever the
+      // surrounding page is. Without this the Arabic build mirrors the avatars
+      // and handles into a layout X has never had.
+      dir="ltr"
     >
       <div
         ref={cardRef}
@@ -191,10 +205,12 @@ function XPanel() {
 
             <div class="text-faint mt-3 flex gap-4 font-mono text-[0.625rem]">
               <span>
-                <b class="text-text font-semibold">412</b> Following
+                <b class="text-text font-semibold">412</b>{' '}
+                {t.hero.panelFollowing}
               </span>
               <span>
-                <b class="text-text font-semibold">116.4K</b> Followers
+                <b class="text-text font-semibold">116.4K</b>{' '}
+                {t.hero.panelFollowers}
               </span>
             </div>
 
@@ -217,10 +233,10 @@ function XPanel() {
           {/* 4 — a blocked country, collapsed rather than silently dropped */}
           <div class="border-hair/60 bg-ink-2/60 flex items-center gap-2 rounded-xl border px-3 py-2.5">
             <span class="text-faint text-[0.75rem] font-semibold">
-              🚫 Hidden · 🇮🇳 India
+              {t.hero.panelHidden}
             </span>
-            <span class="text-xblue border-xblue/50 ml-auto rounded-full border px-2 py-0.5 text-[0.625rem] font-bold">
-              Show
+            <span class="text-xblue border-xblue/50 ms-auto rounded-full border px-2 py-0.5 text-[0.625rem] font-bold">
+              {t.hero.panelShow}
             </span>
           </div>
         </div>

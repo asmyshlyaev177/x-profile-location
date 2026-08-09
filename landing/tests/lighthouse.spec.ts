@@ -14,7 +14,8 @@ import { playAudit } from 'playwright-lighthouse'
 import desktopConfig from 'lighthouse/core/config/desktop-config.js'
 
 import { PREVIEW_URL } from '../playwright.lighthouse.config'
-import { routes } from '../src/routes'
+import { localizedRoutes, routes } from '../src/routes'
+import { DEFAULT_LOCALE, localePath, locales } from '../src/i18n/locales'
 
 /**
  * Categories Lighthouse is asked to run — the same four on every page,
@@ -43,21 +44,39 @@ const ALWAYS = {
 const INDEXABLE = { ...ALWAYS, seo: 100 }
 
 /**
- * Every route, derived rather than listed.
+ * What gets audited, derived rather than listed.
  *
- * `routes.ts` is already the site's one source of pages — the head, the
- * canonical, the prerender list and the sitemap all follow from it — and each
- * entry is its own template (`app.tsx` maps one branch per path). Hand-listing
- * them here would add a seventh place to keep in step, and the page somebody
- * forgot to add would be the one that never got audited.
+ * `routes.ts` and `locales.ts` are already the site's two sources of pages —
+ * the head, the canonicals, the hreflang set, the prerender list and the
+ * sitemap all follow from them. Hand-listing pages here would add another
+ * place to keep in step, and the page somebody forgot to add would be the one
+ * that never got audited.
+ *
+ * Every English route, plus one page per additional language. The full cross
+ * product is 4 × 15 + 2 = 62 audits at ~15 s each, which is a twenty-minute
+ * suite for very little: the template is identical across locales, so what a
+ * second language can break that the first did not is script-specific —
+ * contrast against a different font stack, a heading that wraps differently,
+ * and RTL mirroring. All three show up on the homepage, which carries every
+ * component the guide pages use and several they do not.
  */
+const AUDITED = [
+  ...routes.map((route) => ({ route, path: route.path })),
+  ...locales
+    .filter((l) => l.code !== DEFAULT_LOCALE)
+    .map((l) => ({
+      route: localizedRoutes[0]!,
+      path: localePath(l.code, '/'),
+    })),
+]
+
 test.describe('Lighthouse', () => {
   // Serial: two Chrome instances auditing at once skew each other's
-  // performance numbers, and there is nothing to gain by racing six short runs.
+  // performance numbers, and there is nothing to gain by racing short runs.
   test.describe.configure({ mode: 'serial' })
 
-  for (const route of routes) {
-    const name = route.path === '/' ? '/ (homepage)' : route.path
+  for (const { route, path } of AUDITED) {
+    const name = path === '/' ? '/ (homepage)' : path
 
     // No fixture parameter: this test drives its own browser, and Playwright
     // rejects a named first argument ("First argument must use the object
@@ -74,7 +93,7 @@ test.describe('Lighthouse', () => {
 
       try {
         const page = await browser.newPage()
-        await page.goto(`${PREVIEW_URL}${route.path}`, {
+        await page.goto(`${PREVIEW_URL}${path}`, {
           waitUntil: 'networkidle',
         })
 

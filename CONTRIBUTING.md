@@ -151,7 +151,7 @@ so the suite is deterministic and sends no request to X.
 **It still needs a real logged-in session**, which is why it runs locally rather
 than in CI. That is less obvious than it sounds, so it is worth writing down:
 X's SPA decides on the client whether it is logged in, before issuing anything.
-With no session it routes to the login flow; with a *fake* one it takes a third
+With no session it routes to the login flow; with a _fake_ one it takes a third
 path and asks for endpoints the recordings don't hold — measured at 96 unmatched
 requests against 24 for a real session, with the app shell never rendering.
 Replaying responses doesn't help when the page never sends the requests. Don't

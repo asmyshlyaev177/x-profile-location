@@ -1,57 +1,41 @@
-const NEVER = [
-  'Your X account, cookies or session tokens',
-  'Bios, display names, or anything you read',
-  'Your browsing history or activity on X',
-  'Anything that identifies you personally',
-]
-
-const OPTIONAL = [
-  'The public handle you looked up, e.g. @jack',
-  'Its flag data: location, source, VPN indicator',
-  'A random install ID, so the same flag from different people counts once',
-]
+import { useI18n } from '../i18n/context'
 
 export function Trust() {
+  const { t, href } = useI18n()
+
   return (
     <section id="privacy" class="band hairline bg-ink-1 relative scroll-mt-24">
       <div class="shell">
         <div class="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
           <div>
-            <h2 class="t-h2 reveal">
-              An extension that reads your X session had better be specific.
-            </h2>
-            <p class="t-lead reveal mt-6">
-              So here it is. Lookups go straight to x.com, the same way the
-              site’s own requests do, and never through a server of ours. Your
-              browser holds the results for 30 days, and the options page clears
-              them whenever you want.
-            </p>
-            <p class="t-body reveal mt-6">
-              There’s no analytics or telemetry in the extension. This website
-              does use Google Analytics, for visit counts and which install
-              button was clicked — nothing else.
-            </p>
+            <h2 class="t-h2 reveal">{t.trust.heading}</h2>
+            <p class="t-lead reveal mt-6">{t.trust.lead}</p>
+            <p class="t-body reveal mt-6">{t.trust.body}</p>
             <a
-              href="/privacy-policy"
+              href={href('/privacy-policy')}
               class="text-signal hover:text-text reveal mt-7 inline-flex items-center gap-2 text-[0.9375rem] font-semibold underline decoration-1 underline-offset-[6px] transition-colors"
             >
-              Read the full privacy policy
-              <span aria-hidden="true">→</span>
+              {t.trust.readPolicy}
+              {/* Flipped by the RTL build: an arrow that means "onwards" points
+                  the other way when the text does. */}
+              <span aria-hidden="true" class="rtl:-scale-x-100">
+                →
+              </span>
             </a>
           </div>
 
           <div class="grid items-start gap-4 sm:grid-cols-2">
             <Column
               kind="never"
-              title="Never sent anywhere"
-              note="There’s no setting for these. The extension never reads them."
-              items={NEVER}
+              title={t.trust.neverTitle}
+              note={t.trust.neverNote}
+              items={t.trust.never}
             />
             <Column
               kind="opt"
-              title="Only with the cache on"
-              note="One toggle in the options page controls it. Switch it off and nothing goes out."
-              items={OPTIONAL}
+              title={t.trust.optTitle}
+              note={t.trust.optNote}
+              items={t.trust.optional}
             />
           </div>
         </div>
@@ -69,7 +53,7 @@ function Column({
   kind: 'never' | 'opt'
   title: string
   note: string
-  items: string[]
+  items: readonly string[]
 }) {
   const isNever = kind === 'never'
   return (

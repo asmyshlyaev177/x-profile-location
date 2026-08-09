@@ -1,0 +1,608 @@
+{
+  "localeTag": {
+    "message": "id"
+  },
+  "appName": {
+    "message": "X-Pat — lokasi profil X, filter dan sorotan"
+  },
+  "appShortName": {
+    "message": "X-Pat"
+  },
+  "appDesc": {
+    "message": "Lihat negara tempat profil X memposting — bendera negara, peringatan VPN, dan filter negara, dibaca dari data X sendiri."
+  },
+  "actionTitle": {
+    "message": "X-Pat"
+  },
+  "menuSharePost": {
+    "message": "Salin postingan dengan bendera lokasi"
+  },
+  "popupPaused": {
+    "message": "Dihentikan. X terlihat persis seperti tanpa ekstensi terpasang."
+  },
+  "popupOn": {
+    "message": "Aktif"
+  },
+  "popupOff": {
+    "message": "Nonaktif"
+  },
+  "popupMasterSwitchTitle": {
+    "message": "Matikan semuanya untuk saat ini"
+  },
+  "popupFlagsInFeed": {
+    "message": "Bendera di linimasa 📍"
+  },
+  "popupAccountDetails": {
+    "message": "Detail akun saat hover 🪪"
+  },
+  "popupCountryPlaceholder": {
+    "message": "Negara atau wilayah…"
+  },
+  "popupNothingBlocked": {
+    "message": "Tidak ada yang diblokir — semua bendera ditampilkan apa adanya."
+  },
+  "popupHighlightKeywords": {
+    "message": "Sorot kata kunci"
+  },
+  "popupKeywordPlaceholder": {
+    "message": "Tambah kata kunci…"
+  },
+  "popupNoKeywords": {
+    "message": "Tidak ada kata kunci — tidak ada yang disorot."
+  },
+  "popupAllSettings": {
+    "message": "Semua pengaturan →"
+  },
+  "popupRate": {
+    "message": "Beri rating ★"
+  },
+  "popupRateTitle": {
+    "message": "Beri rating X-Pat di Chrome Web Store"
+  },
+  "popupDonate": {
+    "message": "Donasi 💜"
+  },
+  "popupDonateTitle": {
+    "message": "Dukung pengembangan"
+  },
+  "removeItem": {
+    "message": "Hapus $1"
+  },
+  "removeHandle": {
+    "message": "Hapus @$1"
+  },
+  "openHandle": {
+    "message": "Buka @$1 di X"
+  },
+  "rateAskText": {
+    "message": "Bermanfaat? Rating di toko sangat membantu."
+  },
+  "rateAskInline": {
+    "message": "— bermanfaat? Rating di toko sangat membantu."
+  },
+  "rateAskYes": {
+    "message": "Beri rating ★"
+  },
+  "rateAskLater": {
+    "message": "Nanti"
+  },
+  "rateAskNo": {
+    "message": "Tidak, terima kasih"
+  },
+  "optionsTitle": {
+    "message": "Pengaturan X-Pat"
+  },
+  "optionsEnabled": {
+    "message": "Aktif"
+  },
+  "optionsPaused": {
+    "message": "Dihentikan"
+  },
+  "optionsPausedBanner": {
+    "message": "Dihentikan — tidak ada di bawah ini yang diterapkan ke X saat ini."
+  },
+  "tabDisplay": {
+    "message": "Tampilan"
+  },
+  "tabFilters": {
+    "message": "Filter"
+  },
+  "tabExceptions": {
+    "message": "Pengecualian"
+  },
+  "tabData": {
+    "message": "Data & privasi"
+  },
+  "tabAdvanced": {
+    "message": "Lanjutan"
+  },
+  "ruleHighlight": {
+    "message": "Penyorotan kata kunci / bendera"
+  },
+  "ruleLocation": {
+    "message": "Lokasi diblokir"
+  },
+  "ruleAffiliation": {
+    "message": "Afiliasi diblokir"
+  },
+  "ruleAge": {
+    "message": "Usia akun"
+  },
+  "cardOnPage": {
+    "message": "Di halaman"
+  },
+  "cardOnPageDesc": {
+    "message": "Apa yang digambar X-Pat di X. Tidak satu pun dari ini mengubah postingan mana yang difilter."
+  },
+  "setShowInFeed": {
+    "message": "Tampilkan lokasi di linimasa"
+  },
+  "setShowInFeedDesc": {
+    "message": "Bendera di bawah setiap nama di linimasa, tidak hanya saat hover."
+  },
+  "setAccountCard": {
+    "message": "Tampilkan detail akun saat hover"
+  },
+  "setAccountCardDesc": {
+    "message": "Usia akun, lencana afiliasi, verifikasi, perubahan handle, dan jumlah pengikut — dibaca dari data yang sudah dikirim X, jadi tidak memerlukan pencarian tambahan."
+  },
+  "setCopyButton": {
+    "message": "Tombol \"Salin\" di kartu hover"
+  },
+  "setCopyButtonDesc": {
+    "message": "Tombol \"Salin\" kecil di baris bendera. Menyalin postingan yang Anda hover, beserta benderanya, sebagai gambar — dirender di browser Anda, tidak ada yang diunggah. Klik kanan postingan melakukan hal yang sama."
+  },
+  "setExceptionButton": {
+    "message": "Tombol pengecualian di kartu hover"
+  },
+  "setExceptionButtonDesc": {
+    "message": "Pengecualian satu-klik untuk akun yang sedang Anda lihat, dari aturan mana pun yang mengenainya — penyorotan kata kunci, negara, lencana afiliasi, usia. Tooltip-nya menyebutkan yang mana."
+  },
+  "hintSwipe": {
+    "message": "👉 Geser ke kanan pada postingan mana pun untuk mengambil lokasinya."
+  },
+  "cardAppearance": {
+    "message": "Tampilan"
+  },
+  "cardAppearanceDesc": {
+    "message": "Mencakup layar X-Pat sendiri — halaman ini dan popup bilah alat. Bendera dan tanda yang digambar di X mengikuti tema X, jadi tidak pernah bentrok dengan linimasa tempatnya berada."
+  },
+  "setTheme": {
+    "message": "Tema"
+  },
+  "themeSystem": {
+    "message": "Ikuti sistem"
+  },
+  "themeLight": {
+    "message": "Terang"
+  },
+  "themeDark": {
+    "message": "Gelap"
+  },
+  "setLanguage": {
+    "message": "Bahasa"
+  },
+  "setLanguageDesc": {
+    "message": "Mencakup teks X-Pat sendiri dan nama negara yang ditampilkannya. Memilih salah satu akan memuat ulang halaman ini."
+  },
+  "languageAuto": {
+    "message": "Ikuti browser"
+  },
+  "cardKeyword": {
+    "message": "Sorot berdasarkan kata kunci"
+  },
+  "cardKeywordDesc": {
+    "message": "Menandai postingan yang nama atau bio penulisnya mengandung salah satu dari ini. Penyorotan menandai postingan; tidak pernah menyembunyikannya."
+  },
+  "keywordPlaceholder": {
+    "message": "Ketik kata kunci atau pilih saran…"
+  },
+  "emptyNoKeywords": {
+    "message": "Tidak ada kata kunci — semua postingan ditampilkan normal."
+  },
+  "cardLocations": {
+    "message": "Lokasi"
+  },
+  "cardLocationsDesc": {
+    "message": "Ini menampilkan ⚠️ alih-alih benderanya. Berdasarkan negara toko, atau lokasi akun jika tidak ditandai sebagai VPN. Tidak pernah berlaku untuk postingan yang Anda buka."
+  },
+  "locationPlaceholder": {
+    "message": "Cari negara dan wilayah — nama, kode, atau nama panggilan…"
+  },
+  "regionCountries": {
+    "message": "wilayah · $1 negara"
+  },
+  "emptyNoLocations": {
+    "message": "Tidak ada lokasi dipilih — semua bendera ditampilkan apa adanya."
+  },
+  "cardFiltered": {
+    "message": "Apa yang terjadi pada postingan terfilter"
+  },
+  "cardFilteredDesc": {
+    "message": "Berlaku untuk dua filter yang menghilangkan postingan — lokasi diblokir dan afiliasi diblokir. Usia akun dan penyorotan kata kunci menandai postingan apa pun pengaturan ini. Postingan yang dikutip diciutkan sendiri, sehingga postingan yang mengutipnya tetap terbaca, dan daftar orang ditandai alih-alih disembunyikan — menghapus baris di sana merusak hitungan."
+  },
+  "filteredPosts": {
+    "message": "Postingan terfilter"
+  },
+  "hideModeOff": {
+    "message": "Tampilkan normal"
+  },
+  "hideModeCollapse": {
+    "message": "Ciutkan"
+  },
+  "hideModeCollapseLong": {
+    "message": "Ciutkan (\"Tampilkan\" untuk membuka)"
+  },
+  "hideModeHide": {
+    "message": "Sembunyikan"
+  },
+  "hideModeHideLong": {
+    "message": "Sembunyikan sepenuhnya"
+  },
+  "cardAffiliations": {
+    "message": "Afiliasi"
+  },
+  "cardAffiliationsDesc": {
+    "message": "X melabeli beberapa akun sebagai milik suatu organisasi. Masukkan handle akun induk untuk memfilter semua akun yang dilabeli dengannya sekaligus."
+  },
+  "affiliationPlaceholder": {
+    "message": "Handle akun induk, mis. nasa…"
+  },
+  "emptyNoAffiliations": {
+    "message": "Tidak ada afiliasi diblokir. Hover akun untuk melihat apakah memiliki lencana."
+  },
+  "cardAge": {
+    "message": "Usia akun"
+  },
+  "cardAgeDesc": {
+    "message": "Berapa lama akun telah ada, dari tanggal pembuatan yang dilaporkan X. Ini menandai postingan dan tidak pernah menyembunyikannya, apa pun pengaturan di atas."
+  },
+  "setMarkYoung": {
+    "message": "Tandai akun muda"
+  },
+  "setMarkYoungDesc": {
+    "message": "Menandai postingan mereka sama seperti kecocokan kata kunci, dengan bilah oranye di samping. Sengaja berhenti di situ: akun muda adalah sinyal tunggal terkuat untuk akun yang dibeli atau difarm, dan juga persis seperti seseorang yang baru bergabung bulan lalu — terlalu tipis alasannya untuk menghapus balasan mereka."
+  },
+  "setMarkYoungerThan": {
+    "message": "Tandai akun lebih muda dari"
+  },
+  "cardFlags": {
+    "message": "Sorot berdasarkan bendera"
+  },
+  "cardFlagsDesc": {
+    "message": "Menandai postingan yang bio penulisnya penuh dengan emoji bendera."
+  },
+  "setHighlightFlagHeavy": {
+    "message": "Sorot bio penuh bendera"
+  },
+  "setFlagThreshold": {
+    "message": "Lebih dari sebanyak ini bendera"
+  },
+  "setUniqueFlags": {
+    "message": "Hitung hanya bendera unik"
+  },
+  "cardAlwaysShow": {
+    "message": "Selalu tampilkan"
+  },
+  "cardAlwaysShowDesc": {
+    "message": "Bebas dari setiap aturan sekaligus — tidak pernah disembunyikan, tidak pernah diciutkan, tidak pernah disorot, apa pun kata filternya."
+  },
+  "usernamePlaceholder": {
+    "message": "Tambah nama pengguna (tanpa @)…"
+  },
+  "emptyNoAllowlist": {
+    "message": "Tidak ada di daftar izin — setiap akun dinilai berdasarkan aturan."
+  },
+  "cardPerRule": {
+    "message": "Pengecualian per aturan"
+  },
+  "cardPerRuleDesc": {
+    "message": "Bebaskan akun dari satu aturan tapi bukan yang lain — untuk seseorang yang menggunakan kata kunci terlacak secara sarkastik (\"tidak NAFO\"), atau memposting dari negara diblokir yang tetap ingin Anda baca."
+  },
+  "searchExceptions": {
+    "message": "Cari pengecualian…"
+  },
+  "searchExceptionsLabel": {
+    "message": "Cari pengecualian"
+  },
+  "emptyNoMatch": {
+    "message": "Tidak ada yang cocok dengan \"$1\"."
+  },
+  "emptyNoExceptions": {
+    "message": "Tidak ada pengecualian."
+  },
+  "cardLookups": {
+    "message": "Pencarian latar belakang"
+  },
+  "cardLookupsDesc": {
+    "message": "X mengizinkan sekitar $1 pencarian akun setiap $2 menit. Pengaturan ini menentukan seberapa banyak X-Pat boleh habiskan untuk mengisi bendera bagi Anda, dan seberapa banyak ditahan untuk akun yang Anda hover sendiri."
+  },
+  "setSharedCache": {
+    "message": "Gunakan cache komunitas bersama"
+  },
+  "setSharedCacheDesc": {
+    "message": "Membagikan bendera yang Anda cari sehingga semua orang melewati pencarian berulang. Hanya handle publik dan benderanya yang dikirim — tidak ada data akun atau pribadi."
+  },
+  "setPrefetch": {
+    "message": "Pra-ambil lokasi di latar belakang"
+  },
+  "setPrefetchDesc": {
+    "message": "Mencari akun di linimasa Anda, sesuai urutan kemunculannya, sehingga bendera muncul tanpa perlu hover."
+  },
+  "setShare": {
+    "message": "Porsi batas pencarian yang boleh digunakan"
+  },
+  "setShareDesc": {
+    "message": "$1 untuk pra-pengambilan, $2 tersisa untuk hover Anda sendiri."
+  },
+  "setSpread": {
+    "message": "Sebar pencarian selama $1 menit penuh"
+  },
+  "setSpreadDesc": {
+    "message": "Sekitar satu pencarian setiap $1d, alih-alih sekaligus."
+  },
+  "cardBackup": {
+    "message": "Cadangkan & pulihkan"
+  },
+  "cardBackupDesc": {
+    "message": "Pindahkan pengaturan ke browser lain, atau simpan salinan sebelum bereksperimen."
+  },
+  "btnExport": {
+    "message": "Ekspor pengaturan"
+  },
+  "btnImport": {
+    "message": "Impor pengaturan"
+  },
+  "hintImportMerge": {
+    "message": "Impor menggabungkan: pengaturan yang tidak disebutkan di file dibiarkan. Setiap nilai diperiksa ulang saat masuk, jadi file yang diedit tangan tidak dapat membuat ekstensi dalam keadaan yang tidak dapat dipulihkan."
+  },
+  "noteExported": {
+    "message": "Mengekspor $1 pengaturan. ID cache bersama dan lokasi yang di-cache tidak disertakan."
+  },
+  "noteImported": {
+    "message": "Mengimpor $1 pengaturan."
+  },
+  "noteImportedSkipped": {
+    "message": "$1 kunci tidak dikenal dilewati."
+  },
+  "errImportFailed": {
+    "message": "File itu tidak dapat diimpor."
+  },
+  "errNotJson": {
+    "message": "File itu bukan JSON yang valid."
+  },
+  "errNotExport": {
+    "message": "File itu bukan ekspor pengaturan."
+  },
+  "errNoSection": {
+    "message": "File itu tidak memiliki bagian \"settings\", jadi ini bukan ekspor dari ekstensi ini."
+  },
+  "errNewerFormat": {
+    "message": "File itu ditulis oleh versi lebih baru (format $1). Perbarui ekstensi terlebih dahulu."
+  },
+  "errNoSettings": {
+    "message": "File itu tidak berisi pengaturan untuk diimpor."
+  },
+  "cardCache": {
+    "message": "Cache lokal"
+  },
+  "cardCacheDesc": {
+    "message": "Lokasi yang telah Anda cari disimpan di browser ini selama 30 hari, jadi menampilkannya lagi tidak memerlukan biaya."
+  },
+  "btnClearCache": {
+    "message": "Hapus cache lokasi"
+  },
+  "btnCacheCleared": {
+    "message": "Cache dihapus"
+  },
+  "cardTrust": {
+    "message": "Kepercayaan cache bersama"
+  },
+  "cardTrustDesc": {
+    "message": "Berapa banyak laporan independen tentang lokasi yang sama yang dibutuhkan instalasi ini sebelum memercayainya. Lebih tinggi lebih sulit diracuni tetapi menjawab jauh lebih sedikit: saat ini hanya sekitar 1 dari 80 profil ter-cache telah dilaporkan dua kali, jadi apa pun di atas 1 sebagian besar beralih ke pencarian akun di X dan menghabiskan batas rate Anda. Biarkan di $1 kecuali Anda sedang mengukur ini."
+  },
+  "setTrustAfter": {
+    "message": "Percayai lokasi bersama setelah"
+  },
+  "trustReports1": {
+    "message": "1 laporan"
+  },
+  "trustReports2": {
+    "message": "2 laporan"
+  },
+  "trustReports3": {
+    "message": "3 laporan"
+  },
+  "ageDays": {
+    "message": "$1 hari"
+  },
+  "ageMonths": {
+    "message": "$1 bulan"
+  },
+  "ageYear": {
+    "message": "1 tahun"
+  },
+  "ageYears": {
+    "message": "$1 tahun"
+  },
+  "ageToday": {
+    "message": "hari ini"
+  },
+  "ageShortDays": {
+    "message": "$1h"
+  },
+  "ageShortMonths": {
+    "message": "$1bl"
+  },
+  "ageShortYears": {
+    "message": "$1th"
+  },
+  "toastDismiss": {
+    "message": "Klik untuk menutup"
+  },
+  "toastRateLimit": {
+    "message": "⚠ Batas rate tercapai · reset dalam $1"
+  },
+  "countdownMinSec": {
+    "message": "$1m $2d"
+  },
+  "countdownSec": {
+    "message": "$1d"
+  },
+  "rateLimitBadgeTitle": {
+    "message": "Batas rate API X tercapai — pencarian lokasi dijeda hingga reset"
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN"
+  },
+  "vpnTitle": {
+    "message": "VPN digunakan, lokasi mungkin tidak akurat"
+  },
+  "storeRegionLabel": {
+    "message": "Wilayah $1: $2"
+  },
+  "platformWeb": {
+    "message": "Web"
+  },
+  "platformUnknown": {
+    "message": "Tidak diketahui"
+  },
+  "hiddenLabel": {
+    "message": "🚫 Disembunyikan · $1 $2"
+  },
+  "hiddenShow": {
+    "message": "Tampilkan"
+  },
+  "hiddenShowTitle": {
+    "message": "Tampilkan postingan ini ($1: $2)"
+  },
+  "cellTagTitle": {
+    "message": "Cocok dengan $1 Anda — ditampilkan, tidak disembunyikan"
+  },
+  "ruleNameHighlight": {
+    "message": "aturan penyorotan"
+  },
+  "ruleNameLocation": {
+    "message": "lokasi diblokir"
+  },
+  "ruleNameAffiliation": {
+    "message": "afiliasi diblokir"
+  },
+  "ruleNameAge": {
+    "message": "usia akun"
+  },
+  "excAdd": {
+    "message": "🚫 Tambah pengecualian"
+  },
+  "excUndo": {
+    "message": "✓ Pengecualian (urungkan)"
+  },
+  "excAddTitle": {
+    "message": "Bebaskan @$1 dari $2"
+  },
+  "excUndoTitle": {
+    "message": "@$1 dibebaskan dari $2 — klik untuk mengurungkan"
+  },
+  "excPhraseHighlight": {
+    "message": "penyorotan kata kunci dan bendera"
+  },
+  "excPhraseLocation": {
+    "message": "filter lokasi diblokir"
+  },
+  "excPhraseAffiliation": {
+    "message": "filter afiliasi diblokir"
+  },
+  "excPhraseAge": {
+    "message": "filter usia akun"
+  },
+  "joinAnd": {
+    "message": "$1 dan $2"
+  },
+  "chipBlockedYou": {
+    "message": "🚫 Memblokir Anda"
+  },
+  "chipBlockedYouTitle": {
+    "message": "Akun ini memblokir akun Anda"
+  },
+  "chipAge": {
+    "message": "🎂 $1"
+  },
+  "chipAgeTitle": {
+    "message": "Akun dibuat $1"
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1"
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "X menampilkan lencana afiliasi yang tertaut ke @$1"
+  },
+  "chipAffiliationTitle": {
+    "message": "X menampilkan lencana afiliasi di akun ini"
+  },
+  "chipIdVerified": {
+    "message": "🪪 ID terverifikasi"
+  },
+  "chipIdVerifiedTitle": {
+    "message": "X memverifikasi dokumen identitas"
+  },
+  "chipVerified": {
+    "message": "✔ Terverifikasi"
+  },
+  "chipVerifiedTitle": {
+    "message": "Verifikasi lama"
+  },
+  "chipHandle1": {
+    "message": "✎ 1 handle"
+  },
+  "chipHandles": {
+    "message": "✎ $1 handle"
+  },
+  "chipHandlesTitle": {
+    "message": "Akun ini telah mengganti @handle-nya $1 kali"
+  },
+  "chipProtected": {
+    "message": "🔒 Diproteksi"
+  },
+  "chipProtectedTitle": {
+    "message": "Postingan diproteksi"
+  },
+  "bioTitle": {
+    "message": "Bio dari API X — kartu ini tidak menampilkannya"
+  },
+  "shareBtn": {
+    "message": "🖼 Salin"
+  },
+  "shareBtnTitle": {
+    "message": "Salin postingan ini dan apa yang dilaporkan X untuk @$1 sebagai gambar"
+  },
+  "toastRendering": {
+    "message": "Merender @$1 …"
+  },
+  "toastCopied": {
+    "message": "✓ Disalin ke papan klip"
+  },
+  "toastSaved": {
+    "message": "✓ Gambar disimpan"
+  },
+  "toastRenderFail": {
+    "message": "Tidak dapat merender kartu itu"
+  },
+  "toastRightClick": {
+    "message": "Klik kanan postingan untuk membagikannya"
+  },
+  "toastReadFail": {
+    "message": "Tidak dapat membaca postingan itu"
+  },
+  "toastNoLocation": {
+    "message": "Tidak ada lokasi"
+  },
+  "toastLookingUp": {
+    "message": "@$1 …"
+  },
+  "regionEastAsiaPacific": {
+    "message": "Asia Timur & Pasifik"
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "Eropa Timur (Non-UE)"
+  }
+}

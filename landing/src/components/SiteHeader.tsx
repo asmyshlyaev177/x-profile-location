@@ -2,18 +2,22 @@ import { useEffect, useState } from 'preact/hooks'
 import { GITHUB_REPO_URL } from '../utils/constants'
 import { InstallButton } from './InstallButton'
 import { Wordmark } from './Wordmark'
-
-// Root-relative, not bare fragments: the header renders on the guide pages too,
-// where `#how` would resolve against a document that has no such section.
-const LINKS = [
-  { href: '/#proof', label: 'Screenshots' },
-  { href: '/#how', label: 'How it works' },
-  { href: '/#features', label: 'Features' },
-  { href: '/#privacy', label: 'Privacy' },
-]
+import { LanguagePicker } from './LanguagePicker'
+import { useI18n } from '../i18n/context'
 
 export function SiteHeader() {
+  const { t, href } = useI18n()
   const [lifted, setLifted] = useState(false)
+
+  // Root-relative, not bare fragments: the header renders on the guide pages
+  // too, where `#how` would resolve against a document that has no such
+  // section. `href()` then puts the reader's own language in front of it.
+  const links = [
+    { href: href('/') + '#proof', label: t.nav.screenshots },
+    { href: href('/') + '#how', label: t.nav.howItWorks },
+    { href: href('/') + '#features', label: t.nav.features },
+    { href: href('/') + '#privacy', label: t.nav.privacy },
+  ]
 
   useEffect(() => {
     let frame = 0
@@ -45,9 +49,15 @@ export function SiteHeader() {
         <Wordmark />
 
         {/* Four links plus a wordmark plus a button only breathe from ~1024px;
-            below that the install CTA is the only thing that matters anyway. */}
-        <nav aria-label="Sections" class="hidden items-center gap-7 lg:flex">
-          {LINKS.map((l) => (
+            below that the install CTA is the only thing that matters anyway.
+            The language picker stays at every width — someone reading the
+            wrong language cannot use the page at all, which is a worse
+            problem than a cramped nav. */}
+        <nav
+          aria-label={t.nav.sections}
+          class="hidden items-center gap-7 lg:flex"
+        >
+          {links.map((l) => (
             <a
               key={l.href}
               href={l.href}
@@ -59,6 +69,8 @@ export function SiteHeader() {
         </nav>
 
         <div class="flex items-center gap-3">
+          <LanguagePicker />
+
           {/* Icon-only, and kept at every width: "there is a repo" is the
               claim, and it reads from the mark alone. The label lives in
               `aria-label` and the tooltip. */}
@@ -66,9 +78,9 @@ export function SiteHeader() {
             href={GITHUB_REPO_URL}
             target="_blank"
             rel="noopener"
-            title="Source on GitHub"
-            aria-label="Source on GitHub"
-            class="text-faint hover:text-text hover:border-hair-strong border-hair inline-flex size-9 items-center justify-center rounded-full border transition-colors duration-150"
+            title={t.nav.sourceOnGitHub}
+            aria-label={t.nav.sourceOnGitHub}
+            class="text-faint hover:text-text hover:border-hair-strong border-hair hidden size-9 items-center justify-center rounded-full border transition-colors duration-150 sm:inline-flex"
           >
             <GitHubIcon />
           </a>

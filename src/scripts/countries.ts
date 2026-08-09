@@ -1,3 +1,5 @@
+import { t } from './i18n'
+
 export const COUNTRY_FLAGS: Record<string, string> = {
   Afghanistan: '🇦🇫',
   Albania: '🇦🇱',
@@ -1148,10 +1150,10 @@ export const ACCOUNT_AGE_CHOICES = [90, 180, 365, 1095] as const
 
 /** How a threshold is written in the UI: months up to a year, then years. */
 export function formatAgeChoice(days: number): string {
-  if (days < 60) return `${days} days`
-  if (days < 365) return `${Math.round(days / 30)} months`
+  if (days < 60) return t('ageDays', days)
+  if (days < 365) return t('ageMonths', Math.round(days / 30))
   const years = Math.round((days / 365) * 10) / 10
-  return `${years} year${years === 1 ? '' : 's'}`
+  return years === 1 ? t('ageYear') : t('ageYears', years)
 }
 
 export function normalizeAccountAge(value: unknown): AccountAgeFilter {

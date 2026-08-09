@@ -1,0 +1,608 @@
+{
+  "localeTag": {
+    "message": "tr"
+  },
+  "appName": {
+    "message": "X-Pat — X profil konumu, filtrele ve vurgula"
+  },
+  "appShortName": {
+    "message": "X-Pat"
+  },
+  "appDesc": {
+    "message": "Herhangi bir X profilinin hangi ülkeden paylaşım yaptığını görün — ülke bayrakları, VPN uyarıları ve ülke filtreleri, X'in kendi verilerinden okunur."
+  },
+  "actionTitle": {
+    "message": "X-Pat"
+  },
+  "menuSharePost": {
+    "message": "Gönderiyi konum bayraklarıyla kopyala"
+  },
+  "popupPaused": {
+    "message": "Duraklatıldı. X, uzantı kaldırılmış gibi görünür."
+  },
+  "popupOn": {
+    "message": "Açık"
+  },
+  "popupOff": {
+    "message": "Kapalı"
+  },
+  "popupMasterSwitchTitle": {
+    "message": "Şimdilik her şeyi kapat"
+  },
+  "popupFlagsInFeed": {
+    "message": "Akışta bayraklar 📍"
+  },
+  "popupAccountDetails": {
+    "message": "Fareyle üstüne gelince hesap detayları 🪪"
+  },
+  "popupCountryPlaceholder": {
+    "message": "Ülke veya bölge…"
+  },
+  "popupNothingBlocked": {
+    "message": "Hiçbir şey engellenmedi — tüm bayraklar olduğu gibi gösteriliyor."
+  },
+  "popupHighlightKeywords": {
+    "message": "Anahtar kelimeleri vurgula"
+  },
+  "popupKeywordPlaceholder": {
+    "message": "Anahtar kelime ekle…"
+  },
+  "popupNoKeywords": {
+    "message": "Anahtar kelime yok — hiçbir şey vurgulanmıyor."
+  },
+  "popupAllSettings": {
+    "message": "Tüm ayarlar →"
+  },
+  "popupRate": {
+    "message": "Puan ver ★"
+  },
+  "popupRateTitle": {
+    "message": "X-Pat'e Chrome Web Mağazası'nda puan ver"
+  },
+  "popupDonate": {
+    "message": "Bağış yap 💜"
+  },
+  "popupDonateTitle": {
+    "message": "Geliştirmeye destek ol"
+  },
+  "removeItem": {
+    "message": "$1 öğesini kaldır"
+  },
+  "removeHandle": {
+    "message": "@$1 hesabını kaldır"
+  },
+  "openHandle": {
+    "message": "@$1 hesabını X'te aç"
+  },
+  "rateAskText": {
+    "message": "İşe yaradı mı? Mağaza puanı çok yardımcı olur."
+  },
+  "rateAskInline": {
+    "message": "— işe yaradı mı? Mağaza puanı çok yardımcı olur."
+  },
+  "rateAskYes": {
+    "message": "Puan ver ★"
+  },
+  "rateAskLater": {
+    "message": "Sonra"
+  },
+  "rateAskNo": {
+    "message": "Hayır, teşekkürler"
+  },
+  "optionsTitle": {
+    "message": "X-Pat ayarları"
+  },
+  "optionsEnabled": {
+    "message": "Etkin"
+  },
+  "optionsPaused": {
+    "message": "Duraklatıldı"
+  },
+  "optionsPausedBanner": {
+    "message": "Duraklatıldı — aşağıdakilerin hiçbiri şu anda X'e uygulanmıyor."
+  },
+  "tabDisplay": {
+    "message": "Görünüm"
+  },
+  "tabFilters": {
+    "message": "Filtreler"
+  },
+  "tabExceptions": {
+    "message": "İstisnalar"
+  },
+  "tabData": {
+    "message": "Veri ve gizlilik"
+  },
+  "tabAdvanced": {
+    "message": "Gelişmiş"
+  },
+  "ruleHighlight": {
+    "message": "Anahtar kelime / bayrak vurgulama"
+  },
+  "ruleLocation": {
+    "message": "Engellenen konumlar"
+  },
+  "ruleAffiliation": {
+    "message": "Engellenen bağlı kuruluşlar"
+  },
+  "ruleAge": {
+    "message": "Hesap yaşı"
+  },
+  "cardOnPage": {
+    "message": "Sayfada"
+  },
+  "cardOnPageDesc": {
+    "message": "X-Pat'in X üzerinde çizdiği şeyler. Bunların hiçbiri hangi gönderilerin filtreleneceğini değiştirmez."
+  },
+  "setShowInFeed": {
+    "message": "Akışta konumu göster"
+  },
+  "setShowInFeedDesc": {
+    "message": "Zaman tünelindeki her ismin altında bir bayrak, yalnızca fareyle üstüne gelince değil."
+  },
+  "setAccountCard": {
+    "message": "Fareyle üstüne gelince hesap detaylarını göster"
+  },
+  "setAccountCardDesc": {
+    "message": "Hesap yaşı, bağlı kuruluş rozeti, doğrulama, kullanıcı adı değişiklikleri ve takipçi sayısı — X'in zaten gönderdiği verilerden okunur, ek sorgulama gerektirmez."
+  },
+  "setCopyButton": {
+    "message": "Hover kartlarında \"Kopyala\" düğmesi"
+  },
+  "setCopyButtonDesc": {
+    "message": "Bayrak satırındaki küçük bir \"Kopyala\" düğmesi. Üzerine geldiğiniz gönderiyi bayraklarla birlikte bir resim olarak kopyalar — tarayıcınızda oluşturulur, hiçbir şey yüklenmez. Bir gönderiye sağ tıklamak da aynısını yapar."
+  },
+  "setExceptionButton": {
+    "message": "Hover kartlarında istisna düğmesi"
+  },
+  "setExceptionButtonDesc": {
+    "message": "Baktığınız hesap için, ona etki eden tüm kurallardan tek tıkla muafiyet — anahtar kelime vurgusu, ülke, bağlı kuruluş rozeti, yaş. Araç ipucu hangisi olduğunu söyler."
+  },
+  "hintSwipe": {
+    "message": "👉 Konumunu öğrenmek için herhangi bir gönderide sağa kaydırın."
+  },
+  "cardAppearance": {
+    "message": "Görünüm"
+  },
+  "cardAppearanceDesc": {
+    "message": "X-Pat'in kendi ekranlarını kapsar — bu sayfa ve araç çubuğu açılır penceresi. X üzerine çizilen bayraklar ve işaretler bunun yerine X'in temasını takip eder, böylece içinde bulundukları zaman tüneliyle asla uyumsuz olmazlar."
+  },
+  "setTheme": {
+    "message": "Tema"
+  },
+  "themeSystem": {
+    "message": "Sisteme uy"
+  },
+  "themeLight": {
+    "message": "Açık"
+  },
+  "themeDark": {
+    "message": "Koyu"
+  },
+  "setLanguage": {
+    "message": "Dil"
+  },
+  "setLanguageDesc": {
+    "message": "X-Pat'in kendi metnini ve gösterdiği ülke adlarını kapsar. Seçtiğinizde bu sayfa yeniden yüklenir."
+  },
+  "languageAuto": {
+    "message": "Tarayıcıyla aynı"
+  },
+  "cardKeyword": {
+    "message": "Anahtar kelimeye göre vurgula"
+  },
+  "cardKeywordDesc": {
+    "message": "Yazarının adı veya biyografisi bunlardan herhangi birini içeren gönderileri işaretler. Vurgulama bir gönderiyi işaretler; asla gizlemez."
+  },
+  "keywordPlaceholder": {
+    "message": "Bir anahtar kelime yazın veya öneri seçin…"
+  },
+  "emptyNoKeywords": {
+    "message": "Anahtar kelime belirlenmedi — tüm gönderiler normal gösteriliyor."
+  },
+  "cardLocations": {
+    "message": "Konumlar"
+  },
+  "cardLocationsDesc": {
+    "message": "Bunlar bayrakları yerine ⚠️ gösterir. Mağaza ülkesine veya VPN olarak işaretlenmediğinde hesap konumuna göre belirlenir. Açtığınız gönderiye asla uygulanmaz."
+  },
+  "locationPlaceholder": {
+    "message": "Ülkeleri ve bölgeleri ara — ad, kod veya takma ad…"
+  },
+  "regionCountries": {
+    "message": "bölge · $1 ülke"
+  },
+  "emptyNoLocations": {
+    "message": "Konum seçilmedi — tüm bayraklar olduğu gibi gösteriliyor."
+  },
+  "cardFiltered": {
+    "message": "Filtrelenmiş bir gönderiye ne olur"
+  },
+  "cardFilteredDesc": {
+    "message": "Bir gönderiyi kaldıran iki filtre için geçerlidir — engellenen konumlar ve engellenen bağlı kuruluşlar. Hesap yaşı ve anahtar kelime vurgulaması, bu neye ayarlanmış olursa olsun bir gönderiyi işaretler. Alıntılanan gönderi kendi başına daraltılır, böylece onu alıntılayan gönderi okunabilir kalır ve kişi listeleri gizlenmek yerine işaretlenir — oradaki satırları kaldırmak sayıları bozar."
+  },
+  "filteredPosts": {
+    "message": "Filtrelenmiş gönderiler"
+  },
+  "hideModeOff": {
+    "message": "Normal göster"
+  },
+  "hideModeCollapse": {
+    "message": "Daralt"
+  },
+  "hideModeCollapseLong": {
+    "message": "Daralt (açmak için \"Göster\")"
+  },
+  "hideModeHide": {
+    "message": "Gizle"
+  },
+  "hideModeHideLong": {
+    "message": "Tamamen gizle"
+  },
+  "cardAffiliations": {
+    "message": "Bağlı kuruluşlar"
+  },
+  "cardAffiliationsDesc": {
+    "message": "X bazı hesapları bir kuruluşa ait olarak rozetler. Tüm rozetli hesapları tek seferde filtrelemek için üst hesabın kullanıcı adını girin."
+  },
+  "affiliationPlaceholder": {
+    "message": "Üst hesap kullanıcı adı, örn. nasa…"
+  },
+  "emptyNoAffiliations": {
+    "message": "Engellenen bağlı kuruluş yok. Bir rozet taşıyıp taşımadığını görmek için bir hesabın üzerine gelin."
+  },
+  "cardAge": {
+    "message": "Hesap yaşı"
+  },
+  "cardAgeDesc": {
+    "message": "X'in bildirdiği oluşturulma tarihinden itibaren hesabın ne kadar süredir var olduğu. Bu, yukarıdaki ayar ne derse desin gönderileri işaretler ve asla gizlemez."
+  },
+  "setMarkYoung": {
+    "message": "Yeni hesapları işaretle"
+  },
+  "setMarkYoungDesc": {
+    "message": "Gönderilerini bir anahtar kelime eşleşmesiyle aynı şekilde, kenarda turuncu çubukla işaretler. Bilerek burada durur: yeni bir hesap, satın alınmış veya çiftlik hesabı için en güçlü tek sinyaldir ve aynı zamanda geçen ay katılan birinin tam olarak nasıl göründüğüdür — yanıtlarını kaldırmak için çok zayıf bir gerekçe."
+  },
+  "setMarkYoungerThan": {
+    "message": "Şu yaştan daha yeni hesapları işaretle"
+  },
+  "cardFlags": {
+    "message": "Bayraklara göre vurgula"
+  },
+  "cardFlagsDesc": {
+    "message": "Yazarının biyografisi bayrak emojileriyle dolu olan gönderileri işaretler."
+  },
+  "setHighlightFlagHeavy": {
+    "message": "Bayrak yoğun biyografileri vurgula"
+  },
+  "setFlagThreshold": {
+    "message": "Bu sayıdan fazla bayrak"
+  },
+  "setUniqueFlags": {
+    "message": "Yalnızca benzersiz bayrakları say"
+  },
+  "cardAlwaysShow": {
+    "message": "Her zaman göster"
+  },
+  "cardAlwaysShowDesc": {
+    "message": "Tüm kurallardan aynı anda muaf — filtreler ne derse desin asla gizlenmez, asla daraltılmaz, asla vurgulanmaz."
+  },
+  "usernamePlaceholder": {
+    "message": "Kullanıcı adı ekle (@ olmadan)…"
+  },
+  "emptyNoAllowlist": {
+    "message": "İzin listesinde kimse yok — her hesap kurallara göre değerlendirilir."
+  },
+  "cardPerRule": {
+    "message": "Kural bazlı istisnalar"
+  },
+  "cardPerRuleDesc": {
+    "message": "Bir hesabı bir kuraldan muaf tut ama diğerlerinden değil — takip edilen bir anahtar kelimeyi alaycı şekilde kullanan biri (\"NAFO yok\") veya engellenen bir ülkeden paylaşım yapan ama yine de okumak istediğiniz biri için."
+  },
+  "searchExceptions": {
+    "message": "İstisnaları ara…"
+  },
+  "searchExceptionsLabel": {
+    "message": "İstisnaları ara"
+  },
+  "emptyNoMatch": {
+    "message": "Hiçbiri \"$1\" ile eşleşmiyor."
+  },
+  "emptyNoExceptions": {
+    "message": "İstisna yok."
+  },
+  "cardLookups": {
+    "message": "Arka plan sorguları"
+  },
+  "cardLookupsDesc": {
+    "message": "X her $2 dakikada yaklaşık $1 hesap sorgusuna izin verir. Bu ayarlar, X-Pat'in sizin için bayrakları doldurmak üzere bunun ne kadarını harcayabileceğini ve ne kadarının kendi üzerine geldiğiniz hesaplar için saklanacağını belirler."
+  },
+  "setSharedCache": {
+    "message": "Paylaşılan topluluk önbelleğini kullan"
+  },
+  "setSharedCacheDesc": {
+    "message": "Baktığınız bayrakları paylaşır, böylece herkes tekrarlanan sorgulamaları atlar. Yalnızca herkese açık kullanıcı adları ve bayrakları gönderilir — hesap veya kişisel veri gönderilmez."
+  },
+  "setPrefetch": {
+    "message": "Konumları arka planda önceden getir"
+  },
+  "setPrefetchDesc": {
+    "message": "Akışınızdaki hesapları, göründükleri sırayla sorgular, böylece üzerine gelmeden bayraklar belirir."
+  },
+  "setShare": {
+    "message": "Kullanabileceği sorgu limiti payı"
+  },
+  "setShareDesc": {
+    "message": "$1 önceden getirme için, $2 kendi üzerine gelmeleriniz için kaldı."
+  },
+  "setSpread": {
+    "message": "Sorguları tüm $1 dakikaya yay"
+  },
+  "setSpreadDesc": {
+    "message": "Hepsi birden yerine yaklaşık her $1 saniyede bir sorgu."
+  },
+  "cardBackup": {
+    "message": "Yedekle ve geri yükle"
+  },
+  "cardBackupDesc": {
+    "message": "Ayarlarınızı başka bir tarayıcıya taşıyın veya denemeden önce bir kopyasını saklayın."
+  },
+  "btnExport": {
+    "message": "Ayarları dışa aktar"
+  },
+  "btnImport": {
+    "message": "Ayarları içe aktar"
+  },
+  "hintImportMerge": {
+    "message": "İçe aktarma birleştirir: dosyanın bahsetmediği ayarlara dokunulmaz. Her değer içe aktarılırken yeniden kontrol edilir, böylece elle düzenlenmiş bir dosya uzantıyı kurtarılamaz bir duruma sokamaz."
+  },
+  "noteExported": {
+    "message": "$1 ayar dışa aktarıldı. Paylaşılan önbellek kimliği ve önbelleğe alınmış konumlarınız dahil edilmez."
+  },
+  "noteImported": {
+    "message": "$1 ayar içe aktarıldı."
+  },
+  "noteImportedSkipped": {
+    "message": "$1 bilinmeyen anahtar atlandı."
+  },
+  "errImportFailed": {
+    "message": "Bu dosya içe aktarılamadı."
+  },
+  "errNotJson": {
+    "message": "Bu dosya geçerli bir JSON değil."
+  },
+  "errNotExport": {
+    "message": "Bu dosya bir ayar dışa aktarımı değil."
+  },
+  "errNoSection": {
+    "message": "Bu dosyada \"settings\" bölümü eksik, bu nedenle bu uzantıdan bir dışa aktarım değil."
+  },
+  "errNewerFormat": {
+    "message": "Bu dosya daha yeni bir sürüm tarafından yazılmış (biçim $1). Önce uzantıyı güncelleyin."
+  },
+  "errNoSettings": {
+    "message": "Bu dosya içe aktarılacak hiçbir ayar içermiyor."
+  },
+  "cardCache": {
+    "message": "Yerel önbellek"
+  },
+  "cardCacheDesc": {
+    "message": "Sorguladığınız konumlar bu tarayıcıda 30 gün boyunca saklanır, böylece tekrar göstermenin hiçbir maliyeti olmaz."
+  },
+  "btnClearCache": {
+    "message": "Konum önbelleğini temizle"
+  },
+  "btnCacheCleared": {
+    "message": "Önbellek temizlendi"
+  },
+  "cardTrust": {
+    "message": "Paylaşılan önbellek güveni"
+  },
+  "cardTrustDesc": {
+    "message": "Bu kurulumun güvenmeden önce aynı konum için kaç bağımsız rapor gerektirdiği. Daha yüksek değer zehirlemeyi zorlaştırır ama çok daha az yanıt verir: bugün önbelleğe alınmış her 80 profilden yalnızca 1'i iki kez raporlanmıştır, bu nedenle 1'in üzerindeki herhangi bir değer çoğunlukla hesabı X'te sorgulamaya geri döner ve hız limitinizi harcar. Bunu ölçmüyorsanız $1 olarak bırakın."
+  },
+  "setTrustAfter": {
+    "message": "Şu kadar rapordan sonra paylaşılan konuma güven"
+  },
+  "trustReports1": {
+    "message": "1 rapor"
+  },
+  "trustReports2": {
+    "message": "2 rapor"
+  },
+  "trustReports3": {
+    "message": "3 rapor"
+  },
+  "ageDays": {
+    "message": "$1 gün"
+  },
+  "ageMonths": {
+    "message": "$1 ay"
+  },
+  "ageYear": {
+    "message": "1 yıl"
+  },
+  "ageYears": {
+    "message": "$1 yıl"
+  },
+  "ageToday": {
+    "message": "bugün"
+  },
+  "ageShortDays": {
+    "message": "$1g"
+  },
+  "ageShortMonths": {
+    "message": "$1a"
+  },
+  "ageShortYears": {
+    "message": "$1y"
+  },
+  "toastDismiss": {
+    "message": "Kapatmak için tıklayın"
+  },
+  "toastRateLimit": {
+    "message": "⚠ Hız limitine ulaşıldı · $1 içinde sıfırlanacak"
+  },
+  "countdownMinSec": {
+    "message": "$1dk $2sn"
+  },
+  "countdownSec": {
+    "message": "$1sn"
+  },
+  "rateLimitBadgeTitle": {
+    "message": "X API hız limitine ulaşıldı — konum sorguları sıfırlanana kadar duraklatıldı"
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN"
+  },
+  "vpnTitle": {
+    "message": "VPN kullanılıyor, konum hatalı olabilir"
+  },
+  "storeRegionLabel": {
+    "message": "$1 bölgesi: $2"
+  },
+  "platformWeb": {
+    "message": "Web"
+  },
+  "platformUnknown": {
+    "message": "Bilinmiyor"
+  },
+  "hiddenLabel": {
+    "message": "🚫 Gizlendi · $1 $2"
+  },
+  "hiddenShow": {
+    "message": "Göster"
+  },
+  "hiddenShowTitle": {
+    "message": "Bu gönderiyi göster ($1: $2)"
+  },
+  "cellTagTitle": {
+    "message": "$1 kuralınızla eşleşiyor — gösteriliyor, gizlenmiyor"
+  },
+  "ruleNameHighlight": {
+    "message": "vurgulama"
+  },
+  "ruleNameLocation": {
+    "message": "engellenen konum"
+  },
+  "ruleNameAffiliation": {
+    "message": "engellenen bağlı kuruluş"
+  },
+  "ruleNameAge": {
+    "message": "hesap yaşı"
+  },
+  "excAdd": {
+    "message": "🚫 İstisna ekle"
+  },
+  "excUndo": {
+    "message": "✓ İstisna (geri al)"
+  },
+  "excAddTitle": {
+    "message": "@$1 için $2 istisnası ekle"
+  },
+  "excUndoTitle": {
+    "message": "@$1 için $2 istisnası var — geri almak için tıkla"
+  },
+  "excPhraseHighlight": {
+    "message": "anahtar kelime ve bayrak vurgulama"
+  },
+  "excPhraseLocation": {
+    "message": "engellenen konum"
+  },
+  "excPhraseAffiliation": {
+    "message": "engellenen bağlı kuruluş"
+  },
+  "excPhraseAge": {
+    "message": "hesap yaşı"
+  },
+  "joinAnd": {
+    "message": "$1 ve $2"
+  },
+  "chipBlockedYou": {
+    "message": "🚫 Sizi engelledi"
+  },
+  "chipBlockedYouTitle": {
+    "message": "Bu hesap hesabınızı engelliyor"
+  },
+  "chipAge": {
+    "message": "🎂 $1"
+  },
+  "chipAgeTitle": {
+    "message": "Hesap $1 tarihinde oluşturuldu"
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1"
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "X, @$1 hesabına bağlantı veren bir bağlı kuruluş rozeti gösteriyor"
+  },
+  "chipAffiliationTitle": {
+    "message": "X bu hesapta bir bağlı kuruluş rozeti gösteriyor"
+  },
+  "chipIdVerified": {
+    "message": "🪪 Kimlik doğrulandı"
+  },
+  "chipIdVerifiedTitle": {
+    "message": "X bir kimlik belgesini doğruladı"
+  },
+  "chipVerified": {
+    "message": "✔ Doğrulandı"
+  },
+  "chipVerifiedTitle": {
+    "message": "Eski tip doğrulama"
+  },
+  "chipHandle1": {
+    "message": "✎ 1 kullanıcı adı"
+  },
+  "chipHandles": {
+    "message": "✎ $1 kullanıcı adı"
+  },
+  "chipHandlesTitle": {
+    "message": "Bu hesap @kullanıcı adını $1 kez değiştirdi"
+  },
+  "chipProtected": {
+    "message": "🔒 Korumalı"
+  },
+  "chipProtectedTitle": {
+    "message": "Gönderiler korumalı"
+  },
+  "bioTitle": {
+    "message": "X'in API'sinden biyografi — bu kart biyografi göstermiyor"
+  },
+  "shareBtn": {
+    "message": "🖼 Kopyala"
+  },
+  "shareBtnTitle": {
+    "message": "Bu gönderiyi ve X'in @$1 için bildirdiklerini resim olarak kopyala"
+  },
+  "toastRendering": {
+    "message": "@$1 oluşturuluyor …"
+  },
+  "toastCopied": {
+    "message": "✓ Panoya kopyalandı"
+  },
+  "toastSaved": {
+    "message": "✓ Resim kaydedildi"
+  },
+  "toastRenderFail": {
+    "message": "Bu kart oluşturulamadı"
+  },
+  "toastRightClick": {
+    "message": "Paylaşmak için bir gönderiye sağ tıklayın"
+  },
+  "toastReadFail": {
+    "message": "Bu gönderi okunamadı"
+  },
+  "toastNoLocation": {
+    "message": "Konum yok"
+  },
+  "toastLookingUp": {
+    "message": "@$1 …"
+  },
+  "regionEastAsiaPacific": {
+    "message": "Doğu Asya ve Pasifik"
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "Doğu Avrupa (AB Dışı)"
+  }
+}

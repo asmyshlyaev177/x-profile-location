@@ -1,0 +1,608 @@
+{
+  "localeTag": {
+    "message": "es"
+  },
+  "appName": {
+    "message": "X-Pat — ubicación, filtro y resaltado en X"
+  },
+  "appShortName": {
+    "message": "X-Pat"
+  },
+  "appDesc": {
+    "message": "Muestra el país desde el que publica cualquier perfil de X: banderas, avisos de VPN y filtros por país, leídos de los datos del propio X."
+  },
+  "actionTitle": {
+    "message": "X-Pat"
+  },
+  "menuSharePost": {
+    "message": "Copiar publicación con banderas de ubicación"
+  },
+  "popupPaused": {
+    "message": "En pausa. X se ve exactamente como si la extensión no estuviera instalada."
+  },
+  "popupOn": {
+    "message": "Activo"
+  },
+  "popupOff": {
+    "message": "Apagado"
+  },
+  "popupMasterSwitchTitle": {
+    "message": "Apagar todo por ahora"
+  },
+  "popupFlagsInFeed": {
+    "message": "Banderas en el feed 📍"
+  },
+  "popupAccountDetails": {
+    "message": "Detalles de cuenta al pasar el ratón 🪪"
+  },
+  "popupCountryPlaceholder": {
+    "message": "País o región…"
+  },
+  "popupNothingBlocked": {
+    "message": "Nada bloqueado — todas las banderas se muestran tal cual."
+  },
+  "popupHighlightKeywords": {
+    "message": "Resaltar palabras clave"
+  },
+  "popupKeywordPlaceholder": {
+    "message": "Añadir palabra clave…"
+  },
+  "popupNoKeywords": {
+    "message": "Sin palabras clave — no se resalta nada."
+  },
+  "popupAllSettings": {
+    "message": "Todos los ajustes →"
+  },
+  "popupRate": {
+    "message": "Valorar ★"
+  },
+  "popupRateTitle": {
+    "message": "Valora X-Pat en la Chrome Web Store"
+  },
+  "popupDonate": {
+    "message": "Donar 💜"
+  },
+  "popupDonateTitle": {
+    "message": "Apoyar el desarrollo"
+  },
+  "removeItem": {
+    "message": "Quitar $1"
+  },
+  "removeHandle": {
+    "message": "Quitar @$1"
+  },
+  "openHandle": {
+    "message": "Abrir @$1 en X"
+  },
+  "rateAskText": {
+    "message": "¿Te ha sido útil? Una valoración en la tienda ayuda mucho."
+  },
+  "rateAskInline": {
+    "message": "— ¿te ha sido útil? Una valoración en la tienda ayuda mucho."
+  },
+  "rateAskYes": {
+    "message": "Valorar ★"
+  },
+  "rateAskLater": {
+    "message": "Más tarde"
+  },
+  "rateAskNo": {
+    "message": "No, gracias"
+  },
+  "optionsTitle": {
+    "message": "Ajustes de X-Pat"
+  },
+  "optionsEnabled": {
+    "message": "Activado"
+  },
+  "optionsPaused": {
+    "message": "En pausa"
+  },
+  "optionsPausedBanner": {
+    "message": "En pausa — nada de lo siguiente se está aplicando a X ahora mismo."
+  },
+  "tabDisplay": {
+    "message": "Visualización"
+  },
+  "tabFilters": {
+    "message": "Filtros"
+  },
+  "tabExceptions": {
+    "message": "Excepciones"
+  },
+  "tabData": {
+    "message": "Datos y privacidad"
+  },
+  "tabAdvanced": {
+    "message": "Avanzado"
+  },
+  "ruleHighlight": {
+    "message": "Resaltado por palabra clave / bandera"
+  },
+  "ruleLocation": {
+    "message": "Ubicaciones bloqueadas"
+  },
+  "ruleAffiliation": {
+    "message": "Afiliaciones bloqueadas"
+  },
+  "ruleAge": {
+    "message": "Antigüedad de la cuenta"
+  },
+  "cardOnPage": {
+    "message": "En la página"
+  },
+  "cardOnPageDesc": {
+    "message": "Lo que X-Pat dibuja en X. Nada de esto cambia qué publicaciones se filtran."
+  },
+  "setShowInFeed": {
+    "message": "Mostrar ubicación en el feed"
+  },
+  "setShowInFeedDesc": {
+    "message": "Una bandera bajo cada nombre en la cronología, no solo al pasar el ratón."
+  },
+  "setAccountCard": {
+    "message": "Mostrar detalles de la cuenta al pasar el ratón"
+  },
+  "setAccountCardDesc": {
+    "message": "Antigüedad, insignia de afiliación, verificación, cambios de nombre y seguidores — leído de datos que X ya envía, sin consultas adicionales."
+  },
+  "setCopyButton": {
+    "message": "Botón «Copiar» en las tarjetas flotantes"
+  },
+  "setCopyButtonDesc": {
+    "message": "Un pequeño botón «Copiar» en la fila de banderas. Copia la publicación sobre la que pasaste el ratón, junto con las banderas, como imagen — renderizada en tu navegador, sin subir nada. Hacer clic derecho en una publicación hace lo mismo."
+  },
+  "setExceptionButton": {
+    "message": "Botón de excepción en las tarjetas flotantes"
+  },
+  "setExceptionButtonDesc": {
+    "message": "Una exención con un solo clic para la cuenta que estás viendo, de las reglas que le afecten — resaltado de palabras clave, país, insignia de afiliación, antigüedad. Su tooltip indica cuáles."
+  },
+  "hintSwipe": {
+    "message": "👉 Desliza a la derecha sobre cualquier publicación para obtener su ubicación."
+  },
+  "cardAppearance": {
+    "message": "Apariencia"
+  },
+  "cardAppearanceDesc": {
+    "message": "Cubre las pantallas propias de X-Pat — esta página y el popup de la barra. Las banderas y marcas dibujadas en X siguen el tema de X, para no desentonar con la cronología."
+  },
+  "setTheme": {
+    "message": "Tema"
+  },
+  "themeSystem": {
+    "message": "Seguir al sistema"
+  },
+  "themeLight": {
+    "message": "Claro"
+  },
+  "themeDark": {
+    "message": "Oscuro"
+  },
+  "setLanguage": {
+    "message": "Idioma"
+  },
+  "setLanguageDesc": {
+    "message": "Cubre los textos propios de X-Pat y los nombres de países que muestra. Elegir uno recarga esta página."
+  },
+  "languageAuto": {
+    "message": "Seguir al navegador"
+  },
+  "cardKeyword": {
+    "message": "Resaltar por palabra clave"
+  },
+  "cardKeywordDesc": {
+    "message": "Marca las publicaciones cuyo autor tenga estas palabras en su nombre o bio. El resaltado marca la publicación; nunca la oculta."
+  },
+  "keywordPlaceholder": {
+    "message": "Escribe una palabra clave o elige una sugerencia…"
+  },
+  "emptyNoKeywords": {
+    "message": "Sin palabras clave — todas las publicaciones se muestran normales."
+  },
+  "cardLocations": {
+    "message": "Ubicaciones"
+  },
+  "cardLocationsDesc": {
+    "message": "Muestran ⚠️ en vez de su bandera. Se basa en el país de la tienda de apps, o en la ubicación de la cuenta si no está marcada como VPN. Nunca se aplica a la publicación que has abierto."
+  },
+  "locationPlaceholder": {
+    "message": "Buscar países y regiones — nombre, código o apodo…"
+  },
+  "regionCountries": {
+    "message": "región · $1 países"
+  },
+  "emptyNoLocations": {
+    "message": "Sin ubicaciones seleccionadas — todas las banderas se muestran tal cual."
+  },
+  "cardFiltered": {
+    "message": "Qué ocurre con una publicación filtrada"
+  },
+  "cardFilteredDesc": {
+    "message": "Se aplica a los dos filtros que retiran publicaciones — ubicaciones bloqueadas y afiliaciones bloqueadas. La antigüedad y el resaltado de palabras clave marcan la publicación independientemente de esto. Una publicación citada se colapsa por sí sola, para que la que la cita siga siendo legible, y las listas de personas se marcan en lugar de ocultarse — eliminar filas allí rompe los contadores."
+  },
+  "filteredPosts": {
+    "message": "Publicaciones filtradas"
+  },
+  "hideModeOff": {
+    "message": "Mostrar normal"
+  },
+  "hideModeCollapse": {
+    "message": "Colapsar"
+  },
+  "hideModeCollapseLong": {
+    "message": "Colapsar («Ver» para abrir)"
+  },
+  "hideModeHide": {
+    "message": "Ocultar"
+  },
+  "hideModeHideLong": {
+    "message": "Ocultar por completo"
+  },
+  "cardAffiliations": {
+    "message": "Afiliaciones"
+  },
+  "cardAffiliationsDesc": {
+    "message": "X marca algunas cuentas como pertenecientes a una organización. Introduce el nombre de la cuenta matriz para filtrar de golpe todas las cuentas con esa insignia."
+  },
+  "affiliationPlaceholder": {
+    "message": "Cuenta matriz, p. ej. nasa…"
+  },
+  "emptyNoAffiliations": {
+    "message": "Sin afiliaciones bloqueadas. Pasa el ratón sobre una cuenta para ver si tiene insignia."
+  },
+  "cardAge": {
+    "message": "Antigüedad"
+  },
+  "cardAgeDesc": {
+    "message": "Cuánto tiempo lleva la cuenta, según la fecha de creación que X indica. Esta regla marca publicaciones y nunca las oculta, diga lo que diga el ajuste anterior."
+  },
+  "setMarkYoung": {
+    "message": "Marcar cuentas recientes"
+  },
+  "setMarkYoungDesc": {
+    "message": "Marca sus publicaciones igual que una coincidencia de palabra clave, con la barra naranja al lateral. Se queda ahí a propósito: una cuenta reciente es la señal más fuerte de una cuenta comprada o de granja, pero también es exactamente lo que parece alguien que se registró el mes pasado — un motivo demasiado débil para eliminar sus respuestas."
+  },
+  "setMarkYoungerThan": {
+    "message": "Marcar cuentas con menos de"
+  },
+  "cardFlags": {
+    "message": "Resaltar por banderas"
+  },
+  "cardFlagsDesc": {
+    "message": "Marca publicaciones cuyo autor tiene la bio llena de emojis de banderas."
+  },
+  "setHighlightFlagHeavy": {
+    "message": "Resaltar bios con muchas banderas"
+  },
+  "setFlagThreshold": {
+    "message": "Más de esta cantidad de banderas"
+  },
+  "setUniqueFlags": {
+    "message": "Contar solo banderas únicas"
+  },
+  "cardAlwaysShow": {
+    "message": "Mostrar siempre"
+  },
+  "cardAlwaysShowDesc": {
+    "message": "Exenta de todas las reglas a la vez — nunca oculta, nunca colapsada, nunca resaltada, digan lo que digan los filtros."
+  },
+  "usernamePlaceholder": {
+    "message": "Añade un nombre de usuario (sin @)…"
+  },
+  "emptyNoAllowlist": {
+    "message": "Nadie en la lista blanca — todas las cuentas se juzgan por las reglas."
+  },
+  "cardPerRule": {
+    "message": "Excepciones por regla"
+  },
+  "cardPerRuleDesc": {
+    "message": "Exime a una cuenta de una regla pero no de las demás — para alguien que usa una palabra clave de forma sarcástica («no NAFO»), o que publica desde un país bloqueado que aun así quieres leer."
+  },
+  "searchExceptions": {
+    "message": "Buscar excepciones…"
+  },
+  "searchExceptionsLabel": {
+    "message": "Buscar excepciones"
+  },
+  "emptyNoMatch": {
+    "message": "Ninguna coincide con «$1»."
+  },
+  "emptyNoExceptions": {
+    "message": "Sin excepciones."
+  },
+  "cardLookups": {
+    "message": "Consultas en segundo plano"
+  },
+  "cardLookupsDesc": {
+    "message": "X permite unas $1 consultas de cuenta cada $2 minutos. Estos ajustes deciden cuánto de ese límite puede usar X-Pat para rellenar banderas, y cuánto se reserva para las cuentas sobre las que pasas el ratón."
+  },
+  "setSharedCache": {
+    "message": "Usar la caché comunitaria compartida"
+  },
+  "setSharedCacheDesc": {
+    "message": "Comparte las banderas que consultas para que todos eviten consultas repetidas. Solo se envían nombres públicos y su bandera — sin datos personales ni de cuenta."
+  },
+  "setPrefetch": {
+    "message": "Precargar ubicaciones en segundo plano"
+  },
+  "setPrefetchDesc": {
+    "message": "Consulta las cuentas de tu feed en el orden en que aparecen, para que las banderas se muestren sin pasar el ratón."
+  },
+  "setShare": {
+    "message": "Porción del límite de consultas que puede usar"
+  },
+  "setShareDesc": {
+    "message": "$1 para precarga, $2 restantes para tus propios hovers."
+  },
+  "setSpread": {
+    "message": "Repartir consultas a lo largo de $1 minutos"
+  },
+  "setSpreadDesc": {
+    "message": "Aproximadamente una consulta cada $1s, en vez de todas a la vez."
+  },
+  "cardBackup": {
+    "message": "Copia de seguridad y restaurar"
+  },
+  "cardBackupDesc": {
+    "message": "Traslada tus ajustes a otro navegador, o guarda una copia antes de experimentar."
+  },
+  "btnExport": {
+    "message": "Exportar ajustes"
+  },
+  "btnImport": {
+    "message": "Importar ajustes"
+  },
+  "hintImportMerge": {
+    "message": "La importación fusiona: los ajustes no mencionados en el archivo se dejan como están. Cada valor se revisa al entrar, así que un archivo editado a mano no puede dejar la extensión en un estado irrecuperable."
+  },
+  "noteExported": {
+    "message": "Exportados $1 ajustes. El id de la caché compartida y tus ubicaciones en caché no se incluyen."
+  },
+  "noteImported": {
+    "message": "Importados $1 ajustes."
+  },
+  "noteImportedSkipped": {
+    "message": "Se omitieron $1 clave(s) desconocida(s)."
+  },
+  "errImportFailed": {
+    "message": "No se pudo importar ese archivo."
+  },
+  "errNotJson": {
+    "message": "Ese archivo no es JSON válido."
+  },
+  "errNotExport": {
+    "message": "Ese archivo no es una exportación de ajustes."
+  },
+  "errNoSection": {
+    "message": "Ese archivo no tiene su sección \"settings\", así que no es una exportación de esta extensión."
+  },
+  "errNewerFormat": {
+    "message": "Ese archivo fue creado por una versión más reciente (formato $1). Actualiza la extensión primero."
+  },
+  "errNoSettings": {
+    "message": "Ese archivo no contiene ajustes para importar."
+  },
+  "cardCache": {
+    "message": "Caché local"
+  },
+  "cardCacheDesc": {
+    "message": "Las ubicaciones que has consultado se guardan en este navegador durante 30 días, así que mostrarlas de nuevo no cuesta nada."
+  },
+  "btnClearCache": {
+    "message": "Limpiar caché de ubicaciones"
+  },
+  "btnCacheCleared": {
+    "message": "Caché limpiada"
+  },
+  "cardTrust": {
+    "message": "Confianza en caché compartida"
+  },
+  "cardTrustDesc": {
+    "message": "Cuántos informes independientes de la misma ubicación requiere esta instalación antes de confiar. Más alto es más difícil de envenenar pero responde mucho menos: hoy solo 1 de cada 80 perfiles en caché ha sido reportado dos veces, así que cualquier valor por encima de 1 recurre a consultar la cuenta en X y gasta tu límite. Déjalo en $1 a menos que estés midiendo esto."
+  },
+  "setTrustAfter": {
+    "message": "Confiar en una ubicación compartida tras"
+  },
+  "trustReports1": {
+    "message": "1 informe"
+  },
+  "trustReports2": {
+    "message": "2 informes"
+  },
+  "trustReports3": {
+    "message": "3 informes"
+  },
+  "ageDays": {
+    "message": "$1 días"
+  },
+  "ageMonths": {
+    "message": "$1 meses"
+  },
+  "ageYear": {
+    "message": "1 año"
+  },
+  "ageYears": {
+    "message": "$1 años"
+  },
+  "ageToday": {
+    "message": "hoy"
+  },
+  "ageShortDays": {
+    "message": "$1d"
+  },
+  "ageShortMonths": {
+    "message": "$1m"
+  },
+  "ageShortYears": {
+    "message": "$1a"
+  },
+  "toastDismiss": {
+    "message": "Clic para descartar"
+  },
+  "toastRateLimit": {
+    "message": "⚠ Límite de tasa alcanzado · se restablece en $1"
+  },
+  "countdownMinSec": {
+    "message": "$1m $2s"
+  },
+  "countdownSec": {
+    "message": "$1s"
+  },
+  "rateLimitBadgeTitle": {
+    "message": "Límite de tasa de la API de X alcanzado — consultas de ubicación pausadas hasta restablecimiento"
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN"
+  },
+  "vpnTitle": {
+    "message": "VPN en uso, la ubicación puede ser imprecisa"
+  },
+  "storeRegionLabel": {
+    "message": "$1 región: $2"
+  },
+  "platformWeb": {
+    "message": "Web"
+  },
+  "platformUnknown": {
+    "message": "Desconocido"
+  },
+  "hiddenLabel": {
+    "message": "🚫 Oculto · $1 $2"
+  },
+  "hiddenShow": {
+    "message": "Ver"
+  },
+  "hiddenShowTitle": {
+    "message": "Mostrar esta publicación ($1: $2)"
+  },
+  "cellTagTitle": {
+    "message": "Coincide con tu $1 — mostrado, no oculto"
+  },
+  "ruleNameHighlight": {
+    "message": "regla de resaltado"
+  },
+  "ruleNameLocation": {
+    "message": "ubicación bloqueada"
+  },
+  "ruleNameAffiliation": {
+    "message": "afiliación bloqueada"
+  },
+  "ruleNameAge": {
+    "message": "antigüedad"
+  },
+  "excAdd": {
+    "message": "🚫 Añadir excepción"
+  },
+  "excUndo": {
+    "message": "✓ Excepción (deshacer)"
+  },
+  "excAddTitle": {
+    "message": "Eximir a @$1 de $2"
+  },
+  "excUndoTitle": {
+    "message": "@$1 está exento de $2 — clic para deshacer"
+  },
+  "excPhraseHighlight": {
+    "message": "resaltado de palabras clave y banderas"
+  },
+  "excPhraseLocation": {
+    "message": "el filtro de ubicaciones bloqueadas"
+  },
+  "excPhraseAffiliation": {
+    "message": "el filtro de afiliaciones bloqueadas"
+  },
+  "excPhraseAge": {
+    "message": "el filtro de antigüedad"
+  },
+  "joinAnd": {
+    "message": "$1 y $2"
+  },
+  "chipBlockedYou": {
+    "message": "🚫 Te bloqueó"
+  },
+  "chipBlockedYouTitle": {
+    "message": "Esta cuenta bloquea tu cuenta"
+  },
+  "chipAge": {
+    "message": "🎂 $1"
+  },
+  "chipAgeTitle": {
+    "message": "Cuenta creada el $1"
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1"
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "X muestra una insignia de afiliación que enlaza a @$1"
+  },
+  "chipAffiliationTitle": {
+    "message": "X muestra una insignia de afiliación en esta cuenta"
+  },
+  "chipIdVerified": {
+    "message": "🪪 Identidad verificada"
+  },
+  "chipIdVerifiedTitle": {
+    "message": "X verificó un documento de identidad"
+  },
+  "chipVerified": {
+    "message": "✔ Verificada"
+  },
+  "chipVerifiedTitle": {
+    "message": "Verificación heredada"
+  },
+  "chipHandle1": {
+    "message": "✎ 1 cambio de nombre"
+  },
+  "chipHandles": {
+    "message": "✎ $1 cambios de nombre"
+  },
+  "chipHandlesTitle": {
+    "message": "Esta cuenta ha cambiado su @nombre $1 vez/veces"
+  },
+  "chipProtected": {
+    "message": "🔒 Protegida"
+  },
+  "chipProtectedTitle": {
+    "message": "Las publicaciones están protegidas"
+  },
+  "bioTitle": {
+    "message": "Bio de la API de X — esta tarjeta no la muestra"
+  },
+  "shareBtn": {
+    "message": "🖼 Copiar"
+  },
+  "shareBtnTitle": {
+    "message": "Copiar esta publicación y lo que X indica para @$1 como imagen"
+  },
+  "toastRendering": {
+    "message": "Renderizando @$1 …"
+  },
+  "toastCopied": {
+    "message": "✓ Copiado al portapapeles"
+  },
+  "toastSaved": {
+    "message": "✓ Imagen guardada"
+  },
+  "toastRenderFail": {
+    "message": "No se pudo renderizar esa tarjeta"
+  },
+  "toastRightClick": {
+    "message": "Haz clic derecho en una publicación para compartirla"
+  },
+  "toastReadFail": {
+    "message": "No se pudo leer esa publicación"
+  },
+  "toastNoLocation": {
+    "message": "Sin ubicación"
+  },
+  "toastLookingUp": {
+    "message": "@$1 …"
+  },
+  "regionEastAsiaPacific": {
+    "message": "Asia Oriental y Pacífico"
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "Europa del Este (no UE)"
+  }
+}

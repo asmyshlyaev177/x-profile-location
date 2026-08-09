@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { defineConfig, type PluginOption } from 'vite'
@@ -6,13 +6,39 @@ import preact from '@preact/preset-vite'
 import tailwindcss from '@tailwindcss/vite'
 import sitemap from 'vite-plugin-sitemap'
 import { siteUrl } from './src/seo'
-import { prerenderPaths, routes } from './src/routes'
+import { localizedRoutes, prerenderPathsFor, routes } from './src/routes'
+import { localeCodes, localePath } from './src/i18n/locales'
 import {
   getContentLastModified,
   getRouteLastmods,
 } from './scripts/build-date.mjs'
 import { buildAiFiles, DISCOVERY } from './src/data/ai-files'
 import { comparisonMarkdown } from './src/data/comparison-markdown'
+
+/**
+ * `locales.ts` promises a language; `src/i18n/dict/` has to deliver it.
+ *
+ * Checked here rather than in a module because nothing statically imports the
+ * dictionaries any more — that is deliberate, and it is what keeps the browser
+ * from downloading all fifteen — so there is no import graph left to notice a
+ * missing one. Failing at config load turns "a locale with no copy" into a
+ * build error rather than a prerendered page of English served under /th, with
+ * an hreflang and a sitemap entry claiming otherwise.
+ */
+const dictDir = fileURLToPath(new URL('src/i18n/dict', import.meta.url))
+const translated = new Set(
+  readdirSync(dictDir)
+    .filter((f) => f.endsWith('.ts'))
+    .map((f) => f.replace(/\.ts$/, '')),
+)
+const untranslated = localeCodes.filter((c) => !translated.has(c))
+if (untranslated.length) {
+  throw new Error(
+    `i18n: locales.ts lists ${untranslated.join(', ')} with no dictionary. ` +
+      'Add src/i18n/dict/<code>.ts, or drop the locale from locales.ts until ' +
+      'it is translated.',
+  )
+}
 
 // The extension's version, not the landing page's — so the badge can never
 // drift from what is actually on the store.
@@ -24,7 +50,25 @@ const extensionVersion = JSON.parse(
 // through `__CONTENT_LAST_MODIFIED__`, so `dateModified`, `og:updated_time` and
 // the sitemap all agree and none of them move on a rebuild that changed nothing.
 const contentLastModified = getContentLastModified()
-const routeLastmods = getRouteLastmods(routes)
+
+/**
+ * Per-URL `<lastmod>`, extended across the locales.
+ *
+ * A translated page's content date is its English source's: the pages say the
+ * same thing, and a Thai page has not "changed" because it was rendered today.
+ * Without this the sitemap plugin falls back to `new Date()` for every
+ * localised URL, which is the build-clock freshness signal the whole
+ * `build-date.mjs` module exists to avoid — only now it would be wrong on
+ * fifty-six URLs instead of one.
+ */
+const baseLastmods = getRouteLastmods(routes)
+const routeLastmods: Record<string, Date> = { ...baseLastmods }
+for (const code of localeCodes) {
+  for (const route of localizedRoutes) {
+    const stamp = baseLastmods[route.path]
+    if (stamp) routeLastmods[localePath(code, route.path)] = stamp
+  }
+}
 
 /**
  * Teaches `vite preview` the rule Cloudflare Pages applies in production: a
@@ -58,6 +102,58 @@ function serveFlatHtml(): PluginOption {
         }
         next()
       })
+    },
+  }
+}
+
+/**
+ * Strips the `modulepreload` links for chunks the browser must not fetch.
+ *
+ * Vite emits one `<link rel="modulepreload">` per entry chunk and per static
+ * import of an entry — and the prerender plugin adds `prerender.tsx` as a
+ * second Rollup input, so every document ended up preloading the prerenderer
+ * *and*, through it, all fifteen dictionary chunks. The code splitting was
+ * working; the HTML was undoing it, asking for ~110 kB the page never
+ * executes.
+ *
+ * The dictionaries stay reachable: `loadDict`'s dynamic import fetches the one
+ * that is needed, and Vite's preload helper handles it at runtime. Only the
+ * eager hint is removed.
+ *
+ * Runs `post` so it sees the links Vite's own HTML plugin injected, and it
+ * runs on `index.html` before the prerenderer clones it per route — so one
+ * edit here covers all fifty-six documents.
+ */
+function stripPrerenderPreloads(): PluginOption {
+  return {
+    name: 'strip-prerender-preloads',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        return html.replace(
+          /<link[^>]+rel="modulepreload"[^>]+href="[^"]*\/(?:prerender|dict-)[^"]*"[^>]*>\s*/g,
+          '',
+        )
+      },
+    },
+  }
+}
+
+/**
+ * Substitutes `%LOCALE_CODES%` in `index.html`.
+ *
+ * The language-preference script is inline in the head — it has to run before
+ * first paint — so it cannot import the locale table. Injecting the list at
+ * build time is what keeps `locales.ts` the only place the shipping languages
+ * are written down; a hand-maintained copy inside a `<script>` tag would go
+ * stale on the first locale added or removed, and the symptom would be a
+ * redirect to a page that does not exist.
+ */
+function localeCodesHtml(): PluginOption {
+  return {
+    name: 'locale-codes-html',
+    transformIndexHtml(html) {
+      return html.replace('%LOCALE_CODES%', localeCodes.join(','))
     },
   }
 }
@@ -178,11 +274,20 @@ export default defineConfig({
   },
   plugins: [
     serveFlatHtml(),
+    localeCodesHtml(),
+    stripPrerenderPreloads(),
     preact({
       prerender: {
         enabled: true,
         renderTarget: '#app',
-        additionalPrerenderRoutes: prerenderPaths,
+        // A separate entry from `main.tsx`. The prerenderer needs every
+        // dictionary in one process; the browser needs exactly one. Pointing
+        // this at its own module is what stops Rollup following the first
+        // requirement into the client bundle.
+        prerenderScript: fileURLToPath(
+          new URL('src/prerender.tsx', import.meta.url),
+        ),
+        additionalPrerenderRoutes: prerenderPathsFor(localeCodes),
         previewMiddlewareEnabled: true,
         previewMiddlewareFallback: '/index.html',
       },
@@ -192,6 +297,10 @@ export default defineConfig({
     // in the sitemap would ask for the opposite in the same breath.
     sitemap({
       hostname: siteUrl,
+      // No `dynamicRoutes`. The plugin's own scan of `dist` already finds every
+      // prerendered page including the localised ones, and passing the same
+      // list again had it union the two without deduplicating — every URL
+      // appeared twice in the sitemap.
       exclude: routes.filter((r) => r.noindex).map((r) => r.path),
       // Per-URL dates, from the commits that touched each page's sources. The
       // plugin's default is `new Date()`, which stamps every URL with the build
@@ -210,5 +319,51 @@ export default defineConfig({
     minify: 'esbuild', // JS — esbuild (fast, good compression)
     cssMinify: true, // CSS — esbuild
     cssCodeSplit: false, // single CSS file for a single-page site
+    rollupOptions: {
+      output: {
+        /**
+         * Keeps the renderer out of the browser's download.
+         *
+         * `prerender.tsx` and `main.tsx` are two entries in one build sharing
+         * `app.tsx`, so Rollup's default placement put `seo.ts` and
+         * `preact-render-to-string` in the chunk the client entry imports.
+         * Naming them here moves them into a chunk only the prerenderer
+         * reaches.
+         *
+         * `vite/modulepreload-polyfill` is deliberately absent: the client
+         * needs it for `loadDict`'s dynamic import, so listing it made the two
+         * chunks import each other, and a circular chunk pair executes in
+         * whichever order Rollup settles on — which is how the *prerenderer*
+         * ended up running in the browser and throwing
+         * `Cannot access 'I' before initialization`. Lighthouse counts a
+         * console error against best-practices, so it surfaced as a 96 rather
+         * than as anything visible.
+         */
+        manualChunks(id) {
+          // One chunk per language, so `loadDict`'s dynamic import fetches the
+          // reader's own copy and nobody else's. Without this the catch-all
+          // below would sweep all fifteen into the client entry.
+          const dict = /src\/i18n\/dict\/([a-z-]+)\.ts$/.exec(id)
+          if (dict) return `dict-${dict[1]}`
+
+          if (
+            id.includes('/src/prerender.tsx') ||
+            id.includes('/src/seo.ts') ||
+            id.includes('/src/data/ai-files.ts') ||
+            id.includes('/src/data/comparison-markdown.ts') ||
+            id.includes('preact-render-to-string')
+          ) {
+            return 'prerender'
+          }
+
+          // Everything else — Preact, the components, the route table — is the
+          // client's, in one chunk. The assignment has to be explicit: name
+          // only the prerender side and Rollup hoists the *shared* modules
+          // into that chunk too, leaving the client entry a 1 kB stub that
+          // statically imports 91 kB of renderer to reach Preact.
+          return 'index'
+        },
+      },
+    },
   },
 })

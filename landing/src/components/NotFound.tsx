@@ -1,4 +1,5 @@
-import { NOT_FOUND_PATH, routes } from '../routes'
+import { NOT_FOUND_PATH, metaFor, routes } from '../routes'
+import { useT } from '../i18n/context'
 
 /**
  * The page Cloudflare Pages serves — with a real 404 status — for a path that
@@ -8,8 +9,15 @@ import { NOT_FOUND_PATH, routes } from '../routes'
  * and returns **200 with the homepage**, which Google reads as a soft 404 and
  * treats those URLs as homepage duplicates. That works directly against the
  * canonical and sitemap discipline everywhere else on this site.
+ *
+ * English-only, and deliberately: Pages serves this one document for every
+ * unmatched path on the host, including `/ja/typo`, so there is no locale to
+ * read off the URL that can be trusted. The links below therefore go to the
+ * English pages, and the language picker in the header is the way out.
  */
 export function NotFound() {
+  // English, whatever the URL said — see the note above.
+  const t = useT()
   const elsewhere = routes.filter(
     (r) => !r.noindex && r.path !== NOT_FOUND_PATH,
   )
@@ -31,7 +39,7 @@ export function NotFound() {
                 href={r.path}
                 class="text-text hover:text-signal font-semibold transition-colors"
               >
-                {r.title}
+                {metaFor(r, t).title}
               </a>
             </li>
           ))}
