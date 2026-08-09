@@ -13,7 +13,7 @@
 
 import { render } from 'preact'
 import type { ComponentChildren } from 'preact'
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import {
   ACCOUNT_AGE_CHOICES,
@@ -27,6 +27,7 @@ import {
   CANONICAL_LOCATIONS,
   COUNTRY_FLAGS,
   EXTENSION_ENABLED_KEY,
+  FILTER_RULES,
   type FilterRule,
   HIDE_BLOCKED_LOCATIONS_KEY,
   type HideBlockedMode,
@@ -51,6 +52,7 @@ import {
   type ThemePreference,
   SHOW_ADVANCED_KEY,
   OPTIONS_TAB_KEY,
+  OPTIONS_TABS,
   type OptionsTabId,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_CHOICES,
@@ -80,6 +82,20 @@ import {
   withoutKeyword,
   withoutLocation,
 } from '../scripts/settings'
+import {
+  initI18n,
+  nativeLanguageName,
+  normalizeUiLanguage,
+  t,
+  UI_LANGUAGE_KEY,
+  UI_LOCALES,
+} from '../scripts/i18n'
+import {
+  aliasNote,
+  localizedLocation,
+  sortByLocalizedName,
+  withLocalizedAliases,
+} from '../scripts/location-names'
 import css from './options.module.css'
 import { applyTheme, startThemeSync } from './theme'
 
@@ -87,20 +103,33 @@ const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 
 const DEFAULT_FLAGS = defaultSetting(HIGHLIGHT_FLAGS_KEY)
 
-const TAB_LABELS: Record<OptionsTabId, string> = {
-  display: 'Display',
-  filters: 'Filters',
-  exceptions: 'Exceptions',
-  data: 'Data & privacy',
-  advanced: 'Advanced',
+// Looked up per call rather than built once at import. The order lives in
+// OPTIONS_TABS and FILTER_RULES, which is where it belonged anyway — these are
+// only the words.
+// Thunks, not a map of strings: read at call time so the language can change
+// under the page, and still spelled `t('key')` so `messages.test.ts` can see
+// which messages the page uses. The order lives in OPTIONS_TABS and
+// FILTER_RULES, which is where it belonged anyway — these are only the words.
+const TAB_LABEL: Record<OptionsTabId, () => string> = {
+  display: () => t('tabDisplay'),
+  filters: () => t('tabFilters'),
+  exceptions: () => t('tabExceptions'),
+  data: () => t('tabData'),
+  advanced: () => t('tabAdvanced'),
 }
 
-const RULE_LABELS: Record<FilterRule, string> = {
-  highlight: 'Keyword / flag highlighting',
-  location: 'Blocked locations',
-  affiliation: 'Blocked affiliations',
-  age: 'Account age',
+const RULE_LABEL: Record<FilterRule, () => string> = {
+  highlight: () => t('ruleHighlight'),
+  location: () => t('ruleLocation'),
+  affiliation: () => t('ruleAffiliation'),
+  age: () => t('ruleAge'),
 }
+
+/** The languages the picker offers, each in its own name. */
+const LANGUAGE_CHOICES = UI_LOCALES.map((code) => ({
+  code,
+  name: nativeLanguageName(code),
+})).sort((a, b) => a.name.localeCompare(b.name))
 
 const KEYWORD_SUGGESTIONS = [
   'NAFO',
@@ -254,9 +283,22 @@ export function Options() {
   )
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [theme, setTheme] = useState<ThemePreference>('system')
+  const [language, setLanguage] = useState<string>('')
   const [transferNote, setTransferNote] = useState<string | null>(null)
   const [transferError, setTransferError] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
+
+  // Once per mount. The language cannot change under the page — choosing one
+  // reloads it — and re-sorting 246 names on every keystroke of the picker's
+  // search box is the one place that would be felt.
+  const pickerOptions = useMemo(
+    () => sortByLocalizedName(CANONICAL_LOCATIONS),
+    [],
+  )
+  const pickerAliases = useMemo(
+    () => withLocalizedAliases(LOCATION_ALIASES),
+    [],
+  )
 
   async function handleClearCache() {
     await chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' })
@@ -289,6 +331,7 @@ export function Options() {
         MIN_CONFIDENCE_KEY,
         SHOW_ADVANCED_KEY,
         THEME_KEY,
+        UI_LANGUAGE_KEY,
       ])
       .then((result) => {
         setEnabled(readSetting(EXTENSION_ENABLED_KEY, result))
@@ -321,6 +364,7 @@ export function Options() {
         // Only the select's value: painting the page is startThemeSync's job,
         // below, which also keeps it in step with a second tab.
         setTheme(readSetting(THEME_KEY, result))
+        setLanguage(normalizeUiLanguage(result[UI_LANGUAGE_KEY]))
 
         // The advanced tab is revealed by opening the options page as
         // `options.html?advanced=1` (and hidden again with `?advanced=0`), then
@@ -345,6 +389,18 @@ export function Options() {
   function selectTab(next: OptionsTabId) {
     setTab(next)
     chrome.storage.local.set({ [OPTIONS_TAB_KEY]: next })
+  }
+
+  /**
+   * Reloaded rather than re-rendered: every module in this page reads its
+   * strings through `t()` at call time, but the country-name tables and the
+   * sorted picker are built once per mount, and a settings page showing two
+   * languages at once is worse than one that blinks.
+   */
+  function updateLanguage(next: string) {
+    setLanguage(next)
+    chrome.storage.local.set({ [UI_LANGUAGE_KEY]: next })
+    setTimeout(() => location.reload(), 100)
   }
 
   function updateTheme(next: ThemePreference) {
@@ -486,9 +542,7 @@ export function Options() {
     a.click()
     URL.revokeObjectURL(url)
     setTransferError(false)
-    setTransferNote(
-      `Exported ${Object.keys(file.settings).length} settings. The shared-cache id and your cached locations are not included.`,
-    )
+    setTransferNote(t('noteExported', Object.keys(file.settings).length))
   }
 
   async function handleImportFile(file: File) {
@@ -496,9 +550,9 @@ export function Options() {
       const result = await importSettings(await file.text())
       setTransferError(false)
       setTransferNote(
-        `Imported ${result.applied.length} settings.` +
+        t('noteImported', result.applied.length) +
           (result.ignored.length
-            ? ` ${result.ignored.length} unknown key(s) were skipped.`
+            ? ` ${t('noteImportedSkipped', result.ignored.length)}`
             : ''),
       )
       // Simplest honest way to show every control at its new value: the page
@@ -508,9 +562,7 @@ export function Options() {
     } catch (err) {
       setTransferError(true)
       setTransferNote(
-        err instanceof SettingsImportError
-          ? err.message
-          : 'That file could not be imported.',
+        err instanceof SettingsImportError ? err.message : t('errImportFailed'),
       )
     }
   }
@@ -541,7 +593,7 @@ export function Options() {
   // The Advanced tab holds exactly one setting, and that setting only means
   // anything when there is a cache server to tune. Without one the tab would be
   // an empty room, so it isn't offered at all.
-  const visibleTabs = (Object.keys(TAB_LABELS) as OptionsTabId[]).filter(
+  const visibleTabs = OPTIONS_TABS.filter(
     (id) => id !== 'advanced' || (showAdvanced && isSharedCacheConfigured()),
   )
   // ?advanced=0 while sitting on the advanced tab would otherwise leave the page
@@ -562,14 +614,14 @@ export function Options() {
               href={`https://x.com/${u}`}
               target="_blank"
               rel="noopener noreferrer"
-              title={`Open @${u} on X`}
+              title={t('openHandle', u)}
             >
               @{u}
             </a>
             <button
               class={css.chipRemove}
               onClick={() => onRemove(u)}
-              title={`Remove @${u}`}
+              title={t('removeHandle', u)}
             >
               ×
             </button>
@@ -582,7 +634,7 @@ export function Options() {
   return (
     <div class={css.container}>
       <header class={css.pageHeader}>
-        <h1 class={css.title}>X-Pat settings</h1>
+        <h1 class={css.title}>{t('optionsTitle')}</h1>
         <label class={css.masterSwitch}>
           <input
             type="checkbox"
@@ -593,15 +645,11 @@ export function Options() {
               chrome.storage.local.set({ [EXTENSION_ENABLED_KEY]: next })
             }}
           />
-          <span>{enabled ? 'Enabled' : 'Paused'}</span>
+          <span>{enabled ? t('optionsEnabled') : t('optionsPaused')}</span>
         </label>
       </header>
 
-      {!enabled && (
-        <p class={css.pausedBanner}>
-          Paused — nothing below is being applied to X right now.
-        </p>
-      )}
+      {!enabled && <p class={css.pausedBanner}>{t('optionsPausedBanner')}</p>}
 
       <nav class={css.tabs} role="tablist">
         {visibleTabs.map((id) => (
@@ -612,7 +660,7 @@ export function Options() {
             class={`${css.tab} ${activeTab === id ? css.tabActive : ''}`}
             onClick={() => selectTab(id)}
           >
-            {TAB_LABELS[id]}
+            {TAB_LABEL[id]()}
           </button>
         ))}
       </nav>
@@ -620,13 +668,10 @@ export function Options() {
       {/* ---------------------------------------------------------------- */}
       {activeTab === 'display' && (
         <>
-          <Card
-            title="On the page"
-            description="What X-Pat draws on X. None of this changes which posts are filtered."
-          >
+          <Card title={t('cardOnPage')} description={t('cardOnPageDesc')}>
             <Setting
-              label="Show location in feed"
-              description="A flag under every name in the timeline, not only on hover."
+              label={t('setShowInFeed')}
+              description={t('setShowInFeedDesc')}
               control={
                 <input
                   type="checkbox"
@@ -643,8 +688,8 @@ export function Options() {
             />
 
             <Setting
-              label="Show account details on hover"
-              description="Account age, affiliate badge, verification, handle changes and follower count — read from data X already sent, so it costs no extra lookups."
+              label={t('setAccountCard')}
+              description={t('setAccountCardDesc')}
               control={
                 <input
                   type="checkbox"
@@ -659,8 +704,8 @@ export function Options() {
             />
 
             <Setting
-              label="“Copy” button on hover cards"
-              description="A small “Copy” button in the flags row. Copies the post you hovered from, together with the flags, as an image — rendered in your browser, nothing uploaded. Right-clicking a post does the same thing."
+              label={t('setCopyButton')}
+              description={t('setCopyButtonDesc')}
               control={
                 <input
                   type="checkbox"
@@ -675,8 +720,8 @@ export function Options() {
             />
 
             <Setting
-              label="Exception button on hover cards"
-              description="A one-click exemption for the account you are looking at, from whichever rules are acting on it — the keyword highlight, the country, the affiliate badge, the age. Its tooltip says which."
+              label={t('setExceptionButton')}
+              description={t('setExceptionButtonDesc')}
               control={
                 <input
                   type="checkbox"
@@ -692,19 +737,15 @@ export function Options() {
               }
             />
 
-            {isMobile && (
-              <p class={css.hint}>
-                👉 Swipe right on any post to fetch its location.
-              </p>
-            )}
+            {isMobile && <p class={css.hint}>{t('hintSwipe')}</p>}
           </Card>
 
           <Card
-            title="Appearance"
-            description="Covers X-Pat's own screens — this page and the toolbar popup. The flags and marks drawn on X follow X's theme instead, so they never clash with the timeline they sit in."
+            title={t('cardAppearance')}
+            description={t('cardAppearanceDesc')}
           >
             <Setting
-              label="Theme"
+              label={t('setTheme')}
               clickable={false}
               control={
                 <select
@@ -716,9 +757,39 @@ export function Options() {
                     )
                   }
                 >
-                  <option value="system">Match system</option>
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
+                  <option value="system">{t('themeSystem')}</option>
+                  <option value="light">{t('themeLight')}</option>
+                  <option value="dark">{t('themeDark')}</option>
+                </select>
+              }
+            />
+
+            {/* Each language named in itself, because somebody looking for
+                their own language is not reading the current one. "Match
+                browser" is the odd one out and is translated — whoever reads
+                it has already found a language they understand. */}
+            <Setting
+              label={t('setLanguage')}
+              description={t('setLanguageDesc')}
+              clickable={false}
+              control={
+                <select
+                  class={css.modeSelect}
+                  value={language}
+                  onChange={(e) =>
+                    updateLanguage(
+                      normalizeUiLanguage(
+                        (e.target as HTMLSelectElement).value,
+                      ),
+                    )
+                  }
+                >
+                  <option value="">{t('languageAuto')}</option>
+                  {LANGUAGE_CHOICES.map(({ code, name }) => (
+                    <option key={code} value={code}>
+                      {name}
+                    </option>
+                  ))}
                 </select>
               }
             />
@@ -729,10 +800,7 @@ export function Options() {
       {/* ---------------------------------------------------------------- */}
       {activeTab === 'filters' && (
         <>
-          <Card
-            title="Highlight by keyword"
-            description="Marks posts whose author's name or bio contains any of these. Highlighting marks a post; it never hides one."
-          >
+          <Card title={t('cardKeyword')} description={t('cardKeywordDesc')}>
             <Stack>
               {keywords.length > 0 && (
                 <div class={css.chips}>
@@ -744,7 +812,7 @@ export function Options() {
                         onClick={() =>
                           editKeywords(withoutKeyword(keywords, kw))
                         }
-                        title={`Remove ${kw}`}
+                        title={t('removeItem', kw)}
                       >
                         ×
                       </button>
@@ -758,23 +826,18 @@ export function Options() {
                 selected={keywords}
                 allOptions={KEYWORD_SUGGESTIONS}
                 onSelect={(kw) => editKeywords(withKeyword(keywords, kw))}
-                placeholder="Type a keyword or pick a suggestion…"
+                placeholder={t('keywordPlaceholder')}
                 allowFreeInput
                 closeOnSelect={false}
               />
 
               {keywords.length === 0 && (
-                <p class={css.empty}>
-                  No keywords set — all posts shown normally.
-                </p>
+                <p class={css.empty}>{t('emptyNoKeywords')}</p>
               )}
             </Stack>
           </Card>
 
-          <Card
-            title="Locations"
-            description="These show ⚠️ instead of their flag. Goes by the store country, or the account location when it isn't flagged as VPN. Never applies to the post you opened."
-          >
+          <Card title={t('cardLocations')} description={t('cardLocationsDesc')}>
             <Stack>
               {blocked.length > 0 && (
                 <div class={css.chips}>
@@ -785,7 +848,7 @@ export function Options() {
                         <span class={css.chipFlag}>
                           {ALL_FLAGS[country] ?? '🌐'}
                         </span>
-                        {country}
+                        {localizedLocation(country)}
                         {members && (
                           <span class={css.chipNote} title={members.join(', ')}>
                             +{members.length}
@@ -796,7 +859,7 @@ export function Options() {
                           onClick={() =>
                             editBlocked(withoutLocation(blocked, country))
                           }
-                          title={`Remove ${country}`}
+                          title={t('removeItem', localizedLocation(country))}
                         >
                           ×
                         </button>
@@ -809,38 +872,38 @@ export function Options() {
               <Autocomplete
                 id="country"
                 selected={blocked}
-                allOptions={CANONICAL_LOCATIONS}
-                aliases={LOCATION_ALIASES}
+                allOptions={pickerOptions}
+                aliases={pickerAliases}
                 onSelect={(name) => editBlocked(withLocation(blocked, name))}
-                placeholder="Search countries and regions — name, code or nickname…"
-                renderOption={(c, alias) => (
-                  <>
-                    <span class={css.dropdownFlag}>{ALL_FLAGS[c] ?? '🌐'}</span>
-                    <span>{c}</span>
-                    {REGION_MEMBERS[c] && (
-                      <span class={css.dropdownAlias}>
-                        region · {REGION_MEMBERS[c].length} countries
+                placeholder={t('locationPlaceholder')}
+                renderOption={(c, alias) => {
+                  const note = aliasNote(c, alias)
+                  return (
+                    <>
+                      <span class={css.dropdownFlag}>
+                        {ALL_FLAGS[c] ?? '🌐'}
                       </span>
-                    )}
-                    {alias && <span class={css.dropdownAlias}>{alias}</span>}
-                  </>
-                )}
+                      <span>{localizedLocation(c)}</span>
+                      {REGION_MEMBERS[c] && (
+                        <span class={css.dropdownAlias}>
+                          {t('regionCountries', REGION_MEMBERS[c].length)}
+                        </span>
+                      )}
+                      {note && <span class={css.dropdownAlias}>{note}</span>}
+                    </>
+                  )
+                }}
               />
 
               {blocked.length === 0 && (
-                <p class={css.empty}>
-                  No locations selected — all flags shown as-is.
-                </p>
+                <p class={css.empty}>{t('emptyNoLocations')}</p>
               )}
             </Stack>
           </Card>
 
-          <Card
-            title="What happens to a filtered post"
-            description="Applies to the two filters that take a post away — blocked locations and blocked affiliations. Account age and keyword highlighting mark a post whatever this is set to. A quoted post is collapsed on its own, so the post quoting it stays readable, and people lists are marked rather than hidden — removing rows there breaks the counts."
-          >
+          <Card title={t('cardFiltered')} description={t('cardFilteredDesc')}>
             <Setting
-              label="Filtered posts"
+              label={t('filteredPosts')}
               clickable={false}
               control={
                 <select
@@ -854,17 +917,17 @@ export function Options() {
                     )
                   }
                 >
-                  <option value="off">Show normally</option>
-                  <option value="collapse">Collapse (“Show” to open)</option>
-                  <option value="hide">Hide completely</option>
+                  <option value="off">{t('hideModeOff')}</option>
+                  <option value="collapse">{t('hideModeCollapseLong')}</option>
+                  <option value="hide">{t('hideModeHideLong')}</option>
                 </select>
               }
             />
           </Card>
 
           <Card
-            title="Affiliations"
-            description="X badges some accounts as belonging to an organisation. Enter the parent account's handle to filter every account badged with it at once."
+            title={t('cardAffiliations')}
+            description={t('cardAffiliationsDesc')}
           >
             <Stack>
               {renderHandleChips(affiliations, removeAffiliation)}
@@ -874,27 +937,21 @@ export function Options() {
                 selected={affiliations}
                 allOptions={[]}
                 onSelect={addAffiliation}
-                placeholder="Parent account handle, e.g. nasa…"
+                placeholder={t('affiliationPlaceholder')}
                 allowFreeInput
                 closeOnSelect={false}
               />
 
               {affiliations.length === 0 && (
-                <p class={css.empty}>
-                  No affiliations blocked. Hover an account to see whether it
-                  carries a badge.
-                </p>
+                <p class={css.empty}>{t('emptyNoAffiliations')}</p>
               )}
             </Stack>
           </Card>
 
-          <Card
-            title="Account age"
-            description="How long the account has existed, from the creation date X reports. This one marks posts and never hides them, whatever the setting above says."
-          >
+          <Card title={t('cardAge')} description={t('cardAgeDesc')}>
             <Setting
-              label="Mark young accounts"
-              description="Marks their posts the same way a keyword match does, with the orange bar down the side. It stops there on purpose: a young account is the strongest single signal for a bought or farmed one, and it is also exactly what somebody who joined last month looks like — too thin an excuse to take their replies away."
+              label={t('setMarkYoung')}
+              description={t('setMarkYoungDesc')}
               control={
                 <input
                   type="checkbox"
@@ -908,7 +965,7 @@ export function Options() {
               }
             />
             <Setting
-              label="Mark accounts younger than"
+              label={t('setMarkYoungerThan')}
               clickable={false}
               disabled={!accountAge.enabled}
               control={
@@ -932,12 +989,9 @@ export function Options() {
             />
           </Card>
 
-          <Card
-            title="Highlight by flags"
-            description="Marks posts whose author's bio is full of flag emoji."
-          >
+          <Card title={t('cardFlags')} description={t('cardFlagsDesc')}>
             <Setting
-              label="Highlight flag-heavy bios"
+              label={t('setHighlightFlagHeavy')}
               control={
                 <input
                   type="checkbox"
@@ -953,7 +1007,7 @@ export function Options() {
               }
             />
             <Setting
-              label="More than this many flags"
+              label={t('setFlagThreshold')}
               clickable={false}
               disabled={!flagsEnabled}
               control={
@@ -975,7 +1029,7 @@ export function Options() {
               }
             />
             <Setting
-              label="Count only unique flags"
+              label={t('setUniqueFlags')}
               disabled={!flagsEnabled}
               control={
                 <input
@@ -1000,8 +1054,8 @@ export function Options() {
       {activeTab === 'exceptions' && (
         <>
           <Card
-            title="Always show"
-            description="Exempt from every rule at once — never hidden, never collapsed, never highlighted, whatever the filters say."
+            title={t('cardAlwaysShow')}
+            description={t('cardAlwaysShowDesc')}
           >
             <Stack>
               {renderHandleChips(alwaysShow, removeAlwaysShow)}
@@ -1011,24 +1065,18 @@ export function Options() {
                 selected={alwaysShow}
                 allOptions={[]}
                 onSelect={addAlwaysShow}
-                placeholder="Add a username (without @)…"
+                placeholder={t('usernamePlaceholder')}
                 allowFreeInput
                 closeOnSelect={false}
               />
 
               {alwaysShow.length === 0 && (
-                <p class={css.empty}>
-                  Nobody on the allowlist — every account is judged by the
-                  rules.
-                </p>
+                <p class={css.empty}>{t('emptyNoAllowlist')}</p>
               )}
             </Stack>
           </Card>
 
-          <Card
-            title="Per-rule exceptions"
-            description="Exempt an account from one rule but not the others — for someone using a tracked keyword sarcastically (“no NAFO”), or posting from a blocked country you still want to read."
-          >
+          <Card title={t('cardPerRule')} description={t('cardPerRuleDesc')}>
             <Stack>
               <input
                 type="search"
@@ -1037,30 +1085,32 @@ export function Options() {
                 onInput={(e) =>
                   setExceptionFilter((e.target as HTMLInputElement).value)
                 }
-                placeholder="Search exceptions…"
-                aria-label="Search exceptions"
+                placeholder={t('searchExceptions')}
+                aria-label={t('searchExceptionsLabel')}
               />
 
-              {(Object.keys(RULE_LABELS) as FilterRule[]).map((rule) => {
+              {FILTER_RULES.map((rule) => {
                 const shown = exceptionQuery
                   ? exceptions[rule].filter((u) => u.includes(exceptionQuery))
                   : exceptions[rule]
                 return (
                   <div key={rule} class={css.ruleGroup}>
-                    <h3 class={css.ruleTitle}>{RULE_LABELS[rule]}</h3>
+                    <h3 class={css.ruleTitle}>{RULE_LABEL[rule]()}</h3>
                     {renderHandleChips(shown, (u) => removeException(rule, u))}
                     {exceptions[rule].length > 0 && shown.length === 0 && (
-                      <p class={css.empty}>None match “{exceptionFilter}”.</p>
+                      <p class={css.empty}>
+                        {t('emptyNoMatch', exceptionFilter)}
+                      </p>
                     )}
                     {exceptions[rule].length === 0 && (
-                      <p class={css.empty}>No exceptions.</p>
+                      <p class={css.empty}>{t('emptyNoExceptions')}</p>
                     )}
                     <Autocomplete
                       id={`exception-${rule}`}
                       selected={exceptions[rule]}
                       allOptions={[]}
                       onSelect={(name) => addException(rule, name)}
-                      placeholder="Add a username (without @)…"
+                      placeholder={t('usernamePlaceholder')}
                       allowFreeInput
                       closeOnSelect={false}
                     />
@@ -1076,13 +1126,17 @@ export function Options() {
       {activeTab === 'data' && (
         <>
           <Card
-            title="Background lookups"
-            description={`X allows about ${LOOKUP_LIMIT_PER_WINDOW} account lookups every ${LOOKUP_WINDOW_MINUTES} minutes. These settings decide how much of that X-Pat may spend filling flags in for you, and how much is held back for the accounts you hover yourself.`}
+            title={t('cardLookups')}
+            description={t(
+              'cardLookupsDesc',
+              LOOKUP_LIMIT_PER_WINDOW,
+              LOOKUP_WINDOW_MINUTES,
+            )}
           >
             {isSharedCacheConfigured() && (
               <Setting
-                label="Use the shared community cache"
-                description="Shares the flags you look up so everyone skips repeat lookups. Only public handles and their flag are sent — no account or personal data."
+                label={t('setSharedCache')}
+                description={t('setSharedCacheDesc')}
                 control={
                   <input
                     type="checkbox"
@@ -1098,8 +1152,8 @@ export function Options() {
             )}
 
             <Setting
-              label="Prefetch locations in the background"
-              description="Looks up accounts in your feed, in the order they appear, so flags show up without hovering."
+              label={t('setPrefetch')}
+              description={t('setPrefetchDesc')}
               disabled={cacheOff}
               control={
                 <input
@@ -1118,12 +1172,14 @@ export function Options() {
             />
 
             <Setting
-              label="Share of the lookup limit it may use"
+              label={t('setShare')}
               clickable={false}
               disabled={cacheOff || !prefetchEnabled}
-              description={`${shareLookups} for prefetching, ${
-                LOOKUP_LIMIT_PER_WINDOW - shareLookups
-              } left for your own hovers.`}
+              description={t(
+                'setShareDesc',
+                shareLookups,
+                LOOKUP_LIMIT_PER_WINDOW - shareLookups,
+              )}
               control={
                 <select
                   class={css.modeSelect}
@@ -1143,8 +1199,8 @@ export function Options() {
             />
 
             <Setting
-              label={`Spread lookups over the whole ${LOOKUP_WINDOW_MINUTES} minutes`}
-              description={`About one lookup every ${spreadSeconds}s, instead of all at once.`}
+              label={t('setSpread', LOOKUP_WINDOW_MINUTES)}
+              description={t('setSpreadDesc', spreadSeconds)}
               disabled={cacheOff || !prefetchEnabled}
               control={
                 <input
@@ -1163,20 +1219,17 @@ export function Options() {
             />
           </Card>
 
-          <Card
-            title="Back up & restore"
-            description="Move your settings to another browser, or keep a copy before experimenting."
-          >
+          <Card title={t('cardBackup')} description={t('cardBackupDesc')}>
             <Stack>
               <div class={css.buttonRow}>
                 <button class={css.secondaryBtn} onClick={handleExport}>
-                  Export settings
+                  {t('btnExport')}
                 </button>
                 <button
                   class={css.secondaryBtn}
                   onClick={() => fileInput.current?.click()}
                 >
-                  Import settings
+                  {t('btnImport')}
                 </button>
                 <input
                   ref={fileInput}
@@ -1197,18 +1250,11 @@ export function Options() {
                   {transferNote}
                 </p>
               )}
-              <p class={css.hint}>
-                Import merges: settings the file doesn't mention are left alone.
-                Every value is re-checked on the way in, so a hand-edited file
-                can't put the extension into a state it can't recover from.
-              </p>
+              <p class={css.hint}>{t('hintImportMerge')}</p>
             </Stack>
           </Card>
 
-          <Card
-            title="Local cache"
-            description="Locations you have looked up are kept in this browser for 30 days, so showing them again costs nothing."
-          >
+          <Card title={t('cardCache')} description={t('cardCacheDesc')}>
             <Stack>
               <div class={css.buttonRow}>
                 <button
@@ -1216,7 +1262,7 @@ export function Options() {
                   onClick={handleClearCache}
                   disabled={cacheCleared}
                 >
-                  {cacheCleared ? 'Cache cleared' : 'Clear location cache'}
+                  {cacheCleared ? t('btnCacheCleared') : t('btnClearCache')}
                 </button>
               </div>
             </Stack>
@@ -1229,11 +1275,11 @@ export function Options() {
         showAdvanced &&
         isSharedCacheConfigured() && (
           <Card
-            title="Shared cache trust"
-            description={`How many independent reports of the same location this install requires before trusting it. Higher is harder to poison but answers far less: today only about 1 in 80 cached profiles has been reported twice, so anything above 1 mostly falls back to looking the account up on X and spends your rate limit. Leave it at ${DEFAULT_MIN_CONFIDENCE} unless you are measuring this.`}
+            title={t('cardTrust')}
+            description={t('cardTrustDesc', DEFAULT_MIN_CONFIDENCE)}
           >
             <Setting
-              label="Trust a shared location after"
+              label={t('setTrustAfter')}
               clickable={false}
               disabled={cacheOff}
               control={
@@ -1247,7 +1293,7 @@ export function Options() {
                 >
                   {MIN_CONFIDENCE_CHOICES.map((n) => (
                     <option key={n} value={String(n)}>
-                      {n} {n === 1 ? 'report' : 'reports'}
+                      {t(`trustReports${n}`)}
                     </option>
                   ))}
                 </select>
@@ -1259,4 +1305,4 @@ export function Options() {
   )
 }
 
-render(<Options />, document.body)
+void initI18n().then(() => render(<Options />, document.body))

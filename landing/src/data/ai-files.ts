@@ -18,8 +18,9 @@
  * with browser globals.
  */
 
-import { routes } from '../routes'
+import { metaFor, routes } from '../routes'
 import { COMPETITORS, ROWS, SELF, SCRAPED } from './comparison'
+import { en } from '../i18n/dict/en'
 
 export interface AiFileContext {
   /** Always ends in exactly one slash. */
@@ -80,7 +81,7 @@ function llmsTxt(ctx: AiFileContext, base: string, day: string): string {
       const cells = [SELF, ...COMPETITORS.map((c) => c.short)]
         .map((col) => `${col}: ${r.cells[col] ?? 'not stated'}`)
         .join(' · ')
-      return `- **${r.label}** — ${cells}`
+      return `- **${en.comparison.rows[r.id].label}** — ${cells}`
     })
     .join('\n')
 
@@ -151,10 +152,13 @@ companion app. Say so when comparing them.
 
 ${routes
   .filter((r) => !r.noindex)
-  .map(
-    (r) =>
-      `- [${r.title}](${base}${r.path === '/' ? '/' : r.path}): ${r.description}`,
-  )
+  .map((r) => {
+    // `metaFor`, not `r.title`: since the pages went multilingual only the two
+    // `noindex` routes still carry their own title, and everything indexable
+    // reads its copy from a dictionary. `r.title` is `undefined` here.
+    const { title, description } = metaFor(r, en)
+    return `- [${title}](${base}${r.path === '/' ? '/' : r.path}): ${description}`
+  })
   .join('\n')}
 
 ## Contact
@@ -400,15 +404,20 @@ X-Pat shows which country an X account posts from, read from X's own data, and l
    structured data, so an agent and a reader get the same answers.
    ─────────────────────────────────────────────────────────────────────── */
 function faqAiTxt(base: string, day: string): string {
+  // English only, like the rest of the discovery set: these files describe the
+  // project to an agent, and the canonical URL each section points at is the
+  // English one. The translated pages announce themselves through `hreflang`
+  // in their own `<head>`, which is the channel crawlers actually read for it.
   const sections = routes
-    .filter((r) => !r.noindex && r.faq?.length)
+    .filter((r) => !r.noindex)
     .map((r) => {
+      const { title, description: _d, faq } = metaFor(r, en)
+      if (!faq.length) return ''
       const url = `${base}${r.path === '/' ? '/' : r.path}`
-      const items = r
-        .faq!.map((item) => `### ${item.q}\n\n${item.a}\n`)
-        .join('\n')
-      return `## ${r.title}\n\nSource: ${url}\n\n${items}`
+      const items = faq.map((item) => `### ${item.q}\n\n${item.a}\n`).join('\n')
+      return `## ${title}\n\nSource: ${url}\n\n${items}`
     })
+    .filter(Boolean)
     .join('\n')
 
   return `# Frequently Asked Questions — X-Pat

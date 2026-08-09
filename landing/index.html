@@ -18,6 +18,75 @@
     />
     <title>X-Pat — X Profile Location: see the country of any X profile</title>
     <script>
+      // Language preference. Inline and first in the head so it runs before
+      // anything paints — a redirect after first paint is a visible flash.
+      //
+      // Deliberately *not* a permanent Accept-Language redirect. Google's
+      // guidance is explicit that auto-redirecting every visit stops crawlers
+      // (and people) reaching the other versions at all, so the rule here is
+      // narrower: redirect at most once, from the bare English homepage, and
+      // only when the visitor has never expressed a choice. The moment they
+      // pick a language from the menu, that choice wins forever — the picker's
+      // English entry carries `#hl=en` precisely so "English" is expressible
+      // as a preference rather than as the absence of one.
+      //
+      // Only `/` is ever redirected. A deep link, a shared URL and every
+      // hreflang alternate resolve to exactly what they say.
+      ;(function () {
+        var CODES = '%LOCALE_CODES%'.split(',')
+        var KEY = 'xpat-lang'
+        var store
+        try {
+          store = localStorage
+        } catch (e) {
+          return // Private mode with storage denied: leave the page alone.
+        }
+
+        // Arriving from the picker's English entry is an explicit choice.
+        if (location.hash === '#hl=en') {
+          store.setItem(KEY, 'en')
+          history.replaceState(null, '', location.pathname + location.search)
+          return
+        }
+
+        var first = location.pathname.split('/')[1]
+        if (CODES.indexOf(first) > -1) {
+          store.setItem(KEY, first) // On /ja/… — remember that.
+          return
+        }
+        if (location.pathname !== '/') return
+
+        var saved = store.getItem(KEY)
+        if (saved) {
+          if (saved !== 'en') location.replace('/' + saved)
+          return
+        }
+
+        // Two primary subtags are still emitted under their superseded codes:
+        // Android and older browsers report Tagalog as `tl` rather than `fil`,
+        // and Java-derived stacks report Indonesian as `in` rather than `id`.
+        // Without these, the two locales are unreachable by detection for the
+        // devices most likely to want them.
+        var ALIAS = { tl: 'fil', in: 'id' }
+
+        var wanted = (navigator.languages || [navigator.language || 'en'])
+          .map(function (l) {
+            var p = String(l).toLowerCase().split('-')[0]
+            return ALIAS[p] || p
+          })
+          .filter(function (l) {
+            return CODES.indexOf(l) > -1
+          })[0]
+
+        if (wanted && wanted !== 'en') {
+          store.setItem(KEY, wanted)
+          location.replace('/' + wanted)
+        } else {
+          store.setItem(KEY, 'en')
+        }
+      })()
+    </script>
+    <script>
       // gtag is ~87 kB, two thirds of it unused, and it blocks nothing that
       // matters — so it waits for idle rather than competing with the font and
       // the stylesheet for bandwidth during first paint.
@@ -50,6 +119,9 @@
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" prerender src="/src/main.tsx"></script>
+    <!-- No `prerender` attribute: the build-time entry is `src/prerender.tsx`,
+         named in vite.config.ts, so that the client graph never reaches the
+         dictionary registry. This script is hydration only. -->
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

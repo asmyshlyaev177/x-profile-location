@@ -3,6 +3,7 @@ import { detectBrowser, detectBrowserAsync, STORES } from '../utils/browser'
 import type { SupportedBrowser } from '../utils/browser'
 import { trackEvent } from '../utils/analytics'
 import type { InstallPlacement } from '../utils/analytics'
+import { useT } from '../i18n/context'
 
 interface InstallButtonProps {
   size?: 'sm' | 'md' | 'lg'
@@ -36,6 +37,7 @@ export function InstallButton({
   override,
   class: cls = '',
 }: InstallButtonProps) {
+  const t = useT()
   const [browser, setBrowser] = useState<SupportedBrowser>('chrome')
 
   useEffect(() => {
@@ -70,10 +72,12 @@ export function InstallButton({
       class={`group inline-flex items-center justify-center rounded-full font-bold tracking-[-0.01em] transition-[background-color,transform,box-shadow] duration-200 ease-out active:translate-y-px ${SIZES[size]} ${TONES[tone]} ${cls}`}
     >
       <BrowserIcon browser={browser} />
-      {store.label}
+      {t.install[browser]}
+      {/* `rtl:-scale-x-100` because the arrow means "onwards", and onwards is
+          leftwards on the Arabic pages. */}
       <span
         aria-hidden="true"
-        class="transition-transform duration-300 ease-out group-hover:translate-x-0.5"
+        class="transition-transform duration-300 ease-out group-hover:translate-x-0.5 rtl:-scale-x-100"
       >
         →
       </span>

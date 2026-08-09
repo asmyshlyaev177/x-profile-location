@@ -1,44 +1,33 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
+import { useT } from '../i18n/context'
+import type { Dict } from '../i18n/dict/en'
 
-const SCREENSHOTS = [
-  {
-    src: '/Hover_screenshot-x-profile-location.png',
-    label: 'Flag on hover',
-    alt: 'An X hover card with a German flag and the word Germany added below the handle',
-  },
-  {
-    src: '/VPN_screenshot-x-profile-location.png',
-    label: 'VPN warning',
-    alt: 'A hover card showing a US flag next to a red ⚠ VPN badge',
-  },
-  {
-    src: '/Flags_screenshot-x-profile-location.png',
-    label: 'Flags in the feed',
-    alt: 'A timeline where every author carries their country flag inline, without hovering',
-  },
-  {
-    src: '/Warning-screenshot-x-profile-location.png',
-    label: 'Blocked countries',
-    alt: 'Profiles from blocked locations reading as a warning sign instead of a flag',
-  },
-  {
-    src: '/Highlight_screenshot-x-profile-location.png',
-    label: 'Keyword highlight',
-    alt: 'A tweet highlighted in amber because the author bio matched a saved keyword',
-  },
-  {
-    src: '/Highlight2_screenshot-x-profile-location.png',
-    label: 'Flag-stuffed bios',
-    alt: 'An account flagged for packing several country flags into its bio',
-  },
-  {
-    src: '/swipe_right.png',
-    label: 'Swipe on mobile',
-    alt: 'A phone-width timeline with a swipe-right gesture revealing the author country as an overlay',
-  },
-]
+/**
+ * Which shot maps to which file. The label and alt text are copy and live in
+ * `screenshots.shots.<id>`; only the filename is data, and it is the same in
+ * every language because the images are of an English UI.
+ */
+const SHOT_IDS = [
+  'hover',
+  'vpn',
+  'feed',
+  'blocked',
+  'keyword',
+  'flagBios',
+  'swipe',
+] as const satisfies readonly (keyof Dict['screenshots']['shots'])[]
 
-type Shot = (typeof SCREENSHOTS)[number]
+const SHOT_COUNT = SHOT_IDS.length
+
+const SRC: Record<(typeof SHOT_IDS)[number], string> = {
+  hover: '/Hover_screenshot-x-profile-location.png',
+  vpn: '/VPN_screenshot-x-profile-location.png',
+  feed: '/Flags_screenshot-x-profile-location.png',
+  blocked: '/Warning-screenshot-x-profile-location.png',
+  keyword: '/Highlight_screenshot-x-profile-location.png',
+  flagBios: '/Highlight2_screenshot-x-profile-location.png',
+  swipe: '/swipe_right.png',
+}
 
 /**
  * Screenshots live in public/ and so are not content-hashed by Vite. The
@@ -51,12 +40,12 @@ const webp = (src: string) => src.replace(/\.png$/, '.webp') + v
 const thumbWebp = (src: string) => src.replace(/\.png$/, '-thumb.webp') + v
 
 /** 320w WebP for a rail that renders around 128px wide. */
-function Thumb({ shot, class: cls }: { shot: Shot; class?: string }) {
+function Thumb({ src, class: cls }: { src: string; class?: string }) {
   return (
     <picture>
-      <source srcSet={thumbWebp(shot.src)} type="image/webp" />
+      <source srcSet={thumbWebp(src)} type="image/webp" />
       <img
-        src={png(shot.src)}
+        src={png(src)}
         alt=""
         width="160"
         height="64"
@@ -69,13 +58,26 @@ function Thumb({ shot, class: cls }: { shot: Shot; class?: string }) {
 }
 
 export function Screenshots() {
+  const t = useT()
   const [active, setActive] = useState(0)
   const [open, setOpen] = useState(false)
   const dialogRef = useRef<HTMLDialogElement>(null)
 
-  const prev = () =>
-    setActive((i) => (i - 1 + SCREENSHOTS.length) % SCREENSHOTS.length)
-  const next = () => setActive((i) => (i + 1) % SCREENSHOTS.length)
+  // Spelled out rather than spread: the four fields are the whole shape, and
+  // the spread allocated a fresh copy of each on every render.
+  const shots = SHOT_IDS.map((id) => {
+    const copy = t.screenshots.shots[id]
+    return { id, src: SRC[id], label: copy.label, alt: copy.alt }
+  })
+
+  // Stable, so the keydown listener below can depend on them honestly: the
+  // count is a constant and `setActive` takes an updater, so neither closes
+  // over anything that moves.
+  const prev = useCallback(
+    () => setActive((i) => (i - 1 + SHOT_COUNT) % SHOT_COUNT),
+    [],
+  )
+  const next = useCallback(() => setActive((i) => (i + 1) % SHOT_COUNT), [])
 
   // <dialog> earns its keep here: top-layer rendering, a focus trap and Escape
   // handling all come for free, and no z-index can clip it.
@@ -94,9 +96,9 @@ export function Screenshots() {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open])
+  }, [open, prev, next])
 
-  const shot = SCREENSHOTS[active]
+  const shot = shots[active]!
 
   return (
     <section id="proof" class="band-tight relative scroll-mt-24">
@@ -106,11 +108,9 @@ export function Screenshots() {
             300px screenshot in half a metre of empty background. */}
         <div class="mx-auto w-full max-w-4xl">
           <header class="mb-10 flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
-            <h2 class="t-h2 reveal max-w-[22ch]">
-              This is it, running inside X.
-            </h2>
+            <h2 class="t-h2 reveal max-w-[22ch]">{t.screenshots.heading}</h2>
             <p class="t-body reveal max-w-[34ch] text-balance">
-              Screenshots from an ordinary timeline. Pick one to see it working.
+              {t.screenshots.lead}
             </p>
           </header>
 
@@ -137,7 +137,7 @@ export function Screenshots() {
 
             <button
               type="button"
-              class="text-faint hover:text-text bg-void/70 border-hair hover:border-hair-strong absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.75rem] font-semibold backdrop-blur-sm transition-colors"
+              class="text-faint hover:text-text bg-void/70 border-hair hover:border-hair-strong absolute end-3 bottom-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.75rem] font-semibold backdrop-blur-sm transition-colors"
               onClick={() => setOpen(true)}
             >
               <svg
@@ -145,28 +145,29 @@ export function Screenshots() {
                 height="12"
                 viewBox="0 0 16 16"
                 fill="currentColor"
+                aria-hidden="true"
               >
                 <path d="M1.5 1h5a.5.5 0 0 1 0 1H2v4.5a.5.5 0 0 1-1 0v-5A.5.5 0 0 1 1.5 1zm13 0a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V2h-4.5a.5.5 0 0 1 0-1h5zM1 9.5a.5.5 0 0 1 1 0V14h4.5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5v-5zm14 0v5a.5.5 0 0 1-.5.5h-5a.5.5 0 0 1 0-1H14V9.5a.5.5 0 0 1 1 0z" />
               </svg>
-              Full size
+              {t.screenshots.fullSize}
             </button>
 
-            <Arrow dir="prev" onClick={prev} />
-            <Arrow dir="next" onClick={next} />
+            <Arrow dir="prev" onClick={prev} t={t} />
+            <Arrow dir="next" onClick={next} t={t} />
           </div>
 
           {/* One rail at every width: seven fit exactly on desktop, and the
               min-width turns it into a snap-scroller on phones. */}
           <div
             role="tablist"
-            aria-label="Screenshots"
+            aria-label={t.screenshots.railLabel}
             class="scrollbar-none mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1"
           >
-            {SCREENSHOTS.map((s, i) => {
+            {shots.map((s, i) => {
               const on = i === active
               return (
                 <button
-                  key={s.src}
+                  key={s.id}
                   type="button"
                   id={`shot-tab-${i}`}
                   role="tab"
@@ -188,7 +189,7 @@ export function Screenshots() {
                       opacity drags the caption down with it, which is what put
                       the inactive labels at 3.6:1. */}
                   <Thumb
-                    shot={s}
+                    src={s.src}
                     class={`transition-opacity duration-200 ease-out ${on ? 'opacity-100' : 'opacity-50 group-hover:opacity-80'}`}
                   />
                   <span
@@ -214,7 +215,7 @@ export function Screenshots() {
         onClick={(e) => {
           if (e.target === dialogRef.current) setOpen(false)
         }}
-        aria-label="Screenshot viewer"
+        aria-label={t.screenshots.viewer}
       >
         <figure class="grid max-h-[88vh] max-w-[92vw] place-items-center gap-4">
           <picture>
@@ -226,20 +227,20 @@ export function Screenshots() {
             />
           </picture>
           <figcaption class="t-data text-body">
-            {shot.label} · {active + 1} / {SCREENSHOTS.length}
+            {shot.label} · {active + 1} / {shots.length}
           </figcaption>
         </figure>
 
         <button
           type="button"
-          class="text-faint hover:text-text absolute top-4 right-5 text-2xl leading-none"
+          class="text-faint hover:text-text absolute end-5 top-4 text-2xl leading-none"
           onClick={() => setOpen(false)}
-          aria-label="Close"
+          aria-label={t.screenshots.close}
         >
           ✕
         </button>
-        <Arrow dir="prev" onClick={prev} />
-        <Arrow dir="next" onClick={next} />
+        <Arrow dir="prev" onClick={prev} t={t} />
+        <Arrow dir="next" onClick={next} t={t} />
       </dialog>
     </section>
   )
@@ -248,18 +249,22 @@ export function Screenshots() {
 function Arrow({
   dir,
   onClick,
+  t,
 }: {
   dir: 'prev' | 'next'
   onClick: () => void
+  t: Dict
 }) {
   const isPrev = dir === 'prev'
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={isPrev ? 'Previous screenshot' : 'Next screenshot'}
+      aria-label={isPrev ? t.screenshots.prev : t.screenshots.next}
+      // `start`/`end` rather than `left`/`right`, and the chevron mirrors with
+      // them: "previous" is the direction you read *from*, whichever that is.
       class={`text-faint hover:text-text bg-void/70 border-hair hover:border-hair-strong absolute top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border backdrop-blur-sm transition-colors ${
-        isPrev ? 'left-2 sm:left-3' : 'right-2 sm:right-3'
+        isPrev ? 'start-2 sm:start-3' : 'end-2 sm:end-3'
       }`}
     >
       <svg
@@ -271,6 +276,8 @@ function Arrow({
         stroke-width="2.25"
         stroke-linecap="round"
         stroke-linejoin="round"
+        class="rtl:-scale-x-100"
+        aria-hidden="true"
       >
         <polyline points={isPrev ? '15 18 9 12 15 6' : '9 18 15 12 9 6'} />
       </svg>
