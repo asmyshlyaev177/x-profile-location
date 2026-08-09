@@ -1,0 +1,608 @@
+{
+  "localeTag": {
+    "message": "de"
+  },
+  "appName": {
+    "message": "X-Pat — X-Profilstandort filtern & hervorheben"
+  },
+  "appShortName": {
+    "message": "X-Pat"
+  },
+  "appDesc": {
+    "message": "Zeigt das Land, aus dem ein X-Profil postet — Länderflaggen, VPN-Warnungen und Länderfilter basierend auf X' eigenen Daten."
+  },
+  "actionTitle": {
+    "message": "X-Pat"
+  },
+  "menuSharePost": {
+    "message": "Post mit Standortflaggen kopieren"
+  },
+  "popupPaused": {
+    "message": "Pausiert. X sieht genauso aus wie ohne die Erweiterung."
+  },
+  "popupOn": {
+    "message": "An"
+  },
+  "popupOff": {
+    "message": "Aus"
+  },
+  "popupMasterSwitchTitle": {
+    "message": "Alles vorübergehend ausschalten"
+  },
+  "popupFlagsInFeed": {
+    "message": "Flaggen im Feed 📍"
+  },
+  "popupAccountDetails": {
+    "message": "Kontodetails beim Überfahren 🪪"
+  },
+  "popupCountryPlaceholder": {
+    "message": "Land oder Region…"
+  },
+  "popupNothingBlocked": {
+    "message": "Nichts blockiert — alle Flaggen werden normal angezeigt."
+  },
+  "popupHighlightKeywords": {
+    "message": "Stichwörter hervorheben"
+  },
+  "popupKeywordPlaceholder": {
+    "message": "Stichwort hinzufügen…"
+  },
+  "popupNoKeywords": {
+    "message": "Keine Stichwörter — nichts wird hervorgehoben."
+  },
+  "popupAllSettings": {
+    "message": "Alle Einstellungen →"
+  },
+  "popupRate": {
+    "message": "Bewerten ★"
+  },
+  "popupRateTitle": {
+    "message": "X-Pat im Chrome Web Store bewerten"
+  },
+  "popupDonate": {
+    "message": "Spenden 💜"
+  },
+  "popupDonateTitle": {
+    "message": "Entwicklung unterstützen"
+  },
+  "removeItem": {
+    "message": "$1 entfernen"
+  },
+  "removeHandle": {
+    "message": "@$1 entfernen"
+  },
+  "openHandle": {
+    "message": "@$1 auf X öffnen"
+  },
+  "rateAskText": {
+    "message": "Nützlich gewesen? Eine Store-Bewertung hilft sehr."
+  },
+  "rateAskInline": {
+    "message": "— nützlich gewesen? Eine Store-Bewertung hilft sehr."
+  },
+  "rateAskYes": {
+    "message": "Bewerten ★"
+  },
+  "rateAskLater": {
+    "message": "Später"
+  },
+  "rateAskNo": {
+    "message": "Nein danke"
+  },
+  "optionsTitle": {
+    "message": "X-Pat Einstellungen"
+  },
+  "optionsEnabled": {
+    "message": "Aktiviert"
+  },
+  "optionsPaused": {
+    "message": "Pausiert"
+  },
+  "optionsPausedBanner": {
+    "message": "Pausiert — nichts hiervon wird gerade auf X angewendet."
+  },
+  "tabDisplay": {
+    "message": "Anzeige"
+  },
+  "tabFilters": {
+    "message": "Filter"
+  },
+  "tabExceptions": {
+    "message": "Ausnahmen"
+  },
+  "tabData": {
+    "message": "Daten & Datenschutz"
+  },
+  "tabAdvanced": {
+    "message": "Erweitert"
+  },
+  "ruleHighlight": {
+    "message": "Stichwort- / Flaggen-Hervorhebung"
+  },
+  "ruleLocation": {
+    "message": "Blockierte Standorte"
+  },
+  "ruleAffiliation": {
+    "message": "Blockierte Zugehörigkeiten"
+  },
+  "ruleAge": {
+    "message": "Kontoalter"
+  },
+  "cardOnPage": {
+    "message": "Auf der Seite"
+  },
+  "cardOnPageDesc": {
+    "message": "Was X-Pat auf X zeichnet. Nichts davon ändert, welche Posts gefiltert werden."
+  },
+  "setShowInFeed": {
+    "message": "Standort im Feed anzeigen"
+  },
+  "setShowInFeedDesc": {
+    "message": "Eine Flagge unter jedem Namen in der Timeline, nicht nur beim Überfahren."
+  },
+  "setAccountCard": {
+    "message": "Kontodetails beim Überfahren anzeigen"
+  },
+  "setAccountCardDesc": {
+    "message": "Kontoalter, Zugehörigkeitsabzeichen, Verifizierung, Handle-Änderungen und Followeranzahl — aus Daten gelesen, die X bereits sendet, kostet also keine zusätzlichen Abfragen."
+  },
+  "setCopyButton": {
+    "message": "„Kopieren“-Button auf Hover-Karten"
+  },
+  "setCopyButtonDesc": {
+    "message": "Ein kleiner „Kopieren“-Button in der Flaggen-Zeile. Kopiert den Post, über dem du warst, zusammen mit den Flaggen als Bild — im Browser gerendert, nichts wird hochgeladen. Rechtsklick auf einen Post macht dasselbe."
+  },
+  "setExceptionButton": {
+    "message": "Ausnahme-Button auf Hover-Karten"
+  },
+  "setExceptionButtonDesc": {
+    "message": "Eine Ein-Klick-Ausnahme für das gerade angesehene Konto von allen Regeln, die darauf wirken — Stichwort-Hervorhebung, Land, Zugehörigkeitsabzeichen, Alter. Der Tooltip zeigt, welche."
+  },
+  "hintSwipe": {
+    "message": "👉 Bei einem Post nach rechts wischen, um den Standort abzurufen."
+  },
+  "cardAppearance": {
+    "message": "Erscheinungsbild"
+  },
+  "cardAppearanceDesc": {
+    "message": "Betrifft X-Pats eigene Ansichten — diese Seite und das Toolbar-Popup. Die auf X gezeichneten Flaggen und Markierungen folgen stattdessen X' Theme, damit sie nie mit der Timeline kollidieren."
+  },
+  "setTheme": {
+    "message": "Theme"
+  },
+  "themeSystem": {
+    "message": "Systemeinstellung"
+  },
+  "themeLight": {
+    "message": "Hell"
+  },
+  "themeDark": {
+    "message": "Dunkel"
+  },
+  "setLanguage": {
+    "message": "Sprache"
+  },
+  "setLanguageDesc": {
+    "message": "Betrifft X-Pats eigene Texte und die angezeigten Ländernamen. Eine Auswahl lädt diese Seite neu."
+  },
+  "languageAuto": {
+    "message": "Browser übernehmen"
+  },
+  "cardKeyword": {
+    "message": "Hervorhebung nach Stichwort"
+  },
+  "cardKeywordDesc": {
+    "message": "Markiert Posts, deren Autorenname oder Bio eines dieser Stichwörter enthält. Die Hervorhebung markiert einen Post; sie blendet ihn niemals aus."
+  },
+  "keywordPlaceholder": {
+    "message": "Stichwort eingeben oder Vorschlag wählen…"
+  },
+  "emptyNoKeywords": {
+    "message": "Keine Stichwörter gesetzt — alle Posts werden normal angezeigt."
+  },
+  "cardLocations": {
+    "message": "Standorte"
+  },
+  "cardLocationsDesc": {
+    "message": "Diese zeigen ⚠️ statt ihrer Flagge. Richtet sich nach dem Store-Land oder dem Kontostandort, wenn dieser nicht als VPN gekennzeichnet ist. Gilt nie für den von dir geöffneten Post."
+  },
+  "locationPlaceholder": {
+    "message": "Länder und Regionen suchen — Name, Code oder Spitzname…"
+  },
+  "regionCountries": {
+    "message": "Region · $1 Länder"
+  },
+  "emptyNoLocations": {
+    "message": "Keine Standorte ausgewählt — alle Flaggen werden normal angezeigt."
+  },
+  "cardFiltered": {
+    "message": "Was mit einem gefilterten Post passiert"
+  },
+  "cardFilteredDesc": {
+    "message": "Gilt für die beiden Filter, die einen Post entfernen — blockierte Standorte und blockierte Zugehörigkeiten. Kontoalter und Stichwort-Hervorhebung markieren einen Post unabhängig von dieser Einstellung. Ein zitierter Post wird einzeln eingeklappt, sodass der zitierende Post lesbar bleibt, und Personenlisten werden markiert statt ausgeblendet — Zeilen dort zu entfernen würde die Zählungen zerstören."
+  },
+  "filteredPosts": {
+    "message": "Gefilterte Posts"
+  },
+  "hideModeOff": {
+    "message": "Normal anzeigen"
+  },
+  "hideModeCollapse": {
+    "message": "Einklappen"
+  },
+  "hideModeCollapseLong": {
+    "message": "Einklappen („Anzeigen“ zum Öffnen)"
+  },
+  "hideModeHide": {
+    "message": "Ausblenden"
+  },
+  "hideModeHideLong": {
+    "message": "Komplett ausblenden"
+  },
+  "cardAffiliations": {
+    "message": "Zugehörigkeiten"
+  },
+  "cardAffiliationsDesc": {
+    "message": "X kennzeichnet manche Konten als zu einer Organisation gehörend. Gib den Handle des übergeordneten Kontos ein, um alle damit gekennzeichneten Konten auf einmal zu filtern."
+  },
+  "affiliationPlaceholder": {
+    "message": "Handle des übergeordneten Kontos, z. B. nasa…"
+  },
+  "emptyNoAffiliations": {
+    "message": "Keine Zugehörigkeiten blockiert. Über ein Konto fahren, um zu sehen, ob es ein Abzeichen trägt."
+  },
+  "cardAge": {
+    "message": "Kontoalter"
+  },
+  "cardAgeDesc": {
+    "message": "Wie lange das Konto existiert, basierend auf dem von X gemeldeten Erstellungsdatum. Dieses markiert Posts und blendet sie niemals aus, unabhängig von der obigen Einstellung."
+  },
+  "setMarkYoung": {
+    "message": "Junge Konten markieren"
+  },
+  "setMarkYoungDesc": {
+    "message": "Markiert ihre Posts wie eine Stichwort-Übereinstimmung, mit dem orangen Balken an der Seite. Das ist Absicht: Ein junges Konto ist das stärkste Einzelsignal für ein gekauftes oder gefarmtes Konto, und genauso sieht auch jemand aus, der letzten Monat beigetreten ist — eine zu schwache Begründung, um ihre Antworten zu entfernen."
+  },
+  "setMarkYoungerThan": {
+    "message": "Konten markieren, jünger als"
+  },
+  "cardFlags": {
+    "message": "Hervorhebung nach Flaggen-Emoji"
+  },
+  "cardFlagsDesc": {
+    "message": "Markiert Posts, deren Autoren-Bio voller Flaggen-Emojis ist."
+  },
+  "setHighlightFlagHeavy": {
+    "message": "Bios mit vielen Flaggen-Emojis hervorheben"
+  },
+  "setFlagThreshold": {
+    "message": "Mehr als so viele Flaggen"
+  },
+  "setUniqueFlags": {
+    "message": "Nur eindeutige Flaggen zählen"
+  },
+  "cardAlwaysShow": {
+    "message": "Immer anzeigen"
+  },
+  "cardAlwaysShowDesc": {
+    "message": "Von allen Regeln auf einmal ausgenommen — niemals ausgeblendet, niemals eingeklappt, niemals hervorgehoben, egal was die Filter sagen."
+  },
+  "usernamePlaceholder": {
+    "message": "Benutzernamen hinzufügen (ohne @)…"
+  },
+  "emptyNoAllowlist": {
+    "message": "Niemand auf der Positivliste — jedes Konto wird nach den Regeln beurteilt."
+  },
+  "cardPerRule": {
+    "message": "Ausnahmen pro Regel"
+  },
+  "cardPerRuleDesc": {
+    "message": "Nimm ein Konto von einer Regel aus, aber nicht von den anderen — für jemanden, der ein Stichwort sarkastisch verwendet („no NAFO“), oder aus einem blockierten Land postet, das du trotzdem lesen möchtest."
+  },
+  "searchExceptions": {
+    "message": "Ausnahmen durchsuchen…"
+  },
+  "searchExceptionsLabel": {
+    "message": "Ausnahmen durchsuchen"
+  },
+  "emptyNoMatch": {
+    "message": "Keine Treffer für „$1“."
+  },
+  "emptyNoExceptions": {
+    "message": "Keine Ausnahmen."
+  },
+  "cardLookups": {
+    "message": "Hintergrund-Abfragen"
+  },
+  "cardLookupsDesc": {
+    "message": "X erlaubt etwa $1 Kontoabfragen alle $2 Minuten. Diese Einstellungen legen fest, wie viel davon X-Pat zum Ausfüllen von Flaggen für dich verwenden darf und wie viel für die Konten zurückgehalten wird, über die du selbst fährst."
+  },
+  "setSharedCache": {
+    "message": "Gemeinsamen Community-Cache verwenden"
+  },
+  "setSharedCacheDesc": {
+    "message": "Teilt die von dir abgefragten Flaggen, sodass alle wiederholte Abfragen überspringen. Nur öffentliche Handles und ihre Flagge werden gesendet — keine Konto- oder personenbezogenen Daten."
+  },
+  "setPrefetch": {
+    "message": "Standorte im Hintergrund vorab abrufen"
+  },
+  "setPrefetchDesc": {
+    "message": "Fragt Konten in deinem Feed in der Reihenfolge ab, in der sie erscheinen, damit Flaggen ohne Überfahren angezeigt werden."
+  },
+  "setShare": {
+    "message": "Anteil am Abfragelimit, der verwendet werden darf"
+  },
+  "setShareDesc": {
+    "message": "$1 für Vorababrufe, $2 übrig für deine eigenen Hover."
+  },
+  "setSpread": {
+    "message": "Abfragen über die ganzen $1 Minuten verteilen"
+  },
+  "setSpreadDesc": {
+    "message": "Etwa eine Abfrage alle $1s, statt alle auf einmal."
+  },
+  "cardBackup": {
+    "message": "Sichern & wiederherstellen"
+  },
+  "cardBackupDesc": {
+    "message": "Übertrage deine Einstellungen in einen anderen Browser oder bewahre eine Kopie auf, bevor du experimentierst."
+  },
+  "btnExport": {
+    "message": "Einstellungen exportieren"
+  },
+  "btnImport": {
+    "message": "Einstellungen importieren"
+  },
+  "hintImportMerge": {
+    "message": "Import wird zusammengeführt: Einstellungen, die die Datei nicht erwähnt, bleiben unverändert. Jeder Wert wird beim Einlesen erneut geprüft, sodass eine manuell bearbeitete Datei die Erweiterung nicht in einen nicht behebbaren Zustand versetzen kann."
+  },
+  "noteExported": {
+    "message": "$1 Einstellungen exportiert. Die Shared-Cache-ID und deine zwischengespeicherten Standorte sind nicht enthalten."
+  },
+  "noteImported": {
+    "message": "$1 Einstellungen importiert."
+  },
+  "noteImportedSkipped": {
+    "message": "$1 unbekannte(r) Schlüssel wurde(n) übersprungen."
+  },
+  "errImportFailed": {
+    "message": "Diese Datei konnte nicht importiert werden."
+  },
+  "errNotJson": {
+    "message": "Diese Datei ist kein gültiges JSON."
+  },
+  "errNotExport": {
+    "message": "Diese Datei ist kein Einstellungsexport."
+  },
+  "errNoSection": {
+    "message": "Dieser Datei fehlt der Abschnitt \"settings\", es handelt sich also nicht um einen Export dieser Erweiterung."
+  },
+  "errNewerFormat": {
+    "message": "Diese Datei wurde von einer neueren Version geschrieben (Format $1). Aktualisiere zuerst die Erweiterung."
+  },
+  "errNoSettings": {
+    "message": "Diese Datei enthält keine importierbaren Einstellungen."
+  },
+  "cardCache": {
+    "message": "Lokaler Cache"
+  },
+  "cardCacheDesc": {
+    "message": "Von dir abgefragte Standorte werden 30 Tage in diesem Browser gespeichert, sodass ihre erneute Anzeige nichts kostet."
+  },
+  "btnClearCache": {
+    "message": "Standort-Cache leeren"
+  },
+  "btnCacheCleared": {
+    "message": "Cache geleert"
+  },
+  "cardTrust": {
+    "message": "Shared-Cache-Vertrauen"
+  },
+  "cardTrustDesc": {
+    "message": "Wie viele unabhängige Meldungen desselben Standorts diese Installation benötigt, bevor sie ihm vertraut. Höhere Werte sind schwerer zu vergiften, liefern aber viel weniger: Derzeit wurde nur etwa 1 von 80 zwischengespeicherten Profilen zweimal gemeldet, daher fällt alles über 1 meist auf eine Abfrage bei X zurück und verbraucht dein Rate-Limit. Lass es bei $1, es sei denn, du misst dies gezielt."
+  },
+  "setTrustAfter": {
+    "message": "Gemeinsamen Standort vertrauen nach"
+  },
+  "trustReports1": {
+    "message": "1 Meldung"
+  },
+  "trustReports2": {
+    "message": "2 Meldungen"
+  },
+  "trustReports3": {
+    "message": "3 Meldungen"
+  },
+  "ageDays": {
+    "message": "$1 Tage"
+  },
+  "ageMonths": {
+    "message": "$1 Monate"
+  },
+  "ageYear": {
+    "message": "1 Jahr"
+  },
+  "ageYears": {
+    "message": "$1 Jahre"
+  },
+  "ageToday": {
+    "message": "heute"
+  },
+  "ageShortDays": {
+    "message": "$1d"
+  },
+  "ageShortMonths": {
+    "message": "$1mo"
+  },
+  "ageShortYears": {
+    "message": "$1J"
+  },
+  "toastDismiss": {
+    "message": "Zum Ausblenden klicken"
+  },
+  "toastRateLimit": {
+    "message": "⚠ Rate-Limit erreicht · Zurücksetzung in $1"
+  },
+  "countdownMinSec": {
+    "message": "$1m $2s"
+  },
+  "countdownSec": {
+    "message": "$1s"
+  },
+  "rateLimitBadgeTitle": {
+    "message": "X-API-Rate-Limit erreicht — Standortabfragen pausiert bis zur Zurücksetzung"
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN"
+  },
+  "vpnTitle": {
+    "message": "VPN verwendet, Standort kann ungenau sein"
+  },
+  "storeRegionLabel": {
+    "message": "$1 Region: $2"
+  },
+  "platformWeb": {
+    "message": "Web"
+  },
+  "platformUnknown": {
+    "message": "Unbekannt"
+  },
+  "hiddenLabel": {
+    "message": "🚫 Ausgeblendet · $1 $2"
+  },
+  "hiddenShow": {
+    "message": "Anzeigen"
+  },
+  "hiddenShowTitle": {
+    "message": "Diesen Post einblenden ($1: $2)"
+  },
+  "cellTagTitle": {
+    "message": "Entspricht deinem $1 — angezeigt, nicht ausgeblendet"
+  },
+  "ruleNameHighlight": {
+    "message": "Hervorhebungsregel"
+  },
+  "ruleNameLocation": {
+    "message": "blockierter Standort"
+  },
+  "ruleNameAffiliation": {
+    "message": "blockierte Zugehörigkeit"
+  },
+  "ruleNameAge": {
+    "message": "Kontoalter"
+  },
+  "excAdd": {
+    "message": "🚫 Ausnahme hinzufügen"
+  },
+  "excUndo": {
+    "message": "✓ Ausnahme (rückgängig)"
+  },
+  "excAddTitle": {
+    "message": "@$1 ausnehmen von $2"
+  },
+  "excUndoTitle": {
+    "message": "@$1 ist ausgenommen von $2 — klicken zum Rückgängigmachen"
+  },
+  "excPhraseHighlight": {
+    "message": "der Stichwort- und Flaggen-Hervorhebung"
+  },
+  "excPhraseLocation": {
+    "message": "dem Filter für blockierte Standorte"
+  },
+  "excPhraseAffiliation": {
+    "message": "dem Filter für blockierte Zugehörigkeiten"
+  },
+  "excPhraseAge": {
+    "message": "dem Filter für das Kontoalter"
+  },
+  "joinAnd": {
+    "message": "$1 und $2"
+  },
+  "chipBlockedYou": {
+    "message": "🚫 Hat dich blockiert"
+  },
+  "chipBlockedYouTitle": {
+    "message": "Dieses Konto blockiert dein Konto"
+  },
+  "chipAge": {
+    "message": "🎂 $1"
+  },
+  "chipAgeTitle": {
+    "message": "Konto erstellt am $1"
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1"
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "X zeigt ein Zugehörigkeitsabzeichen mit Link zu @$1"
+  },
+  "chipAffiliationTitle": {
+    "message": "X zeigt ein Zugehörigkeitsabzeichen für dieses Konto"
+  },
+  "chipIdVerified": {
+    "message": "🪪 ID verifiziert"
+  },
+  "chipIdVerifiedTitle": {
+    "message": "X hat ein Ausweisdokument verifiziert"
+  },
+  "chipVerified": {
+    "message": "✔ Verifiziert"
+  },
+  "chipVerifiedTitle": {
+    "message": "Alte Verifizierung"
+  },
+  "chipHandle1": {
+    "message": "✎ 1 Handle"
+  },
+  "chipHandles": {
+    "message": "✎ $1 Handles"
+  },
+  "chipHandlesTitle": {
+    "message": "Dieses Konto hat seinen @Handle $1-mal geändert"
+  },
+  "chipProtected": {
+    "message": "🔒 Geschützt"
+  },
+  "chipProtectedTitle": {
+    "message": "Posts sind geschützt"
+  },
+  "bioTitle": {
+    "message": "Bio aus X' API — diese Karte zeigt keine an"
+  },
+  "shareBtn": {
+    "message": "🖼 Kopieren"
+  },
+  "shareBtnTitle": {
+    "message": "Diesen Post und was X für @$1 meldet als Bild kopieren"
+  },
+  "toastRendering": {
+    "message": "Rendere @$1 …"
+  },
+  "toastCopied": {
+    "message": "✓ In die Zwischenablage kopiert"
+  },
+  "toastSaved": {
+    "message": "✓ Bild gespeichert"
+  },
+  "toastRenderFail": {
+    "message": "Diese Karte konnte nicht gerendert werden"
+  },
+  "toastRightClick": {
+    "message": "Rechtsklick auf einen Post zum Teilen"
+  },
+  "toastReadFail": {
+    "message": "Dieser Post konnte nicht gelesen werden"
+  },
+  "toastNoLocation": {
+    "message": "Kein Standort"
+  },
+  "toastLookingUp": {
+    "message": "@$1 …"
+  },
+  "regionEastAsiaPacific": {
+    "message": "Ostasien & Pazifik"
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "Osteuropa (Nicht-EU)"
+  }
+}

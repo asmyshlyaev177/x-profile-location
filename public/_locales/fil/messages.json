@@ -1,0 +1,608 @@
+{
+  "localeTag": {
+    "message": "fil"
+  },
+  "appName": {
+    "message": "X-Pat — lokasyon, filter, highlight ng X profile"
+  },
+  "appShortName": {
+    "message": "X-Pat"
+  },
+  "appDesc": {
+    "message": "Tingnan ang bansang pinagmumulan ng bawat X profile — may bandila, babala sa VPN, at filter ng bansa, mula sa data ng X mismo."
+  },
+  "actionTitle": {
+    "message": "X-Pat"
+  },
+  "menuSharePost": {
+    "message": "Kopyahin ang post na may bandila ng lokasyon"
+  },
+  "popupPaused": {
+    "message": "Naka-pause. Ang X ay mukhang walang naka-install na extension."
+  },
+  "popupOn": {
+    "message": "On"
+  },
+  "popupOff": {
+    "message": "Off"
+  },
+  "popupMasterSwitchTitle": {
+    "message": "Pansamantalang i-off ang lahat"
+  },
+  "popupFlagsInFeed": {
+    "message": "Mga bandila sa feed 📍"
+  },
+  "popupAccountDetails": {
+    "message": "Detalye ng account pagka-hover 🪪"
+  },
+  "popupCountryPlaceholder": {
+    "message": "Bansa o rehiyon…"
+  },
+  "popupNothingBlocked": {
+    "message": "Walang naka-block — lahat ng bandila ipinapakita."
+  },
+  "popupHighlightKeywords": {
+    "message": "I-highlight ang keywords"
+  },
+  "popupKeywordPlaceholder": {
+    "message": "Magdagdag ng keyword…"
+  },
+  "popupNoKeywords": {
+    "message": "Walang keywords — walang naka-highlight."
+  },
+  "popupAllSettings": {
+    "message": "Lahat ng settings →"
+  },
+  "popupRate": {
+    "message": "I-rate ★"
+  },
+  "popupRateTitle": {
+    "message": "I-rate ang X-Pat sa Chrome Web Store"
+  },
+  "popupDonate": {
+    "message": "Mag-donate 💜"
+  },
+  "popupDonateTitle": {
+    "message": "Suportahan ang development"
+  },
+  "removeItem": {
+    "message": "Alisin ang $1"
+  },
+  "removeHandle": {
+    "message": "Alisin si @$1"
+  },
+  "openHandle": {
+    "message": "Buksan si @$1 sa X"
+  },
+  "rateAskText": {
+    "message": "Nakatulong ba? Malaking tulong ang rating sa store."
+  },
+  "rateAskInline": {
+    "message": "— nakatulong ba? Malaking tulong ang rating sa store."
+  },
+  "rateAskYes": {
+    "message": "I-rate ito ★"
+  },
+  "rateAskLater": {
+    "message": "Mamaya"
+  },
+  "rateAskNo": {
+    "message": "Huwag na lang"
+  },
+  "optionsTitle": {
+    "message": "Settings ng X-Pat"
+  },
+  "optionsEnabled": {
+    "message": "Naka-enable"
+  },
+  "optionsPaused": {
+    "message": "Naka-pause"
+  },
+  "optionsPausedBanner": {
+    "message": "Naka-pause — walang inilalapat sa X sa ngayon mula sa ibaba."
+  },
+  "tabDisplay": {
+    "message": "Display"
+  },
+  "tabFilters": {
+    "message": "Mga Filter"
+  },
+  "tabExceptions": {
+    "message": "Mga Exception"
+  },
+  "tabData": {
+    "message": "Data at privacy"
+  },
+  "tabAdvanced": {
+    "message": "Advanced"
+  },
+  "ruleHighlight": {
+    "message": "Pag-highlight ng keyword / bandila"
+  },
+  "ruleLocation": {
+    "message": "Mga naka-block na lokasyon"
+  },
+  "ruleAffiliation": {
+    "message": "Mga naka-block na affiliation"
+  },
+  "ruleAge": {
+    "message": "Edad ng account"
+  },
+  "cardOnPage": {
+    "message": "Sa page"
+  },
+  "cardOnPageDesc": {
+    "message": "Kung ano ang iginuguhit ng X-Pat sa X. Wala rito ang nagbabago kung aling mga post ang nafa-filter."
+  },
+  "setShowInFeed": {
+    "message": "Ipakita ang lokasyon sa feed"
+  },
+  "setShowInFeedDesc": {
+    "message": "Isang bandila sa ilalim ng bawat pangalan sa timeline, hindi lang pagka-hover."
+  },
+  "setAccountCard": {
+    "message": "Ipakita ang detalye ng account pagka-hover"
+  },
+  "setAccountCardDesc": {
+    "message": "Edad ng account, affiliate badge, verification, pagbabago ng handle at bilang ng followers — binabasa mula sa data na ipinadala na ng X, kaya walang dagdag na lookup."
+  },
+  "setCopyButton": {
+    "message": "Button na \"Kopyahin\" sa hover cards"
+  },
+  "setCopyButtonDesc": {
+    "message": "Isang maliit na button na \"Kopyahin\" sa row ng mga bandila. Kinokopya ang post na iyong hino-hover, kasama ang mga bandila, bilang imahe — nire-render sa browser mo, walang ina-upload. Ganun din ang ginagawa ng pag-right-click sa isang post."
+  },
+  "setExceptionButton": {
+    "message": "Exception button sa hover cards"
+  },
+  "setExceptionButtonDesc": {
+    "message": "Isang one-click na exemption para sa account na iyong tinitingnan, mula sa kahit anong patakaran na kumikilos dito — ang keyword highlight, ang bansa, ang affiliate badge, ang edad. Nakasaad sa tooltip nito kung alin."
+  },
+  "hintSwipe": {
+    "message": "👉 I-swipe pakanan ang kahit anong post para makuha ang lokasyon nito."
+  },
+  "cardAppearance": {
+    "message": "Itsura"
+  },
+  "cardAppearanceDesc": {
+    "message": "Saklaw ang sariling screen ng X-Pat — ang page na ito at ang toolbar popup. Ang mga bandila at marka na iginuguhit sa X ay sumusunod sa theme ng X, kaya hindi sumasalungat sa timeline na kanilang kinalalagyan."
+  },
+  "setTheme": {
+    "message": "Theme"
+  },
+  "themeSystem": {
+    "message": "Sundin ang system"
+  },
+  "themeLight": {
+    "message": "Light"
+  },
+  "themeDark": {
+    "message": "Dark"
+  },
+  "setLanguage": {
+    "message": "Wika"
+  },
+  "setLanguageDesc": {
+    "message": "Saklaw ang sariling teksto ng X-Pat at ang mga pangalan ng bansa na ipinapakita nito. Ang pagpili ay magre-reload ng pahinang ito."
+  },
+  "languageAuto": {
+    "message": "Sundin ang browser"
+  },
+  "cardKeyword": {
+    "message": "I-highlight ayon sa keyword"
+  },
+  "cardKeywordDesc": {
+    "message": "Minamarkahan ang mga post na ang pangalan o bio ng may-akda ay naglalaman ng alinman sa mga ito. Ang pag-highlight ay nagmamarka ng post; hindi ito nagtatago."
+  },
+  "keywordPlaceholder": {
+    "message": "Mag-type ng keyword o pumili ng suggestion…"
+  },
+  "emptyNoKeywords": {
+    "message": "Walang naka-set na keyword — lahat ng post normal na ipinapakita."
+  },
+  "cardLocations": {
+    "message": "Mga Lokasyon"
+  },
+  "cardLocationsDesc": {
+    "message": "Nagpapakita ang mga ito ng ⚠️ imbes na bandila. Nakabatay sa store country, o sa lokasyon ng account kapag hindi naka-flag bilang VPN. Hindi kailanman nalalapat sa post na binuksan mo."
+  },
+  "locationPlaceholder": {
+    "message": "Maghanap ng mga bansa at rehiyon — pangalan, code o palayaw…"
+  },
+  "regionCountries": {
+    "message": "rehiyon · $1 bansa"
+  },
+  "emptyNoLocations": {
+    "message": "Walang napiling lokasyon — lahat ng bandila ipinapakita."
+  },
+  "cardFiltered": {
+    "message": "Ano ang mangyayari sa naka-filter na post"
+  },
+  "cardFilteredDesc": {
+    "message": "Nalalapat sa dalawang filter na nag-aalis ng post — blocked locations at blocked affiliations. Ang account age at keyword highlighting ay nagmamarka ng post anuman ang setting na ito. Ang quoted post ay kusang naka-collapse, kaya nananatiling nababasa ang post na nag-quote rito, at ang mga listahan ng tao ay minamarkahan imbes na itago — ang pag-alis ng rows doon ay sumisira sa bilang."
+  },
+  "filteredPosts": {
+    "message": "Mga naka-filter na post"
+  },
+  "hideModeOff": {
+    "message": "Ipakita nang normal"
+  },
+  "hideModeCollapse": {
+    "message": "I-collapse"
+  },
+  "hideModeCollapseLong": {
+    "message": "I-collapse (\"Ipakita\" para buksan)"
+  },
+  "hideModeHide": {
+    "message": "Itago"
+  },
+  "hideModeHideLong": {
+    "message": "Itago nang tuluyan"
+  },
+  "cardAffiliations": {
+    "message": "Mga Affiliation"
+  },
+  "cardAffiliationsDesc": {
+    "message": "Binabadge ng X ang ilang account bilang kabilang sa isang organisasyon. Ilagay ang handle ng parent account para i-filter nang sabay-sabay ang lahat ng account na naka-badge rito."
+  },
+  "affiliationPlaceholder": {
+    "message": "Handle ng parent account, hal. nasa…"
+  },
+  "emptyNoAffiliations": {
+    "message": "Walang naka-block na affiliation. I-hover ang isang account para makita kung may badge ito."
+  },
+  "cardAge": {
+    "message": "Edad ng account"
+  },
+  "cardAgeDesc": {
+    "message": "Gaano katagal nang umiiral ang account, mula sa creation date na iniuulat ng X. Minamarkahan nito ang mga post at hindi kailanman itinatago, anuman ang sabihin ng setting sa itaas."
+  },
+  "setMarkYoung": {
+    "message": "Markahan ang mga bagong account"
+  },
+  "setMarkYoungDesc": {
+    "message": "Minamarkahan ang kanilang mga post katulad ng ginagawa ng keyword match, na may orange na bar sa gilid. Sinasadya itong huminto doon: ang bagong account ang pinakamalakas na senyales para sa binili o farmed na account, at ito rin mismo ang itsura ng taong sumali noong nakaraang buwan — masyadong mahinang dahilan para alisin ang kanilang mga reply."
+  },
+  "setMarkYoungerThan": {
+    "message": "Markahan ang mga account na mas bago sa"
+  },
+  "cardFlags": {
+    "message": "I-highlight ayon sa bandila"
+  },
+  "cardFlagsDesc": {
+    "message": "Minamarkahan ang mga post na ang bio ng may-akda ay puno ng flag emoji."
+  },
+  "setHighlightFlagHeavy": {
+    "message": "I-highlight ang mga bio na maraming bandila"
+  },
+  "setFlagThreshold": {
+    "message": "Higit sa ganitong karaming bandila"
+  },
+  "setUniqueFlags": {
+    "message": "Bilangin lang ang natatanging bandila"
+  },
+  "cardAlwaysShow": {
+    "message": "Laging ipakita"
+  },
+  "cardAlwaysShowDesc": {
+    "message": "Exempt sa lahat ng patakaran nang sabay-sabay — hindi kailanman itinatago, hindi kailanman naka-collapse, hindi kailanman naka-highlight, anuman ang sabihin ng filter."
+  },
+  "usernamePlaceholder": {
+    "message": "Magdagdag ng username (walang @)…"
+  },
+  "emptyNoAllowlist": {
+    "message": "Walang tao sa allowlist — bawat account ay hinuhusgahan ng mga patakaran."
+  },
+  "cardPerRule": {
+    "message": "Mga exception bawat patakaran"
+  },
+  "cardPerRuleDesc": {
+    "message": "I-exempt ang isang account mula sa isang patakaran pero hindi sa iba — para sa taong sarkastikong gumagamit ng tracked keyword (\"no NAFO\"), o nagpo-post mula sa naka-block na bansa na gusto mo pa ring basahin."
+  },
+  "searchExceptions": {
+    "message": "Maghanap ng exceptions…"
+  },
+  "searchExceptionsLabel": {
+    "message": "Maghanap ng exceptions"
+  },
+  "emptyNoMatch": {
+    "message": "Walang tumutugma sa \"$1\"."
+  },
+  "emptyNoExceptions": {
+    "message": "Walang exceptions."
+  },
+  "cardLookups": {
+    "message": "Mga background lookup"
+  },
+  "cardLookupsDesc": {
+    "message": "Pinapayagan ng X ang humigit-kumulang $1 account lookup bawat $2 minuto. Ang mga setting na ito ang nagpapasya kung gaano karami niyan ang maaaring gamitin ng X-Pat sa pagpuno ng bandila para sa iyo, at kung gaano karami ang nakatabi para sa mga account na ikaw mismo ang nag-ho-hover."
+  },
+  "setSharedCache": {
+    "message": "Gamitin ang shared community cache"
+  },
+  "setSharedCacheDesc": {
+    "message": "Ibinabahagi ang mga bandilang iyong tiningnan upang malaktawan ng lahat ang paulit-ulit na lookup. Mga pampublikong handle at ang kanilang bandila lamang ang ipinapadala — walang data ng account o personal."
+  },
+  "setPrefetch": {
+    "message": "I-prefetch ang mga lokasyon sa background"
+  },
+  "setPrefetchDesc": {
+    "message": "Tinitingnan ang mga account sa iyong feed, ayon sa pagkakasunod-sunod, upang lumabas ang mga bandila nang hindi nag-ho-hover."
+  },
+  "setShare": {
+    "message": "Bahagi ng limit sa lookup na maaari nitong gamitin"
+  },
+  "setShareDesc": {
+    "message": "$1 para sa prefetching, $2 natitira para sa sarili mong hover."
+  },
+  "setSpread": {
+    "message": "Ikalat ang mga lookup sa buong $1 minuto"
+  },
+  "setSpreadDesc": {
+    "message": "Humigit-kumulang isang lookup bawat $1s, imbes na sabay-sabay."
+  },
+  "cardBackup": {
+    "message": "I-back up at i-restore"
+  },
+  "cardBackupDesc": {
+    "message": "Ilipat ang iyong settings sa ibang browser, o magtago ng kopya bago mag-eksperimento."
+  },
+  "btnExport": {
+    "message": "I-export ang settings"
+  },
+  "btnImport": {
+    "message": "I-import ang settings"
+  },
+  "hintImportMerge": {
+    "message": "Ang import ay nagme-merge: ang mga setting na hindi binabanggit ng file ay hinahayaang manatili. Bawat value ay muling sinusuri pagpasok, kaya hindi mailalagay ng hand-edited file ang extension sa estadong hindi na nito kayang makabangon."
+  },
+  "noteExported": {
+    "message": "Na-export ang $1 setting. Hindi kasama ang shared-cache id at ang iyong mga naka-cache na lokasyon."
+  },
+  "noteImported": {
+    "message": "Na-import ang $1 setting."
+  },
+  "noteImportedSkipped": {
+    "message": "$1 hindi kilalang key ang nilaktawan."
+  },
+  "errImportFailed": {
+    "message": "Hindi ma-import ang file na iyon."
+  },
+  "errNotJson": {
+    "message": "Ang file na iyon ay hindi valid na JSON."
+  },
+  "errNotExport": {
+    "message": "Ang file na iyon ay hindi settings export."
+  },
+  "errNoSection": {
+    "message": "Kulang ang file na iyon ng \"settings\" section nito, kaya hindi ito export mula sa extension na ito."
+  },
+  "errNewerFormat": {
+    "message": "Ang file na iyon ay isinulat ng mas bagong bersyon (format $1). I-update muna ang extension."
+  },
+  "errNoSettings": {
+    "message": "Walang settings na mai-import ang file na iyon."
+  },
+  "cardCache": {
+    "message": "Local cache"
+  },
+  "cardCacheDesc": {
+    "message": "Ang mga lokasyong iyong tiningnan ay nakatago sa browser na ito nang 30 araw, kaya libre ang muling pagpapakita."
+  },
+  "btnClearCache": {
+    "message": "Burahin ang location cache"
+  },
+  "btnCacheCleared": {
+    "message": "Nabura ang cache"
+  },
+  "cardTrust": {
+    "message": "Shared cache trust"
+  },
+  "cardTrustDesc": {
+    "message": "Kung ilang independent na ulat ng parehong lokasyon ang kailangan ng install na ito bago ito pagkatiwalaan. Mas mataas ay mas mahirap i-poison pero mas kaunti ang nasasagot: sa ngayon humigit-kumulang 1 sa 80 naka-cache na profile ang naiulat nang dalawang beses, kaya ang anumang higit sa 1 ay kadalasang bumabalik sa pagtingin ng account sa X at ginagastos ang iyong rate limit. Hayaan ito sa $1 maliban kung sinusukat mo ito."
+  },
+  "setTrustAfter": {
+    "message": "Pagkatiwalaan ang shared location pagkatapos ng"
+  },
+  "trustReports1": {
+    "message": "1 ulat"
+  },
+  "trustReports2": {
+    "message": "2 ulat"
+  },
+  "trustReports3": {
+    "message": "3 ulat"
+  },
+  "ageDays": {
+    "message": "$1 araw"
+  },
+  "ageMonths": {
+    "message": "$1 buwan"
+  },
+  "ageYear": {
+    "message": "1 taon"
+  },
+  "ageYears": {
+    "message": "$1 taon"
+  },
+  "ageToday": {
+    "message": "ngayon"
+  },
+  "ageShortDays": {
+    "message": "$1d"
+  },
+  "ageShortMonths": {
+    "message": "$1bu"
+  },
+  "ageShortYears": {
+    "message": "$1ta"
+  },
+  "toastDismiss": {
+    "message": "I-click para i-dismiss"
+  },
+  "toastRateLimit": {
+    "message": "⚠ Naabot ang rate limit · magre-reset sa $1"
+  },
+  "countdownMinSec": {
+    "message": "$1m $2s"
+  },
+  "countdownSec": {
+    "message": "$1s"
+  },
+  "rateLimitBadgeTitle": {
+    "message": "Naabot ang X API rate limit — naka-pause ang location lookup hanggang mag-reset"
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN"
+  },
+  "vpnTitle": {
+    "message": "Gumagamit ng VPN, maaaring hindi tumpak ang lokasyon"
+  },
+  "storeRegionLabel": {
+    "message": "$1 region: $2"
+  },
+  "platformWeb": {
+    "message": "Web"
+  },
+  "platformUnknown": {
+    "message": "Hindi alam"
+  },
+  "hiddenLabel": {
+    "message": "🚫 Nakatago · $1 $2"
+  },
+  "hiddenShow": {
+    "message": "Ipakita"
+  },
+  "hiddenShowTitle": {
+    "message": "Ipakita ang post na ito ($1: $2)"
+  },
+  "cellTagTitle": {
+    "message": "Tumutugma sa iyong $1 — ipinapakita, hindi tinatago"
+  },
+  "ruleNameHighlight": {
+    "message": "panuntunan sa highlight"
+  },
+  "ruleNameLocation": {
+    "message": "naka-block na lokasyon"
+  },
+  "ruleNameAffiliation": {
+    "message": "naka-block na affiliation"
+  },
+  "ruleNameAge": {
+    "message": "edad ng account"
+  },
+  "excAdd": {
+    "message": "🚫 Magdagdag ng exception"
+  },
+  "excUndo": {
+    "message": "✓ May exception (i-undo)"
+  },
+  "excAddTitle": {
+    "message": "I-exempt si @$1 sa $2"
+  },
+  "excUndoTitle": {
+    "message": "Si @$1 ay exempt sa $2 — i-click para i-undo"
+  },
+  "excPhraseHighlight": {
+    "message": "pag-highlight ng keyword at bandila"
+  },
+  "excPhraseLocation": {
+    "message": "ang filter ng naka-block na lokasyon"
+  },
+  "excPhraseAffiliation": {
+    "message": "ang filter ng naka-block na affiliation"
+  },
+  "excPhraseAge": {
+    "message": "ang filter ng edad ng account"
+  },
+  "joinAnd": {
+    "message": "$1 at $2"
+  },
+  "chipBlockedYou": {
+    "message": "🚫 Na-block ka"
+  },
+  "chipBlockedYouTitle": {
+    "message": "Bina-block ka ng account na ito"
+  },
+  "chipAge": {
+    "message": "🎂 $1"
+  },
+  "chipAgeTitle": {
+    "message": "Ginawa ang account noong $1"
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1"
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "Nagpapakita ang X ng affiliate badge na naka-link kay @$1"
+  },
+  "chipAffiliationTitle": {
+    "message": "Nagpapakita ang X ng affiliate badge sa account na ito"
+  },
+  "chipIdVerified": {
+    "message": "🪪 Na-verify ang ID"
+  },
+  "chipIdVerifiedTitle": {
+    "message": "Na-verify ng X ang isang identity document"
+  },
+  "chipVerified": {
+    "message": "✔ Na-verify"
+  },
+  "chipVerifiedTitle": {
+    "message": "Legacy verification"
+  },
+  "chipHandle1": {
+    "message": "✎ 1 handle"
+  },
+  "chipHandles": {
+    "message": "✎ $1 handle"
+  },
+  "chipHandlesTitle": {
+    "message": "Pinalitan ng account na ito ang @handle nito nang $1 beses"
+  },
+  "chipProtected": {
+    "message": "🔒 Naka-protect"
+  },
+  "chipProtectedTitle": {
+    "message": "Naka-protect ang mga post"
+  },
+  "bioTitle": {
+    "message": "Bio mula sa API ng X — hindi ito ipinapakita ng card na ito"
+  },
+  "shareBtn": {
+    "message": "🖼 Kopyahin"
+  },
+  "shareBtnTitle": {
+    "message": "Kopyahin ang post na ito at ang iniuulat ng X para kay @$1 bilang imahe"
+  },
+  "toastRendering": {
+    "message": "Nire-render si @$1 …"
+  },
+  "toastCopied": {
+    "message": "✓ Nakopya sa clipboard"
+  },
+  "toastSaved": {
+    "message": "✓ Na-save ang imahe"
+  },
+  "toastRenderFail": {
+    "message": "Hindi ma-render ang card na iyon"
+  },
+  "toastRightClick": {
+    "message": "I-right-click ang isang post para ibahagi ito"
+  },
+  "toastReadFail": {
+    "message": "Hindi mabasa ang post na iyon"
+  },
+  "toastNoLocation": {
+    "message": "Walang lokasyon"
+  },
+  "toastLookingUp": {
+    "message": "@$1 …"
+  },
+  "regionEastAsiaPacific": {
+    "message": "Silangang Asya at Pasipiko"
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "Silangang Europa (Hindi EU)"
+  }
+}

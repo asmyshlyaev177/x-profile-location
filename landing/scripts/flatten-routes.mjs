@@ -27,7 +27,9 @@ import { join, dirname } from 'node:path'
 const dist = join(import.meta.dirname, '..', 'dist')
 
 // Deepest first, so a nested route is flattened before its parent directory is
-// considered for removal. No nested routes exist today; this costs one sort.
+// considered for removal. The locales made that ordering load-bearing rather
+// than theoretical: `ja/x-about-this-account/index.html` has to become
+// `ja/x-about-this-account.html` before `ja/index.html` is looked at.
 const indexFiles = readdirSync(dist, { recursive: true })
   .map(String)
   .filter((f) => f.endsWith('index.html') && f !== 'index.html')
@@ -36,6 +38,16 @@ const indexFiles = readdirSync(dist, { recursive: true })
 for (const file of indexFiles) {
   const dir = dirname(file)
   renameSync(join(dist, file), join(dist, `${dir}.html`))
-  rmdirSync(join(dist, dir))
+
+  // `ja/` still holds the four flattened guide pages once `ja/index.html`
+  // becomes `ja.html`, so removal has to be conditional. It was unconditional
+  // while every route was one level deep and every directory really was empty
+  // afterwards; with locales that spelling throws ENOTEMPTY and takes the
+  // build with it.
+  try {
+    rmdirSync(join(dist, dir))
+  } catch (err) {
+    if (err.code !== 'ENOTEMPTY') throw err
+  }
   console.log(`✓ ${file} → ${dir}.html`)
 }

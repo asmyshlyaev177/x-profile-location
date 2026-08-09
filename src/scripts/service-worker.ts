@@ -6,6 +6,7 @@ import {
   USAGE_STATS_KEY,
 } from './countries'
 import { ratingAskDue } from './usage'
+import { initI18n, readCatalogue, t, UI_LANGUAGE_KEY } from './i18n'
 
 // ---------------------------------------------------------------------------
 // The rating ask, in the browser chrome
@@ -45,7 +46,36 @@ chrome.storage.onChanged.addListener((changes, area) => {
   ) {
     void syncRatingBadge()
   }
+  // The context menu's title is drawn once, when the menu is created, so a
+  // language change has to go back and redraw it.
+  if (changes[UI_LANGUAGE_KEY]) void createShareMenu()
 })
+
+/**
+ * The share entry in x.com's right-click menu.
+ *
+ * `create` throws on a duplicate id rather than replacing, so this removes
+ * first — it runs again whenever the language changes, not only on install.
+ * Sharing lives here rather than as a button on every post: a per-post button
+ * is permanent clutter bought for something people do rarely, and the
+ * right-click menu is where "do something with this thing" already lives.
+ * Scoped to X so it never appears anywhere else.
+ */
+async function createShareMenu(): Promise<void> {
+  await initI18n()
+  await chrome.contextMenus.removeAll()
+  chrome.contextMenus.create({
+    id: 'share-post',
+    title: t('menuSharePost'),
+    contexts: ['page', 'selection', 'link', 'image'],
+    documentUrlPatterns: [
+      '*://*.x.com/*',
+      '*://x.com/*',
+      '*://*.twitter.com/*',
+      '*://twitter.com/*',
+    ],
+  })
+}
 
 chrome.runtime.onInstalled.addListener((details): void => {
   console.log('[service-worker.ts] > onInstalled', details)
@@ -63,28 +93,27 @@ chrome.runtime.onInstalled.addListener((details): void => {
   // No hand-made "Options" entry on the action menu: declaring `options_ui` in
   // the manifest makes the browser add one itself, and ours sat right next to
   // it saying the same word.
-
-  // Sharing lives in the context menu rather than as a button on every post.
-  // A per-post button is a permanent piece of clutter bought for something
-  // people do rarely, and the right-click menu is where "do something with
-  // this thing" already lives. Scoped to X so it never appears anywhere else.
-  chrome.contextMenus.create({
-    id: 'share-post',
-    title: 'Copy post with location flags',
-    contexts: ['page', 'selection', 'link', 'image'],
-    documentUrlPatterns: [
-      '*://*.x.com/*',
-      '*://x.com/*',
-      '*://*.twitter.com/*',
-      '*://twitter.com/*',
-    ],
-  })
+  void createShareMenu()
 })
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'share-post' && tab?.id != null) {
     chrome.tabs.sendMessage(tab.id, { type: 'SHARE_POST' })
   }
+})
+
+// The content script cannot read `_locales/` itself: `fetch` on an extension
+// URL from x.com needs the file in `web_accessible_resources`, and a fetchable
+// extension URL is something the page can probe for. So it asks here, where
+// reading our own files costs nothing and exposes nothing.
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === 'GET_MESSAGES') {
+    readCatalogue(String(message.locale))
+      .then(sendResponse)
+      .catch(() => sendResponse(null))
+    return true // reply is async
+  }
+  return undefined
 })
 
 chrome.runtime.onMessage.addListener((message) => {

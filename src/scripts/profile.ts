@@ -11,6 +11,7 @@
 // it was still the source of, `followers_count`, stopped arriving too.
 
 import { finiteNumber } from './countries'
+import { t } from './i18n'
 
 /**
  * The org an account is badged as belonging to — X's affiliate badge.
@@ -240,9 +241,9 @@ export function formatAccountAge(
 ): string | null {
   const days = accountAgeDays(createdAt, now)
   if (days === null) return null
-  if (days < 1) return 'today'
-  if (days < 60) return `${days}d`
+  if (days < 1) return t('ageToday')
+  if (days < 60) return t('ageShortDays', days)
   const months = Math.floor(days / 30)
-  if (months < 24) return `${months}mo`
-  return `${Math.floor(days / 365)}y`
+  if (months < 24) return t('ageShortMonths', months)
+  return t('ageShortYears', Math.floor(days / 365))
 }

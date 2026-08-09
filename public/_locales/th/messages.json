@@ -1,0 +1,608 @@
+{
+  "localeTag": {
+    "message": "th"
+  },
+  "appName": {
+    "message": "X-Pat — ดูที่ตั้ง กรอง เน้นโปรไฟล์ X"
+  },
+  "appShortName": {
+    "message": "X-Pat"
+  },
+  "appDesc": {
+    "message": "ดูประเทศที่โปรไฟล์ X โพสต์จาก — ธงประเทศ คำเตือน VPN และตัวกรองประเทศ อ่านจากข้อมูลของ X เอง"
+  },
+  "actionTitle": {
+    "message": "X-Pat"
+  },
+  "menuSharePost": {
+    "message": "คัดลอกโพสต์พร้อมธงตำแหน่ง"
+  },
+  "popupPaused": {
+    "message": "หยุดชั่วคราว X จะแสดงผลเหมือนตอนที่ยังไม่ได้ติดตั้งส่วนขยาย"
+  },
+  "popupOn": {
+    "message": "เปิด"
+  },
+  "popupOff": {
+    "message": "ปิด"
+  },
+  "popupMasterSwitchTitle": {
+    "message": "ปิดทุกอย่างชั่วคราว"
+  },
+  "popupFlagsInFeed": {
+    "message": "แสดงธงในฟีด 📍"
+  },
+  "popupAccountDetails": {
+    "message": "รายละเอียดบัญชีเมื่อวางเมาส์ 🪪"
+  },
+  "popupCountryPlaceholder": {
+    "message": "ประเทศหรือภูมิภาค…"
+  },
+  "popupNothingBlocked": {
+    "message": "ไม่ได้บล็อกอะไร — แสดงธงทั้งหมดตามปกติ"
+  },
+  "popupHighlightKeywords": {
+    "message": "เน้นคำสำคัญ"
+  },
+  "popupKeywordPlaceholder": {
+    "message": "เพิ่มคำสำคัญ…"
+  },
+  "popupNoKeywords": {
+    "message": "ไม่มีคำสำคัญ — ไม่มีการเน้นข้อความ"
+  },
+  "popupAllSettings": {
+    "message": "การตั้งค่าทั้งหมด →"
+  },
+  "popupRate": {
+    "message": "ให้คะแนน ★"
+  },
+  "popupRateTitle": {
+    "message": "ให้คะแนน X-Pat บน Chrome Web Store"
+  },
+  "popupDonate": {
+    "message": "บริจาค 💜"
+  },
+  "popupDonateTitle": {
+    "message": "สนับสนุนการพัฒนา"
+  },
+  "removeItem": {
+    "message": "ลบ $1"
+  },
+  "removeHandle": {
+    "message": "ลบ @$1"
+  },
+  "openHandle": {
+    "message": "เปิด @$1 บน X"
+  },
+  "rateAskText": {
+    "message": "มีประโยชน์ไหม? ให้คะแนนในสโตร์ช่วยได้มาก"
+  },
+  "rateAskInline": {
+    "message": "— มีประโยชน์ไหม? ให้คะแนนในสโตร์ช่วยได้มาก"
+  },
+  "rateAskYes": {
+    "message": "ให้คะแนน ★"
+  },
+  "rateAskLater": {
+    "message": "ทีหลัง"
+  },
+  "rateAskNo": {
+    "message": "ไม่เป็นไร"
+  },
+  "optionsTitle": {
+    "message": "การตั้งค่า X-Pat"
+  },
+  "optionsEnabled": {
+    "message": "เปิดใช้งาน"
+  },
+  "optionsPaused": {
+    "message": "หยุดชั่วคราว"
+  },
+  "optionsPausedBanner": {
+    "message": "หยุดชั่วคราว — การตั้งค่าด้านล่างยังไม่มีผลกับ X"
+  },
+  "tabDisplay": {
+    "message": "การแสดงผล"
+  },
+  "tabFilters": {
+    "message": "ตัวกรอง"
+  },
+  "tabExceptions": {
+    "message": "ข้อยกเว้น"
+  },
+  "tabData": {
+    "message": "ข้อมูลและความเป็นส่วนตัว"
+  },
+  "tabAdvanced": {
+    "message": "ขั้นสูง"
+  },
+  "ruleHighlight": {
+    "message": "การเน้นคำสำคัญ / ธง"
+  },
+  "ruleLocation": {
+    "message": "ตำแหน่งที่ถูกบล็อก"
+  },
+  "ruleAffiliation": {
+    "message": "สังกัดที่ถูกบล็อก"
+  },
+  "ruleAge": {
+    "message": "อายุบัญชี"
+  },
+  "cardOnPage": {
+    "message": "บนหน้าเพจ"
+  },
+  "cardOnPageDesc": {
+    "message": "สิ่งที่ X-Pat แสดงบน X การตั้งค่านี้ไม่เปลี่ยนว่าโพสต์ไหนถูกกรอง"
+  },
+  "setShowInFeed": {
+    "message": "แสดงตำแหน่งในฟีด"
+  },
+  "setShowInFeedDesc": {
+    "message": "แสดงธงใต้ชื่อทุกชื่อในไทม์ไลน์ ไม่ใช่แค่ตอนวางเมาส์"
+  },
+  "setAccountCard": {
+    "message": "แสดงรายละเอียดบัญชีเมื่อวางเมาส์"
+  },
+  "setAccountCardDesc": {
+    "message": "อายุบัญชี ตราสังกัด การยืนยันตัวตน การเปลี่ยนชื่อผู้ใช้ และจำนวนผู้ติดตาม — อ่านจากข้อมูลที่ X ส่งมาแล้ว จึงไม่ต้องค้นหาเพิ่ม"
+  },
+  "setCopyButton": {
+    "message": "ปุ่ม \"คัดลอก\" บนการ์ดเมื่อวางเมาส์"
+  },
+  "setCopyButtonDesc": {
+    "message": "ปุ่ม \"คัดลอก\" เล็กๆ ในแถวธง คัดลอกโพสต์ที่คุณวางเมาส์ พร้อมธง เป็นรูปภาพ — สร้างในเบราว์เซอร์ของคุณ ไม่ได้อัปโหลดอะไร คลิกขวาที่โพสต์ก็ทำได้เช่นกัน"
+  },
+  "setExceptionButton": {
+    "message": "ปุ่มข้อยกเว้นบนการ์ดเมื่อวางเมาส์"
+  },
+  "setExceptionButtonDesc": {
+    "message": "ยกเว้นบัญชีที่คุณกำลังดูจากกฎที่มีผลกับบัญชีนั้นในคลิกเดียว — การเน้นคำสำคัญ ประเทศ ตราสังกัด อายุ คำแนะนำเครื่องมือจะบอกว่ายกเว้นจากอะไร"
+  },
+  "hintSwipe": {
+    "message": "👉 ปัดขวาบนโพสต์เพื่อดูตำแหน่งที่ตั้ง"
+  },
+  "cardAppearance": {
+    "message": "รูปลักษณ์"
+  },
+  "cardAppearanceDesc": {
+    "message": "เกี่ยวกับหน้าจอของ X-Pat เอง — หน้านี้และป๊อปอัปแถบเครื่องมือ ธงและเครื่องหมายบน X จะใช้ธีมของ X แทน เพื่อไม่ให้ขัดกับไทม์ไลน์"
+  },
+  "setTheme": {
+    "message": "ธีม"
+  },
+  "themeSystem": {
+    "message": "ตามระบบ"
+  },
+  "themeLight": {
+    "message": "สว่าง"
+  },
+  "themeDark": {
+    "message": "มืด"
+  },
+  "setLanguage": {
+    "message": "ภาษา"
+  },
+  "setLanguageDesc": {
+    "message": "ครอบคลุมข้อความของ X-Pat เองและชื่อประเทศที่แสดง การเลือกจะโหลดหน้านี้ใหม่"
+  },
+  "languageAuto": {
+    "message": "ตามเบราว์เซอร์"
+  },
+  "cardKeyword": {
+    "message": "เน้นด้วยคำสำคัญ"
+  },
+  "cardKeywordDesc": {
+    "message": "ทำเครื่องหมายโพสต์ที่ชื่อหรือประวัติผู้เขียนมีคำเหล่านี้ การเน้นแค่ทำเครื่องหมาย ไม่เคยซ่อนโพสต์"
+  },
+  "keywordPlaceholder": {
+    "message": "พิมพ์คำสำคัญหรือเลือกคำแนะนำ…"
+  },
+  "emptyNoKeywords": {
+    "message": "ยังไม่ได้ตั้งคำสำคัญ — แสดงโพสต์ทั้งหมดตามปกติ"
+  },
+  "cardLocations": {
+    "message": "ตำแหน่งที่ตั้ง"
+  },
+  "cardLocationsDesc": {
+    "message": "รายการเหล่านี้แสดง ⚠️ แทนธง ใช้ตามประเทศของสโตร์ หรือตำแหน่งบัญชีเมื่อไม่ถูกระบุว่าเป็น VPN ไม่มีผลกับโพสต์ที่คุณเปิดอยู่"
+  },
+  "locationPlaceholder": {
+    "message": "ค้นหาประเทศและภูมิภาค — ชื่อ รหัส หรือชื่อเล่น…"
+  },
+  "regionCountries": {
+    "message": "ภูมิภาค · $1 ประเทศ"
+  },
+  "emptyNoLocations": {
+    "message": "ไม่ได้เลือกตำแหน่ง — แสดงธงทั้งหมดตามปกติ"
+  },
+  "cardFiltered": {
+    "message": "สิ่งที่เกิดกับโพสต์ที่ถูกกรอง"
+  },
+  "cardFilteredDesc": {
+    "message": "ใช้กับตัวกรองสองตัวที่นำโพสต์ออก — ตำแหน่งที่ถูกบล็อกและสังกัดที่ถูกบล็อก อายุบัญชีและการเน้นคำสำคัญแค่ทำเครื่องหมายโพสต์ไม่ว่าตั้งค่านี้เป็นอะไร โพสต์ที่ถูกอ้างถึงจะถูกย่อแยก เพื่อให้โพสต์ที่อ้างถึงยังอ่านได้ และรายชื่อคนจะถูกทำเครื่องหมายแทนการซ่อน — การลบแถวจะทำให้จำนวนคลาดเคลื่อน"
+  },
+  "filteredPosts": {
+    "message": "โพสต์ที่ถูกกรอง"
+  },
+  "hideModeOff": {
+    "message": "แสดงตามปกติ"
+  },
+  "hideModeCollapse": {
+    "message": "ย่อ"
+  },
+  "hideModeCollapseLong": {
+    "message": "ย่อ (กด \"แสดง\" เพื่อเปิด)"
+  },
+  "hideModeHide": {
+    "message": "ซ่อน"
+  },
+  "hideModeHideLong": {
+    "message": "ซ่อนทั้งหมด"
+  },
+  "cardAffiliations": {
+    "message": "สังกัด"
+  },
+  "cardAffiliationsDesc": {
+    "message": "X ติดตราให้บางบัญชีว่าเป็นขององค์กร ป้อนชื่อผู้ใช้ของบัญชีแม่เพื่อกรองทุกบัญชีที่ติดตราด้วยองค์กรนั้นในครั้งเดียว"
+  },
+  "affiliationPlaceholder": {
+    "message": "ชื่อผู้ใช้บัญชีแม่ เช่น nasa…"
+  },
+  "emptyNoAffiliations": {
+    "message": "ไม่ได้บล็อกสังกัดใดๆ วางเมาส์ที่บัญชีเพื่อดูว่ามีตราสังกัดหรือไม่"
+  },
+  "cardAge": {
+    "message": "อายุบัญชี"
+  },
+  "cardAgeDesc": {
+    "message": "ระยะเวลาที่บัญชีมีอยู่ จากวันที่สร้างที่ X รายงาน กฎนี้แค่ทำเครื่องหมายโพสต์และไม่เคยซ่อน ไม่ว่าจะตั้งค่าด้านบนเป็นอะไร"
+  },
+  "setMarkYoung": {
+    "message": "ทำเครื่องหมายบัญชีใหม่"
+  },
+  "setMarkYoungDesc": {
+    "message": "ทำเครื่องหมายโพสต์เหมือนการจับคู่คำสำคัญ ด้วยแถบสีส้มด้านข้าง มันหยุดแค่นั้นโดยตั้งใจ: บัญชีใหม่เป็นสัญญาณเดี่ยวที่หนักแน่นที่สุดของบัญชีที่ซื้อหรือปั่น และก็เป็นสิ่งที่คนที่เพิ่งสมัครเมื่อเดือนที่แล้วมี — เหตุผลที่เบาเกินกว่าจะลบการตอบกลับของพวกเขา"
+  },
+  "setMarkYoungerThan": {
+    "message": "ทำเครื่องหมายบัญชีที่ใหม่กว่า"
+  },
+  "cardFlags": {
+    "message": "เน้นด้วยธง"
+  },
+  "cardFlagsDesc": {
+    "message": "ทำเครื่องหมายโพสต์ที่ประวัติผู้เขียนเต็มไปด้วยอิโมจิธง"
+  },
+  "setHighlightFlagHeavy": {
+    "message": "เน้นประวัติที่มีธงเยอะ"
+  },
+  "setFlagThreshold": {
+    "message": "มากกว่าจำนวนธงนี้"
+  },
+  "setUniqueFlags": {
+    "message": "นับเฉพาะธงที่ไม่ซ้ำ"
+  },
+  "cardAlwaysShow": {
+    "message": "แสดงเสมอ"
+  },
+  "cardAlwaysShowDesc": {
+    "message": "ยกเว้นจากทุกกฎในครั้งเดียว — ไม่เคยซ่อน ไม่เคยย่อ ไม่เคยเน้น ไม่ว่าตัวกรองจะบอกอะไร"
+  },
+  "usernamePlaceholder": {
+    "message": "เพิ่มชื่อผู้ใช้ (ไม่ต้องใส่ @)…"
+  },
+  "emptyNoAllowlist": {
+    "message": "ไม่มีใครในรายการอนุญาต — ทุกบัญชีถูกตัดสินด้วยกฎ"
+  },
+  "cardPerRule": {
+    "message": "ข้อยกเว้นรายกฎ"
+  },
+  "cardPerRuleDesc": {
+    "message": "ยกเว้นบัญชีจากกฎหนึ่งแต่ไม่ใช่กฎอื่น — สำหรับคนที่ใช้คำสำคัญแบบประชด (\"no NAFO\") หรือโพสต์จากประเทศที่ถูกบล็อกแต่คุณยังอยากอ่าน"
+  },
+  "searchExceptions": {
+    "message": "ค้นหาข้อยกเว้น…"
+  },
+  "searchExceptionsLabel": {
+    "message": "ค้นหาข้อยกเว้น"
+  },
+  "emptyNoMatch": {
+    "message": "ไม่พบ \"$1\""
+  },
+  "emptyNoExceptions": {
+    "message": "ไม่มีข้อยกเว้น"
+  },
+  "cardLookups": {
+    "message": "การค้นหาเบื้องหลัง"
+  },
+  "cardLookupsDesc": {
+    "message": "X อนุญาตให้ค้นหาบัญชีประมาณ $1 ครั้งทุก $2 นาที การตั้งค่าเหล่านี้กำหนดว่า X-Pat จะใช้ส่วนนั้นเท่าไหร่ในการหาธงให้คุณ และเก็บไว้เท่าไหร่สำหรับบัญชีที่คุณวางเมาส์เอง"
+  },
+  "setSharedCache": {
+    "message": "ใช้แคชชุมชนที่แชร์ร่วมกัน"
+  },
+  "setSharedCacheDesc": {
+    "message": "แชร์ธงที่คุณค้นหาเพื่อให้ทุกคนข้ามการค้นหาซ้ำ ส่งเฉพาะชื่อผู้ใช้สาธารณะและธง — ไม่มีข้อมูลบัญชีหรือข้อมูลส่วนตัว"
+  },
+  "setPrefetch": {
+    "message": "ค้นหาตำแหน่งล่วงหน้าเบื้องหลัง"
+  },
+  "setPrefetchDesc": {
+    "message": "ค้นหาบัญชีในฟีดของคุณตามลำดับที่ปรากฏ ธงจึงแสดงโดยไม่ต้องวางเมาส์"
+  },
+  "setShare": {
+    "message": "สัดส่วนขีดจำกัดการค้นหาที่ใช้ได้"
+  },
+  "setShareDesc": {
+    "message": "$1 สำหรับการค้นหาล่วงหน้า เหลือ $2 สำหรับการวางเมาส์ของคุณเอง"
+  },
+  "setSpread": {
+    "message": "กระจายการค้นหาตลอด $1 นาที"
+  },
+  "setSpreadDesc": {
+    "message": "ประมาณหนึ่งการค้นหาทุก $1 วินาที แทนที่จะค้นหาทั้งหมดพร้อมกัน"
+  },
+  "cardBackup": {
+    "message": "สำรองและกู้คืน"
+  },
+  "cardBackupDesc": {
+    "message": "ย้ายการตั้งค่าไปอีกเบราว์เซอร์ หรือเก็บสำเนาก่อนทดลอง"
+  },
+  "btnExport": {
+    "message": "ส่งออกการตั้งค่า"
+  },
+  "btnImport": {
+    "message": "นำเข้าการตั้งค่า"
+  },
+  "hintImportMerge": {
+    "message": "การนำเข้าคือการผสาน: การตั้งค่าที่ไฟล์ไม่ได้ระบุจะคงเดิม ทุกค่าถูกตรวจสอบซ้ำตอนนำเข้า ไฟล์ที่แก้ไขเองจึงไม่ทำให้ส่วนขยายอยู่ในสถานะที่กู้คืนไม่ได้"
+  },
+  "noteExported": {
+    "message": "ส่งออก $1 การตั้งค่าแล้ว ไม่รวมรหัสแคชชุมชนและตำแหน่งที่แคชไว้"
+  },
+  "noteImported": {
+    "message": "นำเข้า $1 การตั้งค่าแล้ว"
+  },
+  "noteImportedSkipped": {
+    "message": "ข้ามคีย์ที่ไม่รู้จัก $1 รายการ"
+  },
+  "errImportFailed": {
+    "message": "ไม่สามารถนำเข้าไฟล์นั้นได้"
+  },
+  "errNotJson": {
+    "message": "ไฟล์นั้นไม่ใช่ JSON ที่ถูกต้อง"
+  },
+  "errNotExport": {
+    "message": "ไฟล์นั้นไม่ใช่การส่งออกการตั้งค่า"
+  },
+  "errNoSection": {
+    "message": "ไฟล์นั้นไม่มีส่วน \"settings\" จึงไม่ใช่การส่งออกจากส่วนขยายนี้"
+  },
+  "errNewerFormat": {
+    "message": "ไฟล์นั้นเขียนโดยเวอร์ชันใหม่กว่า (รูปแบบ $1) อัปเดตส่วนขยายก่อน"
+  },
+  "errNoSettings": {
+    "message": "ไฟล์นั้นไม่มีการตั้งค่าที่จะนำเข้า"
+  },
+  "cardCache": {
+    "message": "แคชภายใน"
+  },
+  "cardCacheDesc": {
+    "message": "ตำแหน่งที่คุณค้นหาจะถูกเก็บในเบราว์เซอร์นี้ 30 วัน การแสดงซ้ำจึงไม่มีค่าใช้จ่าย"
+  },
+  "btnClearCache": {
+    "message": "ล้างแคชตำแหน่ง"
+  },
+  "btnCacheCleared": {
+    "message": "ล้างแคชแล้ว"
+  },
+  "cardTrust": {
+    "message": "ความเชื่อถือแคชชุมชน"
+  },
+  "cardTrustDesc": {
+    "message": "จำนวนรายงานอิสระของตำแหน่งเดียวกันที่ต้องมีก่อนเชื่อถือ ยิ่งสูงยิ่งปลอมปนยากแต่ตอบได้น้อยลงมาก: ปัจจุบันมีเพียงประมาณ 1 ใน 80 โปรไฟล์ที่แคชไว้ถูกรายงานสองครั้ง ดังนั้นค่าที่มากกว่า 1 ส่วนใหญ่จะกลับไปค้นหาบัญชีบน X และใช้ขีดจำกัดของคุณ ปล่อยไว้ที่ $1 นอกจากคุณกำลังวัดผล"
+  },
+  "setTrustAfter": {
+    "message": "เชื่อถือตำแหน่งที่แชร์หลังจาก"
+  },
+  "trustReports1": {
+    "message": "1 รายงาน"
+  },
+  "trustReports2": {
+    "message": "2 รายงาน"
+  },
+  "trustReports3": {
+    "message": "3 รายงาน"
+  },
+  "ageDays": {
+    "message": "$1 วัน"
+  },
+  "ageMonths": {
+    "message": "$1 เดือน"
+  },
+  "ageYear": {
+    "message": "1 ปี"
+  },
+  "ageYears": {
+    "message": "$1 ปี"
+  },
+  "ageToday": {
+    "message": "วันนี้"
+  },
+  "ageShortDays": {
+    "message": "$1ว"
+  },
+  "ageShortMonths": {
+    "message": "$1ด"
+  },
+  "ageShortYears": {
+    "message": "$1ป"
+  },
+  "toastDismiss": {
+    "message": "คลิกเพื่อปิด"
+  },
+  "toastRateLimit": {
+    "message": "⚠ ถึงขีดจำกัดอัตรา · รีเซ็ตใน $1"
+  },
+  "countdownMinSec": {
+    "message": "$1น $2วิ"
+  },
+  "countdownSec": {
+    "message": "$1วิ"
+  },
+  "rateLimitBadgeTitle": {
+    "message": "ถึงขีดจำกัดอัตรา X API — หยุดค้นหาตำแหน่งจนกว่ารีเซ็ต"
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN"
+  },
+  "vpnTitle": {
+    "message": "ใช้ VPN ตำแหน่งอาจไม่ถูกต้อง"
+  },
+  "storeRegionLabel": {
+    "message": "ภูมิภาค $1: $2"
+  },
+  "platformWeb": {
+    "message": "เว็บ"
+  },
+  "platformUnknown": {
+    "message": "ไม่ทราบ"
+  },
+  "hiddenLabel": {
+    "message": "🚫 ซ่อน · $1 $2"
+  },
+  "hiddenShow": {
+    "message": "แสดง"
+  },
+  "hiddenShowTitle": {
+    "message": "แสดงโพสต์นี้ ($1: $2)"
+  },
+  "cellTagTitle": {
+    "message": "ตรงกับ $1 ของคุณ — แสดง ไม่ได้ซ่อน"
+  },
+  "ruleNameHighlight": {
+    "message": "กฎการเน้น"
+  },
+  "ruleNameLocation": {
+    "message": "ตำแหน่งที่ถูกบล็อก"
+  },
+  "ruleNameAffiliation": {
+    "message": "สังกัดที่ถูกบล็อก"
+  },
+  "ruleNameAge": {
+    "message": "อายุบัญชี"
+  },
+  "excAdd": {
+    "message": "🚫 เพิ่มข้อยกเว้น"
+  },
+  "excUndo": {
+    "message": "✓ ข้อยกเว้น (เลิกทำ)"
+  },
+  "excAddTitle": {
+    "message": "ยกเว้น @$1 จาก $2"
+  },
+  "excUndoTitle": {
+    "message": "@$1 ได้รับการยกเว้นจาก $2 — คลิกเพื่อเลิกทำ"
+  },
+  "excPhraseHighlight": {
+    "message": "การเน้นคำสำคัญและธง"
+  },
+  "excPhraseLocation": {
+    "message": "ตัวกรองตำแหน่งที่ถูกบล็อก"
+  },
+  "excPhraseAffiliation": {
+    "message": "ตัวกรองสังกัดที่ถูกบล็อก"
+  },
+  "excPhraseAge": {
+    "message": "ตัวกรองอายุบัญชี"
+  },
+  "joinAnd": {
+    "message": "$1 และ $2"
+  },
+  "chipBlockedYou": {
+    "message": "🚫 บล็อกคุณ"
+  },
+  "chipBlockedYouTitle": {
+    "message": "บัญชีนี้บล็อกบัญชีของคุณ"
+  },
+  "chipAge": {
+    "message": "🎂 $1"
+  },
+  "chipAgeTitle": {
+    "message": "สร้างบัญชีเมื่อ $1"
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1"
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "X แสดงตราสังกัดที่ลิงก์ไปยัง @$1"
+  },
+  "chipAffiliationTitle": {
+    "message": "X แสดงตราสังกัดบนบัญชีนี้"
+  },
+  "chipIdVerified": {
+    "message": "🪪 ยืนยันตัวตนแล้ว"
+  },
+  "chipIdVerifiedTitle": {
+    "message": "X ตรวจสอบเอกสารประจำตัวแล้ว"
+  },
+  "chipVerified": {
+    "message": "✔ ยืนยันแล้ว"
+  },
+  "chipVerifiedTitle": {
+    "message": "การยืนยันแบบเดิม"
+  },
+  "chipHandle1": {
+    "message": "✎ 1 ชื่อผู้ใช้"
+  },
+  "chipHandles": {
+    "message": "✎ $1 ชื่อผู้ใช้"
+  },
+  "chipHandlesTitle": {
+    "message": "บัญชีนี้เปลี่ยนชื่อผู้ใช้ $1 ครั้ง"
+  },
+  "chipProtected": {
+    "message": "🔒 ป้องกัน"
+  },
+  "chipProtectedTitle": {
+    "message": "โพสต์ถูกป้องกัน"
+  },
+  "bioTitle": {
+    "message": "ประวัติจาก API ของ X — การ์ดนี้ไม่แสดงประวัติ"
+  },
+  "shareBtn": {
+    "message": "🖼 คัดลอก"
+  },
+  "shareBtnTitle": {
+    "message": "คัดลอกโพสต์นี้และสิ่งที่ X รายงานสำหรับ @$1 เป็นรูปภาพ"
+  },
+  "toastRendering": {
+    "message": "กำลังสร้าง @$1 …"
+  },
+  "toastCopied": {
+    "message": "✓ คัดลอกไปยังคลิปบอร์ดแล้ว"
+  },
+  "toastSaved": {
+    "message": "✓ บันทึกรูปภาพแล้ว"
+  },
+  "toastRenderFail": {
+    "message": "ไม่สามารถสร้างการ์ดนั้นได้"
+  },
+  "toastRightClick": {
+    "message": "คลิกขวาที่โพสต์เพื่อแชร์"
+  },
+  "toastReadFail": {
+    "message": "ไม่สามารถอ่านโพสต์นั้นได้"
+  },
+  "toastNoLocation": {
+    "message": "ไม่มีตำแหน่ง"
+  },
+  "toastLookingUp": {
+    "message": "@$1 …"
+  },
+  "regionEastAsiaPacific": {
+    "message": "เอเชียตะวันออกและแปซิฟิก"
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "ยุโรปตะวันออก (นอก EU)"
+  }
+}

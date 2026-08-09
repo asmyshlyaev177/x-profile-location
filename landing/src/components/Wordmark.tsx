@@ -1,4 +1,5 @@
 import BRAND_MARK from '../data/brand-mark.json'
+import { useI18n } from '../i18n/context'
 
 /**
  * The mark, reused as the site wordmark so tab, store tile and page agree.
@@ -9,11 +10,12 @@ import BRAND_MARK from '../data/brand-mark.json'
  * `currentColor`, in the favicon it sits on its own plate.
  */
 export function Wordmark({ class: cls = '' }: { class?: string }) {
+  const { t, href } = useI18n()
   return (
     <a
-      href="/"
+      href={href('/')}
       class={`group inline-flex items-center gap-2.5 ${cls}`}
-      aria-label="X-Pat — home"
+      aria-label={t.nav.home}
     >
       <svg
         width="26"

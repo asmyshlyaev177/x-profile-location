@@ -1,0 +1,763 @@
+{
+  "localeTag": {
+    "message": "en",
+    "description": "The BCP 47 tag for this file's own locale. NOT a translation — leave it exactly as it is. The extension reads it to pick the language for country names and for sorting them, because the browser's own UI-language APIs report a different locale than the one these messages were loaded from."
+  },
+  "appName": {
+    "message": "X-Pat — X profile location, filter and highlight",
+    "description": "Store listing title on both Chrome Web Store and AMO. AMO caps this at 50 characters — keep any translation under 50. 'X' is the site name and must not be translated."
+  },
+  "appShortName": {
+    "message": "X-Pat",
+    "description": "Shown in browser UI where space is tight. This is the product name — leave it as-is unless the script needs transliterating."
+  },
+  "appDesc": {
+    "message": "See the country any X profile posts from — country flags, VPN warnings, and country filters, read from X's own data.",
+    "description": "Store listing description. Must match the `description` field in package.json for the English locale."
+  },
+  "actionTitle": {
+    "message": "X-Pat",
+    "description": "Tooltip on the browser toolbar button."
+  },
+  "menuSharePost": {
+    "message": "Copy post with location flags",
+    "description": "Right-click menu entry on x.com. Copies the post as an image."
+  },
+  "popupPaused": {
+    "message": "Paused. X looks exactly as it would with the extension uninstalled.",
+    "description": "Shown in the toolbar popup when the master switch is off."
+  },
+  "popupOn": {
+    "message": "On",
+    "description": "Master switch state in the popup header. Keep very short."
+  },
+  "popupOff": {
+    "message": "Off",
+    "description": "Master switch state in the popup header. Keep very short."
+  },
+  "popupMasterSwitchTitle": {
+    "message": "Turn everything off for now",
+    "description": "Tooltip on the popup's master switch."
+  },
+  "popupFlagsInFeed": {
+    "message": "Flags in the feed 📍",
+    "description": "Popup toggle: show a country flag under every name in the timeline."
+  },
+  "popupAccountDetails": {
+    "message": "Account details on hover 🪪",
+    "description": "Popup toggle: show the account-facts card inside X's hover card."
+  },
+  "popupCountryPlaceholder": {
+    "message": "Country or region…",
+    "description": "Placeholder in the popup's location picker."
+  },
+  "popupNothingBlocked": {
+    "message": "Nothing blocked — all flags shown as-is.",
+    "description": "Popup empty state when no locations are blocked."
+  },
+  "popupHighlightKeywords": {
+    "message": "Highlight keywords",
+    "description": "Popup section title for the keyword list."
+  },
+  "popupKeywordPlaceholder": {
+    "message": "Add a keyword…",
+    "description": "Placeholder in the popup's keyword input."
+  },
+  "popupNoKeywords": {
+    "message": "No keywords — nothing is highlighted.",
+    "description": "Popup empty state when the keyword list is empty."
+  },
+  "popupAllSettings": {
+    "message": "All settings →",
+    "description": "Popup footer button that opens the full settings page."
+  },
+  "popupRate": {
+    "message": "Rate ★",
+    "description": "Popup footer link to the store listing. Keep short."
+  },
+  "popupRateTitle": {
+    "message": "Rate X-Pat on the Chrome Web Store",
+    "description": "Tooltip on the popup's permanent rate link."
+  },
+  "popupDonate": {
+    "message": "Donate 💜",
+    "description": "Popup footer link to the donation page. Keep short."
+  },
+  "popupDonateTitle": {
+    "message": "Support development",
+    "description": "Tooltip on the popup's donate link."
+  },
+  "removeItem": {
+    "message": "Remove $1",
+    "description": "Tooltip on the × that removes a chip. $1 is a country, region or keyword."
+  },
+  "removeHandle": {
+    "message": "Remove @$1",
+    "description": "Tooltip on the × that removes an account from a list. $1 is an X handle without the @."
+  },
+  "openHandle": {
+    "message": "Open @$1 on X",
+    "description": "Tooltip on a handle chip that links to the profile. $1 is an X handle without the @."
+  },
+  "rateAskText": {
+    "message": "Been useful? A store rating helps a lot.",
+    "description": "The one-off request for a store rating, shown in the popup."
+  },
+  "rateAskInline": {
+    "message": "— been useful? A store rating helps a lot.",
+    "description": "Same request, shown on x.com after the product name 'X-Pat'. The leading dash separates it from the name; keep whatever punctuation reads naturally after a product name in your language."
+  },
+  "rateAskYes": {
+    "message": "Rate it ★",
+    "description": "Button that opens the store listing."
+  },
+  "rateAskLater": {
+    "message": "Later",
+    "description": "Button that snoozes the rating request for two weeks."
+  },
+  "rateAskNo": {
+    "message": "No thanks",
+    "description": "Button that declines the rating request permanently."
+  },
+  "optionsTitle": {
+    "message": "X-Pat settings",
+    "description": "Heading of the full settings page."
+  },
+  "optionsEnabled": {
+    "message": "Enabled",
+    "description": "Master switch state on the settings page."
+  },
+  "optionsPaused": {
+    "message": "Paused",
+    "description": "Master switch state on the settings page."
+  },
+  "optionsPausedBanner": {
+    "message": "Paused — nothing below is being applied to X right now.",
+    "description": "Banner on the settings page when the master switch is off."
+  },
+  "tabDisplay": {
+    "message": "Display"
+  },
+  "tabFilters": {
+    "message": "Filters"
+  },
+  "tabExceptions": {
+    "message": "Exceptions"
+  },
+  "tabData": {
+    "message": "Data & privacy"
+  },
+  "tabAdvanced": {
+    "message": "Advanced",
+    "description": "Settings page tab, hidden unless enabled by URL parameter."
+  },
+  "ruleHighlight": {
+    "message": "Keyword / flag highlighting",
+    "description": "Name of the highlight rule, used as a heading on the Exceptions tab."
+  },
+  "ruleLocation": {
+    "message": "Blocked locations",
+    "description": "Name of the location rule. Used both as a heading on the Exceptions tab and as the popup's location section title."
+  },
+  "ruleAffiliation": {
+    "message": "Blocked affiliations",
+    "description": "Name of the affiliation rule, used as a heading on the Exceptions tab."
+  },
+  "ruleAge": {
+    "message": "Account age",
+    "description": "Name of the account-age rule, used as a heading on the Exceptions tab."
+  },
+  "cardOnPage": {
+    "message": "On the page",
+    "description": "Settings card title: what the extension draws on X."
+  },
+  "cardOnPageDesc": {
+    "message": "What X-Pat draws on X. None of this changes which posts are filtered."
+  },
+  "setShowInFeed": {
+    "message": "Show location in feed"
+  },
+  "setShowInFeedDesc": {
+    "message": "A flag under every name in the timeline, not only on hover."
+  },
+  "setAccountCard": {
+    "message": "Show account details on hover"
+  },
+  "setAccountCardDesc": {
+    "message": "Account age, affiliate badge, verification, handle changes and follower count — read from data X already sent, so it costs no extra lookups."
+  },
+  "setCopyButton": {
+    "message": "“Copy” button on hover cards",
+    "description": "Setting label. The quoted word matches the button's own label — translate both together."
+  },
+  "setCopyButtonDesc": {
+    "message": "A small “Copy” button in the flags row. Copies the post you hovered from, together with the flags, as an image — rendered in your browser, nothing uploaded. Right-clicking a post does the same thing."
+  },
+  "setExceptionButton": {
+    "message": "Exception button on hover cards"
+  },
+  "setExceptionButtonDesc": {
+    "message": "A one-click exemption for the account you are looking at, from whichever rules are acting on it — the keyword highlight, the country, the affiliate badge, the age. Its tooltip says which."
+  },
+  "hintSwipe": {
+    "message": "👉 Swipe right on any post to fetch its location.",
+    "description": "Hint shown on mobile browsers only."
+  },
+  "cardAppearance": {
+    "message": "Appearance"
+  },
+  "cardAppearanceDesc": {
+    "message": "Covers X-Pat's own screens — this page and the toolbar popup. The flags and marks drawn on X follow X's theme instead, so they never clash with the timeline they sit in."
+  },
+  "setTheme": {
+    "message": "Theme",
+    "description": "Setting label for the light/dark selector."
+  },
+  "themeSystem": {
+    "message": "Match system",
+    "description": "Theme option: follow the operating system setting."
+  },
+  "themeLight": {
+    "message": "Light"
+  },
+  "themeDark": {
+    "message": "Dark"
+  },
+  "setLanguage": {
+    "message": "Language",
+    "description": "Setting label for the extension's own language."
+  },
+  "setLanguageDesc": {
+    "message": "Covers X-Pat's own text and the country names it shows. Choosing one reloads this page.",
+    "description": "Setting description under the language selector."
+  },
+  "languageAuto": {
+    "message": "Match browser",
+    "description": "The default language option: follow whatever the browser is set to. Every other option in this list is named in its own language, so this is the only one to translate."
+  },
+  "cardKeyword": {
+    "message": "Highlight by keyword"
+  },
+  "cardKeywordDesc": {
+    "message": "Marks posts whose author's name or bio contains any of these. Highlighting marks a post; it never hides one."
+  },
+  "keywordPlaceholder": {
+    "message": "Type a keyword or pick a suggestion…",
+    "description": "Placeholder in the settings page keyword input."
+  },
+  "emptyNoKeywords": {
+    "message": "No keywords set — all posts shown normally.",
+    "description": "Empty state under the keyword list."
+  },
+  "cardLocations": {
+    "message": "Locations"
+  },
+  "cardLocationsDesc": {
+    "message": "These show ⚠️ instead of their flag. Goes by the store country, or the account location when it isn't flagged as VPN. Never applies to the post you opened."
+  },
+  "locationPlaceholder": {
+    "message": "Search countries and regions — name, code or nickname…",
+    "description": "Placeholder in the settings page location picker."
+  },
+  "regionCountries": {
+    "message": "region · $1 countries",
+    "description": "Note beside a region in the location picker. $1 is how many countries the region covers."
+  },
+  "emptyNoLocations": {
+    "message": "No locations selected — all flags shown as-is.",
+    "description": "Empty state under the location list."
+  },
+  "cardFiltered": {
+    "message": "What happens to a filtered post"
+  },
+  "cardFilteredDesc": {
+    "message": "Applies to the two filters that take a post away — blocked locations and blocked affiliations. Account age and keyword highlighting mark a post whatever this is set to. A quoted post is collapsed on its own, so the post quoting it stays readable, and people lists are marked rather than hidden — removing rows there breaks the counts."
+  },
+  "filteredPosts": {
+    "message": "Filtered posts",
+    "description": "Label on the selector that decides what happens to a filtered post. Used in both the popup and the settings page."
+  },
+  "hideModeOff": {
+    "message": "Show normally",
+    "description": "Filtered-post mode: change nothing."
+  },
+  "hideModeCollapse": {
+    "message": "Collapse",
+    "description": "Filtered-post mode, popup wording. Keep short."
+  },
+  "hideModeCollapseLong": {
+    "message": "Collapse (“Show” to open)",
+    "description": "Filtered-post mode, settings page wording. The quoted word is the button label on the collapsed post — translate it the same way as hiddenShow."
+  },
+  "hideModeHide": {
+    "message": "Hide",
+    "description": "Filtered-post mode, popup wording. Keep short."
+  },
+  "hideModeHideLong": {
+    "message": "Hide completely",
+    "description": "Filtered-post mode, settings page wording."
+  },
+  "cardAffiliations": {
+    "message": "Affiliations"
+  },
+  "cardAffiliationsDesc": {
+    "message": "X badges some accounts as belonging to an organisation. Enter the parent account's handle to filter every account badged with it at once."
+  },
+  "affiliationPlaceholder": {
+    "message": "Parent account handle, e.g. nasa…",
+    "description": "Placeholder in the affiliation input. 'nasa' is an example X handle — leave it as-is."
+  },
+  "emptyNoAffiliations": {
+    "message": "No affiliations blocked. Hover an account to see whether it carries a badge.",
+    "description": "Empty state under the affiliation list."
+  },
+  "cardAge": {
+    "message": "Account age"
+  },
+  "cardAgeDesc": {
+    "message": "How long the account has existed, from the creation date X reports. This one marks posts and never hides them, whatever the setting above says."
+  },
+  "setMarkYoung": {
+    "message": "Mark young accounts"
+  },
+  "setMarkYoungDesc": {
+    "message": "Marks their posts the same way a keyword match does, with the orange bar down the side. It stops there on purpose: a young account is the strongest single signal for a bought or farmed one, and it is also exactly what somebody who joined last month looks like — too thin an excuse to take their replies away."
+  },
+  "setMarkYoungerThan": {
+    "message": "Mark accounts younger than",
+    "description": "Setting label, read as a sentence continuing into the selector beside it (e.g. '… younger than | 6 months')."
+  },
+  "cardFlags": {
+    "message": "Highlight by flags",
+    "description": "Settings card title. 'Flags' here means flag emoji in a profile bio."
+  },
+  "cardFlagsDesc": {
+    "message": "Marks posts whose author's bio is full of flag emoji."
+  },
+  "setHighlightFlagHeavy": {
+    "message": "Highlight flag-heavy bios"
+  },
+  "setFlagThreshold": {
+    "message": "More than this many flags",
+    "description": "Setting label, read as a sentence continuing into the number input beside it."
+  },
+  "setUniqueFlags": {
+    "message": "Count only unique flags",
+    "description": "Setting label: count 🇺🇸🇺🇸🇺🇸 as one flag rather than three."
+  },
+  "cardAlwaysShow": {
+    "message": "Always show",
+    "description": "Settings card title for the allowlist."
+  },
+  "cardAlwaysShowDesc": {
+    "message": "Exempt from every rule at once — never hidden, never collapsed, never highlighted, whatever the filters say."
+  },
+  "usernamePlaceholder": {
+    "message": "Add a username (without @)…",
+    "description": "Placeholder in the inputs that take an X handle."
+  },
+  "emptyNoAllowlist": {
+    "message": "Nobody on the allowlist — every account is judged by the rules.",
+    "description": "Empty state under the allowlist."
+  },
+  "cardPerRule": {
+    "message": "Per-rule exceptions"
+  },
+  "cardPerRuleDesc": {
+    "message": "Exempt an account from one rule but not the others — for someone using a tracked keyword sarcastically (“no NAFO”), or posting from a blocked country you still want to read.",
+    "description": "Settings card description. 'NAFO' is an example keyword — leave it as-is."
+  },
+  "searchExceptions": {
+    "message": "Search exceptions…",
+    "description": "Placeholder in the exception search box."
+  },
+  "searchExceptionsLabel": {
+    "message": "Search exceptions",
+    "description": "Accessible name for the exception search box."
+  },
+  "emptyNoMatch": {
+    "message": "None match “$1”.",
+    "description": "Shown when the exception search matches nothing. $1 is what the user typed."
+  },
+  "emptyNoExceptions": {
+    "message": "No exceptions.",
+    "description": "Empty state under one rule's exception list."
+  },
+  "cardLookups": {
+    "message": "Background lookups"
+  },
+  "cardLookupsDesc": {
+    "message": "X allows about $1 account lookups every $2 minutes. These settings decide how much of that X-Pat may spend filling flags in for you, and how much is held back for the accounts you hover yourself.",
+    "description": "Settings card description. $1 is a number of lookups, $2 a number of minutes."
+  },
+  "setSharedCache": {
+    "message": "Use the shared community cache"
+  },
+  "setSharedCacheDesc": {
+    "message": "Shares the flags you look up so everyone skips repeat lookups. Only public handles and their flag are sent — no account or personal data."
+  },
+  "setPrefetch": {
+    "message": "Prefetch locations in the background"
+  },
+  "setPrefetchDesc": {
+    "message": "Looks up accounts in your feed, in the order they appear, so flags show up without hovering."
+  },
+  "setShare": {
+    "message": "Share of the lookup limit it may use"
+  },
+  "setShareDesc": {
+    "message": "$1 for prefetching, $2 left for your own hovers.",
+    "description": "Setting description. $1 and $2 are counts of lookups."
+  },
+  "setSpread": {
+    "message": "Spread lookups over the whole $1 minutes",
+    "description": "Setting label. $1 is a number of minutes."
+  },
+  "setSpreadDesc": {
+    "message": "About one lookup every $1s, instead of all at once.",
+    "description": "Setting description. $1 is a number of seconds; the 's' is the unit abbreviation."
+  },
+  "cardBackup": {
+    "message": "Back up & restore"
+  },
+  "cardBackupDesc": {
+    "message": "Move your settings to another browser, or keep a copy before experimenting."
+  },
+  "btnExport": {
+    "message": "Export settings",
+    "description": "Button that downloads a settings file."
+  },
+  "btnImport": {
+    "message": "Import settings",
+    "description": "Button that opens a file picker."
+  },
+  "hintImportMerge": {
+    "message": "Import merges: settings the file doesn't mention are left alone. Every value is re-checked on the way in, so a hand-edited file can't put the extension into a state it can't recover from.",
+    "description": "Explanatory note under the import and export buttons."
+  },
+  "noteExported": {
+    "message": "Exported $1 settings. The shared-cache id and your cached locations are not included.",
+    "description": "Confirmation after an export. $1 is how many settings were written."
+  },
+  "noteImported": {
+    "message": "Imported $1 settings.",
+    "description": "Confirmation after an import. $1 is how many settings were applied."
+  },
+  "noteImportedSkipped": {
+    "message": "$1 unknown key(s) were skipped.",
+    "description": "Appended after noteImported when the file held keys this version does not know. $1 is a count."
+  },
+  "errImportFailed": {
+    "message": "That file could not be imported.",
+    "description": "Fallback error when an import fails for an unexpected reason."
+  },
+  "errNotJson": {
+    "message": "That file is not valid JSON."
+  },
+  "errNotExport": {
+    "message": "That file is not a settings export."
+  },
+  "errNoSection": {
+    "message": "That file is missing its \"settings\" section, so it is not an export from this extension.",
+    "description": "Import error. The quoted word is a key inside the file — leave it in English."
+  },
+  "errNewerFormat": {
+    "message": "That file was written by a newer version (format $1). Update the extension first.",
+    "description": "Import error. $1 is a format number."
+  },
+  "errNoSettings": {
+    "message": "That file contains no settings to import."
+  },
+  "cardCache": {
+    "message": "Local cache"
+  },
+  "cardCacheDesc": {
+    "message": "Locations you have looked up are kept in this browser for 30 days, so showing them again costs nothing."
+  },
+  "btnClearCache": {
+    "message": "Clear location cache",
+    "description": "Button that empties the local cache."
+  },
+  "btnCacheCleared": {
+    "message": "Cache cleared",
+    "description": "Momentary confirmation shown on the button after it is pressed."
+  },
+  "cardTrust": {
+    "message": "Shared cache trust",
+    "description": "Settings card title, Advanced tab."
+  },
+  "cardTrustDesc": {
+    "message": "How many independent reports of the same location this install requires before trusting it. Higher is harder to poison but answers far less: today only about 1 in 80 cached profiles has been reported twice, so anything above 1 mostly falls back to looking the account up on X and spends your rate limit. Leave it at $1 unless you are measuring this.",
+    "description": "Settings card description. $1 is the default value."
+  },
+  "setTrustAfter": {
+    "message": "Trust a shared location after",
+    "description": "Setting label, read as a sentence continuing into the selector beside it (e.g. '… after | 2 reports')."
+  },
+  "trustReports1": {
+    "message": "1 report",
+    "description": "Option in the trust selector. Written out in full rather than as a placeholder so languages with several plural forms can phrase each one correctly."
+  },
+  "trustReports2": {
+    "message": "2 reports"
+  },
+  "trustReports3": {
+    "message": "3 reports"
+  },
+  "ageDays": {
+    "message": "$1 days",
+    "description": "Option in the account-age selector. $1 is always 60 or more, so no singular form is needed."
+  },
+  "ageMonths": {
+    "message": "$1 months",
+    "description": "Option in the account-age selector. $1 is always 2 or more."
+  },
+  "ageYear": {
+    "message": "1 year",
+    "description": "Option in the account-age selector, for exactly one year."
+  },
+  "ageYears": {
+    "message": "$1 years",
+    "description": "Option in the account-age selector. $1 is 1.5 or more and may be fractional (e.g. 2.5)."
+  },
+  "ageToday": {
+    "message": "today",
+    "description": "Account age, on a chip in the hover card: the account was created today."
+  },
+  "ageShortDays": {
+    "message": "$1d",
+    "description": "Account age, abbreviated for a chip. $1 is 1–59. Use the shortest unmistakable abbreviation for days in your language."
+  },
+  "ageShortMonths": {
+    "message": "$1mo",
+    "description": "Account age, abbreviated for a chip. $1 is 2–23. Use the shortest unmistakable abbreviation for months."
+  },
+  "ageShortYears": {
+    "message": "$1y",
+    "description": "Account age, abbreviated for a chip. $1 is 2 or more. Use the shortest unmistakable abbreviation for years."
+  },
+  "toastDismiss": {
+    "message": "Click to dismiss",
+    "description": "Tooltip on the rate-limit countdown shown over x.com."
+  },
+  "toastRateLimit": {
+    "message": "⚠ Rate limit hit · resets in $1",
+    "description": "Countdown shown over x.com when X stops answering lookups. $1 is a duration like '3m 20s'."
+  },
+  "countdownMinSec": {
+    "message": "$1m $2s",
+    "description": "A duration of a minute or more. $1 is minutes, $2 is seconds; 'm' and 's' are unit abbreviations."
+  },
+  "countdownSec": {
+    "message": "$1s",
+    "description": "A duration under a minute. $1 is seconds; 's' is the unit abbreviation."
+  },
+  "rateLimitBadgeTitle": {
+    "message": "X API rate limit reached — location lookups paused until reset",
+    "description": "Tooltip on the countdown badge inside a hover card."
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN",
+    "description": "Badge next to a location X declined to verify. 'VPN' is used as-is in most languages."
+  },
+  "vpnTitle": {
+    "message": "VPN used, location can be inaccurate",
+    "description": "Tooltip on the VPN badge."
+  },
+  "storeRegionLabel": {
+    "message": "$1 region: $2",
+    "description": "Accessible name for the app-store badge. $1 is a store name ('App Store', 'Android', 'Web'), $2 a country."
+  },
+  "platformWeb": {
+    "message": "Web",
+    "description": "Where the account posts from: a browser rather than a phone app."
+  },
+  "platformUnknown": {
+    "message": "Unknown",
+    "description": "Where the account posts from, when X says nothing."
+  },
+  "hiddenLabel": {
+    "message": "🚫 Hidden · $1 $2",
+    "description": "Label on a collapsed post. $1 is a flag or icon, $2 the reason (a country, an organisation, an age)."
+  },
+  "hiddenShow": {
+    "message": "Show",
+    "description": "Button that reveals one collapsed post. Keep short — it sits inline. Translate hideModeCollapseLong to match."
+  },
+  "hiddenShowTitle": {
+    "message": "Reveal this post ($1: $2)",
+    "description": "Tooltip on the reveal button. $1 is a rule name (see ruleNameLocation and friends), $2 what it matched."
+  },
+  "cellTagTitle": {
+    "message": "Matches your $1 — shown, not hidden",
+    "description": "Tooltip on a tag in a followers or search-people list. $1 is a rule name (see ruleNameLocation and friends)."
+  },
+  "ruleNameHighlight": {
+    "message": "highlight rule",
+    "description": "Rule name as it appears mid-sentence, after 'Matches your …'. Lower case in English."
+  },
+  "ruleNameLocation": {
+    "message": "blocked location",
+    "description": "Rule name as it appears mid-sentence, after 'Matches your …'. Lower case in English."
+  },
+  "ruleNameAffiliation": {
+    "message": "blocked affiliation",
+    "description": "Rule name as it appears mid-sentence, after 'Matches your …'. Lower case in English."
+  },
+  "ruleNameAge": {
+    "message": "account age",
+    "description": "Rule name as it appears mid-sentence, after 'Matches your …'. Lower case in English."
+  },
+  "excAdd": {
+    "message": "🚫 Add exception",
+    "description": "Button on a hover card that exempts this account from every rule acting on it."
+  },
+  "excUndo": {
+    "message": "✓ Exception (undo)",
+    "description": "The same button once the exception exists — pressing it again removes the exception."
+  },
+  "excAddTitle": {
+    "message": "Exempt @$1 from $2",
+    "description": "Tooltip on the exception button. $1 is an X handle without the @, $2 a list of rule phrases (see excPhraseLocation and friends)."
+  },
+  "excUndoTitle": {
+    "message": "@$1 is exempt from $2 — click to undo",
+    "description": "Tooltip on the exception button once the exception exists. $1 is an X handle without the @, $2 a list of rule phrases."
+  },
+  "excPhraseHighlight": {
+    "message": "keyword and flag highlighting",
+    "description": "Rule phrase, written to read after 'Exempt @user from …'."
+  },
+  "excPhraseLocation": {
+    "message": "the blocked-location filter",
+    "description": "Rule phrase, written to read after 'Exempt @user from …'."
+  },
+  "excPhraseAffiliation": {
+    "message": "the blocked-affiliation filter",
+    "description": "Rule phrase, written to read after 'Exempt @user from …'."
+  },
+  "excPhraseAge": {
+    "message": "the account-age filter",
+    "description": "Rule phrase, written to read after 'Exempt @user from …'."
+  },
+  "joinAnd": {
+    "message": "$1 and $2",
+    "description": "Joins the last two items of a list of rule phrases. $1 is everything before the last item, already comma-separated; $2 is the last item."
+  },
+  "chipBlockedYou": {
+    "message": "🚫 Blocked you",
+    "description": "Hover-card chip: this account has blocked the reader."
+  },
+  "chipBlockedYouTitle": {
+    "message": "This account blocks your account",
+    "description": "Tooltip on the blocked-you chip."
+  },
+  "chipAge": {
+    "message": "🎂 $1",
+    "description": "Hover-card chip showing account age. $1 is an abbreviated age such as '3mo'."
+  },
+  "chipAgeTitle": {
+    "message": "Account created $1",
+    "description": "Tooltip on the age chip. $1 is a date in YYYY-MM-DD form."
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1",
+    "description": "Hover-card chip showing the organisation X badges this account with. $1 is the organisation name or handle."
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "X shows an affiliate badge linking to @$1",
+    "description": "Tooltip on the affiliation chip. $1 is an X handle without the @."
+  },
+  "chipAffiliationTitle": {
+    "message": "X shows an affiliate badge on this account",
+    "description": "Tooltip on the affiliation chip when X names no parent account."
+  },
+  "chipIdVerified": {
+    "message": "🪪 ID verified",
+    "description": "Hover-card chip: X checked an identity document, as opposed to a paid blue check."
+  },
+  "chipIdVerifiedTitle": {
+    "message": "X verified an identity document",
+    "description": "Tooltip on the ID-verified chip."
+  },
+  "chipVerified": {
+    "message": "✔ Verified",
+    "description": "Hover-card chip: verification from before X made it a paid feature."
+  },
+  "chipVerifiedTitle": {
+    "message": "Legacy verification",
+    "description": "Tooltip on the legacy verification chip."
+  },
+  "chipHandle1": {
+    "message": "✎ 1 handle",
+    "description": "Hover-card chip: the account has changed its @handle once."
+  },
+  "chipHandles": {
+    "message": "✎ $1 handles",
+    "description": "Hover-card chip: how many times the account has changed its @handle. $1 is 2 or more."
+  },
+  "chipHandlesTitle": {
+    "message": "This account has changed its @handle $1 time(s)",
+    "description": "Tooltip on the handle-changes chip. $1 is a count."
+  },
+  "chipProtected": {
+    "message": "🔒 Protected",
+    "description": "Hover-card chip: the account's posts are visible to followers only."
+  },
+  "chipProtectedTitle": {
+    "message": "Posts are protected",
+    "description": "Tooltip on the protected chip."
+  },
+  "bioTitle": {
+    "message": "Bio from X's API — this card doesn't show one",
+    "description": "Tooltip on a bio the extension restored because X's hover card omitted it."
+  },
+  "shareBtn": {
+    "message": "🖼 Copy",
+    "description": "Button in the hover card's flags row. Copies the post as an image. Keep short. Translate setCopyButton to match."
+  },
+  "shareBtnTitle": {
+    "message": "Copy this post and what X reports for @$1 as an image",
+    "description": "Tooltip on the copy button. $1 is an X handle without the @."
+  },
+  "toastRendering": {
+    "message": "Rendering @$1 …",
+    "description": "Shown while the image is being drawn. $1 is an X handle without the @."
+  },
+  "toastCopied": {
+    "message": "✓ Copied to clipboard",
+    "description": "Confirmation after the image reached the clipboard."
+  },
+  "toastSaved": {
+    "message": "✓ Image saved",
+    "description": "Confirmation after the image was downloaded instead, because the clipboard was unavailable."
+  },
+  "toastRenderFail": {
+    "message": "Could not render that card",
+    "description": "Shown when drawing the image failed."
+  },
+  "toastRightClick": {
+    "message": "Right-click a post to share it",
+    "description": "Shown when the share command ran with no post to act on."
+  },
+  "toastReadFail": {
+    "message": "Could not read that post",
+    "description": "Shown when the post's author could not be identified."
+  },
+  "toastNoLocation": {
+    "message": "No location",
+    "description": "Shown after a swipe when X reports nothing about the account."
+  },
+  "toastLookingUp": {
+    "message": "@$1 …",
+    "description": "Shown while a swipe's lookup is in flight. $1 is an X handle without the @."
+  },
+  "regionEastAsiaPacific": {
+    "message": "East Asia & Pacific",
+    "description": "A region in the location picker. Every other region and every country name comes from the browser's own locale data; these two have no standard code, so they are translated here."
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "Eastern Europe (Non-EU)",
+    "description": "A region in the location picker: European countries outside the European Union."
+  }
+}

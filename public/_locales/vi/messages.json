@@ -1,0 +1,608 @@
+{
+  "localeTag": {
+    "message": "vi"
+  },
+  "appName": {
+    "message": "X-Pat — vị trí hồ sơ X, lọc và tô sáng"
+  },
+  "appShortName": {
+    "message": "X-Pat"
+  },
+  "appDesc": {
+    "message": "Xem quốc gia mà bất kỳ hồ sơ X nào đăng bài — cờ quốc gia, cảnh báo VPN và bộ lọc quốc gia, đọc từ dữ liệu của chính X."
+  },
+  "actionTitle": {
+    "message": "X-Pat"
+  },
+  "menuSharePost": {
+    "message": "Sao chép bài đăng kèm cờ vị trí"
+  },
+  "popupPaused": {
+    "message": "Đã tạm dừng. X hiển thị giống hệt như khi chưa cài tiện ích."
+  },
+  "popupOn": {
+    "message": "Bật"
+  },
+  "popupOff": {
+    "message": "Tắt"
+  },
+  "popupMasterSwitchTitle": {
+    "message": "Tạm tắt toàn bộ"
+  },
+  "popupFlagsInFeed": {
+    "message": "Cờ trong bảng tin 📍"
+  },
+  "popupAccountDetails": {
+    "message": "Chi tiết tài khoản khi di chuột 🪪"
+  },
+  "popupCountryPlaceholder": {
+    "message": "Quốc gia hoặc khu vực…"
+  },
+  "popupNothingBlocked": {
+    "message": "Không có gì bị chặn — tất cả cờ hiển thị nguyên trạng."
+  },
+  "popupHighlightKeywords": {
+    "message": "Tô sáng từ khóa"
+  },
+  "popupKeywordPlaceholder": {
+    "message": "Thêm từ khóa…"
+  },
+  "popupNoKeywords": {
+    "message": "Chưa có từ khóa — không có gì được tô sáng."
+  },
+  "popupAllSettings": {
+    "message": "Tất cả cài đặt →"
+  },
+  "popupRate": {
+    "message": "Đánh giá ★"
+  },
+  "popupRateTitle": {
+    "message": "Đánh giá X-Pat trên Chrome Web Store"
+  },
+  "popupDonate": {
+    "message": "Ủng hộ 💜"
+  },
+  "popupDonateTitle": {
+    "message": "Hỗ trợ phát triển"
+  },
+  "removeItem": {
+    "message": "Xóa $1"
+  },
+  "removeHandle": {
+    "message": "Xóa @$1"
+  },
+  "openHandle": {
+    "message": "Mở @$1 trên X"
+  },
+  "rateAskText": {
+    "message": "Thấy hữu ích? Đánh giá trên cửa hàng giúp ích rất nhiều."
+  },
+  "rateAskInline": {
+    "message": "— thấy hữu ích? Đánh giá trên cửa hàng giúp ích rất nhiều."
+  },
+  "rateAskYes": {
+    "message": "Đánh giá ★"
+  },
+  "rateAskLater": {
+    "message": "Để sau"
+  },
+  "rateAskNo": {
+    "message": "Không, cảm ơn"
+  },
+  "optionsTitle": {
+    "message": "Cài đặt X-Pat"
+  },
+  "optionsEnabled": {
+    "message": "Đã bật"
+  },
+  "optionsPaused": {
+    "message": "Đã tạm dừng"
+  },
+  "optionsPausedBanner": {
+    "message": "Đã tạm dừng — các mục bên dưới hiện không áp dụng lên X."
+  },
+  "tabDisplay": {
+    "message": "Hiển thị"
+  },
+  "tabFilters": {
+    "message": "Bộ lọc"
+  },
+  "tabExceptions": {
+    "message": "Ngoại lệ"
+  },
+  "tabData": {
+    "message": "Dữ liệu & quyền riêng tư"
+  },
+  "tabAdvanced": {
+    "message": "Nâng cao"
+  },
+  "ruleHighlight": {
+    "message": "Tô sáng từ khóa / cờ"
+  },
+  "ruleLocation": {
+    "message": "Vị trí bị chặn"
+  },
+  "ruleAffiliation": {
+    "message": "Tổ chức bị chặn"
+  },
+  "ruleAge": {
+    "message": "Tuổi tài khoản"
+  },
+  "cardOnPage": {
+    "message": "Trên trang"
+  },
+  "cardOnPageDesc": {
+    "message": "Những gì X-Pat vẽ lên X. Không mục nào trong đây thay đổi bài đăng nào bị lọc."
+  },
+  "setShowInFeed": {
+    "message": "Hiển thị vị trí trong bảng tin"
+  },
+  "setShowInFeedDesc": {
+    "message": "Một lá cờ dưới mỗi tên trong dòng thời gian, không chỉ khi di chuột."
+  },
+  "setAccountCard": {
+    "message": "Hiển thị chi tiết tài khoản khi di chuột"
+  },
+  "setAccountCardDesc": {
+    "message": "Tuổi tài khoản, huy hiệu tổ chức, xác minh, thay đổi tên người dùng và số người theo dõi — đọc từ dữ liệu X đã gửi sẵn, nên không tốn thêm lượt tra cứu."
+  },
+  "setCopyButton": {
+    "message": "Nút \"Sao chép\" trên thẻ di chuột"
+  },
+  "setCopyButtonDesc": {
+    "message": "Một nút \"Sao chép\" nhỏ trong hàng cờ. Sao chép bài đăng bạn đang di chuột, cùng với các cờ, dưới dạng ảnh — kết xuất trong trình duyệt của bạn, không tải lên gì cả. Nhấp chuột phải vào bài đăng cũng làm điều tương tự."
+  },
+  "setExceptionButton": {
+    "message": "Nút ngoại lệ trên thẻ di chuột"
+  },
+  "setExceptionButtonDesc": {
+    "message": "Miễn trừ một cú nhấp cho tài khoản bạn đang xem, khỏi mọi quy tắc đang áp dụng — tô sáng từ khóa, quốc gia, huy hiệu tổ chức, tuổi. Chú thích của nút cho biết những quy tắc nào."
+  },
+  "hintSwipe": {
+    "message": "👉 Vuốt sang phải trên bất kỳ bài đăng nào để lấy vị trí."
+  },
+  "cardAppearance": {
+    "message": "Giao diện"
+  },
+  "cardAppearanceDesc": {
+    "message": "Bao gồm các màn hình riêng của X-Pat — trang này và cửa sổ bật trên thanh công cụ. Các cờ và dấu vẽ trên X thì theo chủ đề của X, để không bao giờ xung đột với dòng thời gian."
+  },
+  "setTheme": {
+    "message": "Chủ đề"
+  },
+  "themeSystem": {
+    "message": "Theo hệ thống"
+  },
+  "themeLight": {
+    "message": "Sáng"
+  },
+  "themeDark": {
+    "message": "Tối"
+  },
+  "setLanguage": {
+    "message": "Ngôn ngữ"
+  },
+  "setLanguageDesc": {
+    "message": "Áp dụng cho văn bản của X-Pat và tên quốc gia hiển thị. Thay đổi sẽ tải lại trang này."
+  },
+  "languageAuto": {
+    "message": "Theo trình duyệt"
+  },
+  "cardKeyword": {
+    "message": "Tô sáng theo từ khóa"
+  },
+  "cardKeywordDesc": {
+    "message": "Đánh dấu bài đăng có tên hoặc tiểu sử tác giả chứa bất kỳ từ nào trong danh sách này. Tô sáng chỉ đánh dấu bài đăng; không bao giờ ẩn bài."
+  },
+  "keywordPlaceholder": {
+    "message": "Nhập từ khóa hoặc chọn gợi ý…"
+  },
+  "emptyNoKeywords": {
+    "message": "Chưa đặt từ khóa — tất cả bài đăng hiển thị bình thường."
+  },
+  "cardLocations": {
+    "message": "Vị trí"
+  },
+  "cardLocationsDesc": {
+    "message": "Những mục này hiển thị ⚠️ thay vì cờ của chúng. Dựa theo quốc gia cửa hàng ứng dụng, hoặc vị trí tài khoản khi không bị gắn cờ VPN. Không bao giờ áp dụng cho bài đăng bạn đã mở."
+  },
+  "locationPlaceholder": {
+    "message": "Tìm kiếm quốc gia và khu vực — tên, mã hoặc biệt danh…"
+  },
+  "regionCountries": {
+    "message": "khu vực · $1 quốc gia"
+  },
+  "emptyNoLocations": {
+    "message": "Chưa chọn vị trí — tất cả cờ hiển thị nguyên trạng."
+  },
+  "cardFiltered": {
+    "message": "Điều gì xảy ra với bài đăng bị lọc"
+  },
+  "cardFilteredDesc": {
+    "message": "Áp dụng cho hai bộ lọc loại bỏ bài đăng — vị trí bị chặn và tổ chức bị chặn. Tuổi tài khoản và tô sáng từ khóa luôn đánh dấu bài đăng bất kể cài đặt này. Bài đăng được trích dẫn tự thu gọn, để bài trích dẫn nó vẫn đọc được, còn danh sách người dùng được đánh dấu thay vì ẩn — xóa hàng ở đó sẽ làm sai số đếm."
+  },
+  "filteredPosts": {
+    "message": "Bài đăng bị lọc"
+  },
+  "hideModeOff": {
+    "message": "Hiển thị bình thường"
+  },
+  "hideModeCollapse": {
+    "message": "Thu gọn"
+  },
+  "hideModeCollapseLong": {
+    "message": "Thu gọn (\"Hiện\" để mở)"
+  },
+  "hideModeHide": {
+    "message": "Ẩn"
+  },
+  "hideModeHideLong": {
+    "message": "Ẩn hoàn toàn"
+  },
+  "cardAffiliations": {
+    "message": "Tổ chức"
+  },
+  "cardAffiliationsDesc": {
+    "message": "X gắn huy hiệu một số tài khoản là thuộc về một tổ chức. Nhập tên người dùng của tài khoản mẹ để lọc mọi tài khoản được gắn huy hiệu đó cùng lúc."
+  },
+  "affiliationPlaceholder": {
+    "message": "Tên người dùng tài khoản mẹ, v.d. nasa…"
+  },
+  "emptyNoAffiliations": {
+    "message": "Chưa chặn tổ chức nào. Di chuột lên tài khoản để xem liệu nó có mang huy hiệu không."
+  },
+  "cardAge": {
+    "message": "Tuổi tài khoản"
+  },
+  "cardAgeDesc": {
+    "message": "Tài khoản đã tồn tại bao lâu, từ ngày tạo mà X báo cáo. Mục này đánh dấu bài đăng và không bao giờ ẩn chúng, bất kể cài đặt bên trên nói gì."
+  },
+  "setMarkYoung": {
+    "message": "Đánh dấu tài khoản trẻ"
+  },
+  "setMarkYoungDesc": {
+    "message": "Đánh dấu bài đăng của họ giống như khớp từ khóa, với thanh màu cam dọc bên cạnh. Cố ý dừng ở đó: tài khoản trẻ là tín hiệu mạnh nhất cho tài khoản mua hoặc nuôi, và cũng chính xác là diện mạo của người mới tham gia tháng trước — quá mong manh để lấy đi phản hồi của họ."
+  },
+  "setMarkYoungerThan": {
+    "message": "Đánh dấu tài khoản trẻ hơn"
+  },
+  "cardFlags": {
+    "message": "Tô sáng theo cờ"
+  },
+  "cardFlagsDesc": {
+    "message": "Đánh dấu bài đăng có tiểu sử tác giả đầy biểu tượng cờ."
+  },
+  "setHighlightFlagHeavy": {
+    "message": "Tô sáng tiểu sử nhiều cờ"
+  },
+  "setFlagThreshold": {
+    "message": "Nhiều hơn số cờ này"
+  },
+  "setUniqueFlags": {
+    "message": "Chỉ đếm cờ duy nhất"
+  },
+  "cardAlwaysShow": {
+    "message": "Luôn hiển thị"
+  },
+  "cardAlwaysShowDesc": {
+    "message": "Miễn trừ khỏi mọi quy tắc cùng lúc — không bao giờ bị ẩn, không bao giờ bị thu gọn, không bao giờ bị tô sáng, bất kể bộ lọc nói gì."
+  },
+  "usernamePlaceholder": {
+    "message": "Thêm tên người dùng (không có @)…"
+  },
+  "emptyNoAllowlist": {
+    "message": "Không ai trong danh sách cho phép — mọi tài khoản đều bị đánh giá theo quy tắc."
+  },
+  "cardPerRule": {
+    "message": "Ngoại lệ theo từng quy tắc"
+  },
+  "cardPerRuleDesc": {
+    "message": "Miễn trừ tài khoản khỏi một quy tắc nhưng không phải các quy tắc khác — cho người dùng từ khóa theo dõi một cách mỉa mai (\"không NAFO\"), hoặc đăng từ quốc gia bị chặn mà bạn vẫn muốn đọc."
+  },
+  "searchExceptions": {
+    "message": "Tìm kiếm ngoại lệ…"
+  },
+  "searchExceptionsLabel": {
+    "message": "Tìm kiếm ngoại lệ"
+  },
+  "emptyNoMatch": {
+    "message": "Không có kết quả nào khớp \"$1\"."
+  },
+  "emptyNoExceptions": {
+    "message": "Không có ngoại lệ."
+  },
+  "cardLookups": {
+    "message": "Tra cứu nền"
+  },
+  "cardLookupsDesc": {
+    "message": "X cho phép khoảng $1 lượt tra cứu tài khoản mỗi $2 phút. Các cài đặt này quyết định X-Pat được dùng bao nhiêu trong số đó để điền cờ cho bạn, và giữ lại bao nhiêu cho các tài khoản bạn tự di chuột."
+  },
+  "setSharedCache": {
+    "message": "Dùng bộ nhớ đệm chung cộng đồng"
+  },
+  "setSharedCacheDesc": {
+    "message": "Chia sẻ các cờ bạn tra cứu để mọi người bỏ qua tra cứu lặp. Chỉ gửi tên người dùng công khai và cờ của họ — không có dữ liệu tài khoản hay cá nhân."
+  },
+  "setPrefetch": {
+    "message": "Tải trước vị trí trong nền"
+  },
+  "setPrefetchDesc": {
+    "message": "Tra cứu tài khoản trong bảng tin của bạn, theo thứ tự xuất hiện, để cờ hiện lên mà không cần di chuột."
+  },
+  "setShare": {
+    "message": "Tỷ lệ giới hạn tra cứu được phép dùng"
+  },
+  "setShareDesc": {
+    "message": "$1 cho tải trước, $2 còn lại cho các lượt di chuột của bạn."
+  },
+  "setSpread": {
+    "message": "Dàn trải tra cứu trong toàn bộ $1 phút"
+  },
+  "setSpreadDesc": {
+    "message": "Khoảng một lượt tra cứu mỗi $1s, thay vì tất cả cùng lúc."
+  },
+  "cardBackup": {
+    "message": "Sao lưu & khôi phục"
+  },
+  "cardBackupDesc": {
+    "message": "Chuyển cài đặt sang trình duyệt khác, hoặc giữ một bản sao trước khi thử nghiệm."
+  },
+  "btnExport": {
+    "message": "Xuất cài đặt"
+  },
+  "btnImport": {
+    "message": "Nhập cài đặt"
+  },
+  "hintImportMerge": {
+    "message": "Nhập là hợp nhất: cài đặt nào tệp không đề cập sẽ được giữ nguyên. Mọi giá trị đều được kiểm tra lại khi nhập vào, nên một tệp chỉnh tay không thể đưa tiện ích vào trạng thái không thể khôi phục."
+  },
+  "noteExported": {
+    "message": "Đã xuất $1 cài đặt. ID bộ nhớ đệm chung và vị trí đã lưu của bạn không được bao gồm."
+  },
+  "noteImported": {
+    "message": "Đã nhập $1 cài đặt."
+  },
+  "noteImportedSkipped": {
+    "message": "Đã bỏ qua $1 khóa không xác định."
+  },
+  "errImportFailed": {
+    "message": "Không thể nhập tệp đó."
+  },
+  "errNotJson": {
+    "message": "Tệp đó không phải JSON hợp lệ."
+  },
+  "errNotExport": {
+    "message": "Tệp đó không phải là tệp xuất cài đặt."
+  },
+  "errNoSection": {
+    "message": "Tệp đó thiếu phần \"settings\", nên không phải là tệp xuất từ tiện ích này."
+  },
+  "errNewerFormat": {
+    "message": "Tệp đó được viết bởi phiên bản mới hơn (định dạng $1). Hãy cập nhật tiện ích trước."
+  },
+  "errNoSettings": {
+    "message": "Tệp đó không chứa cài đặt nào để nhập."
+  },
+  "cardCache": {
+    "message": "Bộ nhớ đệm cục bộ"
+  },
+  "cardCacheDesc": {
+    "message": "Các vị trí bạn đã tra cứu được giữ trong trình duyệt này trong 30 ngày, nên hiển thị lại không tốn gì."
+  },
+  "btnClearCache": {
+    "message": "Xóa bộ nhớ đệm vị trí"
+  },
+  "btnCacheCleared": {
+    "message": "Đã xóa bộ nhớ đệm"
+  },
+  "cardTrust": {
+    "message": "Độ tin cậy bộ nhớ đệm chung"
+  },
+  "cardTrustDesc": {
+    "message": "Cần bao nhiêu báo cáo độc lập về cùng một vị trí thì bản cài đặt này mới tin tưởng. Cao hơn thì khó bị đầu độc hơn nhưng trả lời ít hơn nhiều: hiện chỉ khoảng 1 trong 80 hồ sơ được lưu đã được báo cáo hai lần, nên bất kỳ giá trị nào trên 1 hầu như đều quay lại tra cứu tài khoản trên X và tiêu tốn giới hạn tốc độ của bạn. Để ở $1 trừ khi bạn đang đo lường điều này."
+  },
+  "setTrustAfter": {
+    "message": "Tin tưởng vị trí chia sẻ sau"
+  },
+  "trustReports1": {
+    "message": "1 báo cáo"
+  },
+  "trustReports2": {
+    "message": "2 báo cáo"
+  },
+  "trustReports3": {
+    "message": "3 báo cáo"
+  },
+  "ageDays": {
+    "message": "$1 ngày"
+  },
+  "ageMonths": {
+    "message": "$1 tháng"
+  },
+  "ageYear": {
+    "message": "1 năm"
+  },
+  "ageYears": {
+    "message": "$1 năm"
+  },
+  "ageToday": {
+    "message": "hôm nay"
+  },
+  "ageShortDays": {
+    "message": "$1n"
+  },
+  "ageShortMonths": {
+    "message": "$1t"
+  },
+  "ageShortYears": {
+    "message": "$1nm"
+  },
+  "toastDismiss": {
+    "message": "Nhấp để đóng"
+  },
+  "toastRateLimit": {
+    "message": "⚠ Đạt giới hạn tốc độ · đặt lại sau $1"
+  },
+  "countdownMinSec": {
+    "message": "$1p $2s"
+  },
+  "countdownSec": {
+    "message": "$1s"
+  },
+  "rateLimitBadgeTitle": {
+    "message": "Đã đạt giới hạn tốc độ API X — tra cứu vị trí tạm dừng đến khi đặt lại"
+  },
+  "vpnBadge": {
+    "message": "⚠ VPN"
+  },
+  "vpnTitle": {
+    "message": "Đang dùng VPN, vị trí có thể không chính xác"
+  },
+  "storeRegionLabel": {
+    "message": "Khu vực $1: $2"
+  },
+  "platformWeb": {
+    "message": "Web"
+  },
+  "platformUnknown": {
+    "message": "Không xác định"
+  },
+  "hiddenLabel": {
+    "message": "🚫 Đã ẩn · $1 $2"
+  },
+  "hiddenShow": {
+    "message": "Hiện"
+  },
+  "hiddenShowTitle": {
+    "message": "Hiện bài đăng này ($1: $2)"
+  },
+  "cellTagTitle": {
+    "message": "Khớp với $1 của bạn — hiển thị, không ẩn"
+  },
+  "ruleNameHighlight": {
+    "message": "quy tắc tô sáng"
+  },
+  "ruleNameLocation": {
+    "message": "vị trí bị chặn"
+  },
+  "ruleNameAffiliation": {
+    "message": "tổ chức bị chặn"
+  },
+  "ruleNameAge": {
+    "message": "tuổi tài khoản"
+  },
+  "excAdd": {
+    "message": "🚫 Thêm ngoại lệ"
+  },
+  "excUndo": {
+    "message": "✓ Đã có ngoại lệ (hoàn tác)"
+  },
+  "excAddTitle": {
+    "message": "Miễn trừ @$1 khỏi $2"
+  },
+  "excUndoTitle": {
+    "message": "@$1 được miễn trừ khỏi $2 — nhấp để hoàn tác"
+  },
+  "excPhraseHighlight": {
+    "message": "tô sáng từ khóa và cờ"
+  },
+  "excPhraseLocation": {
+    "message": "bộ lọc vị trí bị chặn"
+  },
+  "excPhraseAffiliation": {
+    "message": "bộ lọc tổ chức bị chặn"
+  },
+  "excPhraseAge": {
+    "message": "bộ lọc tuổi tài khoản"
+  },
+  "joinAnd": {
+    "message": "$1 và $2"
+  },
+  "chipBlockedYou": {
+    "message": "🚫 Đã chặn bạn"
+  },
+  "chipBlockedYouTitle": {
+    "message": "Tài khoản này chặn tài khoản của bạn"
+  },
+  "chipAge": {
+    "message": "🎂 $1"
+  },
+  "chipAgeTitle": {
+    "message": "Tài khoản tạo ngày $1"
+  },
+  "chipAffiliation": {
+    "message": "🏢 $1"
+  },
+  "chipAffiliationTitleHandle": {
+    "message": "X hiển thị huy hiệu tổ chức liên kết đến @$1"
+  },
+  "chipAffiliationTitle": {
+    "message": "X hiển thị huy hiệu tổ chức trên tài khoản này"
+  },
+  "chipIdVerified": {
+    "message": "🪪 Đã xác minh ID"
+  },
+  "chipIdVerifiedTitle": {
+    "message": "X đã xác minh giấy tờ tùy thân"
+  },
+  "chipVerified": {
+    "message": "✔ Đã xác minh"
+  },
+  "chipVerifiedTitle": {
+    "message": "Xác minh cũ"
+  },
+  "chipHandle1": {
+    "message": "✎ 1 tên người dùng"
+  },
+  "chipHandles": {
+    "message": "✎ $1 tên người dùng"
+  },
+  "chipHandlesTitle": {
+    "message": "Tài khoản này đã đổi @handle $1 lần"
+  },
+  "chipProtected": {
+    "message": "🔒 Được bảo vệ"
+  },
+  "chipProtectedTitle": {
+    "message": "Bài đăng được bảo vệ"
+  },
+  "bioTitle": {
+    "message": "Tiểu sử từ API của X — thẻ này không hiển thị tiểu sử"
+  },
+  "shareBtn": {
+    "message": "🖼 Sao chép"
+  },
+  "shareBtnTitle": {
+    "message": "Sao chép bài đăng này và những gì X báo cáo cho @$1 dưới dạng ảnh"
+  },
+  "toastRendering": {
+    "message": "Đang kết xuất @$1 …"
+  },
+  "toastCopied": {
+    "message": "✓ Đã sao chép vào bộ nhớ tạm"
+  },
+  "toastSaved": {
+    "message": "✓ Đã lưu ảnh"
+  },
+  "toastRenderFail": {
+    "message": "Không thể kết xuất thẻ đó"
+  },
+  "toastRightClick": {
+    "message": "Nhấp chuột phải vào bài đăng để chia sẻ"
+  },
+  "toastReadFail": {
+    "message": "Không thể đọc bài đăng đó"
+  },
+  "toastNoLocation": {
+    "message": "Không có vị trí"
+  },
+  "toastLookingUp": {
+    "message": "@$1 …"
+  },
+  "regionEastAsiaPacific": {
+    "message": "Đông Á & Thái Bình Dương"
+  },
+  "regionEasternEuropeNonEu": {
+    "message": "Đông Âu (Ngoài EU)"
+  }
+}

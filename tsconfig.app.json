@@ -16,6 +16,9 @@
       "@/*": ["./src/*"]
     },
     "moduleResolution": "bundler",
+    // The test setup imports `_locales/en/messages.json` to stand in for
+    // `chrome.i18n`, which happy-dom has no equivalent for.
+    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",

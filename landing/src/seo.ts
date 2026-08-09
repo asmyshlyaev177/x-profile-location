@@ -1,5 +1,12 @@
-import { routes, type RouteDef } from './routes'
+import { metaFor, routes, type RouteDef } from './routes'
 import { CHROME_STORE_URL } from './utils/constants'
+import {
+  defaultLocale,
+  localePath,
+  locales,
+  type LocaleDef,
+} from './i18n/locales'
+import type { Dict } from './i18n/dict/en'
 
 /**
  * The live host. Moved from `x-profile-location.pages.dev` with the X-Pat
@@ -54,12 +61,10 @@ export const buildDate: string =
     ? __CONTENT_LAST_MODIFIED__
     : new Date().toISOString()
 
-/** The homepage entry, and the source of the site-wide title/description. */
-const home = routes[0]!
-
 /**
- * Site-level constants. Per-page title and description live in `routes.ts` —
- * they were here when there was only one page.
+ * Site-level constants. Per-page title and description live in the
+ * dictionaries — they were here when there was only one page, and in
+ * `routes.ts` when there was only one language.
  */
 export const seo = {
   /** Ignored by Google since 2009, still read by a few smaller engines. */
@@ -76,7 +81,6 @@ export const seo = {
     imageWidth: '1200',
     imageHeight: '630',
     siteName: 'X-Pat',
-    locale: 'en_US',
     updatedTime: buildDate,
   },
 
@@ -86,9 +90,10 @@ export const seo = {
   },
 } as const
 
-/** `/` → siteUrl; `/foo` → siteUrl + 'foo'. */
-export function canonicalFor(route: RouteDef): string {
-  return route.path === '/' ? siteUrl : `${siteUrl}${route.path.slice(1)}`
+/** `('/', en)` → siteUrl; `('/foo', ja)` → siteUrl + 'ja/foo'. */
+export function canonicalFor(route: RouteDef, locale: LocaleDef): string {
+  const path = localePath(locale.code, route.path)
+  return path === '/' ? siteUrl : `${siteUrl}${path.slice(1)}`
 }
 
 /**
@@ -96,7 +101,8 @@ export function canonicalFor(route: RouteDef): string {
  * review counts belong to the store, and inventing them here would be a lie
  * Google is good at catching.
  */
-export function buildJsonLd(version: string) {
+export function buildJsonLd(version: string, locale: LocaleDef, t: Dict) {
+  const home = metaFor(HOME, t)
   return {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
@@ -108,7 +114,8 @@ export function buildJsonLd(version: string) {
     applicationCategory: 'BrowserApplication',
     operatingSystem: 'Chrome, Edge, Brave, Lemur Browser',
     description: home.description,
-    url: siteUrl,
+    inLanguage: locale.htmlLang,
+    url: canonicalFor(HOME, locale),
     softwareVersion: version,
     // Real content date, not build time — see `buildDate`. Google treats a
     // `dateModified` that never matches an actual change as a reason to stop
@@ -121,15 +128,22 @@ export function buildJsonLd(version: string) {
   }
 }
 
+/** The homepage entry — the source of the site-wide description and URL. */
+const HOME: RouteDef = routes[0]!
+
 /**
  * FAQPage structured data, built from the same array the page renders visibly.
- * Google requires the two to match; sharing the source is what guarantees it.
+ * Google requires the two to match; sharing the source is what guarantees it —
+ * and in a translated site that guarantee is worth more, not less, because the
+ * failure mode is schema in one language over copy in another.
  */
-export function buildFaqJsonLd(route: RouteDef) {
+export function buildFaqJsonLd(route: RouteDef, locale: LocaleDef, t: Dict) {
+  const { faq } = metaFor(route, t)
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: (route.faq ?? []).map((item) => ({
+    inLanguage: locale.htmlLang,
+    mainEntity: faq.map((item) => ({
       '@type': 'Question',
       name: item.q,
       acceptedAnswer: { '@type': 'Answer', text: item.a },
@@ -149,24 +163,59 @@ function jsonLdEl(data: unknown) {
   }
 }
 
+/**
+ * `hreflang` for every language this page exists in, plus `x-default`.
+ *
+ * Emitted on all fifteen documents and listing all fifteen — the annotation is
+ * only valid if it is reciprocal, and a page that names its alternates without
+ * being named back by them is ignored. `x-default` points at English, which is
+ * both the default and the version served from the bare path.
+ *
+ * Pages with no dictionary entry (the privacy policy, the 404) exist in one
+ * language, so they get nothing: an `hreflang` set of one is noise.
+ */
+function alternateEls(route: RouteDef) {
+  if (!route.dictKey) return []
+  const links = locales.map((l) => ({
+    type: 'link',
+    props: {
+      rel: 'alternate',
+      hreflang: l.htmlLang,
+      href: canonicalFor(route, l),
+    },
+  }))
+  links.push({
+    type: 'link',
+    props: {
+      rel: 'alternate',
+      hreflang: 'x-default',
+      href: canonicalFor(route, defaultLocale),
+    },
+  })
+  return links
+}
+
 /** Returns the full set of <head> elements for vite-prerender-plugin */
-export function buildHeadElements(route: RouteDef, version: string) {
-  const canonical = canonicalFor(route)
+export function buildHeadElements(
+  route: RouteDef,
+  locale: LocaleDef,
+  version: string,
+  t: Dict,
+) {
+  const canonical = canonicalFor(route, locale)
+  const { title, description } = metaFor(route, t)
 
   // Nothing below the fold matters for a page we're asking not to be indexed.
   if (route.noindex) {
     return new Set<unknown>([
-      {
-        type: 'meta',
-        props: { name: 'description', content: route.description },
-      },
+      { type: 'meta', props: { name: 'description', content: description } },
       { type: 'link', props: { rel: 'canonical', href: canonical } },
       { type: 'meta', props: { name: 'robots', content: 'noindex' } },
     ])
   }
 
   const elements: unknown[] = [
-    jsonLdEl(buildJsonLd(version)),
+    jsonLdEl(buildJsonLd(version, locale, t)),
     {
       type: 'meta',
       props: {
@@ -174,10 +223,7 @@ export function buildHeadElements(route: RouteDef, version: string) {
         content: 'VGWeNcrEVDQA07xz1L_6VZjcMEip0kTWdxxpIEmmbKc',
       },
     },
-    {
-      type: 'meta',
-      props: { name: 'description', content: route.description },
-    },
+    { type: 'meta', props: { name: 'description', content: description } },
     { type: 'meta', props: { name: 'keywords', content: seo.keywords } },
     { type: 'meta', props: { name: 'author', content: seo.author } },
     {
@@ -191,10 +237,10 @@ export function buildHeadElements(route: RouteDef, version: string) {
     // Open Graph
     { type: 'meta', props: { property: 'og:type', content: seo.og.type } },
     { type: 'meta', props: { property: 'og:url', content: canonical } },
-    { type: 'meta', props: { property: 'og:title', content: route.title } },
+    { type: 'meta', props: { property: 'og:title', content: title } },
     {
       type: 'meta',
-      props: { property: 'og:description', content: route.description },
+      props: { property: 'og:description', content: description },
     },
     { type: 'meta', props: { property: 'og:image', content: seo.og.image } },
     {
@@ -219,7 +265,10 @@ export function buildHeadElements(route: RouteDef, version: string) {
       type: 'meta',
       props: { property: 'og:site_name', content: seo.og.siteName },
     },
-    { type: 'meta', props: { property: 'og:locale', content: seo.og.locale } },
+    {
+      type: 'meta',
+      props: { property: 'og:locale', content: locale.ogLocale },
+    },
 
     // Twitter Card. No `twitter:site` — it takes an @handle, and the old value
     // was a URL, which Twitter's validator drops anyway.
@@ -227,10 +276,10 @@ export function buildHeadElements(route: RouteDef, version: string) {
       type: 'meta',
       props: { name: 'twitter:card', content: seo.twitter.card },
     },
-    { type: 'meta', props: { name: 'twitter:title', content: route.title } },
+    { type: 'meta', props: { name: 'twitter:title', content: title } },
     {
       type: 'meta',
-      props: { name: 'twitter:description', content: route.description },
+      props: { name: 'twitter:description', content: description },
     },
     {
       type: 'meta',
@@ -255,7 +304,22 @@ export function buildHeadElements(route: RouteDef, version: string) {
     { type: 'link', props: { rel: 'canonical', href: canonical } },
   ]
 
-  if (route.faq?.length) elements.push(jsonLdEl(buildFaqJsonLd(route)))
+  // `og:locale:alternate` is the Open Graph half of the same statement the
+  // hreflang block makes, and Facebook/LinkedIn read it rather than hreflang.
+  if (route.dictKey) {
+    for (const l of locales) {
+      if (l.code === locale.code) continue
+      elements.push({
+        type: 'meta',
+        props: { property: 'og:locale:alternate', content: l.ogLocale },
+      })
+    }
+  }
+
+  elements.push(...alternateEls(route))
+
+  const { faq } = metaFor(route, t)
+  if (faq.length) elements.push(jsonLdEl(buildFaqJsonLd(route, locale, t)))
 
   return new Set(elements)
 }

@@ -1,7 +1,7 @@
 {
   "name": "x-pat",
   "private": true,
-  "version": "1.6.3",
+  "version": "1.7.0",
   "type": "module",
   "scripts": {
     "dev": "concurrently --kill-others \"pnpm proxy\" \"pnpm dev:app\"",
@@ -18,6 +18,7 @@
     "lint-staged": "lint-staged",
     "prepare": "git config core.hooksPath .githooks || exit 0",
     "test": "vitest run --coverage",
+    "locales": "node scripts/sync-locales.mjs",
     "test:shuffle": "vitest run --sequence.shuffle",
     "test:visual": "playwright test -c playwright.visual.config.ts",
     "test:lighthouse": "pnpm --filter x-pat-landing test:lighthouse",
