@@ -1,22 +1,25 @@
 import type { FaqItem } from '../routes'
+import { useT } from '../i18n/context'
 
 /**
  * Native `<details>` on purpose: the answers must be in the prerendered HTML
  * whether or not hydration ever runs, and this page defers hydration to idle.
  * A JS accordion would put the crawlable half of the page behind a click.
  *
- * The same array is emitted as FAQPage structured data in `seo.ts` — never
- * reword one without the other.
+ * The same array is emitted as FAQPage structured data in `seo.ts` — both read
+ * `pages.<key>.faq` from the one dictionary, which is what keeps the schema in
+ * the same language as the copy above it.
  */
 export function Faq({
   items,
-  heading = 'Questions people actually ask',
+  heading,
   id = 'faq',
 }: {
-  items: FaqItem[]
+  items: readonly FaqItem[]
   heading?: string
   id?: string
 }) {
+  const t = useT()
   if (!items.length) return null
 
   return (
@@ -24,7 +27,7 @@ export function Faq({
       {/* Same measure as the prose sections on the guide pages, so an article
           and the questions under it share one left edge. */}
       <div class="shell-narrow max-w-3xl!">
-        <h2 class="t-h2 reveal max-w-[24ch]">{heading}</h2>
+        <h2 class="t-h2 reveal max-w-[24ch]">{heading ?? t.faq.heading}</h2>
 
         {/* Not a <dl>: the question has to sit inside <summary> to be the
             control, and <dt> is only valid as a direct child of <dl>. */}

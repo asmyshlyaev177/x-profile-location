@@ -12,6 +12,8 @@
 // region is far more work to change than a stated location — which is why
 // content.tsx prefers it over `account_based_in`.
 
+import { t } from './i18n'
+
 export type SourcePlatform = 'ios' | 'android' | 'web' | 'unknown'
 
 export interface SourceInfo {
@@ -133,9 +135,9 @@ export function platformLabel(platform: SourcePlatform): string {
       // actually says — the raw value is "<country> Android App".
       return 'Android'
     case 'web':
-      return 'Web'
+      return t('platformWeb')
     default:
-      return 'Unknown'
+      return t('platformUnknown')
   }
 }
 

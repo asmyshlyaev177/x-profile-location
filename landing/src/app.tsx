@@ -15,17 +15,26 @@ import { EngagementFarming } from './components/EngagementFarming'
 import { Comparison } from './components/Comparison'
 import { ComparisonTeaser } from './components/ComparisonTeaser'
 import { NotFound } from './components/NotFound'
-import { NOT_FOUND_PATH, resolveRoute } from './routes'
+import { NOT_FOUND_PATH, metaFor, resolveRoute } from './routes'
+import { splitLocale } from './i18n/locales'
+import { I18nProvider } from './i18n/context'
+import type { Dict } from './i18n/dict/en'
 import './index.css'
 
 interface AppProps {
   url?: string
+  /**
+   * The copy for this page's language. Supplied by whichever entry rendered
+   * it — statically by `prerender.tsx`, lazily by `main.tsx` — so that `App`
+   * itself never imports the registry.
+   */
+  dict: Dict
 }
 
 /**
  * Guide pages share one shape — article, then the page's own FAQ, then the
  * install CTA — so they only need to name their body here. The metadata for
- * each lives in `routes.ts`.
+ * each lives in the dictionaries, keyed from `routes.ts`.
  */
 const GUIDES: Record<string, () => VNode> = {
   '/x-about-this-account': AboutThisAccount,
@@ -33,12 +42,32 @@ const GUIDES: Record<string, () => VNode> = {
   '/x-posed-alternative': Comparison,
 }
 
-export function App({ url }: AppProps) {
-  const path =
+export function App({ url, dict }: AppProps) {
+  const pathname =
     url ?? (typeof window !== 'undefined' ? window.location.pathname : '/')
-  const route = resolveRoute(path)
+  const { locale, routePath } = splitLocale(pathname)
+  const route = resolveRoute(routePath)
+  const { faq } = metaFor(route, dict)
 
-  if (route.path === NOT_FOUND_PATH) {
+  return (
+    <I18nProvider locale={locale} t={dict} routePath={route.path}>
+      <Body route={route.path} faq={faq} />
+    </I18nProvider>
+  )
+}
+
+/**
+ * Split out so every branch below sits *inside* the provider — a component
+ * calling `useT()` above it would silently render English.
+ */
+function Body({
+  route,
+  faq,
+}: {
+  route: string
+  faq: readonly { q: string; a: string }[]
+}) {
+  if (route === NOT_FOUND_PATH) {
     return (
       <>
         <SiteHeader />
@@ -50,7 +79,7 @@ export function App({ url }: AppProps) {
     )
   }
 
-  if (route.path === '/privacy-policy') {
+  if (route === '/privacy-policy') {
     return (
       <>
         <SiteHeader />
@@ -62,14 +91,14 @@ export function App({ url }: AppProps) {
     )
   }
 
-  const Guide = GUIDES[route.path]
+  const Guide = GUIDES[route]
   if (Guide) {
     return (
       <>
         <SiteHeader />
         <main>
           <Guide />
-          <Faq items={route.faq ?? []} />
+          <Faq items={faq} />
           <CTA />
         </main>
         <Footer />
@@ -91,7 +120,7 @@ export function App({ url }: AppProps) {
         <SeeItInAction />
         <Trust />
         <ComparisonTeaser />
-        <Faq items={route.faq ?? []} />
+        <Faq items={faq} />
         <CTA />
       </main>
       <Footer />

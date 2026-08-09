@@ -43,6 +43,7 @@ import {
   SHOW_SHARE_BUTTON_KEY,
   THEME_KEY,
 } from './countries'
+import { normalizeUiLanguage, t, UI_LANGUAGE_KEY } from './i18n'
 
 /** A stored value, cleaned. Returning undefined drops the key entirely. */
 type Normalizer = (value: unknown) => unknown
@@ -107,6 +108,7 @@ export const SETTINGS_REGISTRY = {
   [SHOW_EXCEPTION_BUTTON_KEY]: asBoolean(true),
   [SHOW_SHARE_BUTTON_KEY]: asBoolean(true),
   [THEME_KEY]: normalizeTheme,
+  [UI_LANGUAGE_KEY]: normalizeUiLanguage,
   [SHARED_CACHE_KEY]: asBoolean(true),
   [BACKGROUND_PREFETCH_KEY]: asBoolean(true),
   [PREFETCH_SHARE_KEY]: normalizePrefetchShare,
@@ -224,25 +226,21 @@ export async function importSettings(raw: string): Promise<ImportResult> {
   try {
     parsed = JSON.parse(raw)
   } catch {
-    throw new SettingsImportError('That file is not valid JSON.')
+    throw new SettingsImportError(t('errNotJson'))
   }
 
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new SettingsImportError('That file is not a settings export.')
+    throw new SettingsImportError(t('errNotExport'))
   }
 
   const file = parsed as Partial<SettingsFile>
   const settings = file.settings
   if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
-    throw new SettingsImportError(
-      'That file is missing its "settings" section, so it is not an export from this extension.',
-    )
+    throw new SettingsImportError(t('errNoSection'))
   }
 
   if (typeof file.format === 'number' && file.format > SETTINGS_FORMAT) {
-    throw new SettingsImportError(
-      `That file was written by a newer version (format ${file.format}). Update the extension first.`,
-    )
+    throw new SettingsImportError(t('errNewerFormat', file.format))
   }
 
   const applied: string[] = []
@@ -263,7 +261,7 @@ export async function importSettings(raw: string): Promise<ImportResult> {
   }
 
   if (applied.length === 0) {
-    throw new SettingsImportError('That file contains no settings to import.')
+    throw new SettingsImportError(t('errNoSettings'))
   }
 
   // The old highlight list mirrors the rule list's highlight bucket. Setting one

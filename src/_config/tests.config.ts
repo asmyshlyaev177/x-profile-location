@@ -1,5 +1,25 @@
 // Vitest global setup file
 import '@testing-library/jest-dom/vitest'
+import { __setMessages } from '../scripts/i18n'
+import enMessages from '../../public/_locales/en/messages.json'
+
+// ---------------------------------------------------------------------------
+// UI strings, without a browser to hold them
+// ---------------------------------------------------------------------------
+// `chrome.i18n` is the only part of the extension API happy-dom cannot be given
+// a plausible stub for: every test file builds its own `globalThis.chrome`, and
+// whichever one ran last would decide what the strings are. So `t()` reads an
+// injected catalogue when there is one, and this fills it from the English
+// messages — the same file the built extension ships. Assertions keep matching
+// on real copy, and a message deleted from the catalogue fails the test that
+// reads it rather than silently rendering its own key.
+__setMessages(
+  Object.fromEntries(
+    Object.entries(enMessages as Record<string, { message: string }>).map(
+      ([key, entry]) => [key, entry.message],
+    ),
+  ),
+)
 
 // ---------------------------------------------------------------------------
 // Keep happy-dom's MutationObserver alive across a garbage collection

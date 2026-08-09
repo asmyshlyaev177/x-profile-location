@@ -4,24 +4,25 @@ export type SupportedBrowser = 'chrome' | 'edge' | 'brave'
 
 export interface StoreEntry {
   browser: SupportedBrowser
-  label: string
   url: string
 }
 
+/**
+ * The label is not here: "Add to Chrome" is copy, and it lives in
+ * `i18n/dict/*` under `install.<browser>`. This module stays plain data so the
+ * URLs can be read without a locale in hand.
+ */
 export const STORES: Record<SupportedBrowser, StoreEntry> = {
   chrome: {
     browser: 'chrome',
-    label: 'Add to Chrome',
     url: CHROME_STORE_URL,
   },
   edge: {
     browser: 'edge',
-    label: 'Add to Edge',
     url: '#', // TODO: replace with Edge Add-ons URL
   },
   brave: {
     browser: 'brave',
-    label: 'Add to Brave',
     url: CHROME_STORE_URL, // Brave installs Chrome Web Store extensions directly
   },
 }

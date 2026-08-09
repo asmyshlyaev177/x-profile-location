@@ -1,8 +1,11 @@
 import { InstallButton } from './InstallButton'
+import { useT } from '../i18n/context'
 
 /* The one fold where colour carries the whole surface. Cyan is the mark; the
    page has been saving it for this. */
 export function CTA() {
+  const t = useT()
+
   return (
     <section class="bg-signal relative overflow-hidden">
       <div
@@ -13,17 +16,16 @@ export function CTA() {
 
       <div class="shell relative py-[clamp(4.5rem,9vw,8rem)]">
         <h2
-          class="t-display text-void"
-          style="font-size:clamp(2.25rem,4.6vw,3.75rem);max-width:24ch"
+          class="t-display text-void max-w-[24ch]"
+          style="font-size:clamp(2.25rem,4.6vw,3.75rem)"
         >
-          Stop guessing where the timeline comes from.
+          {t.cta.heading}
         </h2>
 
         <div class="mt-10 flex flex-wrap items-center gap-x-8 gap-y-5">
           <InstallButton size="lg" tone="void" placement="cta" />
           <p class="text-void/75 max-w-[26ch] text-[0.9375rem] leading-snug font-semibold">
-            Free, and it works the moment it installs. There’s no account to
-            create.
+            {t.cta.body}
           </p>
         </div>
       </div>

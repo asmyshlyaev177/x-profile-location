@@ -1,5 +1,6 @@
 import { ComparisonTable } from './ComparisonTable'
 import { ROWS } from '../data/comparison'
+import { useI18n } from '../i18n/context'
 
 /**
  * The homepage's five-row cut of the comparison, linking through to the full
@@ -18,28 +19,25 @@ import { ROWS } from '../data/comparison'
 const HEADLINE_ROWS = ROWS.filter((r) => r.headline)
 
 export function ComparisonTeaser() {
+  const { t, href } = useI18n()
+
   return (
     <section id="compare" class="band relative scroll-mt-24">
       <div class="shell">
         <div class="grid gap-10 lg:grid-cols-[1fr_1.35fr] lg:items-start lg:gap-16">
           <div>
-            <h2 class="t-h2 reveal max-w-[20ch]">
-              Already using one of the others?
-            </h2>
+            <h2 class="t-h2 reveal max-w-[20ch]">{t.compareTeaser.heading}</h2>
             <p class="t-lead reveal mt-6 max-w-[46ch]">
-              About twenty extensions put a flag next to a handle. The
-              differences that matter are not on the feature list — they are in
-              what the shared cache is allowed to do.
+              {t.compareTeaser.lead}
             </p>
             <p class="t-body reveal mt-6 max-w-[46ch]">
-              The full table covers fifteen rows and names the three things
-              X-Posed does better than this extension.
+              {t.compareTeaser.body}
             </p>
             <a
-              href="/x-posed-alternative"
+              href={href('/x-posed-alternative')}
               class="text-signal reveal mt-7 inline-block text-[0.9375rem] font-semibold underline decoration-1 underline-offset-4"
             >
-              See the full comparison →
+              {t.compareTeaser.link}
             </a>
           </div>
 
