@@ -11,6 +11,7 @@
 import type { LocationData } from './cache'
 import { canonicalLocation, COUNTRY_FLAGS, REGION_FLAGS } from './countries'
 import { classifySource, platformLabel } from './source'
+import { drawWatermark } from './watermark'
 
 export interface ShareInput {
   userName: string
@@ -276,6 +277,14 @@ export async function renderShareCard(input: ShareInput): Promise<Blob> {
       ctx.fillText(op.text, op.x, op.y)
     }
   }
+
+  // No room reserved for it: the layout already ends on a PAD of empty card,
+  // which is more than WATERMARK_BAND.
+  drawWatermark(ctx, {
+    width: layout.width,
+    height: layout.height,
+    background: BG,
+  })
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
