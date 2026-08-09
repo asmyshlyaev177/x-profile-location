@@ -74,6 +74,7 @@ import {
 import toolbarIconUrl from '../assets/icons/icon-32x32.png?inline'
 import { deliverShareCard, renderShareCard } from './share-card'
 import { allowGrowth, snapshotElement } from './snapshot'
+import { drawWatermark, WATERMARK_BAND } from './watermark'
 import {
   CONTENT_CSS,
   emojiKeywordCss,
@@ -3207,11 +3208,16 @@ async function shareCardFor(
     !article.hasAttribute(HIDDEN_REVEALED_ATTR)
 
   if (snapshotable) {
+    const background = getComputedStyle(document.body).backgroundColor || '#fff'
     try {
       await deliver(
         await snapshotElement(article, {
-          background: getComputedStyle(document.body).backgroundColor || '#fff',
+          background,
           decorate: (clone) => decorateSnapshot(clone, data),
+          finish: {
+            height: WATERMARK_BAND,
+            draw: (ctx, size) => drawWatermark(ctx, { ...size, background }),
+          },
         }),
       )
       return

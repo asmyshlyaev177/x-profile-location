@@ -92,6 +92,7 @@ run isolated and cannot. Communication is via `window.dispatchEvent(new CustomEv
 | `src/scripts/usage.ts`          | Active-day counter and the single rule deciding whether to ask for a store rating.                                                         |
 | `src/scripts/snapshot.ts`       | Clones a live element, inlines computed styles and images, renders to PNG via an SVG `foreignObject`.                                      |
 | `src/scripts/share-card.ts`     | Hand-drawn fallback card. Layout is pure (testable); drawing is not.                                                                       |
+| `src/scripts/watermark.ts`      | The mark both image paths put in the corner. Picks its ink from the backdrop it lands on.                                                  |
 | `src/scripts/grapheme.ts`       | Grapheme-cluster-aware substring search for keyword matching.                                                                              |
 | `src/scripts/service-worker.ts` | Sets `blockedCountries` defaults on install; owns the toolbar badge.                                                                       |
 | `src/pages/popup.tsx`           | Toolbar popup — master switch, feed flags, account card, filtered-post mode.                                                               |

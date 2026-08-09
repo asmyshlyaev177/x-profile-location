@@ -9,6 +9,11 @@ issue, your name belongs here.
 
 ### Added
 
+- **A small mark on shared images.** A card copied from a post now carries
+  `X-Pat · x-pat.pages.dev` in its bottom-right corner, so one that gets
+  reposted still says where it came from. It takes its colour from the theme
+  behind it, and nothing else about the image changes — still drawn and copied
+  entirely in your own browser.
 - **Light / dark theme**, under Display → Appearance, defaulting to matching
   your system. It covers X-Pat's own screens — the settings page and the toolbar
   popup — and not the flags and marks drawn on X, which keep following X's own

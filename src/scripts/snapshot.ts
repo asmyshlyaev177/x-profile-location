@@ -419,6 +419,18 @@ export interface SnapshotOptions {
    * anything added here has to carry its own.
    */
   decorate?: (clone: Element) => void
+  /**
+   * Drawn over the finished canvas, in CSS pixels. `height` is the room left
+   * for it under the element — the canvas is cropped to the element, so
+   * anything below it needs the space made first.
+   */
+  finish?: {
+    height: number
+    draw: (
+      ctx: CanvasRenderingContext2D,
+      size: { width: number; height: number },
+    ) => void
+  }
 }
 
 /**
@@ -427,7 +439,7 @@ export interface SnapshotOptions {
  */
 export async function snapshotElement(
   el: Element,
-  { background, scale = 2, padding = 16, decorate }: SnapshotOptions,
+  { background, scale = 2, padding = 16, decorate, finish }: SnapshotOptions,
 ): Promise<Blob> {
   const rect = el.getBoundingClientRect()
   const width = Math.ceil(rect.width)
@@ -465,16 +477,19 @@ export async function snapshotElement(
     buildSvgDataUrl(markup, finalWidth, finalHeight),
   )
 
+  const canvasWidth = finalWidth + padding * 2
+  const canvasHeight = finalHeight + padding * 2 + (finish?.height ?? 0)
   const canvas = document.createElement('canvas')
-  canvas.width = (finalWidth + padding * 2) * scale
-  canvas.height = (finalHeight + padding * 2) * scale
+  canvas.width = canvasWidth * scale
+  canvas.height = canvasHeight * scale
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('canvas is unavailable')
   ctx.scale(scale, scale)
 
   ctx.fillStyle = background
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight)
   ctx.drawImage(rendered, padding, padding, finalWidth, finalHeight)
+  finish?.draw(ctx, { width: canvasWidth, height: canvasHeight })
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {

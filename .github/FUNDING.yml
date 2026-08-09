@@ -5,4 +5,4 @@
 # NOWPayments, crypto-only: no merchant KYC on the payout side. The donor-facing
 # card path is an on-ramp with its own minimums, so this is a sponsor rail rather
 # than a tip rail — see ROADMAP.md Phase 4.
-custom: ["https://nowpayments.io/donation/asmyshlyaev177"]
+custom: ['https://nowpayments.io/donation/asmyshlyaev177']
