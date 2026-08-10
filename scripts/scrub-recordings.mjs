@@ -15,7 +15,7 @@
  * identity the scrub removes, and naming the *recording* account would be worse
  * than leaving it in the HAR, because a config is the first thing anyone reads.
  *
- * Users are recognised by SHAPE: any object carrying a `screen_name`. Which of
+ * Users are recognised by SHAPE: any object carrying a handle field. Which of
  * them keep their identity is DERIVED, not declared — a handle survives exactly
  * when a test source names it, because that is what "the suite asserts against
  * this account" looks like. Those accounts keep their handle, display name and
@@ -24,6 +24,15 @@
  * a capture is an incidental third party and is pseudonymised. The recording
  * account is named by no test, so it is removed without ever being written down,
  * and an account a test stops naming is anonymised by the next run.
+ *
+ * "By shape" has to mean every shape and every carrier, which took two goes to
+ * get right. A user reaches a capture as GraphQL's `screen_name`, as the newer
+ * `core`/`legacy` split, and as Periscope's `twitter_screen_name` + `display_name`
+ * — and arrives not only as a JSON response body but inlined into the HTML of
+ * every server-rendered document, where X writes the signed-in account's name,
+ * bio, location, avatar and date of birth into `__INITIAL_STATE__`. Recognising
+ * one shape in one carrier left the recording account's display name in the
+ * sidebar of every committed recording; see scrubMarkup() and userHandle().
  *
  * WHAT IT DOES NOT DO
  * It does not prune X's JavaScript. Those bundles are ~80% of a HAR's bytes, but
@@ -89,6 +98,31 @@ const SYNTHETIC = /^user_[0-9a-f]{8}$/
 const HANDLE_TOKEN = '[A-Za-z0-9_]{1,15}'
 
 /**
+ * Every key that carries a handle. `screen_name` is GraphQL and the legacy REST
+ * shape; Periscope — X's video/spaces backend, which the timeline calls on its
+ * own — answers with `twitter_screen_name` and `username` instead. Its response
+ * to the token exchange is a complete profile of the signed-in account, and it
+ * was invisible to a scrubber that only knew `screen_name`.
+ */
+const HANDLE_KEYS = ['screen_name', 'twitter_screen_name', 'username']
+/** Keys holding a display name beside one of those handles. */
+const NAME_KEYS = ['name', 'display_name', 'user_display_name']
+/** Keys holding a single avatar or banner URL. */
+const AVATAR_KEYS = [
+  'profile_image_url_https',
+  'profile_image_url',
+  'profile_banner_url',
+  'image_url',
+]
+
+/**
+ * Only the unambiguous handle keys are used to *discover* accounts from raw text.
+ * A bare `username` is an ordinary word in plenty of unrelated payloads, so it is
+ * trusted only in a parsed object that also has a display name — see userHandle().
+ */
+const HANDLE_FIELD = '(?:twitter_screen_name|screen_name)'
+
+/**
  * Scanning raw HAR text has to allow for escaped quotes. A HAR stores each
  * response body as a JSON *string*, so the body's own JSON is double-encoded: on
  * disk the field reads `\"screen_name\":\"jack\"`, never `"screen_name":"jack"`.
@@ -100,10 +134,11 @@ const HANDLE_TOKEN = '[A-Za-z0-9_]{1,15}'
  */
 const Q = '\\\\?"'
 const screenNameRe = () =>
-  new RegExp(`${Q}screen_name${Q}\\s*:\\s*${Q}(${HANDLE_TOKEN})${Q}`, 'g')
+  new RegExp(`${Q}${HANDLE_FIELD}${Q}\\s*:\\s*${Q}(${HANDLE_TOKEN})${Q}`, 'g')
 
 const PLACEHOLDER_AVATAR =
   'https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png'
+const POST_PLACEHOLDER = 'Post text removed by scrub-recordings.'
 // 1x1 transparent PNG — every avatar and photo body collapses to this.
 const PLACEHOLDER_IMAGE_B64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
@@ -170,11 +205,38 @@ const displayNameFor = (handle) => `User ${synthetic(handle).slice(5, 9)}`
 // ---------------------------------------------------------------------------
 
 /**
+ * Fields carrying a session rather than an identity. test-proxy-recorder redacts
+ * the `cookie` *header*; Periscope's token exchange returns one in the response
+ * *body*, where nothing was looking for it.
+ */
+const CREDENTIAL_KEYS = ['cookie', 'set_cookie']
+
+/**
+ * The handle of a user-shaped object, or null when it is not one. The two
+ * `screen_name` spellings are proof on their own. A bare `username` is not — it
+ * is an ordinary field name in unrelated payloads — so it counts only next to a
+ * display name.
+ */
+function userHandle(node) {
+  if (typeof node.screen_name === 'string') return node.screen_name
+  if (typeof node.twitter_screen_name === 'string')
+    return node.twitter_screen_name
+  if (
+    typeof node.username === 'string' &&
+    NAME_KEYS.some((k) => typeof node[k] === 'string')
+  ) {
+    return node.username
+  }
+  return null
+}
+
+/**
  * Walk any JSON value and rewrite the identity fields of every user-shaped object
- * found. X returns users in two shapes — a flat `legacy`-style object carrying
- * `screen_name` beside `name`/`description`, and the newer split of
- * `core: { screen_name, name }` with `avatar: { image_url }` as siblings — so both
- * are handled where they are found rather than assuming one schema.
+ * found. X returns users in three shapes — a flat `legacy`-style object carrying
+ * `screen_name` beside `name`/`description`, the newer split of
+ * `core: { screen_name, name }` with `avatar: { image_url }` as siblings, and
+ * Periscope's `twitter_screen_name`/`display_name` — so all three are handled
+ * where they are found rather than assuming one schema.
  */
 function walk(node, stats) {
   if (Array.isArray(node)) {
@@ -183,37 +245,46 @@ function walk(node, stats) {
   }
   if (!node || typeof node !== 'object') return
 
-  // Shape A: screen_name directly on this object, name/description beside it.
-  if (typeof node.screen_name === 'string') {
-    rewriteUser(node, node.screen_name, stats)
+  for (const key of CREDENTIAL_KEYS) {
+    if (typeof node[key] === 'string' && node[key]) {
+      node[key] = ''
+      stats.credentials++
+    }
   }
+
+  // Shape A: a handle directly on this object, name/description beside it.
+  const handle = userHandle(node)
+  if (handle !== null) rewriteUser(node, handle, stats)
 
   // Shape B: core.screen_name, with avatar/legacy as siblings of `core`.
   if (node.core && typeof node.core.screen_name === 'string') {
-    const handle = node.core.screen_name
-    rewriteUser(node.core, handle, stats)
-    if (node.avatar && typeof node.avatar.image_url === 'string') {
-      node.avatar.image_url = PLACEHOLDER_AVATAR
-      stats.avatars++
-    }
+    const nested = node.core.screen_name
+    rewriteUser(node.core, nested, stats)
+    if (node.avatar) blankAvatar(node.avatar, 'image_url', stats)
     if (node.legacy && typeof node.legacy === 'object') {
-      rewriteUser(node.legacy, handle, stats)
+      rewriteUser(node.legacy, nested, stats)
     }
   }
 
   // Post text — nothing asserts on it, and it is the most personal payload here.
+  // Tweet objects carry an id_str/rest_id sibling; the guard keeps us off
+  // unrelated `text` fields (labels, tooltips, i18n strings).
+  const isTweet =
+    typeof node.id_str === 'string' || typeof node.rest_id === 'string'
   for (const key of ['full_text', 'text']) {
-    if (typeof node[key] === 'string' && node[key].length > 0) {
-      // Tweet objects carry an id_str/rest_id sibling; the guard keeps us off
-      // unrelated `text` fields (labels, tooltips, i18n strings).
-      if (typeof node.id_str === 'string' || typeof node.rest_id === 'string') {
-        node[key] = 'Post text removed by scrub-recordings.'
-        stats.posts++
-      }
-    }
+    if (!isTweet || typeof node[key] !== 'string' || !node[key]) continue
+    if (node[key] !== POST_PLACEHOLDER) stats.posts++
+    node[key] = POST_PLACEHOLDER
   }
 
   for (const value of Object.values(node)) walk(value, stats)
+}
+
+/** Blank one avatar/banner URL, counting it only when it actually changed. */
+function blankAvatar(obj, key, stats) {
+  if (typeof obj[key] !== 'string') return
+  if (obj[key] !== PLACEHOLDER_AVATAR) stats.avatars++
+  obj[key] = PLACEHOLDER_AVATAR
 }
 
 function rewriteUser(obj, handle, stats) {
@@ -222,27 +293,43 @@ function rewriteUser(obj, handle, stats) {
   // the keyword tests match on its real bio text.
   const subject = isSubject(handle)
 
-  if (typeof obj.screen_name === 'string') {
-    if (obj.screen_name !== id) stats.handles++
-    obj.screen_name = id
+  for (const key of HANDLE_KEYS) {
+    if (typeof obj[key] !== 'string') continue
+    if (obj[key] !== id) stats.handles++
+    obj[key] = id
   }
-  if (!subject && typeof obj.name === 'string') {
-    obj.name = displayNameFor(handle)
-    stats.names++
+  if (!subject) {
+    for (const key of NAME_KEYS) {
+      if (typeof obj[key] !== 'string') continue
+      if (obj[key] !== displayNameFor(handle)) stats.names++
+      obj[key] = displayNameFor(handle)
+    }
+    if (typeof obj.description === 'string') {
+      if (obj.description !== '') stats.bios++
+      obj.description = ''
+    }
+    // The bio's links outlive the bio: X keeps them parsed out into `entities`,
+    // expanded_url and all, so blanking `description` alone leaves the personal
+    // site or list the account linked to.
+    if (obj.entities?.description?.urls?.length) {
+      obj.entities.description.urls = []
+      stats.bios++
+    }
+    // A date of birth is the strongest identifier a profile carries, and X
+    // inlines the signed-in account's into every document it renders. Deleted
+    // rather than blanked: not knowing someone's birthday is the normal state of
+    // every other user object in a capture.
+    if (obj.birthdate) {
+      delete obj.birthdate
+      stats.pii++
+    }
   }
-  if (!subject && typeof obj.description === 'string') {
-    obj.description = ''
-    stats.bios++
-  }
-  for (const key of [
-    'profile_image_url_https',
-    'profile_image_url',
-    'profile_banner_url',
-    'image_url',
-  ]) {
-    if (typeof obj[key] === 'string') {
-      obj[key] = PLACEHOLDER_AVATAR
-      stats.avatars++
+  for (const key of AVATAR_KEYS) blankAvatar(obj, key, stats)
+  // Periscope sends sized variants as an array rather than one URL per key.
+  if (Array.isArray(obj.profile_image_urls)) {
+    for (const variant of obj.profile_image_urls) {
+      if (!variant || typeof variant !== 'object') continue
+      for (const key of ['url', 'ssl_url']) blankAvatar(variant, key, stats)
     }
   }
   // Self-declared profile fields that can carry a real name or personal site.
@@ -290,6 +377,124 @@ function replaceToken(text, from, to, stats) {
 }
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// ---------------------------------------------------------------------------
+// Markup — the state blob X inlines into every server-rendered document
+// ---------------------------------------------------------------------------
+
+/** Where a user-shaped object may start inside markup. */
+const markupAnchorRe = () => new RegExp(`"${HANDLE_FIELD}"\\s*:`, 'g')
+
+/**
+ * A server-rendered x.com document carries `__INITIAL_STATE__={…}`, and inside it
+ * the signed-in account's display name, bio, location, avatar, banner and date of
+ * birth. Markup used to get the textual pass and nothing else — which rewrote the
+ * handle, because the handle is a token the mapping knows, and left every one of
+ * those fields untouched. That is what put the recording account's name in the
+ * sidebar of all 29 committed recordings.
+ *
+ * So markup gets the structural pass too: find the JSON around each user-shaped
+ * anchor, hand the parsed object to walk(), and splice the result back.
+ *
+ * Nothing here trusts a variable name or a script tag. The blob is located by
+ * balancing braces out from the anchor and confirmed by JSON.parse before a byte
+ * moves — so a document this cannot make sense of is left exactly as markup was
+ * left before, rather than corrupted by a guess.
+ */
+function scrubMarkup(text, stats) {
+  const anchors = [...text.matchAll(markupAnchorRe())].map((m) => m.index)
+  if (anchors.length === 0) return text
+
+  const { chains, closeOf } = braceChains(text, anchors)
+  const spans = new Map()
+  for (const anchor of anchors) {
+    // Outermost first: a user split across sibling keys (`core`, `legacy`,
+    // `avatar`) has to reach walk() in one piece, and the nearest enclosing
+    // object is only `core`.
+    for (const open of chains.get(anchor) ?? []) {
+      const close = closeOf.get(open)
+      if (close === undefined || close < anchor) continue
+      let parsed
+      try {
+        parsed = JSON.parse(text.slice(open, close + 1))
+      } catch {
+        continue
+      }
+      spans.set(open, { open, close, parsed })
+      break
+    }
+  }
+  if (spans.size === 0) {
+    stats.unparsed++
+    return text
+  }
+
+  const outer = [...spans.values()].filter(
+    (s) =>
+      ![...spans.values()].some(
+        (other) =>
+          other !== s && other.open <= s.open && other.close >= s.close,
+      ),
+  )
+  // Right to left, so the offsets of the spans still to come stay valid.
+  let out = text
+  for (const span of outer.sort((a, b) => b.open - a.open)) {
+    walk(span.parsed, stats)
+    out =
+      out.slice(0, span.open) +
+      inlineSafe(JSON.stringify(span.parsed)) +
+      out.slice(span.close + 1)
+  }
+  return out
+}
+
+/**
+ * For each anchor, the `{` positions still open at that point (outermost first),
+ * plus where every `{` is closed.
+ *
+ * One forward pass that tracks JSON string literals, so a brace inside a bio or a
+ * URL does not count. The document is HTML with inline script rather than JSON,
+ * so this is a heuristic — but a fail-safe one: where it reads the nesting wrong
+ * the slice it proposes does not parse, and scrubMarkup rewrites nothing.
+ */
+function braceChains(text, anchors) {
+  const wanted = new Set(anchors)
+  const chains = new Map()
+  const closeOf = new Map()
+  const stack = []
+  let inString = false
+
+  for (let i = 0; i < text.length; i++) {
+    // Anchors sit on the opening quote of a key, so the snapshot is taken
+    // before this character is classified.
+    if (wanted.has(i)) chains.set(i, [...stack])
+    const c = text[i]
+    if (inString) {
+      if (c === '\\') i++
+      else if (c === '"') inString = false
+      continue
+    }
+    if (c === '"') inString = true
+    else if (c === '{') stack.push(i)
+    else if (c === '}') {
+      const open = stack.pop()
+      if (open !== undefined) closeOf.set(open, i)
+    }
+  }
+  return { chains, closeOf }
+}
+
+/**
+ * The blob sits in a <script>, where a literal `</script` inside a string closes
+ * the tag early and a raw U+2028/U+2029 is not a legal JS string character.
+ * JSON.stringify escapes neither. Both forms below are still valid JSON, so a
+ * later run parses back exactly what this wrote.
+ */
+const inlineSafe = (json) =>
+  json
+    .replace(/<\//g, '<\\/')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
 
 // ---------------------------------------------------------------------------
 // Per-entry processing
@@ -345,11 +550,14 @@ function scrubEntry(entry, stats) {
     return
   }
 
-  // Markup gets the textual pass but no structural walk. X server-renders the
-  // signed-in account into the document (inlined initial state, meta tags), so
-  // skipping HTML leaves the recording account's handle in every capture — which
-  // is exactly what the first run of this script did.
+  // Markup gets both passes. X server-renders the signed-in account into the
+  // document — inlined initial state, meta tags — so skipping HTML entirely left
+  // that account's handle in every capture, which is what the first version of
+  // this script did; and running only the textual pass over it rewrote the handle
+  // while leaving the name, bio, location, avatar and birthdate beside it, which
+  // is what the second version did.
   if (isMarkup(mime) && content.text) {
+    content.text = scrubMarkup(content.text, stats)
     content.text = rewriteText(content.text, stats)
     content.size = content.text.length
   }
@@ -548,6 +756,65 @@ const harFiles = () =>
     .sort()
 
 /**
+ * What a run changed. Every counter is incremented only when a value actually
+ * moved, never merely because the field was there — otherwise a clean recording
+ * reports work it did not do, and --check cannot say what it found.
+ *
+ * `unparsed` is the exception and is left out of that report: it counts bodies
+ * this cannot read, which is a property of the capture, not of the scrub.
+ */
+const STAT_KEYS = [
+  'handles',
+  'names',
+  'bios',
+  'pii',
+  'credentials',
+  'avatars',
+  'posts',
+  'images',
+  'media',
+  'tokens',
+  'unparsed',
+  'bytesDropped',
+]
+
+const describe = (stats) =>
+  STAT_KEYS.filter((k) => !/^(unparsed|bytesDropped)$/.test(k) && stats[k])
+    .map((k) => `${k}:${stats[k]}`)
+    .join(' ') || 'differs byte-for-byte'
+
+/**
+ * Named, because the bare parse error says only "Unexpected end of JSON input" —
+ * and the usual cause is scrubbing a recording the proxy is still flushing, where
+ * knowing *which* file is the whole answer.
+ */
+function parseHar(file, raw) {
+  try {
+    const har = JSON.parse(raw)
+    if (!Array.isArray(har?.log?.entries)) {
+      throw new Error('no log.entries array — not a HAR?')
+    }
+    return har
+  } catch (err) {
+    console.error(`\n✗ ${path.basename(file)}: ${err.message}`)
+    console.error(
+      '\nIf this recording was just captured, the proxy may not have finished\n' +
+        'writing it. Re-run the scrub; if it persists, re-record that one test.',
+    )
+    process.exit(1)
+  }
+}
+
+/** Scrub a parsed HAR in place and return the bytes it should be stored as. */
+function scrubHar(har, stats) {
+  for (const entry of har.log.entries) {
+    scrubUrls(entry, stats)
+    scrubEntry(entry, stats)
+  }
+  return JSON.stringify(har)
+}
+
+/**
  * Handles still present in raw text that this script has not rewritten. Test
  * subjects are excluded: they are real handles on purpose, and flagging them
  * would make --check permanently red on a correctly scrubbed file.
@@ -591,19 +858,7 @@ function main() {
       `· ${sourceCount} test sources scanned`,
   )
 
-  const keys = [
-    'handles',
-    'names',
-    'bios',
-    'avatars',
-    'posts',
-    'images',
-    'media',
-    'tokens',
-    'unparsed',
-    'bytesDropped',
-  ]
-  const totals = Object.fromEntries(keys.map((k) => [k, 0]))
+  const totals = Object.fromEntries(STAT_KEYS.map((k) => [k, 0]))
   let bytesBefore = 0
   let bytesAfter = 0
   const offenders = []
@@ -612,41 +867,23 @@ function main() {
     const before = statSync(file).size
     bytesBefore += before
     const raw = readFileSync(file, 'utf8')
+    const har = parseHar(file, raw)
+    const stats = Object.fromEntries(STAT_KEYS.map((k) => [k, 0]))
+    const out = scrubHar(har, stats)
 
-    // --check inspects what is on disk and rewrites nothing. Checking the
-    // scrubbed output instead would pass unconditionally — it would prove the
-    // scrubber works, never that the committed file went through it.
+    // --check asks one question of what is on disk: would scrubbing it change
+    // anything? A file that survives its own scrubber unchanged has been through
+    // it; one that does not, has not — whatever the reason, and including the
+    // fields no regex over raw text can see. (Searching for leftover handles
+    // instead is what let a document keep the recording account's display name
+    // for as long as its handle beside it had already been rewritten.)
     if (CHECK) {
-      const leftover = residualHandles(raw)
-      if (leftover.length) offenders.push({ file, leftover })
+      if (out !== raw)
+        offenders.push({ file, stats, leftover: residualHandles(raw) })
       bytesAfter += before
       continue
     }
 
-    // Named, because the bare parse error says only "Unexpected end of JSON
-    // input" — and the usual cause is scrubbing a recording the proxy is still
-    // flushing, where knowing *which* file is the whole answer.
-    let har
-    try {
-      har = JSON.parse(raw)
-      if (!Array.isArray(har?.log?.entries)) {
-        throw new Error('no log.entries array — not a HAR?')
-      }
-    } catch (err) {
-      console.error(`\n✗ ${path.basename(file)}: ${err.message}`)
-      console.error(
-        '\nIf this recording was just captured, the proxy may not have finished\n' +
-          'writing it. Re-run the scrub; if it persists, re-record that one test.',
-      )
-      process.exit(1)
-    }
-
-    const stats = Object.fromEntries(keys.map((k) => [k, 0]))
-    for (const entry of har.log.entries) {
-      scrubUrls(entry, stats)
-      scrubEntry(entry, stats)
-    }
-    const out = JSON.stringify(har)
     // Written via a temp file and renamed: writeFileSync truncates first, so a
     // crash mid-write leaves a half-written HAR that fails to parse on the next
     // run — turning one bad recording into a permanently stuck scrub.
@@ -655,7 +892,7 @@ function main() {
     renameSync(tmp, file)
     bytesAfter += statSync(file).size
 
-    for (const k of keys) totals[k] += stats[k]
+    for (const k of STAT_KEYS) totals[k] += stats[k]
     if (VERBOSE) {
       console.log(
         `  ${path.basename(file).slice(0, 56).padEnd(56)} ` +
@@ -668,10 +905,10 @@ function main() {
   if (CHECK) {
     if (offenders.length) {
       console.error(`\n✗ unscrubbed identities in ${offenders.length} file(s):`)
-      for (const { file, leftover } of offenders) {
+      for (const { file, stats, leftover } of offenders) {
         console.error(
-          `  ${path.basename(file)}: ${leftover.length} handle(s)` +
-            (VERBOSE ? ` — ${leftover.join(', ')}` : ''),
+          `  ${path.basename(file)}: ${describe(stats)}` +
+            (leftover.length && VERBOSE ? ` — ${leftover.join(', ')}` : ''),
         )
       }
       console.error('\nRun: node scripts/scrub-recordings.mjs')
@@ -684,7 +921,8 @@ function main() {
   console.log(
     `\n  handles ${totals.handles} · names ${totals.names} · bios ${totals.bios} · ` +
       `avatars ${totals.avatars} · posts ${totals.posts}\n` +
-      `  images blanked ${totals.images} · media dropped ${totals.media} · ` +
+      `  birthdates ${totals.pii} · session blobs ${totals.credentials} · ` +
+      `images blanked ${totals.images} · media dropped ${totals.media} · ` +
       `url/text tokens ${totals.tokens}`,
   )
   console.log(
@@ -694,4 +932,22 @@ function main() {
   console.log('\n✓ scrubbed — now verify: pnpm test:e2e')
 }
 
-main()
+// Only when run as a command. The scrubbing itself is exported so it can be
+// tested against fixtures: --check proves a committed recording went through this
+// script, and cannot prove the script knows about a shape it has never seen —
+// nothing about a clean corpus goes red when a pass is dropped from the code.
+if (process.argv[1] === fileURLToPath(import.meta.url)) main()
+
+export {
+  scrubHar,
+  scrubEntry,
+  scrubMarkup,
+  walk,
+  userHandle,
+  synthetic,
+  SUBJECTS,
+  STAT_KEYS,
+}
+
+/** A zeroed counter set, for a caller scrubbing one thing rather than a corpus. */
+export const blankStats = () => Object.fromEntries(STAT_KEYS.map((k) => [k, 0]))
