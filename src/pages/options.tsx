@@ -59,6 +59,7 @@ import {
   SHOW_LOCATION_IN_FEED_KEY,
 } from '../scripts/countries'
 import { isMobile } from '../scripts/device'
+import { MSG } from '../scripts/constants'
 import { isSharedCacheConfigured } from '../scripts/shared-cache'
 import {
   defaultSetting,
@@ -277,7 +278,7 @@ export function Options() {
   )
 
   async function handleClearCache() {
-    await chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' })
+    await chrome.runtime.sendMessage({ type: MSG.CLEAR_CACHE })
     setCacheCleared(true)
     setTimeout(() => setCacheCleared(false), 2000)
   }

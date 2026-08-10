@@ -16,19 +16,21 @@ This folder contains Bedframe runtime script source files.
 
 ## Script inventory
 
-| File                | Context                         | Role                                                                                                     |
-| ------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `page-script.ts`    | `world: MAIN` (page JS context) | Wraps `fetch` + `XHR`; captures auth headers; extracts user bios from timeline/tweet API responses       |
-| `content.tsx`       | Content script                  | Fetches location via `AboutAccountQuery`; injects DOM rows into hover cards/tweets; cache + highlighting |
-| `extract-users.ts`  | Shared utility                  | Recursively walks GraphQL JSON to find `__typename: 'User'` nodes (depth limit: 20)                      |
-| `cache.ts`          | Shared utility                  | IndexedDB CRUD via idb-keyval; 30-day TTL; keys are lowercased usernames                                 |
-| `shared-cache.ts`   | Shared utility                  | Client for the optional crowdsourced location cache (`../../server`); batch lookup + contribute, opt-in  |
-| `countries.ts`      | Shared data                     | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps; `chrome.storage` key constants                      |
-| `i18n.ts`           | Shared utility                  | `t(key, …subs)` over `chrome.i18n`; `uiLocale()`                                                         |
-| `location-names.ts` | Shared utility                  | Country/region names per locale, derived from flag emoji via `Intl.DisplayNames`                         |
-| `grapheme.ts`       | Shared utility                  | Grapheme-cluster-aware substring search for keyword highlight matching                                   |
-| `service-worker.ts` | Background script               | `chrome.storage.local` init on install; analytics                                                        |
-| `analytics.ts`      | Shared utility                  | Thin wrapper for analytics event tracking                                                                |
+| File                 | Context                         | Role                                                                                                     |
+| -------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `page-script.ts`     | `world: MAIN` (page JS context) | Wraps `fetch` + `XHR`; captures auth headers; extracts user bios from timeline/tweet API responses       |
+| `content.tsx`        | Content script                  | Fetches location via `AboutAccountQuery`; injects DOM rows into hover cards/tweets; cache + highlighting |
+| `extract-users.ts`   | Shared utility                  | Recursively walks GraphQL JSON to find `__typename: 'User'` nodes (depth limit: 20)                      |
+| `cache.ts`           | Shared utility                  | IndexedDB CRUD via idb-keyval; 30-day TTL; keys are lowercased usernames                                 |
+| `shared-cache.ts`    | Shared utility                  | Client for the optional crowdsourced location cache (`../../server`); batch lookup + contribute, opt-in  |
+| `countries.ts`       | Shared data                     | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR` maps; `chrome.storage` key constants                      |
+| `i18n.ts`            | Shared utility                  | `t(key, …subs)` over `chrome.i18n`; `uiLocale()`                                                         |
+| `location-names.ts`  | Shared utility                  | Country/region names per locale, derived from flag emoji via `Intl.DisplayNames`                         |
+| `grapheme.ts`        | Shared utility                  | Grapheme-cluster-aware substring search for keyword highlight matching                                   |
+| `lookup-broker.ts`   | Service worker                  | One lookup queue, rate-limit ledger and pace shared by every open x.com tab                              |
+| `prefetch-poller.ts` | Content script                  | Asks the broker what to look up next, fetches it, asks again — the clock the worker cannot hold          |
+| `service-worker.ts`  | Background script               | `chrome.storage.local` init on install; toolbar badge; the lookup broker's message plumbing              |
+| `analytics.ts`       | Shared utility                  | Thin wrapper for analytics event tracking                                                                |
 
 ## Cross-context communication
 
@@ -39,6 +41,10 @@ This folder contains Bedframe runtime script source files.
 | `x-loc-headers-captured` | page-script → content | `{ headers: Record<string, string> }`          |
 | `x-loc-request-headers`  | content → page-script | _(empty — triggers re-emit of stored headers)_ |
 | `x-loc-users-data`       | page-script → content | `{ users: (UserBio & { priority })[] }`        |
+
+The content script and the service worker talk over `chrome.runtime` /
+`chrome.tabs` instead; every message name is in `constants.ts` as `MSG`, and the
+lookup ones are described under "Cross-tab lookup broker" in `CLAUDE.md`.
 
 ## UI strings
 

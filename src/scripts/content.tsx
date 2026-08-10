@@ -26,10 +26,7 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
-  LOOKUP_LIMIT_PER_WINDOW,
   MIN_CONFIDENCE_KEY,
-  PREFETCH_PACING_KEY,
-  PREFETCH_SHARE_KEY,
   RATE_PROMPT_KEY,
   REGION_ABBR,
   REGION_FLAGS,
@@ -46,7 +43,12 @@ import {
 import { defaultSetting, readSetting, settingValue } from './settings'
 import { initI18n, t, UI_LANGUAGE_KEY } from './i18n'
 import { localizedLocation } from './location-names'
-import { EVENTS, X_GRAPHQL_PATH } from './constants'
+import {
+  EVENTS,
+  MSG,
+  RATE_LIMIT_RESET_DEFAULT_MS,
+  X_GRAPHQL_PATH,
+} from './constants'
 import {
   contributeLocation,
   flushContributions,
@@ -56,8 +58,9 @@ import {
   setSharedCacheEnabled,
   sharedBatchLookup,
 } from './shared-cache'
-import { BackgroundPrefetcher } from './prefetch-queue'
-import type { PrefetchPriority } from './prefetch-queue'
+import { PrefetchPoller } from './prefetch-poller'
+import type { PrefetchCandidate, PrefetchPriority } from './prefetch-queue'
+import type { LookupReport, NextInstruction, TabState } from './lookup-broker'
 import {
   accountAgeDays,
   definedFacts,
@@ -110,7 +113,6 @@ const QUOTE_REVEALED_ATTR = 'data-x-loc-quote-revealed'
 const SEL_USER_CELL = '[data-testid="UserCell"]'
 const PEOPLE_CELL_ATTR = 'data-x-loc-cell-done'
 
-const RESET_DEFAULT = 60 * 5 * 1000
 const RE_SCREEN_NAME_HREF = /^\/([A-Za-z0-9_]{1,50})$/
 const RE_AT_MENTION = /^@[A-Za-z0-9_]{1,50}$/
 
@@ -191,8 +193,6 @@ chrome.storage.local
     MIN_CONFIDENCE_KEY,
     HIDE_BLOCKED_LOCATIONS_KEY,
     BACKGROUND_PREFETCH_KEY,
-    PREFETCH_SHARE_KEY,
-    PREFETCH_PACING_KEY,
   ])
   .then((result) => {
     const r = result as Record<string, unknown>
@@ -218,8 +218,8 @@ chrome.storage.local
     showShareButton = readSetting(SHOW_SHARE_BUTTON_KEY, r)
     hideMode = readSetting(HIDE_BLOCKED_LOCATIONS_KEY, r)
     prefetchEnabled = readSetting(BACKGROUND_PREFETCH_KEY, r)
-    prefetcher.setReserveFraction(readSetting(PREFETCH_SHARE_KEY, r))
-    prefetcher.setPacing(readSetting(PREFETCH_PACING_KEY, r))
+    // The share and the pacing are the broker's, not this tab's — it reads them
+    // itself so every tab is spending against one set of numbers.
     // Inert unless a server URL is configured (see CACHE_API_BASE in constants.ts).
     setSharedCacheEnabled(readSetting(SHARED_CACHE_KEY, r))
     setMinConfidence(r[MIN_CONFIDENCE_KEY])
@@ -229,7 +229,7 @@ chrome.storage.local
     rehighlightAll()
     refreshFeedLocations()
     void refreshHiddenTweets()
-    syncPrefetcher()
+    syncPoller()
     window.dispatchEvent(new CustomEvent(EVENTS.REQUEST_USERS))
   })
 
@@ -280,13 +280,13 @@ function applyMasterSwitch(changes: StorageChanges): boolean {
     )
     if (!extensionEnabled) {
       stripAllInjections()
-      prefetcher.stop()
+      poller.stop()
       return false
     }
     rehighlightAll()
     refreshFeedLocations()
     void refreshHiddenTweets()
-    syncPrefetcher()
+    syncPoller()
   }
   return extensionEnabled
 }
@@ -346,7 +346,7 @@ function applyFilterChanges(changes: StorageChanges): void {
       changes[HIDE_BLOCKED_LOCATIONS_KEY].newValue,
     )
     void refreshHiddenTweets()
-    syncPrefetcher()
+    syncPoller()
   }
 }
 
@@ -378,7 +378,7 @@ function applyDisplayChanges(changes: StorageChanges): void {
       changes[SHOW_LOCATION_IN_FEED_KEY].newValue,
     )
     refreshFeedLocations()
-    syncPrefetcher()
+    syncPoller()
   }
   if (changes[SHOW_EXCEPTION_BUTTON_KEY]) {
     showExceptionButton = settingValue(
@@ -407,7 +407,7 @@ function applyLookupChanges(changes: StorageChanges): void {
     )
     // Opting out of the community cache also stops background prefetch, which
     // exists to warm it — and opting back in restarts it.
-    syncPrefetcher()
+    syncPoller()
   }
   if (changes[MIN_CONFIDENCE_KEY]) {
     setMinConfidence(changes[MIN_CONFIDENCE_KEY].newValue)
@@ -417,17 +417,7 @@ function applyLookupChanges(changes: StorageChanges): void {
       BACKGROUND_PREFETCH_KEY,
       changes[BACKGROUND_PREFETCH_KEY].newValue,
     )
-    syncPrefetcher()
-  }
-  if (changes[PREFETCH_SHARE_KEY]) {
-    prefetcher.setReserveFraction(
-      settingValue(PREFETCH_SHARE_KEY, changes[PREFETCH_SHARE_KEY].newValue),
-    )
-  }
-  if (changes[PREFETCH_PACING_KEY]) {
-    prefetcher.setPacing(
-      settingValue(PREFETCH_PACING_KEY, changes[PREFETCH_PACING_KEY].newValue),
-    )
+    syncPoller()
   }
 }
 
@@ -652,53 +642,48 @@ let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null
 // would undo the click.
 let rateLimitToastDismissedUntil = 0
 
-// Counts every request — hover, swipe, prefetch alike — which is what lets the
-// prefetcher stop short of the user's share.
-let rateWindowLimit = LOOKUP_LIMIT_PER_WINDOW
-let rateWindowRemaining = LOOKUP_LIMIT_PER_WINDOW
-let rateWindowResetAt = 0
-
-// Once X's reset time has passed, the window has rolled and the budget is full.
-function rollRateWindowIfElapsed(): void {
-  if (rateWindowResetAt !== 0 && Date.now() >= rateWindowResetAt) {
-    rateWindowRemaining = rateWindowLimit
-    rateWindowResetAt = 0
-  }
+function intHeader(resp: Response, name: string): number | null {
+  const raw = resp.headers.get(name)
+  if (raw === null) return null
+  const n = parseInt(raw)
+  return Number.isNaN(n) ? null : n
 }
 
-// Optimistic: readRateHeaders makes it exact once the response lands.
-function noteRequestSent(): void {
-  rollRateWindowIfElapsed()
-  if (rateWindowRemaining > 0) rateWindowRemaining -= 1
-}
-
-function readRateHeaders(resp: Response): void {
-  const lim = resp.headers.get('x-rate-limit-limit')
-  const rem = resp.headers.get('x-rate-limit-remaining')
-  const rst = resp.headers.get('x-rate-limit-reset')
-  if (lim) {
-    const n = parseInt(lim)
-    if (n > 0) rateWindowLimit = n
-  }
-  if (rem !== null) {
-    const n = parseInt(rem)
-    if (!Number.isNaN(n)) rateWindowRemaining = n
-  }
-  if (rst) {
-    const n = parseInt(rst)
-    if (n > 0) rateWindowResetAt = n * 1000
-  }
-}
-
-// Snapshot for the prefetcher's budget.
-function currentRateState() {
-  rollRateWindowIfElapsed()
+/**
+ * The window is counted in the service worker, not here — every open x.com tab
+ * spends from the same 50. All this side does is pass on what X answered, for
+ * hovers and background lookups alike. See "Cross-tab lookup broker" in CLAUDE.md.
+ */
+function readRateHeaders(resp: Response): Partial<LookupReport> {
   return {
-    remaining: rateWindowRemaining,
-    limit: rateWindowLimit,
-    resetAt: rateLimitResetAt,
-    windowResetAt: rateWindowResetAt,
+    status: resp.status,
+    limit: intHeader(resp, 'x-rate-limit-limit'),
+    remaining: intHeader(resp, 'x-rate-limit-remaining'),
+    reset: intHeader(resp, 'x-rate-limit-reset'),
   }
+}
+
+function tabState(): TabState {
+  return {
+    focused: document.hasFocus(),
+    visible: document.visibilityState !== 'hidden',
+  }
+}
+
+async function askBroker<T>(message: object): Promise<T | null> {
+  try {
+    return (await chrome.runtime.sendMessage({
+      ...message,
+      tab: tabState(),
+    })) as T
+  } catch {
+    // An evicted or reloading worker must never take a lookup down with it.
+    return null
+  }
+}
+
+function reportLookup(report: LookupReport): Promise<unknown> {
+  return askBroker({ type: MSG.REPORT, report })
 }
 
 // In memory so highlighting reads synchronously rather than racing mergeCached.
@@ -782,9 +767,6 @@ export function __testResetState() {
   // rate-limit window
   rateLimitResetAt = 0
   rateLimitToastDismissedUntil = 0
-  rateWindowLimit = LOOKUP_LIMIT_PER_WINDOW
-  rateWindowRemaining = LOOKUP_LIMIT_PER_WINDOW
-  rateWindowResetAt = 0
 
   // live timers and observers, so nothing fires into the next test's DOM
   if (rateLimitToastInterval !== null) {
@@ -809,14 +791,38 @@ export function __testResetState() {
 }
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type === 'CLEAR_CACHE') {
+  if (message?.type === MSG.CLEAR_CACHE) {
     checkedThisSession.clear()
     clearAllCache()
   }
-  if (message?.type === 'SHARE_POST') {
+  if (message?.type === MSG.SHARE_POST) {
     void shareLastRightClickedPost()
   }
+  // Another tab hit the limit. The countdown belongs in every tab, not just the
+  // one that happened to be polling.
+  if (message?.type === MSG.RATE) {
+    const resetAt = Number(message.rate?.resetAt) || 0
+    if (resetAt > rateLimitResetAt) {
+      rateLimitResetAt = resetAt
+      showRateLimitToast()
+    }
+  }
+  // Another tab resolved a handle this one may also be showing.
+  if (message?.type === MSG.RESOLVED && typeof message.userName === 'string') {
+    void applyResolved(message.userName)
+  }
 })
+
+async function applyResolved(userName: string): Promise<void> {
+  if (!extensionEnabled) return
+  // The broadcast goes to every tab, this one included. A tab that did the
+  // lookup itself has already applied it — and applied it the way its own path
+  // called for, which for a hover means deliberately leaving the post the card
+  // was opened from where it is. Redrawing here would take that post away.
+  if (checkedThisSession.has(userName.toLowerCase())) return
+  const data = await getCached(userName)
+  if (data) applyFiltersForUser(userName, data)
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1099,70 +1105,110 @@ function toLocationData(
   }
 }
 
+/** What a lookup ended up costing the shared window, for the broker's ledger. */
+interface LookupCost {
+  spent: boolean
+  ok?: boolean
+  status?: number
+  limit?: number | null
+  remaining?: number | null
+  reset?: number | null
+}
+
+const NOTHING_SPENT: LookupCost = { spent: false }
+
+async function runLookup(
+  userName: string,
+  capturedHeaders: Record<string, string> | null,
+): Promise<{ data: LocationData | null; cost: LookupCost }> {
+  const stored = await getCached(userName)
+
+  // Skip the network if location data is already in IDB.
+  // Bio-only entries (location: null, source: null) fall through.
+  if (stored?.location || stored?.source) {
+    return { data: stored, cost: NOTHING_SPENT }
+  }
+
+  // Already ran the API lookup this session — return whatever IDB has (may include bio).
+  if (checkedThisSession.has(userName.toLowerCase())) {
+    return { data: stored ?? null, cost: NOTHING_SPENT }
+  }
+
+  // Don't attempt without intercepted headers — avoids failures before
+  // the page-script captures the session.
+  if (!capturedHeaders) return { data: null, cost: NOTHING_SPENT }
+
+  if (rateLimitResetAt > Date.now()) {
+    showRateLimitToast()
+    return { data: null, cost: NOTHING_SPENT }
+  }
+
+  try {
+    const variables = JSON.stringify({ screenName: userName })
+    const url = `${ABOUT_ACCOUNT_URL}?variables=${encodeURIComponent(variables)}`
+
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: aboutAccountHeaders(capturedHeaders),
+      credentials: 'include',
+    })
+    const cost: LookupCost = { spent: true, ...readRateHeaders(resp) }
+
+    if (resp.status === 429) {
+      rateLimitResetAt = cost.reset
+        ? cost.reset * 1000
+        : Date.now() + RATE_LIMIT_RESET_DEFAULT_MS
+      showRateLimitToast()
+      return { data: null, cost }
+    }
+
+    if (!resp.ok) return { data: null, cost }
+
+    checkedThisSession.add(userName.toLowerCase())
+    cost.ok = true
+
+    const data = toLocationData(await resp.json(), stored?.bio ?? null)
+    if (!data) return { data: stored ?? null, cost }
+
+    rememberBio(userName, null, null, data.facts)
+    await mergeCached(userName, data)
+    // Share this first-hand result so other users can skip the X call.
+    contributeLocation(userName, data)
+    return { data, cost }
+  } catch {
+    // A request that threw still left the window; only X can say by how much.
+    return { data: null, cost: { spent: true } }
+  }
+}
+
 export async function fetchLocationData(
   userName: string,
+  opts: { granted?: boolean } = {},
 ): Promise<LocationData | null> {
-  if (pendingMap.has(userName)) return pendingMap.get(userName)!
+  if (pendingMap.has(userName)) {
+    // The broker is holding this handle for us and no request will follow, so
+    // hand the slot straight back rather than let it time out.
+    if (opts.granted) await reportLookup({ userName, spent: false })
+    return pendingMap.get(userName)!
+  }
 
   // Capture snapshot so the IIFE always uses the headers that were valid at
   // call time, even if apiHeaders is updated mid-flight.
   const capturedHeaders = apiHeaders
 
   const promise = (async (): Promise<LocationData | null> => {
-    const stored = await getCached(userName)
+    const { data, cost } = await runLookup(userName, capturedHeaders)
+    // Nothing went out and the broker is holding nothing for us — every hover
+    // over a cached account lands here, and each report would wake the worker.
+    if (!cost.spent && !opts.granted) return data
 
-    // Skip the network if location data is already in IDB.
-    // Bio-only entries (location: null, source: null) fall through.
-    if (stored?.location || stored?.source) return stored
-
-    // Already ran the API lookup this session — return whatever IDB has (may include bio).
-    if (checkedThisSession.has(userName.toLowerCase())) return stored ?? null
-
-    // Don't attempt without intercepted headers — avoids failures before
-    // the page-script captures the session.
-    if (!capturedHeaders) return null
-
-    if (rateLimitResetAt > Date.now()) {
-      showRateLimitToast()
-      return null
-    }
-
-    try {
-      const variables = JSON.stringify({ screenName: userName })
-      const url = `${ABOUT_ACCOUNT_URL}?variables=${encodeURIComponent(variables)}`
-
-      noteRequestSent()
-      const resp = await fetch(url, {
-        method: 'GET',
-        headers: aboutAccountHeaders(capturedHeaders),
-        credentials: 'include',
-      })
-      readRateHeaders(resp)
-
-      if (resp.status === 429) {
-        const reset = resp.headers.get('x-rate-limit-reset')
-        rateLimitResetAt = reset
-          ? parseInt(reset) * 1000
-          : Date.now() + RESET_DEFAULT
-        showRateLimitToast()
-        return null
-      }
-
-      if (!resp.ok) return null
-
-      checkedThisSession.add(userName.toLowerCase())
-
-      const data = toLocationData(await resp.json(), stored?.bio ?? null)
-      if (!data) return stored ?? null
-
-      rememberBio(userName, null, null, data.facts)
-      await mergeCached(userName, data)
-      // Share this first-hand result so other users can skip the X call.
-      contributeLocation(userName, data)
-      return data
-    } catch {
-      return null
-    }
+    const reported = reportLookup({ userName, ...cost })
+    // A granted lookup waits: the poller asks for the next handle the moment
+    // this resolves, and the broker has to have been told what this one cost.
+    // A hover never waits — that would put an evicted worker's cold start in
+    // front of the row the user is looking at.
+    if (opts.granted) await reported
+    return data
   })()
 
   pendingMap.set(userName, promise)
@@ -3330,8 +3376,8 @@ window.addEventListener(EVENTS.HEADERS_CAPTURED, (e: Event) => {
   const headers = (e as CustomEvent).detail?.headers
   if (headers?.authorization) {
     apiHeaders = headers
-    // Auth just became available — a wanted prefetcher can start now.
-    syncPrefetcher()
+    // Auth just became available — a wanted poller can start now.
+    syncPoller()
   }
 })
 
@@ -3351,24 +3397,47 @@ async function applySharedHits(userNames: string[]) {
 }
 
 // ---------------------------------------------------------------------------
-// Background location prefetcher
+// Background location lookups
 // ---------------------------------------------------------------------------
-// Trickle lookups for on-screen accounts in feed order, paced across the
-// rate-limit window and using at most 70% of it. See prefetch-queue.ts.
-const prefetcher = new BackgroundPrefetcher({
+// The queue and the pace live in the service worker, so every open x.com tab
+// trickles from one shared budget. This end only asks and fetches.
+const poller = new PrefetchPoller({
+  next: () => askBroker<NextInstruction>({ type: MSG.NEXT }),
   fetch: async (userName) => {
-    const data = await fetchLocationData(userName)
+    const data = await fetchLocationData(userName, { granted: true })
     if (data) {
       applyFiltersForUser(userName, data)
     }
   },
-  isKnown: async (userName) => {
-    if (checkedThisSession.has(userName.toLowerCase())) return true
-    const cached = await getCached(userName)
-    return Boolean(cached && (cached.location || cached.source))
-  },
-  rateState: currentRateState,
 })
+
+/**
+ * Names this tab already has an answer for never reach the broker's queue — it
+ * cannot check for itself, since the cache is x.com's IndexedDB rather than the
+ * extension's. A whole timeline response arrives at once, so the reads go out
+ * together rather than one await at a time.
+ */
+async function unknownOnly(
+  candidates: PrefetchCandidate[],
+): Promise<PrefetchCandidate[]> {
+  const known = await Promise.all(
+    candidates.map(async (candidate) => {
+      if (checkedThisSession.has(candidate.userName.toLowerCase())) return true
+      const cached = await getCached(candidate.userName)
+      return Boolean(cached && (cached.location || cached.source))
+    }),
+  )
+  return candidates.filter((_, i) => !known[i])
+}
+
+async function enqueueForLookup(
+  candidates: PrefetchCandidate[],
+): Promise<void> {
+  const unknown = await unknownOnly(candidates)
+  if (unknown.length === 0) return
+  await askBroker({ type: MSG.ENQUEUE, candidates: unknown })
+  poller.wake()
+}
 
 // Prefetch exists to warm the shared cache, so opting out of that switches it
 // off too. Settings only — prefetchWanted() adds the runtime requirements.
@@ -3380,9 +3449,9 @@ function prefetchAllowedBySettings(): boolean {
 function prefetchWanted(): boolean {
   return prefetchAllowedBySettings() && apiHeaders !== null
 }
-function syncPrefetcher(): void {
-  if (prefetchWanted()) prefetcher.start()
-  else prefetcher.stop()
+function syncPoller(): void {
+  if (prefetchWanted()) poller.start()
+  else poller.stop()
 }
 
 window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
@@ -3398,10 +3467,10 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
     | undefined
   if (!users) return
   void applySharedHits(users.map((u) => u.userName))
-  // Queued before auth headers arrive; syncPrefetcher() starts the draining.
+  // Queued before auth headers arrive; syncPoller() starts the draining.
   // Timeline order into a FIFO, so lookups follow the feed down.
   if (prefetchAllowedBySettings()) {
-    prefetcher.enqueue(
+    void enqueueForLookup(
       users.map((u) => ({
         userName: u.userName,
         priority: u.priority ?? 'high',
