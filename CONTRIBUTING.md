@@ -188,6 +188,18 @@ real accounts with their display names, bios, avatars and post text. Session
 credentials are already redacted by the recorder — that covers credentials, not
 identity.
 
+`scrub:check` asks one question of each committed file: **would scrubbing it
+change anything?** A recording that survives its own scrubber untouched has been
+through it. That covers every field the scrubber knows about, including the ones
+no search over raw text can see — an earlier version hunted for leftover handles
+instead, and stayed green over documents that had kept the recording account's
+display name, bio and date of birth once the handle beside them was rewritten.
+
+What it cannot cover is a shape the scrubber has never met, or a pass someone
+deletes: a clean corpus stays clean-looking either way. That is what
+`scripts/scrub-recordings.test.mjs` is for, and why it runs in the ordinary unit
+suite.
+
 You should not normally have to run `pnpm scrub` by hand. Three things run it for
 you, in the order they can catch a mistake:
 

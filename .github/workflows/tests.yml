@@ -95,6 +95,24 @@ jobs:
       - name: Build extension
         run: pnpm build
 
+      # Two real x.com tabs, the built extension, the browser's own MV3 worker.
+      # It has to come after the build: the suite loads dist/chrome, so a stale
+      # one would test the previous commit. x.com itself is stubbed at its own
+      # URLs (integration/x-stub.ts), so unlike the e2e suite below there is no
+      # session and nothing recorded — and everything the lookup broker does is
+      # a property of more than one tab, which nothing above can hold two of.
+      - name: Cross-context tests
+        run: pnpm test:integration
+
+      - name: Upload integration test results
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: integration-test-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
       # E2E (Playwright) runs locally, not in CI: it needs a logged-in X
       # session and recorded fixtures that drift with X's UI. Run it with
       # `pnpm test:e2e` in the distrobox container before a release.

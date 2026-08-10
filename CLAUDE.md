@@ -102,26 +102,28 @@ run isolated and cannot. Communication is via `window.dispatchEvent(new CustomEv
 
 ## Key files
 
-| File                            | Purpose                                                                                                                                    |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/scripts/page-script.ts`    | `world: MAIN`. Wraps `fetch` + `XMLHttpRequest`. Captures auth headers; extracts bios from HomeTimeline/TweetDetail.                       |
-| `src/scripts/content.tsx`       | Content script. Calls `AboutAccountQuery`, injects DOM rows, runs the MutationObserver, handles keyword/flag highlighting.                 |
-| `src/scripts/extract-users.ts`  | Recursive GraphQL walker. Finds `__typename: 'User'` nodes up to depth 20.                                                                 |
-| `src/scripts/cache.ts`          | IndexedDB wrapper (idb-keyval). 30-day TTL. Keys are lowercased usernames.                                                                 |
-| `src/scripts/prefetch-queue.ts` | `BackgroundPrefetcher`: two FIFO queues (feed before replies), paced over its share of the rate-limit window. Unit-tested via `runOnce()`. |
-| `src/scripts/countries.ts`      | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR`, `REGION_MEMBERS` + every storage key.                                                      |
-| `src/scripts/profile.ts`        | Parses `AccountFacts` off a User node — timeline or AboutAccountQuery alike.                                                               |
-| `src/scripts/source.ts`         | The single place X's `source` string is interpreted: platform + store country, plus the drawn SVG glyphs.                                  |
-| `src/scripts/settings.ts`       | Registry of every setting, its normalizer and its default. The only way to read one. Backs import/export.                                  |
-| `src/scripts/usage.ts`          | Active-day counter and the single rule deciding whether to ask for a store rating.                                                         |
-| `src/scripts/snapshot.ts`       | Clones a live element, inlines computed styles and images, renders to PNG via an SVG `foreignObject`.                                      |
-| `src/scripts/share-card.ts`     | Hand-drawn fallback card. Layout is pure (testable); drawing is not.                                                                       |
-| `src/scripts/watermark.ts`      | The mark both image paths put in the corner. Picks its ink from the backdrop it lands on.                                                  |
-| `src/scripts/grapheme.ts`       | Grapheme-cluster-aware substring search for keyword matching.                                                                              |
-| `src/scripts/service-worker.ts` | Sets `blockedCountries` defaults on install; owns the toolbar badge.                                                                       |
-| `src/pages/popup.tsx`           | Toolbar popup — master switch, feed flags, account card, filtered-post mode.                                                               |
-| `src/pages/options.tsx`         | Preact settings page, five tabs (Display / Filters / Exceptions / Data & privacy / Advanced).                                              |
-| `src/components/Autocomplete/`  | Reusable Preact autocomplete used in the options page.                                                                                     |
+| File                             | Purpose                                                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `src/scripts/page-script.ts`     | `world: MAIN`. Wraps `fetch` + `XMLHttpRequest`. Captures auth headers; extracts bios from HomeTimeline/TweetDetail.           |
+| `src/scripts/content.tsx`        | Content script. Calls `AboutAccountQuery`, injects DOM rows, runs the MutationObserver, handles keyword/flag highlighting.     |
+| `src/scripts/extract-users.ts`   | Recursive GraphQL walker. Finds `__typename: 'User'` nodes up to depth 20.                                                     |
+| `src/scripts/cache.ts`           | IndexedDB wrapper (idb-keyval). 30-day TTL. Keys are lowercased usernames.                                                     |
+| `src/scripts/prefetch-queue.ts`  | `CandidateQueue` (feed before replies, page order) plus the pacing arithmetic. No timers, no state of its own.                 |
+| `src/scripts/lookup-broker.ts`   | Service worker. One queue per tab, one rate-limit ledger, one pace — the whole cross-tab decision, testable without a browser. |
+| `src/scripts/prefetch-poller.ts` | Content script. Asks the broker what to look up, looks it up, asks again. Holds the clock the worker cannot.                   |
+| `src/scripts/countries.ts`       | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR`, `REGION_MEMBERS` + every storage key.                                          |
+| `src/scripts/profile.ts`         | Parses `AccountFacts` off a User node — timeline or AboutAccountQuery alike.                                                   |
+| `src/scripts/source.ts`          | The single place X's `source` string is interpreted: platform + store country, plus the drawn SVG glyphs.                      |
+| `src/scripts/settings.ts`        | Registry of every setting, its normalizer and its default. The only way to read one. Backs import/export.                      |
+| `src/scripts/usage.ts`           | Active-day counter and the single rule deciding whether to ask for a store rating.                                             |
+| `src/scripts/snapshot.ts`        | Clones a live element, inlines computed styles and images, renders to PNG via an SVG `foreignObject`.                          |
+| `src/scripts/share-card.ts`      | Hand-drawn fallback card. Layout is pure (testable); drawing is not.                                                           |
+| `src/scripts/watermark.ts`       | The mark both image paths put in the corner. Picks its ink from the backdrop it lands on.                                      |
+| `src/scripts/grapheme.ts`        | Grapheme-cluster-aware substring search for keyword matching.                                                                  |
+| `src/scripts/service-worker.ts`  | Sets `blockedCountries` defaults on install; owns the toolbar badge.                                                           |
+| `src/pages/popup.tsx`            | Toolbar popup — master switch, feed flags, account card, filtered-post mode.                                                   |
+| `src/pages/options.tsx`          | Preact settings page, five tabs (Display / Filters / Exceptions / Data & privacy / Advanced).                                  |
+| `src/components/Autocomplete/`   | Reusable Preact autocomplete used in the options page.                                                                         |
 
 ---
 
@@ -158,10 +160,11 @@ Headers (captured from page's own requests):
 `source` is `"web"`, `"Japan Android App"`, `"India App Store"`, or `null`.
 
 **Rate limit: 50 requests / 15-minute window** (per-user, per-endpoint; measured
-2026-07-25). X returns `x-rate-limit-limit` / `-remaining` / `-reset` on **every**
-response, not just 429s — `content.tsx` reads them (`readRateHeaders`) and
-decrements a live `rateWindowRemaining` on each request (`noteRequestSent`), so
-the budget covers hovers + swipes + prefetch together.
+2026-07-25). It is a limit on the **X session**, not on a tab — every open x.com
+tab spends from the same 50. X returns `x-rate-limit-limit` / `-remaining` /
+`-reset` on **every** response, not just 429s; `content.tsx` passes them to the
+service worker (`readRateHeaders` → `LOOKUP_REPORT`), which keeps the one ledger
+covering hovers + swipes + prefetch across every tab.
 
 ### Prefetch
 
@@ -185,6 +188,63 @@ the budget covers hovers + swipes + prefetch together.
   so a build with an empty `CACHE_API_BASE` still prefetches. The options page
   mirrors this — the cache toggle leads **Background lookups** and disables
   everything below it.
+
+### Cross-tab lookup broker (`lookup-broker.ts`)
+
+Everything above describes **one** budget. Until this existed each tab kept its
+own copy of the queue, the pace and the rate-limit state, and three symptoms
+followed from that: two tabs on the same feed each spent a request on the same
+account; a 429 in one tab was something every other tab had to earn for itself;
+and an account X answered with no location for was re-asked by every new tab,
+because "already checked" lived in a `Set` that died with the tab.
+
+The queue, the pace and the ledger now live in the **service worker**, one
+instance for the browser. `lookup-broker.ts` is that state and its rules;
+`service-worker.ts` is only the message plumbing around it.
+
+**Tabs pull; the worker never pushes work.** The clock has to live somewhere
+that stays alive, and an MV3 worker does not: Chromium tears it down after ~30 s
+idle and **a pending `setTimeout` dies with it, silently**. The paced gap is
+≈26 s at the default share, ~60 s at 0.3, and up to 15 minutes when the budget
+is spent or a 429 is in force — so a worker-side timer would stop the trickle
+outright, and only an unrelated event would ever restart it. (`chrome.alarms`
+would also work, at the cost of a permission and a 30 s floor.) So `content.tsx`
+keeps its timer, `prefetch-poller.ts` loops `LOOKUP_NEXT → fetch → repeat`, and
+the worker only ever runs inside a message handler, where it cannot be evicted.
+
+| Message           | Direction | Carries                                                      |
+| ----------------- | --------- | ------------------------------------------------------------ |
+| `LOOKUP_ENQUEUE`  | tab → SW  | candidates, already filtered against **that tab's** IDB      |
+| `LOOKUP_NEXT`     | tab → SW  | → `{ userName }` or `{ waitMs }`                             |
+| `LOOKUP_REPORT`   | tab → SW  | whether a request went out, and X's headers if one did       |
+| `LOOKUP_RATE`     | SW → tabs | the ledger, so a 429 anywhere shows the countdown everywhere |
+| `LOOKUP_RESOLVED` | SW → tabs | a handle to re-read from IDB and redraw                      |
+
+Details that are load-bearing:
+
+- **The worker cannot read the cache.** A content script's IndexedDB is x.com's
+  storage, not the extension's, so `LOOKUP_ENQUEUE` has to arrive pre-filtered.
+- **State is mirrored to `chrome.storage.session` on every mutation and read
+  back at the top of every handler** — the eviction above happens constantly,
+  not rarely. `storage.session` is memory-only, so none of this touches disk and
+  a browser restart starts clean. The write is **awaited before the handler
+  answers**: left floating it is exactly the write that gets cut off.
+- **Grant order is global**, and whoever polls gets the best entry anywhere:
+  focused tab's feed, other visible tabs' feed, hidden tabs' feed, then the same
+  three for thread replies. The fetching tab need not be the tab that queued it
+  — that is what `LOOKUP_RESOLVED` is for — which is why no hold-back rule is
+  needed to keep a background tab from stealing the focused tab's slot.
+- **Hidden tabs still prefetch.** They are warming the community cache, and the
+  budget they spend is the same budget either way.
+- **`asked` replaces `checkedThisSession`** and is the fix for the third symptom:
+  a handle X has answered for is not asked about again **until the window rolls**.
+  Nothing is persisted — a location X does not have today it may have next week,
+  so a negative answer must never outlive the budget window that paid for it.
+- **Hovers never go through the broker.** They fetch immediately and only report
+  afterwards, so an evicted or wedged worker can never delay the row the user is
+  waiting on. `prefetch-poller.ts` is the only caller that awaits its report.
+- **Everything fails open.** A rejected `sendMessage` costs background lookups
+  until the worker comes back (`UNREACHABLE_RETRY_MS`), and nothing else.
 
 ### Shared cache backends (`CACHE_API_BASE`, constants.ts)
 
@@ -305,14 +365,14 @@ records nothing and looks like a clean result.
 
 ## content.tsx — module-level state
 
-| Variable             | Type                            | Purpose                                                  |
-| -------------------- | ------------------------------- | -------------------------------------------------------- |
-| `apiHeaders`         | `Record<string,string> \| null` | Captured auth headers; settable via `setApiHeaders()`    |
-| `checkedThisSession` | `Set<string>`                   | Usernames already attempted; prevents duplicate requests |
-| `pendingMap`         | `NormalizedMap<Promise>`        | In-flight fetches; concurrent hovers share one promise   |
-| `rateLimitResetAt`   | `number`                        | ms until the rate limit lifts; 0 when clear              |
-| `blockedCountries`   | `Set<string>`                   | From `chrome.storage.local`; reloaded on change          |
-| `highlightKeywords`  | `Set<string>`                   | Same; all lowercased                                     |
+| Variable             | Type                            | Purpose                                                                                                 |
+| -------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `apiHeaders`         | `Record<string,string> \| null` | Captured auth headers; settable via `setApiHeaders()`                                                   |
+| `checkedThisSession` | `Set<string>`                   | Usernames already attempted **in this tab**; the cross-tab answer is the broker's `asked`               |
+| `pendingMap`         | `NormalizedMap<Promise>`        | In-flight fetches; concurrent hovers share one promise                                                  |
+| `rateLimitResetAt`   | `number`                        | ms until the rate limit lifts; 0 when clear. Set by a 429 here **or** by `LOOKUP_RATE` from another tab |
+| `blockedCountries`   | `Set<string>`                   | From `chrome.storage.local`; reloaded on change                                                         |
+| `highlightKeywords`  | `Set<string>`                   | Same; all lowercased                                                                                    |
 
 **`__testResetState()`** is exported for tests — clears `checkedThisSession` and
 resets `rateLimitResetAt`.
@@ -692,16 +752,17 @@ file, and Istanbul allocates enough to trigger one. The setup file makes that
 WeakRef hold strongly. Never an extension bug — real browsers keep an observed
 callback alive.
 
-### Four suites, four different questions
+### Five suites, five different questions
 
-| Suite                  | Asks                                   | Needs                          | In CI             |
-| ---------------------- | -------------------------------------- | ------------------------------ | ----------------- |
-| `pnpm test`            | Does the logic hold?                   | nothing                        | yes               |
-| `pnpm test:visual`     | Interactions and styles as expected?   | a headless browser             | yes               |
-| `pnpm test:e2e`        | Does any of it survive contact with X? | a session and the HARs         | no                |
-| `pnpm test:lighthouse` | Does the landing site still score 100? | a headless browser             | `landing/**` only |
+| Suite                   | Asks                                    | Needs                             | In CI             |
+| ----------------------- | --------------------------------------- | --------------------------------- | ----------------- |
+| `pnpm test`             | Does the logic hold?                    | nothing                           | yes               |
+| `pnpm test:visual`      | Interactions and styles as expected?    | a headless browser                | yes               |
+| `pnpm test:integration` | Do the content script and worker agree? | a headless browser + `pnpm build` | yes               |
+| `pnpm test:e2e`         | Does any of it survive contact with X?  | a session and the HARs            | no                |
+| `pnpm test:lighthouse`  | Does the landing site still score 100?  | a headless browser                | `landing/**` only |
 
-**What a new extension feature owes the first three.** They are not tiers of
+**What a new extension feature owes the first four.** They are not tiers of
 thoroughness — a feature owes a test to each surface it touches:
 
 - **A pure function** (matcher, parser, formatter) → `pnpm test`, nothing else.
@@ -709,9 +770,13 @@ thoroughness — a feature owes a test to each surface it touches:
   a `visual/fixtures/*.html` entry **and** assertions in the matching spec.
   happy-dom resolves no cascade and reports no boxes, so a unit test cannot see
   that a thing has a border, sits in the right order, or fits its container.
+- **Anything split across contexts** — a message between the content script and
+  the service worker, anything about more than one tab → `pnpm test:integration`.
+  Two halves that each pass their own unit tests can still disagree about the
+  message between them, and no amount of mocking `chrome` can catch that.
 - **Anything depending on X's own DOM or responses** — an insertion point, a
   `data-testid`, a GraphQL field → `pnpm test:e2e`, with a recording. This is the
-  only suite that can notice X changed; the other two are built from markup we
+  only suite that can notice X changed; the other three are built from markup we
   wrote ourselves and a copy cannot report that the original moved.
 
 The blocked-account bio needed all three: `bioProbe` in `pnpm test`, the row's
@@ -774,6 +839,32 @@ Call `__testResetState()` in `beforeEach`. Swipe listeners attach to
 `document.body` at import time, so the gesture is testable end-to-end — happy-dom
 implements `TouchEvent` and accepts plain `{ clientX, clientY }` objects as
 `touches`/`changedTouches`. Dispatch with `bubbles: true` from the article.
+
+### integration/
+
+Two real x.com tabs, the built extension, and the browser's own service worker.
+It exists because everything the lookup broker does is a property of _more than
+one tab_, and neither a unit test nor `visual/` can hold two of them.
+
+- **Runs against `dist/chrome`**, so `pnpm build` (or `bedframe build chrome`)
+  has to have run first. A stale `dist/` tests the previous commit and says
+  nothing about this one.
+- **x.com is a stub** (`integration/x-stub.ts`) served _at_ x.com URLs via
+  `context.route` — `route.fulfill` keeps the origin, which is what makes the
+  manifest match and the page-script attach. No session, no HAR, no live
+  traffic, so unlike `e2e/` this runs on every push.
+- **Route registration order runs backwards.** Playwright tries the most
+  recently added route first, so the `https://x.com/**` catch-all is registered
+  _before_ the AboutAccountQuery and HomeTimeline handlers, not after.
+- **The stub's timeline fetch is repeated on a short timer**, and has to be.
+  page-script is built as a loader that `import()`s the real chunk, so its
+  `fetch` wrapper is not in place at parse time — a stub that fetched the moment
+  it parsed would beat the extension to it every run. On x.com the race is
+  invisible, because X's own timeline call comes long after its bundle.
+- **A test that passes with the mechanism removed is not a test.** The
+  duplicate-suppression one needs a _slow_ answer (3s, clear of the 1.5s pacing
+  floor): with an instant one the shared IndexedDB dedups on its own and the
+  test passes whether or not anything is coordinating.
 
 ### visual/
 

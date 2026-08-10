@@ -86,6 +86,7 @@
         "**/*.test.tsx",
         "e2e/**",
         "visual/**",
+        "integration/**",
         "scripts/**",
         "landing/scripts/**",
         "server/bench/**"

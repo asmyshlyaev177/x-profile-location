@@ -1,3 +1,5 @@
+import { MSG } from './constants'
+
 // Localized strings: the reader's chosen catalogue first, the browser's own
 // answer as default and fallback. See "Localization" in CLAUDE.md.
 
@@ -121,7 +123,7 @@ async function loadMessages(
   try {
     if (isExtensionPage()) return await readCatalogue(locale)
     const reply = await chrome.runtime.sendMessage({
-      type: 'GET_MESSAGES',
+      type: MSG.GET_MESSAGES,
       locale,
     })
     return (reply as Record<string, string> | null) ?? null
