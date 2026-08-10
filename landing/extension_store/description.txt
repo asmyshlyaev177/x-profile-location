@@ -1,68 +1,86 @@
-See which country any X account posts from, without opening a menu.
+See the country any X (Twitter) account posts from — country flag, VPN badge, and source platform — without opening a single profile. Read directly from X's own data, with no third-party geolocation.
 
-Hover a profile and the flag is there. Switch it on for the feed and it sits next to every handle.
+Hover a profile and the flag is there. Turn on flags in the feed and one appears next to every handle. Swipe right on mobile to reveal a location on demand.
 
 
 WHAT YOU GET
 
-- Country flag in hover cards, on profiles, and inline in the timeline
-- A VPN badge when X itself cannot verify the location
-- Collapse or hide posts from countries and regions you pick
-- Highlight by keyword, or by flags stacked in a bio
-- Swipe right to reveal, on Android
-- No rate limit errors halfway down a long thread
+- Country flag in hover cards, on profile pages, and inline in the timeline
+- Source platform and app-store country — confirms or contradicts the stated location
+- A red VPN badge when X itself cannot verify the location
+- Filter posts by country or region — collapse them behind a "Show" button or hide them entirely
+- Highlight posts by keyword, or by accounts stacking flag emojis in their bio
+- Mark accounts younger than a threshold (90 days, 180 days, 1 year, 3 years)
+- Filter accounts by X organization affiliation (government, NGO, company badges)
+- Per-rule exception lists — exempt specific accounts from any filter without disabling the rule
+- Account facts card — verification status, account age, handle-change count, affiliation badge, protected-account indicator
+- Share a post as a PNG image with the location flag embedded — right-click menu or hover-card button
+- Swipe right to reveal, on Android and touch-screen devices
+- No login, no API key, no rate-limit errors halfway down a thread
 
 
 X RATE LIMITS, SOLVED INSTEAD OF HIT
 
-You have seen the failure. Flags fill in at the top of a thread, then stop. Or every profile you hover spins and never lands. That is the rate limit: X cuts you off at 50 account lookups per 15 minutes, and one busy thread has more accounts in it than that.
+You have seen it — flags fill in at the top of a thread, then stop. Or every profile you hover spins and never lands. That is the rate limit: X cuts you off at 50 account lookups per 15 minutes, and one busy thread has more accounts in it than that.
 
-Most profiles here never cost a lookup, because they are already cached in your browser or answered by the shared cache. The rest is rationed against the live limit, and the last 30 percent is held back for accounts you actually hover.
+Most profiles here never cost a lookup because they are already cached in your browser or answered by the shared community cache. The rest is rationed across all open X tabs by a cross-tab broker, and the last 30 percent of the window is held back for accounts you actually hover.
 
 Run it dry and you get a countdown to the reset, not a blank flag.
 
 
 WHERE THE COUNTRY COMES FROM
 
-Your browser asks x.com, using the session you are already logged into. No server of ours in the middle, no IP geolocation, no third party database.
+Your browser asks x.com, using the session you are already logged into. No server of ours in the middle, no IP geolocation, no third-party database.
 
-So it is exactly as accurate as X's own data. Sometimes marked unverified, sometimes missing entirely on older accounts. No login and no API key.
+It reads the country directly from X's own account metadata — the same field X uses to label profiles — and also reads the app-store country the account downloaded X from. When the store country disagrees with the stated location, both are shown. When X marks the location as unverified, a VPN badge appears. When the store country corroborates the stated location even with an unverified tag, the badge is suppressed.
+
+So it is exactly as accurate as X's own data. Sometimes missing on older or locked accounts. No login and no API key required beyond the X session you already have open.
 
 
 FILTERING
 
-Pick countries or whole regions, then leave them alone, collapse them behind a "Show" button, or hide them. Collapse is the default, because a timeline that silently deletes things is not one you can trust.
+Pick countries or whole regions (13 world regions, 200+ individual countries), then leave them alone, collapse them behind a "Show" button, or hide them. Collapse is the default, because a timeline that silently deletes things is not one you can trust.
+
+You can also filter by account age, by X organization affiliation, and by accounts that stack multiple country flags in their bio. Every rule has its own exception list, and there is a global "Always Show" allowlist that overrides all rules at once.
+
+Keyword highlighting uses the CSS Highlights API — it never touches the DOM, so X's React never notices it. Emoji keywords are supported, and matching flag emojis in bios get a visible outline ring.
 
 
 PRIVACY
 
-Never read: your cookies and session tokens, the bios and posts you scroll past, your history. Not as a setting. It never reads them.
+Never read: your cookies and session tokens, the bios and posts you scroll past, your browsing history. Not as a setting. It never reads them.
 
-No analytics or telemetry in the extension. Results sit in your browser for 30 days and one button clears them.
+No analytics or telemetry in the extension. Results are stored in your browser for 30 days and one button clears them all.
+
+The source is public (MIT license), so you can verify any of this rather than take our word for it.
 
 
 THE SHARED CACHE, ON BY DEFAULT
 
 Your lookups answer other people's and theirs answer yours, which is what keeps the rate limit off your back.
 
-What gets sent: the handle looked up, its country and VPN flag, and a random install ID. Nothing about you, nothing about what you read. One toggle in options turns it off.
+What gets sent: the handle that was looked up, its country and VPN flag, and a random install ID. Nothing about you, nothing about what you read. One toggle in Settings turns it off — and turning it off also stops background prefetching.
+
+The cache server is open source. You can run your own.
 
 
 PERMISSIONS
 
-x.com and twitter.com, because that is where it runs. Storage, for settings and the cache. Context menus, for a single "Options" entry.
+x.com and twitter.com, because that is where it runs. Storage, for settings and the 30-day local cache. Context menus, for two entries: "Copy post with location flags" and a shortcut to Settings.
 
-That is the whole list. It cannot see any other tab you have open, and there is no remote code.
+That is the whole list. It cannot see any other tab you have open, and no remote code is ever loaded.
 
 
 WHAT IT IS NOT
 
-Not a bot or engagement-farming detector. It surfaces one signal you cannot otherwise see without opening every profile one at a time. What you conclude from it is yours.
+Not a bot detector or engagement-farming classifier. It surfaces signals you cannot otherwise see without opening every profile one at a time — country, source platform, VPN status, account age, affiliation, verification, handle changes. What you conclude from them is yours.
 
 
-Chrome, Edge and Brave on the desktop. Lemur Browser on Android.
+Chrome, Edge, and Brave on the desktop. Lemur Browser on Android. Firefox and Safari via their respective stores.
 
-MIT licensed and the source is public, so you can check any of this rather than take my word for it.
+15 UI languages with country names in the reader's own language.
+
+MIT licensed and the source is public:
 
 https://github.com/asmyshlyaev177/x-profile-location
 https://x-pat.pages.dev/

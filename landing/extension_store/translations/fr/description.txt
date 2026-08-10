@@ -1,0 +1,87 @@
+Voyez de quel pays publie n'importe quel compte X (Twitter) — drapeau du pays, badge VPN et plateforme source — sans ouvrir un seul profil. Lu directement à partir des propres données de X, sans géolocalisation tierce.
+
+Survolez un profil et le drapeau apparaît. Activez les drapeaux dans le fil et un apparaît à côté de chaque pseudonyme. Balayez vers la droite sur mobile pour révéler un emplacement à la demande.
+
+
+CE QUE VOUS OBTENEZ
+
+- Drapeau du pays dans les cartes de survol, sur les pages de profil et en ligne dans la chronologie
+- Plateforme source et pays de l'App Store — confirme ou contredit l'emplacement déclaré
+- Un badge VPN rouge lorsque X lui-même ne peut pas vérifier l'emplacement
+- Filtrer les publications par pays ou région — les réduire derrière un bouton « Afficher » ou les masquer entièrement
+- Surligner les publications par mot-clé, ou par les comptes qui empilent des drapeaux dans leur bio
+- Marquer les comptes plus récents qu'un seuil (90 jours, 180 jours, 1 an, 3 ans)
+- Filtrer les comptes par affiliation à une organisation X (badges gouvernement, ONG, entreprise)
+- Listes d'exceptions par règle — exempter des comptes spécifiques de n'importe quel filtre sans désactiver la règle
+- Fiche de renseignements du compte — statut de vérification, âge du compte, nombre de changements de pseudo, badge d'affiliation, indicateur de compte protégé
+- Partager une publication en image PNG avec le drapeau de localisation intégré — menu clic droit ou bouton de la carte de survol
+- Balayer vers la droite pour révéler, sur Android et les appareils tactiles
+- Pas de connexion, pas de clé API, pas d'erreurs de limite de débit au milieu d'un long fil
+
+
+LIMITES DE DÉBIT DE X, RÉSOLUES AU LIEU D'ÊTRE ATTEINTES
+
+Vous l'avez vu — les drapeaux apparaissent en haut d'un fil, puis s'arrêtent. Ou chaque profil que vous survolez tourne sans jamais aboutir. C'est la limite de débit : X vous coupe à 50 requêtes par 15 minutes, et un seul fil actif contient plus de comptes que cela.
+
+La plupart des profils ici ne coûtent jamais de requête car ils sont déjà en cache dans votre navigateur ou servis par le cache communautaire partagé. Le reste est rationné sur tous les onglets X ouverts par un courtier inter-onglets, et les 30 derniers pour cent de la fenêtre sont réservés aux comptes que vous survolez réellement.
+
+Quand c'est épuisé, vous obtenez un compte à rebours jusqu'à la réinitialisation, pas un drapeau vide.
+
+
+D'OÙ VIENT LE PAYS
+
+Votre navigateur interroge x.com, en utilisant la session avec laquelle vous êtes déjà connecté. Aucun serveur de notre part entre les deux, aucune géolocalisation IP, aucune base de données tierce.
+
+Il lit le pays directement à partir des métadonnées de compte de X — le même champ que X utilise pour étiqueter les profils — et lit également le pays de l'App Store depuis lequel le compte a téléchargé X. Lorsque le pays du Store diffère de l'emplacement déclaré, les deux sont affichés. Lorsque X marque l'emplacement comme non vérifié, un badge VPN apparaît. Lorsque le pays du Store corrobore l'emplacement déclaré même avec une étiquette non vérifiée, le badge est supprimé.
+
+C'est donc exactement aussi précis que les propres données de X. Parfois absent sur les comptes plus anciens ou verrouillés. Aucune connexion ni clé API requise au-delà de la session X que vous avez déjà ouverte.
+
+
+FILTRAGE
+
+Choisissez des pays ou des régions entières (13 régions mondiales, plus de 200 pays individuels), puis laissez-les tranquilles, réduisez-les derrière un bouton « Afficher » ou masquez-les. La réduction est le réglage par défaut, car une chronologie qui supprime silencieusement des choses n'est pas une chronologie à laquelle vous pouvez faire confiance.
+
+Vous pouvez également filtrer par âge du compte, par affiliation à une organisation X et par les comptes qui empilent plusieurs drapeaux dans leur bio. Chaque règle a sa propre liste d'exceptions, et il existe une liste blanche globale « Toujours afficher » qui remplace toutes les règles à la fois.
+
+La surbrillance par mot-clé utilise l'API CSS Highlights — elle ne touche jamais le DOM, donc React de X ne le remarque jamais. Les mots-clés emoji sont pris en charge, et les drapeaux correspondants dans les bios reçoivent un anneau de contour visible.
+
+
+CONFIDENTIALITÉ
+
+Jamais lus : vos cookies et jetons de session, les bios et publications que vous faites défiler, votre historique de navigation. Pas comme paramètre. Ils ne sont jamais lus.
+
+Aucune analyse ni télémétrie dans l'extension. Les résultats sont stockés dans votre navigateur pendant 30 jours et un bouton les efface tous.
+
+Le code source est public (licence MIT), vous pouvez donc vérifier tout cela plutôt que de nous croire sur parole.
+
+
+LE CACHE PARTAGÉ, ACTIVÉ PAR DÉFAUT
+
+Vos requêtes répondent à celles des autres et les leurs répondent aux vôtres, ce qui maintient la limite de débit loin de vous.
+
+Ce qui est envoyé : le pseudonyme consulté, son pays et son indicateur VPN, et un identifiant d'installation aléatoire. Rien sur vous, rien sur ce que vous lisez. Un interrupteur dans les Paramètres le désactive — et le désactiver arrête également le préchargement en arrière-plan.
+
+Le serveur de cache est open source. Vous pouvez exécuter le vôtre.
+
+
+AUTORISATIONS
+
+x.com et twitter.com, car c'est là qu'il fonctionne. Stockage, pour les paramètres et le cache local de 30 jours. Menus contextuels, pour deux entrées : « Copier la publication avec les drapeaux de localisation » et un raccourci vers les Paramètres.
+
+C'est toute la liste. Il ne peut voir aucun autre onglet que vous avez ouvert, et aucun code distant n'est jamais chargé.
+
+
+CE QU'IL N'EST PAS
+
+Pas un détecteur de bots ni un classificateur d'engagement artificiel. Il affiche des signaux que vous ne pourriez pas voir autrement sans ouvrir chaque profil un par un — pays, plateforme source, statut VPN, âge du compte, affiliation, vérification, changements de pseudo. Ce que vous en concluez vous appartient.
+
+
+Chrome, Edge et Brave sur ordinateur. Lemur Browser sur Android. Firefox et Safari via leurs boutiques respectives.
+
+15 langues d'interface avec les noms de pays dans la langue du lecteur.
+
+Sous licence MIT et le code source est public :
+
+https://github.com/asmyshlyaev177/x-profile-location
+https://x-pat.pages.dev/
+Politique de confidentialité : https://x-pat.pages.dev/privacy-policy
