@@ -1,0 +1,87 @@
+Ve el país desde el que publica cualquier cuenta de X (Twitter) — bandera del país, indicador de VPN y plataforma de origen — sin abrir un solo perfil. Leído directamente de los propios datos de X, sin geolocalización de terceros.
+
+Pasa el cursor sobre un perfil y la bandera aparece. Activa las banderas en el feed y aparecerá una junto a cada nombre de usuario. Desliza a la derecha en el móvil para revelar una ubicación bajo demanda.
+
+
+LO QUE OBTIENES
+
+- Bandera del país en tarjetas flotantes, en páginas de perfil y en línea en la cronología
+- Plataforma de origen y país de la tienda de aplicaciones — confirma o contradice la ubicación declarada
+- Un indicador rojo de VPN cuando X no puede verificar la ubicación
+- Filtrar publicaciones por país o región — colapsarlas detrás de un botón "Mostrar" u ocultarlas por completo
+- Destacar publicaciones por palabra clave, o por cuentas que acumulan banderas en su biografía
+- Marcar cuentas más recientes que un umbral (90 días, 180 días, 1 año, 3 años)
+- Filtrar cuentas por afiliación a organización de X (insignias de gobierno, ONG, empresa)
+- Listas de excepciones por regla — exime cuentas específicas de cualquier filtro sin desactivar la regla
+- Tarjeta de datos de la cuenta — estado de verificación, antigüedad, número de cambios de alias, insignia de afiliación, indicador de cuenta protegida
+- Compartir una publicación como imagen PNG con la bandera de ubicación incrustada — menú contextual o botón en la tarjeta flotante
+- Deslizar a la derecha para revelar, en Android y dispositivos táctiles
+- Sin inicio de sesión, sin clave API, sin errores de límite de tasa a mitad de un hilo largo
+
+
+LÍMITES DE TASA DE X, RESUELTOS EN LUGAR DE GOLPEARLOS
+
+Lo has visto — las banderas aparecen al principio de un hilo y luego se detienen. O cada perfil sobre el que pasas el cursor gira y nunca llega. Ese es el límite de tasa: X te corta a 50 consultas por cada 15 minutos, y un solo hilo concurrido tiene más cuentas que eso.
+
+La mayoría de los perfiles aquí nunca cuestan una consulta porque ya están almacenados en caché en tu navegador o son respondidos por la caché comunitaria compartida. El resto se raciona entre todas las pestañas de X abiertas mediante un intermediario entre pestañas, y el último 30 por ciento de la ventana se reserva para las cuentas sobre las que realmente pasas el cursor.
+
+Si se agota, obtienes una cuenta regresiva hasta el reinicio, no una bandera en blanco.
+
+
+DE DÓNDE VIENE EL PAÍS
+
+Tu navegador pregunta a x.com, usando la sesión con la que ya has iniciado sesión. Sin servidor nuestro en medio, sin geolocalización por IP, sin base de datos de terceros.
+
+Lee el país directamente de los metadatos de la cuenta de X — el mismo campo que X usa para etiquetar perfiles — y también lee el país de la tienda de aplicaciones desde la que la cuenta descargó X. Cuando el país de la tienda difiere de la ubicación declarada, se muestran ambos. Cuando X marca la ubicación como no verificada, aparece un indicador de VPN. Cuando el país de la tienda corrobora la ubicación declarada incluso con una etiqueta de no verificado, el indicador se suprime.
+
+Así que es exactamente tan preciso como los propios datos de X. A veces falta en cuentas antiguas o bloqueadas. No se requiere inicio de sesión ni clave API más allá de la sesión de X que ya tienes abierta.
+
+
+FILTRADO
+
+Elige países o regiones enteras (13 regiones mundiales, más de 200 países individuales), luego déjalos como están, colápsalos detrás de un botón "Mostrar" u ocúltalos. Colapsar es el valor predeterminado, porque una cronología que elimina cosas silenciosamente no es una en la que puedas confiar.
+
+También puedes filtrar por antigüedad de la cuenta, por afiliación a organización de X y por cuentas que acumulan múltiples banderas en su biografía. Cada regla tiene su propia lista de excepciones, y hay una lista global "Mostrar siempre" que anula todas las reglas a la vez.
+
+El resaltado por palabras clave utiliza la API CSS Highlights — nunca toca el DOM, por lo que React de X nunca lo nota. Se admiten palabras clave con emojis, y las banderas coincidentes en las biografías reciben un anillo de contorno visible.
+
+
+PRIVACIDAD
+
+Nunca se leen: tus cookies y tokens de sesión, las biografías y publicaciones por las que te desplazas, tu historial de navegación. No como configuración. Nunca los lee.
+
+Sin analíticas ni telemetría en la extensión. Los resultados se almacenan en tu navegador durante 30 días y un botón los borra todos.
+
+El código fuente es público (licencia MIT), por lo que puedes verificar todo esto en lugar de confiar en nuestra palabra.
+
+
+LA CACHÉ COMPARTIDA, ACTIVADA POR DEFECTO
+
+Tus consultas responden a las de otros y las suyas responden a las tuyas, lo que mantiene el límite de tasa lejos de ti.
+
+Lo que se envía: el nombre de usuario consultado, su país e indicador de VPN, y un ID de instalación aleatorio. Nada sobre ti, nada sobre lo que lees. Un interruptor en Configuración lo desactiva — y al desactivarlo también se detiene la precarga en segundo plano.
+
+El servidor de caché es de código abierto. Puedes ejecutar el tuyo propio.
+
+
+PERMISOS
+
+x.com y twitter.com, porque es donde se ejecuta. Almacenamiento, para la configuración y la caché local de 30 días. Menús contextuales, para dos entradas: "Copiar publicación con banderas de ubicación" y un acceso directo a Configuración.
+
+Esa es la lista completa. No puede ver ninguna otra pestaña que tengas abierta, y nunca se carga código remoto.
+
+
+LO QUE NO ES
+
+No es un detector de bots ni un clasificador de granjas de interacción. Muestra señales que de otro modo no podrías ver sin abrir cada perfil uno por uno — país, plataforma de origen, estado de VPN, antigüedad de la cuenta, afiliación, verificación, cambios de alias. Lo que concluyas de ellas es cosa tuya.
+
+
+Chrome, Edge y Brave en escritorio. Lemur Browser en Android. Firefox y Safari a través de sus respectivas tiendas.
+
+15 idiomas de interfaz con nombres de países en el idioma del lector.
+
+Con licencia MIT y el código fuente es público:
+
+https://github.com/asmyshlyaev177/x-profile-location
+https://x-pat.pages.dev/
+Política de privacidad: https://x-pat.pages.dev/privacy-policy
