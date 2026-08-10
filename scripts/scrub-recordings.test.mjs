@@ -16,6 +16,7 @@ import {
   blankStats,
   scrubEntry,
   scrubMarkup,
+  scrubTelemetry,
   synthetic,
   userHandle,
   walk,
@@ -169,14 +170,14 @@ describe('a user in a JSON body', () => {
       screen_name: HANDLE,
       created_at: 'Thu Apr 23 21:53:30 +0000 2009',
       location_accurate: true,
-      about_profile: { account_based_in: 'Georgia', source: 'App Store' },
+      about_profile: { account_based_in: 'Brazil', source: 'App Store' },
     }
     walk(node, blankStats())
 
     expect(node.created_at).toBe('Thu Apr 23 21:53:30 +0000 2009')
     expect(node.location_accurate).toBe(true)
     expect(node.about_profile).toEqual({
-      account_based_in: 'Georgia',
+      account_based_in: 'Brazil',
       source: 'App Store',
     })
   })
@@ -248,6 +249,109 @@ describe('a user inlined into a document', () => {
   it('touches nothing in a document with no user in it', () => {
     const plain = '<!DOCTYPE html><body><p>Nothing here {a} "b"</p></body>'
     expect(scrubMarkup(plain, blankStats())).toBe(plain)
+  })
+})
+
+describe('the trends sidebar', () => {
+  const trend = () => ({
+    __typename: 'TimelineTrend',
+    itemType: 'TimelineTrend',
+    name: 'Someplace',
+    trend_metadata: {
+      domain_context: 'Trending in Someland',
+      url: {
+        url: 'twitter://search/?query=Someplace&src=trend_click&pc=true&vertical=trends',
+        urtEndpointOptions: {
+          requestParams: [{ key: 'cd', value: 'HBgJU29tZXBsYWNlAAA=' }],
+        },
+      },
+    },
+    trend_url: {
+      url: 'twitter://search/?query=Someplace&src=trend_click&pc=true&vertical=trends',
+      urtEndpointOptions: {
+        requestParams: [{ key: 'cd', value: 'HBgJU29tZXBsYWNlAAA=' }],
+      },
+    },
+  })
+
+  it('stops naming the country the recorder browses from', () => {
+    const node = trend()
+    walk(node, blankStats())
+
+    expect(node.trend_metadata.domain_context).toBe('Trending')
+    expect(JSON.stringify(node)).not.toContain('Someland')
+  })
+
+  it('takes the trend name out of the label, the URLs and the cd blob', () => {
+    const node = trend()
+    walk(node, blankStats())
+
+    // The `cd` param is base64 of the trend name — leaving it hands back what
+    // the rename took away.
+    expect(JSON.stringify(node)).not.toContain('Someplace')
+    expect(JSON.stringify(node)).not.toContain('HBgJU29tZXBsYWNlAAA=')
+    expect(node.name).toMatch(/^Trend [0-9a-f]{4}$/)
+    expect(node.trend_url.url).toContain(encodeURIComponent(node.name))
+  })
+
+  it('leaves an ordinary object that merely has a name alone', () => {
+    const node = { name: 'Someplace', trend_metadata: 'not an object' }
+    walk(node, blankStats())
+    expect(node.name).toBe('Someplace')
+  })
+
+  it('is a no-op the second time', () => {
+    const node = trend()
+    walk(node, blankStats())
+    const once = JSON.stringify(node)
+
+    const stats = blankStats()
+    walk(node, stats)
+    expect(JSON.stringify(node)).toBe(once)
+    expect(stats.trends).toBe(0)
+  })
+})
+
+describe('client-event beacons', () => {
+  const beacon = (text) => ({
+    request: {
+      url: 'https://x.com/i/api/1.1/flow/viewer.json',
+      headers: [],
+      queryString: [],
+      postData: {
+        mimeType: 'application/x-www-form-urlencoded',
+        text,
+        params: [{ name: 'log', value: text }],
+      },
+    },
+    response: { headers: [], content: {} },
+  })
+
+  it('drops the body X posts back describing what was on screen', () => {
+    // The sidebar's trend names arrive a second time in here, percent-encoded.
+    const entry = beacon(
+      'debug=true&log=%5B%7B%22_category_%22%3A%22client_event%22%2C%22item_query%22%3A%22Someplace%22%7D%5D',
+    )
+    const stats = blankStats()
+    scrubTelemetry(entry, stats)
+
+    expect(entry.request.postData.text).toBe('')
+    expect(entry.request.postData.params).toEqual([])
+    expect(stats.telemetry).toBe(1)
+  })
+
+  it('leaves an ordinary request body alone', () => {
+    const entry = beacon('{"usernames":["someone"]}')
+    scrubTelemetry(entry, blankStats())
+    expect(entry.request.postData.text).toBe('{"usernames":["someone"]}')
+  })
+
+  it('is a no-op the second time', () => {
+    const entry = beacon('debug=true&log=%22client_event%22')
+    scrubTelemetry(entry, blankStats())
+    const stats = blankStats()
+    scrubTelemetry(entry, stats)
+    expect(stats.telemetry).toBe(0)
   })
 })
 
