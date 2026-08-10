@@ -21,6 +21,7 @@ import {
   hoverCardLocation,
   hoverForLocationRow,
   hoverOwnTweet,
+  mockAboutAccount,
   mockLocationApis,
   mockSharedCache,
   navigateToTweetDetail,
@@ -28,6 +29,7 @@ import {
   officialAccountLocation,
   openOptionsPage,
   optionsSection,
+  PRIMARY_TWEET,
   readIdb,
   TWEET_ARTICLE,
   tweetArticles,
@@ -236,6 +238,64 @@ test('rate limit: toast shown on 429, badge in hover card, no further API calls'
   await replyLink(4).hover()
   await page.waitForTimeout(1_500)
   await expect(toast).toBeHidden()
+})
+
+test('rate limit: the countdown hands the row back when its window ends', async ({
+  page,
+}) => {
+  // A real reset is fifteen minutes out; this one has to be sat through, so it
+  // is as short as it can be while still leaving the badge on screen and ticking
+  // for a few seconds first. The waiting *is* the test — a countdown has to
+  // reach zero for the behaviour under test to happen at all — so neither number
+  // here is a timeout to trim.
+  test.setTimeout(150_000)
+  const WINDOW_SECONDS = 20
+
+  // Straight to the status page, without the profile hop the detail tests take
+  // to discover a post. Both would do, and this one keeps the window under our
+  // control: the first refused lookup is the author's, on load, so the countdown
+  // starts where the assertions are rather than a page-load earlier.
+  await mockSharedCache(page, null)
+  const aboutAccount = /AboutAccountQuery/
+  await page.route(aboutAccount, (route) =>
+    route.fulfill({
+      status: 429,
+      headers: {
+        'x-rate-limit-reset': String(
+          Math.floor(Date.now() / 1000) + WINDOW_SECONDS,
+        ),
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        errors: [{ code: 88, message: 'Rate limit exceeded' }],
+      }),
+    }),
+  )
+
+  // A status page looks its author up on load, and that lookup is refused — so
+  // the row under the handle is the countdown instead of a flag. This is the
+  // surface the hover-card badge above cannot stand in for: X opens no hover
+  // card for the account its own page is about, so this row is the only thing
+  // that ever speaks for the author, and nothing re-runs it.
+  await page.goto('https://x.com/elonmusk/status/2085377974396752305')
+  const primaryTweet = page.locator(PRIMARY_TWEET)
+  const badge = primaryTweet.locator('.x-loc-icon-ratelimit')
+  await expect(badge).toBeVisible({ timeout: 20_000 })
+
+  // X starts answering again — which the extension can only find out by asking,
+  // once the window it was told about runs out.
+  await page.unroute(aboutAccount)
+  await mockAboutAccount(page, { account_based_in: 'Germany' })
+
+  // The countdown reaches zero and stops being a countdown. It used to stop one
+  // tick short instead and stay on the page reading "⏱ 1s" for good.
+  await expect(badge).toBeHidden({ timeout: (WINDOW_SECONDS + 20) * 1_000 })
+
+  // And the row goes back to what the countdown was standing in for, with no
+  // hover and no reload: the window ending is itself the cue to ask again.
+  await expect(
+    primaryTweet.locator('.x-loc-icon-flag, .x-loc-store-block').first(),
+  ).toBeVisible({ timeout: 15_000 })
 })
 
 test('clear cache button empties IDB and forces fresh API call on re-hover', async ({

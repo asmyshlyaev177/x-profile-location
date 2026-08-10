@@ -666,6 +666,136 @@ describe('the rate-limit toast', () => {
 })
 
 // ---------------------------------------------------------------------------
+// The countdown badge injected in place of a location
+// ---------------------------------------------------------------------------
+// The toast is the page-level announcement; this is the per-account one, on the
+// row where the flags would have gone. Both count the same window down, and the
+// badge is the one that has to hand the row back when the window ends.
+describe('the rate-limit badge', () => {
+  const HEADERS = {
+    authorization: 'Bearer token123',
+    'x-csrf-token': 'csrf123',
+  }
+  const badge = () =>
+    document.querySelector<HTMLElement>('.x-loc-icon-ratelimit')
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setApiHeaders(HEADERS)
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    history.pushState({}, '', '/rl_author/status/123')
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    history.pushState({}, '', '/')
+  })
+
+  /** Every lookup earns a 429 whose window ends `seconds` from now. */
+  function rateLimited(seconds: number) {
+    return vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, {
+        status: 429,
+        headers: {
+          'x-rate-limit-reset': String(Math.ceil(Date.now() / 1000) + seconds),
+        },
+      }),
+    )
+  }
+
+  /** The window is over and X is answering lookups again. */
+  function answersWith(
+    country: string,
+    spy: ReturnType<typeof rateLimited>,
+  ): void {
+    spy.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            user_result_by_screen_name: {
+              result: {
+                about_profile: {
+                  account_based_in: country,
+                  location_accurate: true,
+                  source: 'web',
+                },
+              },
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    )
+  }
+
+  /** The account this status page is about, uncached and so looked up. */
+  async function openStatusPage(): Promise<HTMLElement> {
+    const article = makeTweetArticle('rl_author', 'RL Author', true)
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+    return article
+  }
+
+  it('goes away when the window it is counting ends', async () => {
+    rateLimited(3)
+    const article = await openStatusPage()
+    expect(badge()).not.toBeNull()
+
+    await vi.advanceTimersByTimeAsync(4_000)
+
+    // The bug: the badge stops ticking a second short and stays on the page
+    // reading "⏱ 1s" — a countdown that has already finished, still counting.
+    expect(badge()?.textContent).not.toBe('⏱ 1s')
+    expect(badge()).toBeNull()
+    expect(article.querySelector('.x-loc-info')).toBeNull()
+  })
+
+  it('gives the row back to the location once the window has passed', async () => {
+    const fetchSpy = rateLimited(3)
+    const article = await openStatusPage()
+    expect(badge()).not.toBeNull()
+
+    // X starts answering again, which the extension only finds out by asking.
+    answersWith('Japan', fetchSpy)
+    await vi.advanceTimersByTimeAsync(4_000)
+    await flushAsync()
+
+    // No hover, no reload: the countdown ending is itself the cue. This is the
+    // one surface with no second chance — X opens no hover card for the account
+    // its own status page is about, so a row left counting stays counting.
+    expect(badge()).toBeNull()
+    expect(article.querySelector('.x-loc-icon-flag')).not.toBeNull()
+  })
+
+  it('does the same inside a hover card that outlived the window', async () => {
+    const fetchSpy = rateLimited(3)
+
+    const card = document.createElement('div')
+    card.setAttribute('data-testid', 'HoverCard')
+    card.innerHTML = `
+      <div><div><div>
+        <div data-testid="UserName"><a href="/rl_hovered">RL Hovered</a></div>
+        <span>@rl_hovered</span>
+      </div></div></div>
+    `
+    document.body.appendChild(card)
+    await flushAsync()
+    await flushAsync()
+    expect(badge()).not.toBeNull()
+
+    answersWith('Japan', fetchSpy)
+    await vi.advanceTimersByTimeAsync(4_000)
+    await flushAsync()
+
+    expect(badge()).toBeNull()
+    expect(card.querySelector('.x-loc-icon-flag')).not.toBeNull()
+    // Rebuilt, not appended to: one row, not the countdown's and the flag's.
+    expect(card.querySelectorAll('.x-loc-hover')).toHaveLength(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // chrome.runtime.onMessage — CLEAR_CACHE
 // ---------------------------------------------------------------------------
 describe('chrome.runtime.onMessage — CLEAR_CACHE', () => {
