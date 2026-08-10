@@ -69,6 +69,13 @@ issue, your name belongs here.
 
 ### Changed
 
+- **An account you have excepted shows its country again.** A blocked location
+  is drawn as ⚠️ while the filter is acting on the account; once you add an
+  exception — or put the account on the allowlist — the row goes back to the
+  country's own flag, because the filter is no longer doing anything to hide.
+  It changes the moment you add the exception, on posts already on screen, and
+  it changes back if you undo it. Editing the blocked list updates what is on
+  screen the same way.
 - **Hovering a name no longer collapses the post you hovered from.** A hover is
   a question about the author, so it is answered with a flag in the card and
   nothing else moves — the reply you were reading stays where it is, even when

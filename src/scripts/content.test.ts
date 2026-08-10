@@ -95,7 +95,7 @@ import {
   __testResetState,
 } from './content'
 import { getCached, mergeCached, clearAllCache } from './cache'
-import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from './countries'
+import { type FilterRule, RATE_PROMPT_KEY, USAGE_STATS_KEY } from './countries'
 import { dayKey, __resetUsageMemo } from './usage'
 import { renderShareCard } from './share-card'
 import {
@@ -2987,6 +2987,28 @@ describe('locationSummaryText', () => {
       '🌐 Atlantis',
     )
   })
+
+  it('warns about a blocked country, and names it for an excepted account', () => {
+    // The swipe answers a question the reader asked about one account, so it
+    // reads the exceptions like every other surface. Called without a handle it
+    // warns — the answer that cannot under-warn.
+    pushSettings({
+      blockedCountries: ['India'],
+      ruleExceptions: {
+        highlight: [],
+        location: ['friend'],
+        affiliation: [],
+        age: [],
+      },
+    })
+    const india = { ...base, location: 'India', source: 'web' as const }
+
+    expect(locationSummaryText(india)).toBe('⚠️ India')
+    expect(locationSummaryText(india, 'stranger')).toBe('⚠️ India')
+    expect(locationSummaryText(india, 'friend')).toBe('🇮🇳 India')
+
+    pushSettings({ blockedCountries: [] })
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -3692,6 +3714,238 @@ describe('per-rule exceptions', () => {
     // Location is excused, so the affiliation rule is what catches it.
     expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
     expect(article.textContent).toContain('Some Org')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The flag an excepted account gets back
+// ---------------------------------------------------------------------------
+// ⚠️ is what the location rule looks like while it is acting. Once the reader
+// has excepted the account the rule is not acting on it, so the row goes back to
+// saying which country — the only thing it was ever there to say. A warning over
+// a filter that is no longer filtering tells the reader nothing about the
+// account, and costs them the one fact they opened the row for.
+//
+// The awkward half is that most of these rows were drawn before the exception
+// existed. Nothing rebuilds a row that is already there, so each of them has to
+// be found and changed where it stands — and changed without altering its size,
+// because a row is height inside a post and X's timeline answers a post
+// resizing by scrolling the window (see whenSafeToResize in content.tsx).
+describe('a blocked location, once the rule has stopped acting on the account', () => {
+  const INDIA = {
+    location: 'India',
+    locationAccurate: true,
+    source: null,
+    bio: null,
+  }
+
+  const exceptFrom = (rule: FilterRule, ...users: string[]) => ({
+    ruleExceptions: {
+      highlight: [],
+      location: [],
+      affiliation: [],
+      age: [],
+      [rule]: users,
+    },
+  })
+
+  const feedFlag = (article: Element) =>
+    article.querySelector('.x-loc-feed-row .x-loc-icon.x-loc-icon-flag')
+      ?.textContent ?? ''
+
+  async function postFrom(userName: string): Promise<HTMLElement> {
+    const article = makeTweetArticle(userName)
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+    return article
+  }
+
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    document.body.innerHTML = ''
+    enableFeedLocation()
+    await flushAsync()
+  })
+
+  afterEach(() => {
+    disableFeedLocation()
+    pushSettings({ blockedCountries: [], hideBlockedLocations: 'off' })
+  })
+
+  it('warns while the rule is acting', async () => {
+    vi.mocked(getCached).mockResolvedValue(INDIA)
+    pushSettings({ blockedCountries: ['India'] })
+
+    expect(feedFlag(await postFrom('someone'))).toBe('⚠️')
+  })
+
+  it('names the country for an excepted account', async () => {
+    vi.mocked(getCached).mockResolvedValue(INDIA)
+    pushSettings({
+      blockedCountries: ['India'],
+      ...exceptFrom('location', 'friend'),
+    })
+
+    const article = await postFrom('friend')
+    expect(feedFlag(article)).toBe('🇮🇳')
+    // The tooltip too: at 26px plenty of flags are indistinguishable from each
+    // other, so a flag whose name has gone missing is barely better than the
+    // warning it replaced.
+    expect(
+      article
+        .querySelector('.x-loc-feed-row .x-loc-icon.x-loc-icon-flag')
+        ?.getAttribute('title'),
+    ).toBe('India')
+  })
+
+  it('does the same for an allowlisted account', async () => {
+    // The allowlist is the broader form of the same decision — nothing acts on
+    // an allowlisted account at all — so it cannot be the one case still warned.
+    vi.mocked(getCached).mockResolvedValue(INDIA)
+    pushSettings({
+      blockedCountries: ['India'],
+      alwaysShowAccounts: ['friend'],
+    })
+
+    expect(feedFlag(await postFrom('friend'))).toBe('🇮🇳')
+  })
+
+  it('leaves everyone else on the page warned', async () => {
+    vi.mocked(getCached).mockResolvedValue(INDIA)
+    pushSettings({
+      blockedCountries: ['India'],
+      ...exceptFrom('location', 'friend'),
+    })
+
+    expect(feedFlag(await postFrom('friend'))).toBe('🇮🇳')
+    expect(feedFlag(await postFrom('stranger'))).toBe('⚠️')
+  })
+
+  it('keeps warning an account excepted from some other rule', async () => {
+    // Exceptions are per rule. Being spared the keyword highlight says nothing
+    // about the location filter, and the row must not read as though it did.
+    vi.mocked(getCached).mockResolvedValue({ ...INDIA, location: 'Nigeria' })
+    pushSettings({
+      blockedCountries: ['India', 'Nigeria'],
+      ...exceptFrom('highlight', 'friend'),
+    })
+
+    expect(feedFlag(await postFrom('friend'))).toBe('⚠️')
+  })
+
+  it('turns the glyph over on a row already drawn, without rebuilding it', async () => {
+    // The usual way in: the reader excepts an account whose posts are already on
+    // screen. None of the incremental refreshes touch a row that exists, so
+    // without refreshLocationFlags the warning would sit there until X recycled
+    // the node — which on a thread nobody is scrolling is never.
+    vi.mocked(getCached).mockResolvedValue(INDIA)
+    pushSettings({ blockedCountries: ['India'] })
+
+    const article = await postFrom('friend')
+    const row = article.querySelector('.x-loc-feed-row')!
+    expect(feedFlag(article)).toBe('⚠️')
+
+    pushSettings(exceptFrom('location', 'friend'))
+    await flushAsync()
+
+    expect(feedFlag(article)).toBe('🇮🇳')
+    // Still the same node. Replacing the row would be height leaving the post
+    // and coming back, and X compensates for that by scrolling the window — an
+    // exception for one account would move the whole page.
+    expect(article.querySelector('.x-loc-feed-row')).toBe(row)
+  })
+
+  it('puts the warning back when the exception is undone', async () => {
+    // A toggle, like the button that writes it: a misclick has to be undoable
+    // without reloading the page.
+    vi.mocked(getCached).mockResolvedValue(INDIA)
+    pushSettings({
+      blockedCountries: ['India'],
+      ...exceptFrom('location', 'friend'),
+    })
+
+    const article = await postFrom('friend')
+    expect(feedFlag(article)).toBe('🇮🇳')
+
+    pushSettings(exceptFrom('location'))
+    await flushAsync()
+
+    expect(feedFlag(article)).toBe('⚠️')
+  })
+
+  it('follows the blocked list moving under an untouched account', async () => {
+    // The same swap from the other direction, and the case nobody edits an
+    // exception for: adding a country to the list has to start the warning on
+    // rows already on screen, and removing it has to stop it.
+    vi.mocked(getCached).mockResolvedValue(INDIA)
+
+    const article = await postFrom('someone')
+    expect(feedFlag(article)).toBe('🇮🇳')
+
+    pushSettings({ blockedCountries: ['India'] })
+    await flushAsync()
+    expect(feedFlag(article)).toBe('⚠️')
+
+    pushSettings({ blockedCountries: [] })
+    await flushAsync()
+    expect(feedFlag(article)).toBe('🇮🇳')
+  })
+
+  it('gives the store-region flag back as well', async () => {
+    // Two flags can sit on one row, and the store's is the stronger signal of
+    // the two — leaving that one warning would just move the confusion along.
+    vi.mocked(getCached).mockResolvedValue({
+      ...INDIA,
+      location: null,
+      source: 'India App Store',
+    })
+    pushSettings({
+      blockedCountries: ['India'],
+      ...exceptFrom('location', 'friend'),
+    })
+
+    const article = await postFrom('friend')
+    expect(
+      article.querySelector('.x-loc-store-block .x-loc-icon-flag')?.textContent,
+    ).toBe('🇮🇳')
+  })
+
+  it('restores a region as its abbreviation, sized like one', async () => {
+    // A region has no flag, so it is drawn as a word, and the stylesheet sizes a
+    // word apart from an emoji. Handing the glyph back without the class that
+    // carries that would leave "SAS" set at 26px.
+    vi.mocked(getCached).mockResolvedValue({ ...INDIA, location: 'South Asia' })
+    pushSettings({ blockedCountries: ['South Asia'] })
+
+    const article = await postFrom('friend')
+    const flag = article.querySelector('.x-loc-feed-row .x-loc-icon-flag')!
+    expect(flag.textContent).toBe('⚠️')
+    expect(flag.classList.contains('x-loc-icon-abbr')).toBe(false)
+
+    pushSettings(exceptFrom('location', 'friend'))
+    await flushAsync()
+
+    expect(flag.textContent).toBe('SAS')
+    expect(flag.classList.contains('x-loc-icon-abbr')).toBe(true)
+  })
+
+  it('shows the country on the hover card of an excepted account', async () => {
+    // The card is where the exception button usually lives, so it is the first
+    // surface that would be caught disagreeing with the button on it.
+    vi.mocked(getCached).mockResolvedValue(INDIA)
+    pushSettings({
+      blockedCountries: ['India'],
+      ...exceptFrom('location', 'friend'),
+    })
+
+    const card = await addHoverCard('friend')
+    await flushAsync()
+
+    expect(
+      card.querySelector('.x-loc-info .x-loc-icon.x-loc-icon-flag')
+        ?.textContent,
+    ).toBe('🇮🇳')
   })
 })
 

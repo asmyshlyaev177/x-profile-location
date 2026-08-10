@@ -34,6 +34,8 @@ setup('authenticate with X', async () => {
   const userDataDir = path.join(os.tmpdir(), `pw-auth-${Date.now()}`)
 
   const context = (await chromium.launchPersistentContext(userDataDir, {
+    // Headed whatever E2E_HEADED says: the whole step is a human logging in by
+    // hand. It never gets this far in replay mode.
     headless: false,
     args: [
       '--no-sandbox',
