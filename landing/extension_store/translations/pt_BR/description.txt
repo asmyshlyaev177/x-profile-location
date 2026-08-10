@@ -1,0 +1,87 @@
+Veja de qual país qualquer conta do X (Twitter) publica — bandeira do país, selo de VPN e plataforma de origem — sem abrir um único perfil. Lido diretamente dos próprios dados do X, sem geolocalização de terceiros.
+
+Passe o mouse sobre um perfil e a bandeira aparece. Ative as bandeiras no feed e uma aparece ao lado de cada nome de usuário. Deslize para a direita no celular para revelar uma localização sob demanda.
+
+
+O QUE VOCÊ RECEBE
+
+- Bandeira do país em cartões flutuantes, nas páginas de perfil e inline na linha do tempo
+- Plataforma de origem e país da loja de aplicativos — confirma ou contradiz a localização declarada
+- Um selo vermelho de VPN quando o próprio X não consegue verificar a localização
+- Filtrar publicações por país ou região — recolhê-las atrás de um botão "Mostrar" ou ocultá-las completamente
+- Destacar publicações por palavra-chave, ou por contas que empilham bandeiras na bio
+- Marcar contas mais recentes que um limite (90 dias, 180 dias, 1 ano, 3 anos)
+- Filtrar contas por afiliação a organização do X (selos de governo, ONG, empresa)
+- Listas de exceção por regra — isentar contas específicas de qualquer filtro sem desativar a regra
+- Cartão de informações da conta — status de verificação, idade da conta, número de trocas de @, selo de afiliação, indicador de conta protegida
+- Compartilhar uma publicação como imagem PNG com a bandeira de localização incorporada — menu do botão direito ou botão no cartão flutuante
+- Deslizar para a direita para revelar, no Android e dispositivos com tela sensível ao toque
+- Sem login, sem chave de API, sem erros de limite de taxa no meio de uma thread longa
+
+
+LIMITES DE TAXA DO X, RESOLVIDOS EM VEZ DE ATINGIDOS
+
+Você já viu — as bandeiras aparecem no topo de uma thread e depois param. Ou cada perfil sobre o qual você passa o mouse fica girando e nunca termina. Esse é o limite de taxa: o X limita você a 50 consultas a cada 15 minutos, e uma única thread movimentada tem mais contas do que isso.
+
+A maioria dos perfis aqui nunca custa uma consulta porque já estão em cache no seu navegador ou são respondidos pelo cache comunitário compartilhado. O restante é racionado entre todas as abas do X abertas por um intermediário entre abas, e os últimos 30 por cento da janela são reservados para as contas sobre as quais você realmente passa o mouse.
+
+Se esgotar, você recebe uma contagem regressiva até a reinicialização, não uma bandeira em branco.
+
+
+DE ONDE VEM O PAÍS
+
+Seu navegador consulta o x.com, usando a sessão na qual você já está logado. Nenhum servidor nosso no meio, sem geolocalização por IP, sem banco de dados de terceiros.
+
+Ele lê o país diretamente dos metadados da conta do X — o mesmo campo que o X usa para rotular perfis — e também lê o país da loja de aplicativos de onde a conta baixou o X. Quando o país da loja difere da localização declarada, ambos são mostrados. Quando o X marca a localização como não verificada, um selo de VPN aparece. Quando o país da loja corrobora a localização declarada mesmo com uma etiqueta de não verificado, o selo é suprimido.
+
+Portanto, é exatamente tão preciso quanto os próprios dados do X. Às vezes ausente em contas mais antigas ou bloqueadas. Não requer login nem chave de API além da sessão do X que você já tem aberta.
+
+
+FILTRAGEM
+
+Escolha países ou regiões inteiras (13 regiões mundiais, mais de 200 países individuais), depois deixe-os como estão, recolha-os atrás de um botão "Mostrar" ou oculte-os. Recolher é o padrão, porque uma linha do tempo que exclui coisas silenciosamente não é uma linha do tempo em que você pode confiar.
+
+Você também pode filtrar por idade da conta, por afiliação a organização do X e por contas que empilham várias bandeiras na bio. Cada regra tem sua própria lista de exceções, e há uma lista branca global "Sempre Mostrar" que substitui todas as regras de uma vez.
+
+O destaque por palavra-chave usa a API CSS Highlights — ela nunca toca o DOM, então o React do X nunca percebe. Palavras-chave com emoji são suportadas, e as bandeiras correspondentes nas bios recebem um anel de contorno visível.
+
+
+PRIVACIDADE
+
+Nunca lidos: seus cookies e tokens de sessão, as bios e publicações pelas quais você rola, seu histórico de navegação. Não como configuração. Eles nunca são lidos.
+
+Sem análises ou telemetria na extensão. Os resultados ficam armazenados no seu navegador por 30 dias e um botão limpa todos eles.
+
+O código-fonte é público (licença MIT), então você pode verificar tudo isso em vez de acreditar na nossa palavra.
+
+
+O CACHE COMPARTILHADO, ATIVADO POR PADRÃO
+
+Suas consultas respondem às dos outros e as deles respondem às suas, o que mantém o limite de taxa longe de você.
+
+O que é enviado: o @ consultado, seu país e indicador de VPN, e um ID de instalação aleatório. Nada sobre você, nada sobre o que você lê. Um botão nas Configurações desliga isso — e desligar também interrompe a pré-busca em segundo plano.
+
+O servidor de cache é open source. Você pode executar o seu próprio.
+
+
+PERMISSÕES
+
+x.com e twitter.com, porque é onde ele funciona. Armazenamento, para as configurações e o cache local de 30 dias. Menus de contexto, para duas entradas: "Copiar publicação com bandeiras de localização" e um atalho para as Configurações.
+
+Essa é a lista completa. Ele não pode ver nenhuma outra aba que você tenha aberta, e nenhum código remoto é carregado.
+
+
+O QUE ELE NÃO É
+
+Não é um detector de bots ou classificador de farms de engajamento. Ele exibe sinais que você não pode ver de outra forma sem abrir cada perfil um por um — país, plataforma de origem, status de VPN, idade da conta, afiliação, verificação, trocas de @. O que você conclui deles é com você.
+
+
+Chrome, Edge e Brave no desktop. Lemur Browser no Android. Firefox e Safari através de suas respectivas lojas.
+
+15 idiomas de interface com nomes de países no idioma do leitor.
+
+Licenciado sob MIT e o código-fonte é público:
+
+https://github.com/asmyshlyaev177/x-profile-location
+https://x-pat.pages.dev/
+Política de privacidade: https://x-pat.pages.dev/privacy-policy

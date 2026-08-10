@@ -14,6 +14,9 @@ vi.hoisted(() => {
     },
     runtime: {
       onMessage: { addListener: vi.fn() },
+      // The lookup broker lives in the service worker; every message to it is
+      // best-effort, so the default is a worker that answers nothing useful.
+      sendMessage: vi.fn().mockResolvedValue(null),
     },
   }
 })
@@ -63,24 +66,20 @@ vi.mock('./share-card', () => ({
   deliverShareCard: vi.fn().mockResolvedValue('clipboard'),
 }))
 
-// Stub the prefetcher. content.tsx's job is only to *drive* it — settings in,
-// candidates in — and its own scheduling is covered by prefetch-queue.test.ts.
-// Stubbing also keeps its background timers (and the lookups they'd trigger)
-// out of every other test in this file.
-const prefetcher = vi.hoisted(() => ({
-  enqueue: vi.fn(),
+// Stub the poller. content.tsx's job is only to *drive* it — settings decide
+// whether it runs, captured users decide what it asks about — and its loop is
+// covered by prefetch-poller.test.ts. Stubbing also keeps its timers (and the
+// lookups they'd trigger) out of every other test in this file.
+const poller = vi.hoisted(() => ({
   start: vi.fn(),
   stop: vi.fn(),
-  setReserveFraction: vi.fn(),
-  setPacing: vi.fn(),
+  wake: vi.fn(),
 }))
-vi.mock('./prefetch-queue', () => ({
-  BackgroundPrefetcher: class {
-    enqueue = prefetcher.enqueue
-    start = prefetcher.start
-    stop = prefetcher.stop
-    setReserveFraction = prefetcher.setReserveFraction
-    setPacing = prefetcher.setPacing
+vi.mock('./prefetch-poller', () => ({
+  PrefetchPoller: class {
+    start = poller.start
+    stop = poller.stop
+    wake = poller.wake
   },
 }))
 
@@ -868,6 +867,183 @@ describe('chrome.runtime.onMessage — CLEAR_CACHE', () => {
   it('ignores null/missing messages', () => {
     expect(() => onMessageCallback(null)).not.toThrow()
     expect(() => onMessageCallback(undefined)).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// What the service worker pushes back
+// ---------------------------------------------------------------------------
+// One window is shared by every open tab, so what one of them learns the rest
+// have to be told. See "Cross-tab lookup broker" in CLAUDE.md.
+describe('broadcasts from the broker', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    document.body.innerHTML = ''
+    __testResetState()
+    enableFeedLocation()
+  })
+
+  afterEach(() => {
+    disableFeedLocation()
+    __testResetState()
+  })
+
+  const inAMinute = () => Date.now() + 60_000
+
+  it('shows the countdown for a limit another tab ran into', () => {
+    onMessageCallback({ type: 'LOOKUP_RATE', rate: { resetAt: inAMinute() } })
+    expect(document.getElementById('x-loc-rate-toast')).not.toBeNull()
+  })
+
+  it('stays quiet while there is no limit to report', () => {
+    onMessageCallback({ type: 'LOOKUP_RATE', rate: { resetAt: 0 } })
+    expect(document.getElementById('x-loc-rate-toast')).toBeNull()
+  })
+
+  // Every lookup anywhere pushes the ledger, so most of these arrive with a
+  // reset that has already been shown or already passed.
+  it('does not walk a live countdown backwards', () => {
+    const later = Date.now() + 10 * 60_000
+    onMessageCallback({ type: 'LOOKUP_RATE', rate: { resetAt: later } })
+    const shown = document.getElementById('x-loc-rate-toast')!.textContent
+
+    onMessageCallback({ type: 'LOOKUP_RATE', rate: { resetAt: inAMinute() } })
+    expect(document.getElementById('x-loc-rate-toast')!.textContent).toBe(shown)
+  })
+
+  it('redraws an account another tab resolved, without a lookup of its own', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+    const article = makeTweetArticle('resolvedelsewhere')
+    document.body.appendChild(article)
+    await flushAsync()
+    article.querySelector('.x-loc-feed-row')?.remove()
+
+    onMessageCallback({
+      type: 'LOOKUP_RESOLVED',
+      userName: 'resolvedelsewhere',
+    })
+    await flushAsync()
+
+    expect(article.querySelector('.x-loc-feed-row')).not.toBeNull()
+    expect(fetchSpy).not.toHaveBeenCalled()
+    fetchSpy.mockRestore()
+  })
+
+  it('ignores a broadcast with no account named', () => {
+    expect(() => onMessageCallback({ type: 'LOOKUP_RESOLVED' })).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// What this tab reports back
+// ---------------------------------------------------------------------------
+describe('reporting what a lookup cost', () => {
+  const HEADERS = { authorization: 'Bearer token', 'x-csrf-token': 'csrf' }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    __testResetState()
+    setApiHeaders(HEADERS)
+    vi.mocked(getCached).mockResolvedValue(undefined)
+  })
+
+  const reports = () =>
+    vi
+      .mocked(chrome.runtime.sendMessage)
+      .mock.calls.map(([m]) => m as any)
+      .filter((m) => m?.type === 'LOOKUP_REPORT')
+      .map((m) => m.report)
+
+  function answerWith(status: number, headers: Record<string, string> = {}) {
+    return vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            user_result_by_screen_name: {
+              result: {
+                about_profile: {
+                  account_based_in: 'UK',
+                  location_accurate: true,
+                  source: 'web',
+                },
+              },
+            },
+          },
+        }),
+        { status, headers },
+      ),
+    )
+  }
+
+  it('passes on the figures X answered with', async () => {
+    answerWith(200, {
+      'x-rate-limit-limit': '50',
+      'x-rate-limit-remaining': '31',
+      'x-rate-limit-reset': '1800000000',
+    })
+
+    await fetchLocationData('reporteduser')
+    expect(reports()).toEqual([
+      {
+        userName: 'reporteduser',
+        spent: true,
+        ok: true,
+        status: 200,
+        limit: 50,
+        remaining: 31,
+        reset: 1800000000,
+      },
+    ])
+  })
+
+  it('says a request went out even when X refused it', async () => {
+    answerWith(500)
+    await fetchLocationData('refuseduser')
+    // `ok` is what stops the account being asked about again, and a 500 is no
+    // reason to stop asking.
+    expect(reports()[0]).toMatchObject({ spent: true, status: 500 })
+    expect(reports()[0].ok).toBeUndefined()
+  })
+
+  it('reports a 429 with the moment it lifts', async () => {
+    answerWith(429, { 'x-rate-limit-reset': '1800000000' })
+    await fetchLocationData('limiteduser')
+    expect(reports()[0]).toMatchObject({
+      spent: true,
+      status: 429,
+      reset: 1800000000,
+    })
+  })
+
+  // Otherwise the broker holds the handle until its timeout, and the trickle
+  // has paid a full gap for a lookup that never happened.
+  it('hands the slot straight back when the cache answered first', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: 'web',
+    })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+
+    await fetchLocationData('cacheduser', { granted: true })
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(reports()).toEqual([{ userName: 'cacheduser', spent: false }])
+  })
+
+  it('hands the slot back when another lookup for it is already in flight', async () => {
+    answerWith(200)
+    const first = fetchLocationData('doubleduser')
+    await fetchLocationData('doubleduser', { granted: true })
+    await first
+
+    expect(reports()).toContainEqual({ userName: 'doubleduser', spent: false })
   })
 })
 
@@ -2826,93 +3002,120 @@ describe('hide tweets by blocked location', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Background prefetcher wiring
+// Lookup broker wiring
 // ---------------------------------------------------------------------------
-// content.tsx owns the translation from stored settings / captured users into
-// prefetcher calls. The prefetcher itself is stubbed above.
-describe('prefetcher wiring', () => {
+// The queue, the pace and the share all live in the service worker now, so what
+// content.tsx owns is only the translation from captured users into candidates
+// on the wire. The broker's own rules are lookup-broker.test.ts.
+describe('broker wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     document.body.innerHTML = ''
   })
 
-  it('pushes a changed share through, as a number', () => {
-    onChangedCallback({ prefetchShare: { newValue: 0.3 } }, 'local')
-    expect(prefetcher.setReserveFraction).toHaveBeenCalledWith(0.3)
-  })
-
-  it('pushes a changed pacing mode through', () => {
-    onChangedCallback({ prefetchPacing: { newValue: 'instant' } }, 'local')
-    expect(prefetcher.setPacing).toHaveBeenCalledWith('instant')
-  })
-
-  it('normalizes junk in storage instead of forwarding it', () => {
-    onChangedCallback({ prefetchShare: { newValue: 'nonsense' } }, 'local')
-    onChangedCallback({ prefetchPacing: { newValue: 42 } }, 'local')
-    expect(prefetcher.setReserveFraction).toHaveBeenCalledWith(0.7)
-    expect(prefetcher.setPacing).toHaveBeenCalledWith('spread')
-  })
-
-  it('ignores changes from another storage area', () => {
-    onChangedCallback({ prefetchShare: { newValue: 0.3 } }, 'sync')
-    expect(prefetcher.setReserveFraction).not.toHaveBeenCalled()
-  })
-
-  it('queues feed users high and reply users low, in the order received', () => {
+  function usersData(users: unknown[]) {
     window.dispatchEvent(
-      new CustomEvent('x-loc-users-data', {
-        detail: {
-          users: [
-            {
-              userName: 'feeduser',
-              displayName: null,
-              bio: null,
-              priority: 'high',
-            },
-            {
-              userName: 'replyuser',
-              displayName: null,
-              bio: null,
-              priority: 'low',
-            },
-          ],
-        },
-      }),
+      new CustomEvent('x-loc-users-data', { detail: { users } }),
     )
+  }
 
-    expect(prefetcher.enqueue).toHaveBeenCalledWith([
+  /** The candidate list from the one ENQUEUE this tab sent, if it sent one. */
+  async function enqueued(): Promise<unknown[] | undefined> {
+    let sent: unknown[] | undefined
+    await vi.waitFor(() => {
+      const call = vi
+        .mocked(chrome.runtime.sendMessage)
+        .mock.calls.find(([m]) => (m as any)?.type === 'LOOKUP_ENQUEUE')
+      sent = (call?.[0] as any)?.candidates
+      expect(sent).toBeDefined()
+    })
+    return sent
+  }
+
+  it('sends feed users high and reply users low, in the order received', async () => {
+    usersData([
+      { userName: 'feeduser', displayName: null, bio: null, priority: 'high' },
+      { userName: 'replyuser', displayName: null, bio: null, priority: 'low' },
+    ])
+
+    expect(await enqueued()).toEqual([
       { userName: 'feeduser', priority: 'high' },
       { userName: 'replyuser', priority: 'low' },
     ])
   })
 
-  it('defaults an untagged user to the high queue', () => {
-    window.dispatchEvent(
-      new CustomEvent('x-loc-users-data', {
-        detail: {
-          users: [{ userName: 'untagged', displayName: null, bio: null }],
-        },
-      }),
-    )
-
-    expect(prefetcher.enqueue).toHaveBeenCalledWith([
+  it('defaults an untagged user to the feed queue', async () => {
+    usersData([{ userName: 'untagged', displayName: null, bio: null }])
+    expect(await enqueued()).toEqual([
       { userName: 'untagged', priority: 'high' },
     ])
   })
 
-  it('queues nothing while background prefetch is switched off', () => {
-    onChangedCallback({ backgroundPrefetch: { newValue: false } }, 'local')
-    window.dispatchEvent(
-      new CustomEvent('x-loc-users-data', {
-        detail: {
-          users: [{ userName: 'ignored', displayName: null, bio: null }],
-        },
-      }),
-    )
+  // The broker cannot read this tab's IndexedDB — it is x.com's storage, not
+  // the extension's — so anything already answered is filtered out here.
+  it('leaves out accounts this tab already has a location for', async () => {
+    vi.mocked(getCached).mockResolvedValueOnce({
+      location: 'Germany',
+      locationAccurate: true,
+      source: 'web',
+    })
+    usersData([
+      { userName: 'known', displayName: null, bio: null },
+      { userName: 'unknown', displayName: null, bio: null },
+    ])
 
-    expect(prefetcher.enqueue).not.toHaveBeenCalled()
-    expect(prefetcher.stop).toHaveBeenCalled()
+    expect(await enqueued()).toEqual([
+      { userName: 'unknown', priority: 'high' },
+    ])
+  })
+
+  it('sends nothing at all when every account is already known', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Germany',
+      locationAccurate: true,
+      source: 'web',
+    })
+    usersData([{ userName: 'known', displayName: null, bio: null }])
+
+    await vi.waitFor(() => expect(mergeCached).toHaveBeenCalled())
+    expect(vi.mocked(chrome.runtime.sendMessage).mock.calls).not.toContainEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'LOOKUP_ENQUEUE' }),
+      ]),
+    )
+    vi.mocked(getCached).mockResolvedValue(undefined)
+  })
+
+  it('wakes the poller rather than leaving a fresh batch in a sleep', async () => {
+    usersData([{ userName: 'fresh', displayName: null, bio: null }])
+    await vi.waitFor(() => expect(poller.wake).toHaveBeenCalled())
+  })
+
+  it('queues nothing while background prefetch is switched off', async () => {
+    onChangedCallback({ backgroundPrefetch: { newValue: false } }, 'local')
+    usersData([{ userName: 'ignored', displayName: null, bio: null }])
+
+    await vi.waitFor(() => expect(mergeCached).toHaveBeenCalled())
+    expect(poller.stop).toHaveBeenCalled()
+    expect(vi.mocked(chrome.runtime.sendMessage).mock.calls).not.toContainEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'LOOKUP_ENQUEUE' }),
+      ]),
+    )
     onChangedCallback({ backgroundPrefetch: { newValue: true } }, 'local')
+  })
+
+  it('tells the broker how engaged this tab is with every message', async () => {
+    usersData([{ userName: 'somebody', displayName: null, bio: null }])
+    await enqueued()
+
+    const call = vi
+      .mocked(chrome.runtime.sendMessage)
+      .mock.calls.find(([m]) => (m as any)?.type === 'LOOKUP_ENQUEUE')!
+    expect((call[0] as any).tab).toEqual({
+      focused: expect.any(Boolean),
+      visible: true,
+    })
   })
 })
 
@@ -3294,44 +3497,50 @@ describe('community cache gating', () => {
     )
   }
 
-  it('stops the prefetcher when the cache is switched off', () => {
+  const enqueueCalls = () =>
+    vi
+      .mocked(chrome.runtime.sendMessage)
+      .mock.calls.filter(([m]) => (m as any)?.type === 'LOOKUP_ENQUEUE')
+
+  it('stops the poller when the cache is switched off', () => {
     vi.mocked(isSharedCacheEnabled).mockReturnValue(false)
     onChangedCallback({ sharedCacheEnabled: { newValue: false } }, 'local')
-    expect(prefetcher.stop).toHaveBeenCalled()
-    expect(prefetcher.start).not.toHaveBeenCalled()
+    expect(poller.stop).toHaveBeenCalled()
+    expect(poller.start).not.toHaveBeenCalled()
   })
 
-  it('queues nothing while the cache is off', () => {
+  it('queues nothing while the cache is off', async () => {
     vi.mocked(isSharedCacheEnabled).mockReturnValue(false)
     onChangedCallback({ sharedCacheEnabled: { newValue: false } }, 'local')
     usersEvent()
-    expect(prefetcher.enqueue).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(mergeCached).toHaveBeenCalled())
+    expect(enqueueCalls()).toHaveLength(0)
   })
 
-  it('restarts the prefetcher when the cache is switched back on', () => {
+  it('restarts the poller when the cache is switched back on', async () => {
     setApiHeaders({ authorization: 'Bearer t' })
     vi.mocked(isSharedCacheEnabled).mockReturnValue(false)
     onChangedCallback({ sharedCacheEnabled: { newValue: false } }, 'local')
-    vi.mocked(prefetcher.start).mockClear()
+    vi.mocked(poller.start).mockClear()
 
     vi.mocked(isSharedCacheEnabled).mockReturnValue(true)
     onChangedCallback({ sharedCacheEnabled: { newValue: true } }, 'local')
-    expect(prefetcher.start).toHaveBeenCalled()
+    expect(poller.start).toHaveBeenCalled()
     usersEvent()
-    expect(prefetcher.enqueue).toHaveBeenCalled()
+    await vi.waitFor(() => expect(enqueueCalls()).not.toHaveLength(0))
   })
 
   // A build with no cache server can't be opted out of, so it must not gate.
-  it('keeps prefetching when no cache server is configured', () => {
+  it('keeps prefetching when no cache server is configured', async () => {
     setApiHeaders({ authorization: 'Bearer t' })
     vi.mocked(isSharedCacheConfigured).mockReturnValue(false)
     vi.mocked(isSharedCacheEnabled).mockReturnValue(false)
     onChangedCallback({ sharedCacheEnabled: { newValue: false } }, 'local')
 
-    expect(prefetcher.start).toHaveBeenCalled()
-    expect(prefetcher.stop).not.toHaveBeenCalled()
+    expect(poller.start).toHaveBeenCalled()
+    expect(poller.stop).not.toHaveBeenCalled()
     usersEvent()
-    expect(prefetcher.enqueue).toHaveBeenCalled()
+    await vi.waitFor(() => expect(enqueueCalls()).not.toHaveLength(0))
   })
 })
 

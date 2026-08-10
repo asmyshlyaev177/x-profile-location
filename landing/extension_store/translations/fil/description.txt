@@ -1,0 +1,87 @@
+Tingnan kung saang bansa nagpo-post ang anumang X (Twitter) account — watawat ng bansa, badge ng VPN, at source platform — nang hindi binubuksan ang kahit isang profile. Direktang binabasa mula sa sariling data ng X, nang walang third-party na geolocation.
+
+I-hover ang isang profile at lalabas ang watawat. I-on ang mga watawat sa feed at may lalabas sa tabi ng bawat handle. Mag-swipe pakanan sa mobile upang ipakita ang lokasyon kapag kailangan.
+
+
+KUNG ANO ANG MAKUKUHA MO
+
+- Watawat ng bansa sa mga hover card, sa mga pahina ng profile, at inline sa timeline
+- Source platform at bansa ng app store — nagkukumpirma o sumasalungat sa nakasaad na lokasyon
+- Pulang badge ng VPN kapag hindi ma-verify ng X mismo ang lokasyon
+- I-filter ang mga post ayon sa bansa o rehiyon — i-collapse ang mga ito sa likod ng button na "Ipakita" o ganap na itago
+- I-highlight ang mga post ayon sa keyword, o ayon sa mga account na nagtatambak ng mga watawat sa kanilang bio
+- Markahan ang mga account na mas bata sa isang threshold (90 araw, 180 araw, 1 taon, 3 taon)
+- I-filter ang mga account ayon sa X organization affiliation (mga badge ng gobyerno, NGO, kumpanya)
+- Mga listahan ng exception bawat panuntunan — i-exempt ang mga partikular na account mula sa anumang filter nang hindi dini-disable ang panuntunan
+- Account facts card — status ng verification, edad ng account, bilang ng pagbabago ng handle, badge ng affiliation, indicator ng protected account
+- I-share ang isang post bilang PNG na imahe na may naka-embed na watawat ng lokasyon — right-click menu o button sa hover card
+- Mag-swipe pakanan upang ipakita, sa Android at mga touch-screen na device
+- Walang login, walang API key, walang rate-limit error sa gitna ng mahabang thread
+
+
+MGA RATE LIMIT NG X, NALUTAS IMBES NA TAMAAN
+
+Nakita mo na ito — pumupuno ang mga watawat sa tuktok ng isang thread, pagkatapos ay humihinto. O bawat profile na ini-hover mo ay umiikot at hindi natatapos. Iyan ang rate limit: pinuputol ka ng X sa 50 lookup bawat 15 minuto, at ang isang abalang thread ay may mas maraming account kaysa diyan.
+
+Karamihan sa mga profile dito ay hindi kailanman nagkakahalaga ng lookup dahil naka-cache na ang mga ito sa iyong browser o sinasagot ng shared community cache. Ang natitira ay nirarasyon sa lahat ng bukas na X tab ng isang cross-tab broker, at ang huling 30 porsyento ng window ay nakalaan para sa mga account na aktuwal mong ini-hover.
+
+Kapag naubos ito, makakakuha ka ng countdown sa reset, hindi blangkong watawat.
+
+
+KUNG SAAN NANGGAGALING ANG BANSA
+
+Tumatanong ang iyong browser sa x.com, gamit ang session na naka-log in ka na. Walang server namin sa gitna, walang IP geolocation, walang third-party na database.
+
+Direkta nitong binabasa ang bansa mula sa sariling metadata ng account ng X — ang parehong field na ginagamit ng X upang lagyan ng label ang mga profile — at binabasa rin ang bansa ng app store kung saan na-download ng account ang X. Kapag naiiba ang bansa ng store sa nakasaad na lokasyon, parehong ipinapakita. Kapag minarkahan ng X ang lokasyon bilang hindi beripikado, may lalabas na badge ng VPN. Kapag kinukumpirma ng bansa ng store ang nakasaad na lokasyon kahit may tag na hindi beripikado, pinipigilan ang badge.
+
+Kaya ito ay eksaktong kasing-tumpak ng sariling data ng X. Minsan nawawala sa mas lumang o naka-lock na mga account. Walang login at walang API key na kailangan lampas sa X session na bukas na sa iyo.
+
+
+PAG-FILTER
+
+Pumili ng mga bansa o buong rehiyon (13 pandaigdigang rehiyon, 200+ indibidwal na bansa), pagkatapos ay hayaan sila, i-collapse sa likod ng button na "Ipakita", o itago. Ang pag-collapse ay ang default, dahil ang isang timeline na tahimik na nagtatanggal ng mga bagay ay hindi isang mapagkakatiwalaan mo.
+
+Maaari ka ring mag-filter ayon sa edad ng account, X organization affiliation, at mga account na nagtatambak ng maraming watawat sa kanilang bio. Bawat panuntunan ay may sariling listahan ng exception, at mayroong pandaigdigang listahang "Laging Ipakita" na nag-o-override sa lahat ng panuntunan nang sabay-sabay.
+
+Ang pag-highlight ng keyword ay gumagamit ng CSS Highlights API — hindi nito kailanman ginagalaw ang DOM, kaya hindi ito napapansin ng React ng X. Sinusuportahan ang mga emoji keyword, at ang mga tumutugmang flag emoji sa mga bio ay nakakakuha ng nakikitang outline ring.
+
+
+PRIVACY
+
+Hindi kailanman binabasa: ang iyong cookies at session token, ang mga bio at post na ini-scroll mo, ang iyong browsing history. Hindi bilang setting. Hindi nito kailanman binabasa ang mga ito.
+
+Walang analytics o telemetry sa extension. Ang mga resulta ay naka-store sa iyong browser sa loob ng 30 araw at isang button ang nagbubura sa lahat.
+
+Ang source ay pampubliko (lisensyang MIT), kaya maaari mong i-verify ang alinman dito sa halip na tanggapin ang aming salita.
+
+
+ANG SHARED CACHE, NAKA-ON BILANG DEFAULT
+
+Ang iyong mga lookup ay sumasagot sa iba at ang kanila ay sumasagot sa iyo, kaya nananatiling malayo sa iyo ang rate limit.
+
+Kung ano ang ipinapadala: ang handle na na-lookup, ang bansa at VPN flag nito, at isang random install ID. Walang tungkol sa iyo, walang tungkol sa kung ano ang binabasa mo. Isang toggle sa Settings ang nag-o-off nito — at ang pag-off nito ay humihinto rin sa background prefetching.
+
+Ang cache server ay open source. Maaari kang magpatakbo ng sarili mo.
+
+
+MGA PERMISO
+
+x.com at twitter.com, dahil doon ito tumatakbo. Storage, para sa mga setting at 30-araw na lokal na cache. Mga context menu, para sa dalawang entry: "Kopyahin ang post na may mga watawat ng lokasyon" at isang shortcut sa Settings.
+
+Iyan ang buong listahan. Hindi nito nakikita ang anumang iba pang tab na bukas mo, at walang remote code na kailanman nilo-load.
+
+
+KUNG ANO ITO HINDI
+
+Hindi ito bot detector o engagement-farming classifier. Nagpapakita ito ng mga senyales na hindi mo makikita kung hindi mo bubuksan ang bawat profile isa-isa — bansa, source platform, status ng VPN, edad ng account, affiliation, verification, mga pagbabago ng handle. Kung ano ang iyong maging konklusyon mula sa mga ito ay sa iyo.
+
+
+Chrome, Edge, at Brave sa desktop. Lemur Browser sa Android. Firefox at Safari sa pamamagitan ng kani-kanilang mga store.
+
+15 wika ng UI na may mga pangalan ng bansa sa sariling wika ng mambabasa.
+
+May lisensyang MIT at pampubliko ang source:
+
+https://github.com/asmyshlyaev177/x-profile-location
+https://x-pat.pages.dev/
+Patakaran sa privacy: https://x-pat.pages.dev/privacy-policy

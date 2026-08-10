@@ -1,0 +1,87 @@
+Lihat dari negara mana akun X (Twitter) memposting — bendera negara, lencana VPN, dan platform sumber — tanpa membuka satu profil pun. Dibaca langsung dari data X sendiri, tanpa geolokasi pihak ketiga.
+
+Arahkan kursor ke profil dan benderanya muncul. Aktifkan bendera di umpan dan satu muncul di samping setiap nama pengguna. Geser ke kanan di ponsel untuk mengungkapkan lokasi sesuai permintaan.
+
+
+APA YANG ANDA DAPATKAN
+
+- Bendera negara di kartu hover, di halaman profil, dan sebaris di linimasa
+- Platform sumber dan negara toko aplikasi — mengonfirmasi atau bertentangan dengan lokasi yang dinyatakan
+- Lencana VPN merah ketika X sendiri tidak dapat memverifikasi lokasi
+- Filter postingan berdasarkan negara atau wilayah — ciutkan di balik tombol "Tampilkan" atau sembunyikan sepenuhnya
+- Sorot postingan berdasarkan kata kunci, atau berdasarkan akun yang menumpuk bendera di bio mereka
+- Tandai akun yang lebih muda dari ambang batas (90 hari, 180 hari, 1 tahun, 3 tahun)
+- Filter akun berdasarkan afiliasi organisasi X (lencana pemerintah, LSM, perusahaan)
+- Daftar pengecualian per aturan — kecualikan akun tertentu dari filter apa pun tanpa menonaktifkan aturan
+- Kartu fakta akun — status verifikasi, usia akun, jumlah perubahan nama pengguna, lencana afiliasi, indikator akun yang dilindungi
+- Bagikan postingan sebagai gambar PNG dengan bendera lokasi tersemat — menu klik kanan atau tombol kartu hover
+- Geser ke kanan untuk mengungkapkan, di Android dan perangkat layar sentuh
+- Tanpa login, tanpa kunci API, tanpa kesalahan batas laju di tengah utas panjang
+
+
+BATAS LAJU X, TERPECAHKAN ALIH-ALIH TERKENA
+
+Anda telah melihatnya — bendera muncul di bagian atas utas, lalu berhenti. Atau setiap profil yang Anda arahkan berputar dan tidak pernah selesai. Itulah batas laju: X memotong Anda pada 50 pencarian per 15 menit, dan satu utas yang ramai memiliki lebih banyak akun dari itu.
+
+Sebagian besar profil di sini tidak pernah memerlukan pencarian karena sudah di-cache di browser Anda atau dijawab oleh cache komunitas bersama. Sisanya dijatah di semua tab X yang terbuka oleh broker lintas tab, dan 30 persen terakhir dari jendela dicadangkan untuk akun yang benar-benar Anda arahkan.
+
+Jika habis, Anda mendapatkan hitung mundur ke reset, bukan bendera kosong.
+
+
+DARI MANA NEGARA BERASAL
+
+Browser Anda bertanya ke x.com, menggunakan sesi yang sudah Anda gunakan untuk login. Tidak ada server kami di antaranya, tidak ada geolokasi IP, tidak ada basis data pihak ketiga.
+
+Ia membaca negara langsung dari metadata akun X sendiri — bidang yang sama yang digunakan X untuk melabeli profil — dan juga membaca negara toko aplikasi tempat akun mengunduh X. Ketika negara toko berbeda dari lokasi yang dinyatakan, keduanya ditampilkan. Ketika X menandai lokasi sebagai tidak terverifikasi, lencana VPN muncul. Ketika negara toko mengonfirmasi lokasi yang dinyatakan bahkan dengan tag tidak terverifikasi, lencana ditekan.
+
+Jadi ini persis seakurat data X sendiri. Terkadang hilang pada akun yang lebih lama atau terkunci. Tidak diperlukan login dan kunci API selain sesi X yang sudah Anda buka.
+
+
+PENYARINGAN
+
+Pilih negara atau seluruh wilayah (13 wilayah dunia, 200+ negara individual), lalu biarkan saja, ciutkan di balik tombol "Tampilkan", atau sembunyikan. Menciutkan adalah default, karena linimasa yang diam-diam menghapus hal-hal bukanlah linimasa yang dapat Anda percayai.
+
+Anda juga dapat menyaring berdasarkan usia akun, afiliasi organisasi X, dan akun yang menumpuk banyak bendera di bio mereka. Setiap aturan memiliki daftar pengecualiannya sendiri, dan ada daftar putih global "Selalu Tampilkan" yang mengesampingkan semua aturan sekaligus.
+
+Penyorotan kata kunci menggunakan CSS Highlights API — ia tidak pernah menyentuh DOM, jadi React X tidak pernah menyadarinya. Kata kunci emoji didukung, dan bendera yang cocok di bio mendapatkan cincin garis tepi yang terlihat.
+
+
+PRIVASI
+
+Tidak pernah dibaca: cookie dan token sesi Anda, bio dan postingan yang Anda gulir, riwayat penelusuran Anda. Bukan sebagai pengaturan. Ia tidak pernah membacanya.
+
+Tidak ada analitik atau telemetri di ekstensi. Hasil disimpan di browser Anda selama 30 hari dan satu tombol menghapus semuanya.
+
+Sumbernya publik (lisensi MIT), jadi Anda dapat memverifikasi semua ini alih-alih percaya begitu saja.
+
+
+CACHE BERSAMA, AKTIF SECARA DEFAULT
+
+Pencarian Anda menjawab pencarian orang lain dan pencarian mereka menjawab pencarian Anda, itulah yang menjaga batas laju menjauh dari Anda.
+
+Apa yang dikirim: nama pengguna yang dicari, negara dan bendera VPN-nya, dan ID instalasi acak. Tidak ada tentang Anda, tidak ada tentang apa yang Anda baca. Satu tombol di Pengaturan mematikannya — dan mematikannya juga menghentikan pra-pengambilan latar belakang.
+
+Server cache bersifat open source. Anda dapat menjalankan milik Anda sendiri.
+
+
+IZIN
+
+x.com dan twitter.com, karena di sanalah ia berjalan. Penyimpanan, untuk pengaturan dan cache lokal 30 hari. Menu konteks, untuk dua entri: "Salin postingan dengan bendera lokasi" dan pintasan ke Pengaturan.
+
+Itulah seluruh daftarnya. Ia tidak dapat melihat tab lain yang Anda buka, dan tidak ada kode jarak jauh yang pernah dimuat.
+
+
+APA YANG BUKAN
+
+Bukan pendeteksi bot atau pengklasifikasi penggembungan interaksi. Ia menampilkan sinyal yang tidak dapat Anda lihat tanpa membuka setiap profil satu per satu — negara, platform sumber, status VPN, usia akun, afiliasi, verifikasi, perubahan nama pengguna. Apa yang Anda simpulkan darinya adalah milik Anda.
+
+
+Chrome, Edge, dan Brave di desktop. Lemur Browser di Android. Firefox dan Safari melalui toko masing-masing.
+
+15 bahasa UI dengan nama negara dalam bahasa pembaca.
+
+Berlisensi MIT dan sumbernya publik:
+
+https://github.com/asmyshlyaev177/x-profile-location
+https://x-pat.pages.dev/
+Kebijakan privasi: https://x-pat.pages.dev/privacy-policy

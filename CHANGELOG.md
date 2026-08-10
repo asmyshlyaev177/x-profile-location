@@ -5,10 +5,19 @@ Notable changes to X Profile Location. Newest first.
 Bug reporters and feature requesters are credited by handle — if you filed the
 issue, your name belongs here.
 
-## [Unreleased]
+## [1.7.1]
 
 ### Added
 
+- **X open in several tabs now costs what one tab costs.** The lookup budget
+  belongs to your X session, not to a tab, but each tab used to keep its own
+  idea of it: two tabs on the same feed each spent a request on the same
+  account, an account X has no location for was asked about again by every new
+  tab, and a rate limit one tab ran into was something every other tab had to
+  hit for itself. All of it is now decided in one place, so the countdown
+  appears in every tab at once, a flag one tab looks up appears in the others
+  without a second lookup, and the background trickle keeps to one pace however
+  many tabs are open.
 - **A small mark on shared images.** A card copied from a post now carries
   `X-Pat · x-pat.pages.dev` in its bottom-right corner, so one that gets
   reposted still says where it came from. It takes its colour from the theme

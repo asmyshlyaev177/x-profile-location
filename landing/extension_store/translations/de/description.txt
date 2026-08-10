@@ -1,0 +1,87 @@
+Sieh, aus welchem Land ein X-(Twitter-)Account postet — Länderflagge, VPN-Kennzeichen und Quellplattform — ohne ein einziges Profil öffnen zu müssen. Direkt aus den Daten von X ausgelesen, ohne Drittanbieter-Geolokalisierung.
+
+Fahre mit der Maus über ein Profil und die Flagge erscheint. Schalte Flaggen im Feed ein und eine erscheint neben jedem Nutzernamen. Wische auf dem Handy nach rechts, um einen Standort bei Bedarf anzuzeigen.
+
+
+WAS DU BEKOMMST
+
+- Länderflagge in Hover-Karten, auf Profilseiten und inline in der Timeline
+- Quellplattform und App-Store-Land — bestätigt oder widerspricht dem angegebenen Standort
+- Ein rotes VPN-Kennzeichen, wenn X selbst den Standort nicht verifizieren kann
+- Beiträge nach Land oder Region filtern — hinter einer „Anzeigen"-Schaltfläche einklappen oder vollständig ausblenden
+- Beiträge nach Schlüsselwort hervorheben oder nach Accounts, die mehrere Flaggen-Emojis in ihrer Bio stapeln
+- Accounts markieren, die jünger als ein Schwellenwert sind (90 Tage, 180 Tage, 1 Jahr, 3 Jahre)
+- Accounts nach X-Organisationszugehörigkeit filtern (Regierung, NGO, Unternehmensabzeichen)
+- Ausnahmelisten pro Regel — bestimmte Accounts von einem Filter ausnehmen, ohne die Regel zu deaktivieren
+- Account-Faktenkarte — Verifizierungsstatus, Account-Alter, Anzahl der Handle-Änderungen, Zugehörigkeitsabzeichen, Indikator für geschützte Accounts
+- Beitrag als PNG-Bild mit eingebetteter Standortflagge teilen — Rechtsklick-Menü oder Hover-Karten-Schaltfläche
+- Nach rechts wischen zum Anzeigen, auf Android und Touchscreen-Geräten
+- Kein Login, kein API-Schlüssel, keine Rate-Limit-Fehler mitten in einem langen Thread
+
+
+X-RATE-LIMITS, GELÖST STATT GETROFFEN
+
+Du hast es gesehen — Flaggen erscheinen oben in einem Thread und hören dann auf. Oder jedes Profil, über das du fährst, dreht sich endlos. Das ist das Rate-Limit: X begrenzt dich auf 50 Abfragen pro 15 Minuten, und ein einziger belebter Thread enthält mehr Accounts als das.
+
+Die meisten Profile hier kosten keine Abfrage, weil sie bereits in deinem Browser zwischengespeichert sind oder vom gemeinsamen Community-Cache bedient werden. Der Rest wird über alle geöffneten X-Tabs hinweg durch einen tab-übergreifenden Broker rationiert, und die letzten 30 Prozent des Zeitfensters werden für Accounts reserviert, über die du tatsächlich mit der Maus fährst.
+
+Wenn der Vorrat erschöpft ist, bekommst du einen Countdown bis zum Reset, keine leere Flagge.
+
+
+WOHER DAS LAND KOMMT
+
+Dein Browser fragt x.com an, mithilfe der Sitzung, mit der du bereits eingeloggt bist. Kein Server von uns dazwischen, keine IP-Geolokalisierung, keine Drittanbieter-Datenbank.
+
+Es liest das Land direkt aus den Account-Metadaten von X — dasselbe Feld, das X zur Profilkennzeichnung verwendet — und liest auch das App-Store-Land, aus dem der Account X heruntergeladen hat. Wenn das Store-Land vom angegebenen Standort abweicht, werden beide angezeigt. Wenn X den Standort als ungeprüft markiert, erscheint ein VPN-Kennzeichen. Wenn das Store-Land den angegebenen Standort auch mit einem ungeprüften Tag bestätigt, wird das Kennzeichen unterdrückt.
+
+Es ist also genauso genau wie die Daten von X selbst. Bei älteren oder gesperrten Accounts fehlen manchmal Daten. Kein Login und kein API-Schlüssel erforderlich, außer der bereits geöffneten X-Sitzung.
+
+
+FILTERUNG
+
+Wähle Länder oder ganze Regionen (13 Weltregionen, über 200 einzelne Länder), lasse sie unberührt, klappe sie hinter einer „Anzeigen"-Schaltfläche ein oder blende sie aus. Einklappen ist die Voreinstellung, denn eine Timeline, die stillschweigend Dinge löscht, ist keine, der du vertrauen kannst.
+
+Du kannst auch nach Account-Alter, X-Organisationszugehörigkeit und Accounts filtern, die mehrere Flaggen-Emojis in ihrer Bio stapeln. Jede Regel hat ihre eigene Ausnahmeliste, und es gibt eine globale „Immer anzeigen"-Erlaubnisliste, die alle Regeln auf einmal außer Kraft setzt.
+
+Die Schlüsselworthervorhebung nutzt die CSS Highlights API — sie berührt niemals das DOM, sodass React von X es nie bemerkt. Emoji-Schlüsselwörter werden unterstützt, und passende Flaggen-Emojis in Bios erhalten einen sichtbaren Umrissring.
+
+
+DATENSCHUTZ
+
+Nie gelesen: deine Cookies und Sitzungstoken, die Bios und Beiträge, an denen du vorbeiscrollst, dein Browserverlauf. Nicht als Einstellung. Sie werden niemals gelesen.
+
+Keine Analytik oder Telemetrie in der Erweiterung. Ergebnisse werden 30 Tage lang in deinem Browser gespeichert und eine Schaltfläche löscht sie alle.
+
+Der Quellcode ist öffentlich (MIT-Lizenz), sodass du all das überprüfen kannst, anstatt uns beim Wort zu nehmen.
+
+
+DER GEMEINSAME CACHE, STANDARDMÄSSIG AKTIVIERT
+
+Deine Abfragen beantworten die der anderen und ihre beantworten deine — das hält dir das Rate-Limit vom Hals.
+
+Was gesendet wird: der abgefragte Nutzername, sein Land und VPN-Kennzeichen sowie eine zufällige Installations-ID. Nichts über dich, nichts über das, was du liest. Ein Schalter in den Einstellungen schaltet es aus — und das Ausschalten stoppt auch das Hintergrund-Prefetching.
+
+Der Cache-Server ist Open Source. Du kannst deinen eigenen betreiben.
+
+
+BERECHTIGUNGEN
+
+x.com und twitter.com, weil die Erweiterung dort läuft. Speicher, für Einstellungen und den 30-Tage-lokalen Cache. Kontextmenüs, für zwei Einträge: „Beitrag mit Standortflaggen kopieren" und eine Verknüpfung zu den Einstellungen.
+
+Das ist die vollständige Liste. Sie kann keinen anderen geöffneten Tab sehen, und es wird niemals Remote-Code geladen.
+
+
+WAS SIE NICHT IST
+
+Kein Bot-Detektor oder Engagement-Farming-Klassifikator. Sie zeigt Signale an, die du sonst nicht sehen kannst, ohne jedes Profil einzeln zu öffnen — Land, Quellplattform, VPN-Status, Account-Alter, Zugehörigkeit, Verifizierung, Handle-Änderungen. Was du daraus schließt, ist deine Sache.
+
+
+Chrome, Edge und Brave auf dem Desktop. Lemur Browser auf Android. Firefox und Safari über ihre jeweiligen Stores.
+
+15 UI-Sprachen mit Ländernamen in der Sprache des Lesers.
+
+MIT-lizenziert und der Quellcode ist öffentlich:
+
+https://github.com/asmyshlyaev177/x-profile-location
+https://x-pat.pages.dev/
+Datenschutzerklärung: https://x-pat.pages.dev/privacy-policy
