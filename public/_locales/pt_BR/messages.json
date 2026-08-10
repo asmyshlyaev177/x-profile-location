@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "Nenhuma palavra-chave — nada está destacado."
   },
+  "popupCacheCount": {
+    "message": "$1 contas no cache da comunidade"
+  },
+  "popupCacheCountTitle": {
+    "message": "Localizações que outras pessoas já consultaram. As suas são carregadas daqui, sem perguntar ao X."
+  },
   "popupAllSettings": {
     "message": "Todas as configurações →"
   },

@@ -339,6 +339,10 @@ export async function openPopupPage(
   extensionId: string,
 ): Promise<Page> {
   const popup = await context.newPage()
+  // Before the first navigation, because the panel asks for this on load. Every
+  // popup gets it, tests about the count or not: the alternative is each one
+  // quietly polling the real community server for as long as it stays open.
+  await mockCacheCount(popup, CACHED_ACCOUNTS)
   await popup.goto(`chrome-extension://${extensionId}/pages/popup.html`)
   // Nothing is interactive until the storage read that seeds every control has
   // resolved; the master switch is enabled at that point and disabled before.
@@ -615,6 +619,23 @@ export async function mockLocationApis(
 ): Promise<void> {
   await mockSharedCache(page, null)
   await mockAboutAccount(page, profile)
+}
+
+/** What the stubbed community cache says it holds, for popup assertions. */
+export const CACHED_ACCOUNTS = 44_210
+
+/** Stands in for GET /v1/stats — the count the popup shows while it is open. */
+export async function mockCacheCount(page: Page, profiles: number) {
+  const base = new URL(CACHE_API_BASE)
+  await page.route(
+    (url) => url.host === base.host && url.pathname.endsWith('/v1/stats'),
+    (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
+        body: JSON.stringify({ profiles }),
+      }),
+  )
 }
 
 export async function mockSharedCache(

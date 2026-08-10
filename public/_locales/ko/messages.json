@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "키워드 없음 — 하이라이트되는 내용이 없습니다."
   },
+  "popupCacheCount": {
+    "message": "공유 캐시에 계정 $1개"
+  },
+  "popupCacheCountTitle": {
+    "message": "다른 사람들이 이미 조회한 위치입니다. X에 묻지 않고 여기에서 불러옵니다."
+  },
   "popupAllSettings": {
     "message": "모든 설정 →"
   },

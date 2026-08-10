@@ -67,6 +67,14 @@
     "message": "No keywords — nothing is highlighted.",
     "description": "Popup empty state when the keyword list is empty."
   },
+  "popupCacheCount": {
+    "message": "$1 accounts in the community cache",
+    "description": "Shown near the bottom of the popup. $1 is a count of accounts, already formatted for the reader's locale (e.g. 12,480). Any number is possible, so languages whose plurals depend on it should reword rather than pick a form — e.g. 'Community cache: $1'."
+  },
+  "popupCacheCountTitle": {
+    "message": "Locations other people have already looked up. Yours load from these without asking X.",
+    "description": "Tooltip on the popup's community-cache count."
+  },
   "popupAllSettings": {
     "message": "All settings →",
     "description": "Popup footer button that opens the full settings page."

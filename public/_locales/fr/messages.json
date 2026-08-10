@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "Aucun mot-clé — rien n'est surligné."
   },
+  "popupCacheCount": {
+    "message": "$1 comptes dans le cache communautaire"
+  },
+  "popupCacheCountTitle": {
+    "message": "Des lieux que d'autres ont déjà recherchés. Les vôtres se chargent d'ici, sans interroger X."
+  },
   "popupAllSettings": {
     "message": "Tous les réglages →"
   },

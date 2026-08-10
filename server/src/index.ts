@@ -8,6 +8,7 @@
 // Endpoints (all CORS-open, no credentials):
 //   POST /v1/loc/batch  { usernames: string[] }        -> { profiles: Served[] }
 //   POST /v1/loc        { clientId, entries: Vote[] }   -> { ok: true }
+//   GET  /v1/stats                                      -> { profiles: number }
 //
 // This module runs unmodified on two backends — Cloudflare Workers + D1
 // (wrangler.toml) and Node + SQLite on a VPS (node-server.ts) — because it only
@@ -48,6 +49,17 @@ const MAX_FIELD_LEN = 60
 // admitContributions below raises the price of manufacturing those ids.
 const VOTE_CAP = 10
 const VOTE_CAP_SLACK = 5
+
+// How long /v1/stats reuses a count before recomputing it, and how long clients
+// are told to. It is what makes the endpoint cost one COUNT per minute rather
+// than one per reader: the popup asks while it is open, so the request rate
+// tracks how many people have a popup open, which nothing else here does.
+//
+// Not a nicety. `COUNT(*)` is a full scan — 7.8ms over both tables at 10k-user
+// scale (README, "Benchmarks") — and better-sqlite3 is synchronous, so an
+// unmemoised one would be an event-loop stall on the request path, the thing
+// every other query here is shaped to avoid.
+const STATS_TTL_MS = 60_000
 
 interface Served {
   u: string
@@ -168,6 +180,42 @@ async function handleBatch(req: Request, env: Env): Promise<Response> {
     .all<ProfileRow>()
 
   return json({ profiles: (results ?? []).map(toServed) })
+}
+
+// The last count and when it was taken. Module state, so on Workers it is per
+// isolate — a cold isolate just pays for one COUNT, which is the same thing a
+// restart costs the Node box.
+let counted: { at: number; profiles: number } | null = null
+
+/** The memo outlives a test otherwise, and the next one would read its number. */
+export function __resetStats(): void {
+  counted = null
+}
+
+/**
+ * How many accounts the cache can answer for.
+ *
+ * Unfiltered, though handleBatch only serves `location_confidence > 0`: the two
+ * counts are the same number, because `pickConsensus` counts the votes backing
+ * the value it picks and never returns fewer than one, so no row is ever written
+ * below 1 (consensus.test.ts pins that). The difference is what they cost —
+ * `WHERE location_confidence > 0` cannot use the username index and drops to a
+ * table scan: 5.3ms against 0.05ms over 200k rows, and better-sqlite3 is
+ * synchronous, so that gap is an event-loop stall. Adding an index for it is
+ * ruled out for the same reasons as every other index here (schema.sql).
+ */
+async function handleStats(env: Env, now: number): Promise<Response> {
+  if (counted === null || now - counted.at >= STATS_TTL_MS) {
+    const { results } = await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM profiles',
+    ).all<{ n: number }>()
+    counted = { at: now, profiles: results?.[0]?.n ?? 0 }
+  }
+  const resp = json({ profiles: counted.profiles })
+  // The client re-asks on a timer while its popup is open; this is what keeps
+  // most of those off the network entirely.
+  resp.headers.set('Cache-Control', `public, max-age=${STATS_TTL_MS / 1000}`)
+  return resp
 }
 
 interface ParsedVote {
@@ -390,6 +438,9 @@ export default {
       }
       if (req.method === 'POST' && url.pathname === '/v1/loc') {
         return await handleContribute(req, env)
+      }
+      if (req.method === 'GET' && url.pathname === '/v1/stats') {
+        return await handleStats(env, Date.now())
       }
       return cors(new Response('Not found', { status: 404 }))
     } catch {

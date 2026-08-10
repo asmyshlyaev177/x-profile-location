@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "Слов нет — ничего не подсвечивается."
   },
+  "popupCacheCount": {
+    "message": "Аккаунтов в общем кэше: $1"
+  },
+  "popupCacheCountTitle": {
+    "message": "Страны, которые уже посмотрели другие. Ваши берутся отсюда, без запроса к X."
+  },
   "popupAllSettings": {
     "message": "Все настройки →"
   },

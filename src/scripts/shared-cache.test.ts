@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+  vi,
+} from 'vitest'
 
 // Provide a non-empty server URL so the feature is active under test.
 vi.mock('./constants', () => ({
@@ -23,8 +31,11 @@ vi.hoisted(() => {
 import {
   __resetSharedCache,
   contributeLocation,
+  fetchCacheCount,
   FLUSH_DELAY_MS,
   minConfidence,
+  refreshCacheCount,
+  rememberedCount,
   setMinConfidence,
   setSharedCacheEnabled,
   sharedBatchLookup,
@@ -302,5 +313,108 @@ describe('contributeLocation', () => {
     await vi.advanceTimersByTimeAsync(FLUSH_DELAY_MS)
 
     expect(fetchFn).not.toHaveBeenCalled()
+  })
+})
+
+describe('how much the cache holds', () => {
+  const chromeStorage = (
+    globalThis as unknown as {
+      chrome: { storage: { local: { get: Mock; set: Mock } } }
+    }
+  ).chrome.storage.local
+
+  // Never `mockResolvedValue` on the shared `get`: it is the file's one stub and
+  // the contribution tests read the client id back out of it. `--sequence.shuffle`
+  // is what caught that, which is exactly what it is for.
+  const storedCount = (n: number) =>
+    chromeStorage.get.mockResolvedValueOnce({ sharedCacheCount: { n, at: 1 } })
+
+  beforeEach(() => chromeStorage.set.mockClear())
+
+  it('reports the count the server answers with', async () => {
+    mockFetchJson({ profiles: 44_210 })
+    expect(await fetchCacheCount()).toBe(44_210)
+  })
+
+  it('asks the shared server, by GET, without credentials', async () => {
+    const fetchFn = mockFetchJson({ profiles: 1 })
+    await fetchCacheCount()
+
+    const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://cache.test/v1/stats')
+    expect(init.method).toBeUndefined()
+    expect(init.credentials).toBe('omit')
+  })
+
+  it('says nothing when the server has no such route', async () => {
+    // Every install talked to a server without one until this shipped, and
+    // those keep answering 404 until their box is updated.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: false, status: 404 }),
+    )
+    expect(await fetchCacheCount()).toBeNull()
+  })
+
+  it('says nothing when the answer is not a count', async () => {
+    for (const profiles of [null, undefined, 'lots', -1, [], {}, NaN]) {
+      mockFetchJson({ profiles })
+      expect(await fetchCacheCount()).toBeNull()
+    }
+  })
+
+  it('says nothing when the request fails outright', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    expect(await fetchCacheCount()).toBeNull()
+  })
+
+  it('remembers a recent answer', () => {
+    const stored = { sharedCacheCount: { n: 4242, at: 1_000 } }
+    expect(rememberedCount(stored, 2_000)).toBe(4242)
+  })
+
+  it('forgets one nothing has confirmed in a week', () => {
+    // `at` is when the number last moved, so a count standing still for that
+    // long is a cache nobody is contributing to — better a blank than a figure
+    // that is quietly wrong.
+    const stored = { sharedCacheCount: { n: 4242, at: 1_000 } }
+    const week = 7 * 24 * 60 * 60 * 1000
+    expect(rememberedCount(stored, 1_000 + week + 1)).toBeNull()
+  })
+
+  it('remembers nothing from an empty or malformed store', () => {
+    expect(rememberedCount({})).toBeNull()
+    expect(
+      rememberedCount({ sharedCacheCount: { n: 'lots', at: 1 } }),
+    ).toBeNull()
+  })
+
+  it('stores an answer that moved', async () => {
+    mockFetchJson({ profiles: 44_211 })
+    storedCount(44_210)
+
+    expect(await refreshCacheCount()).toBe(44_211)
+    expect(chromeStorage.set.mock.calls[0][0].sharedCacheCount).toMatchObject({
+      n: 44_211,
+    })
+  })
+
+  it('leaves storage alone when the number has not moved', async () => {
+    // This runs on a timer while a popup is open, and every write wakes the
+    // service worker and each open x.com tab's storage listener.
+    mockFetchJson({ profiles: 44_210 })
+    storedCount(44_210)
+
+    expect(await refreshCacheCount()).toBe(44_210)
+    expect(chromeStorage.set).not.toHaveBeenCalled()
+  })
+
+  it('stores nothing when there was no answer', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: false, status: 502 }),
+    )
+    expect(await refreshCacheCount()).toBeNull()
+    expect(chromeStorage.set).not.toHaveBeenCalled()
   })
 })

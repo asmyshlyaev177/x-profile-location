@@ -3,7 +3,13 @@
 
 import type { LocationData } from './cache'
 import { CACHE_API_BASE } from './constants'
-import { DEFAULT_MIN_CONFIDENCE, normalizeMinConfidence } from './countries'
+import {
+  DEFAULT_MIN_CONFIDENCE,
+  finiteNumber,
+  normalizeMinConfidence,
+  normalizeSharedCacheCount,
+  SHARED_CACHE_COUNT_KEY,
+} from './countries'
 
 // Distinct clients that must agree before a location is trusted. Still 1 on
 // purpose — see "Community cache consensus" in CLAUDE.md.
@@ -250,6 +256,75 @@ async function flush(): Promise<void> {
 /** So a tab being closed doesn't strand a batch until the next session. */
 export function flushContributions(): void {
   void flush()
+}
+
+// --- how much the cache holds ------------------------------------------------
+// The popup shows this, and only while it is open. Three things keep it off the
+// server: nobody asks unless a popup is on screen, the answer carries a
+// `max-age` so a re-ask inside that window never leaves the browser, and the
+// server memoises the count for the same window — so what does get through
+// costs one `COUNT(*)` between every reader, not one each.
+
+/** How often the popup re-asks while it is open. Under the server's max-age. */
+export const COUNT_POLL_MS = 30_000
+
+/** Older than this, a remembered number says more about the gap than the cache. */
+const COUNT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+/**
+ * Accounts the shared cache can answer for, or null when there is nobody to ask
+ * or the answer didn't come. Outside the circuit breaker on purpose: the breaker
+ * exists to stop a scrolling timeline retrying a struggling server, and this
+ * asks at most twice a minute while a popup is open — it also must not go blank
+ * because lookups in a different tab tripped it.
+ */
+export async function fetchCacheCount(): Promise<number | null> {
+  if (!isSharedCacheConfigured()) return null
+  try {
+    const resp = await fetchWithTimeout(`${CACHE_API_BASE}/v1/stats`, {
+      credentials: 'omit',
+    })
+    // Includes the 404 from a server too old to have the route, which is the
+    // one every install talked to until this shipped.
+    if (!resp.ok) return null
+    const body = (await resp.json()) as { profiles?: unknown }
+    const n = finiteNumber(body.profiles)
+    return n === null || n < 0 ? null : Math.floor(n)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The last answer, if it is recent enough to still mean something. `at` is when
+ * the number last *moved*, so a cache whose count has stood still for a week is
+ * one nothing is contributing to — and a stale figure is worse than the second
+ * of blank before the live one lands.
+ */
+export function rememberedCount(
+  stored: Record<string, unknown>,
+  now = Date.now(),
+): number | null {
+  const count = normalizeSharedCacheCount(stored[SHARED_CACHE_COUNT_KEY])
+  if (count === null || now - count.at > COUNT_MAX_AGE_MS) return null
+  return count.n
+}
+
+/**
+ * Ask, and remember the answer for the next popup. Stored only when the number
+ * actually moved — every write wakes the service worker and each open x.com
+ * tab's storage listener, and this runs on a timer.
+ */
+export async function refreshCacheCount(): Promise<number | null> {
+  const n = await fetchCacheCount()
+  if (n === null) return null
+  const stored = await chrome.storage.local.get(SHARED_CACHE_COUNT_KEY)
+  if (normalizeSharedCacheCount(stored[SHARED_CACHE_COUNT_KEY])?.n !== n) {
+    await chrome.storage.local.set({
+      [SHARED_CACHE_COUNT_KEY]: { n, at: Date.now() },
+    })
+  }
+  return n
 }
 
 export function __resetSharedCache(): void {

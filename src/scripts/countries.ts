@@ -889,6 +889,31 @@ export function normalizeHideBlockedMode(value: unknown): HideBlockedMode {
 // CACHE_API_BASE is configured.
 export const SHARED_CACHE_KEY = 'sharedCacheEnabled'
 
+// What the shared cache last said it holds, so the popup opens with a number
+// instead of a gap and still has one to show when the server can't be reached.
+// Not a setting — a remembered answer is not a decision, so it stays out of
+// SETTINGS_REGISTRY and out of an export, like `usageStats`.
+export const SHARED_CACHE_COUNT_KEY = 'sharedCacheCount'
+
+export interface SharedCacheCount {
+  /** Accounts the server said it can answer for. */
+  n: number
+  /** Epoch ms it said so. */
+  at: number
+}
+
+export function normalizeSharedCacheCount(
+  value: unknown,
+): SharedCacheCount | null {
+  const v = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+  const n = finiteNumber(v.n)
+  const at = finiteNumber(v.at)
+  if (n === null || n < 0 || at === null || at <= 0) return null
+  return { n: Math.floor(n), at }
+}
+
 // Warm the caches for on-screen accounts in page order, so flags appear without
 // hovering. Spends at most PREFETCH_SHARE_KEY of the rate-limit window.
 export const BACKGROUND_PREFETCH_KEY = 'backgroundPrefetch'

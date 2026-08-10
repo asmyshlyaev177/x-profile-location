@@ -36,6 +36,8 @@ export interface StatsSnapshot {
   users: number
   /** true if the distinct-install set hit its cap and the count is a floor */
   usersCapped?: true
+  /** GET /v1/stats — popups asking how much the cache holds */
+  statsReads: number
   /** requests to anything else (404s, probes, scanners) */
   other: number
   rateLimited: number
@@ -79,6 +81,7 @@ export class Stats {
   #contributedEntries = 0
   #clients = new Set<string>()
   #clientsCapped = false
+  #statsReads = 0
   #other = 0
   #rateLimited = 0
   #tooLarge = 0
@@ -121,6 +124,11 @@ export class Stats {
         if (this.#clients.size < MAX_TRACKED_CLIENTS) this.#clients.add(cid)
         else this.#clientsCapped = true
       }
+    } else if (pathname === '/v1/stats') {
+      // Counted on its own rather than left in `other`, which is what says how
+      // much scanner traffic this box is taking. Popups asking for a number
+      // would drown that.
+      this.#statsReads += 1
     } else {
       this.#other += 1
     }
@@ -153,6 +161,7 @@ export class Stats {
       contributedEntries: this.#contributedEntries,
       users: this.#clients.size,
       ...(this.#clientsCapped ? { usersCapped: true as const } : {}),
+      statsReads: this.#statsReads,
       other: this.#other,
       rateLimited: this.#rateLimited,
       tooLarge: this.#tooLarge,
@@ -176,6 +185,7 @@ export class Stats {
     this.#contributedEntries = 0
     this.#clients.clear()
     this.#clientsCapped = false
+    this.#statsReads = 0
     this.#other = 0
     this.#rateLimited = 0
     this.#tooLarge = 0

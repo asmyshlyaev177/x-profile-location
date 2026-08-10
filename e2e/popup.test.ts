@@ -16,6 +16,7 @@
  */
 import { test, expect } from './fixtures'
 import {
+  CACHED_ACCOUNTS,
   mockLocationApis,
   openPopupPage,
   openPopupSection,
@@ -292,6 +293,44 @@ test('pausing the extension takes the badge down with it', async ({
 
   await popup.locator('header input[type="checkbox"]').click()
   await expect.poll(badge, { timeout: 5_000 }).toBe('★')
+
+  await popup.close()
+})
+
+test('the popup says how much the community cache holds', async ({
+  context,
+  extensionId,
+}) => {
+  // A real extension page making a real cross-origin GET. That is the half no
+  // unit test reaches: the server answers `Access-Control-Allow-Origin: *` and
+  // nothing in the manifest grants that host, so this is what says the browser
+  // is willing to make the request at all — on Chrome, at least; Firefox and
+  // Safari are still hand-checked (see CLAUDE.md).
+  const popup = await openPopupPage(context, extensionId)
+
+  await expect(
+    popup.getByText(`${CACHED_ACCOUNTS.toLocaleString('en')} accounts`),
+  ).toBeVisible({ timeout: 5_000 })
+
+  await popup.close()
+})
+
+test('a paused popup asks the cache nothing', async ({
+  context,
+  extensionId,
+}) => {
+  const popup = await openPopupPage(context, extensionId)
+  const asked: string[] = []
+  popup.on('request', (r) => {
+    if (r.url().includes('/v1/stats')) asked.push(r.url())
+  })
+
+  await popup.locator('header input[type="checkbox"]').click()
+  await expect(popup.getByText(/accounts in the community cache/)).toBeHidden()
+
+  // Paused means the extension does nothing, and that includes the one request
+  // this panel makes on its own.
+  expect(asked).toEqual([])
 
   await popup.close()
 })

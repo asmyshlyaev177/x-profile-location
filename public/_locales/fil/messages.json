@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "Walang keywords — walang naka-highlight."
   },
+  "popupCacheCount": {
+    "message": "$1 na account sa shared community cache"
+  },
+  "popupCacheCountTitle": {
+    "message": "Mga lokasyong hinanap na ng iba. Galing dito ang sa iyo, hindi na sa X."
+  },
   "popupAllSettings": {
     "message": "Lahat ng settings →"
   },

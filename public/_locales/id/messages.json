@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "Tidak ada kata kunci — tidak ada yang disorot."
   },
+  "popupCacheCount": {
+    "message": "$1 akun di cache komunitas bersama"
+  },
+  "popupCacheCountTitle": {
+    "message": "Lokasi yang sudah dicari orang lain. Milik Anda dimuat dari sini tanpa bertanya ke X."
+  },
   "popupAllSettings": {
     "message": "Semua pengaturan →"
   },

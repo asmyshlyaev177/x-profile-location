@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
-import {
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import worker, {
+  __resetStats,
   alreadyStored,
   consensusWrites,
   groupAndCapVotes,
@@ -395,5 +396,76 @@ describe('consensusWrites', () => {
       ]),
     })
     expect(writes).toHaveLength(2)
+  })
+})
+
+describe('GET /v1/stats', () => {
+  // A number the popup shows while it is open, so the request rate follows how
+  // many people have a popup open — the one thing here that isn't driven by
+  // someone actually reading a timeline.
+  function countingEnv(n: number) {
+    const all = vi.fn().mockResolvedValue({ results: [{ n }] })
+    const prepare = vi.fn((_sql: string) => ({ all }))
+    return { env: { DB: { prepare } } as unknown as Env, prepare, all }
+  }
+
+  const ask = (env: Env) =>
+    worker.fetch(new Request('http://cache.test/v1/stats'), env)
+
+  beforeEach(__resetStats)
+
+  it('answers how many accounts the cache holds', async () => {
+    const { env } = countingEnv(44_210)
+    const resp = await ask(env)
+
+    expect(resp.status).toBe(200)
+    expect(await resp.json()).toEqual({ profiles: 44_210 })
+  })
+
+  it('counts without a WHERE clause, which is what keeps it off a table scan', async () => {
+    // `location_confidence > 0` would mean the same thing here (consensus.ts
+    // never writes a row below 1) and cost a scan instead of an index read.
+    const { env, prepare } = countingEnv(1)
+    await ask(env)
+
+    expect(prepare.mock.calls[0][0]).not.toMatch(/where/i)
+  })
+
+  it('asks the database once a window, not once a client', async () => {
+    // The whole reason this endpoint is affordable: the count is the same for
+    // everyone, so the cost is per window rather than per reader.
+    const { env, all } = countingEnv(7)
+    for (let i = 0; i < 25; i++) await ask(env)
+
+    expect(all).toHaveBeenCalledTimes(1)
+  })
+
+  it('tells the browser how long to hold on to the answer', async () => {
+    // Half of what the popup asks for while it is open never leaves the
+    // browser. Set on this response only — `json()` is shared with the batch
+    // lookup, which must not be cacheable.
+    const { env } = countingEnv(1)
+    const resp = await ask(env)
+
+    expect(resp.headers.get('Cache-Control')).toBe('public, max-age=60')
+    expect(resp.headers.get('Access-Control-Allow-Origin')).toBe('*')
+  })
+
+  it('is a GET, and nothing else', async () => {
+    const { env, prepare } = countingEnv(1)
+    const resp = await worker.fetch(
+      new Request('http://cache.test/v1/stats', { method: 'POST' }),
+      env,
+    )
+
+    expect(resp.status).toBe(404)
+    expect(prepare).not.toHaveBeenCalled()
+  })
+
+  it('answers 0 rather than failing when the row comes back empty', async () => {
+    const all = vi.fn().mockResolvedValue({})
+    const env = { DB: { prepare: vi.fn(() => ({ all })) } } as unknown as Env
+
+    expect(await (await ask(env)).json()).toEqual({ profiles: 0 })
   })
 })

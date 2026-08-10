@@ -23,10 +23,18 @@ import {
   RATE_PROMPT_KEY,
   REGION_FLAGS,
   REGION_MEMBERS,
+  SHARED_CACHE_COUNT_KEY,
+  SHARED_CACHE_KEY,
   SHOW_ACCOUNT_CARD_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
   USAGE_STATS_KEY,
 } from '../scripts/countries'
+import {
+  COUNT_POLL_MS,
+  isSharedCacheConfigured,
+  refreshCacheCount,
+  rememberedCount,
+} from '../scripts/shared-cache'
 import {
   REVIEW_URL,
   setRatePromptState,
@@ -40,7 +48,7 @@ import {
   withoutKeyword,
   withoutLocation,
 } from '../scripts/settings'
-import { initI18n, t } from '../scripts/i18n'
+import { initI18n, t, uiLocale } from '../scripts/i18n'
 import {
   aliasNote,
   localizedLocation,
@@ -182,6 +190,10 @@ export function Popup() {
   const [section, setSection] = useState<PopupSection | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [askRating, setAskRating] = useState(false)
+  const [sharedCache, setSharedCache] = useState(
+    defaultSetting(SHARED_CACHE_KEY),
+  )
+  const [cacheCount, setCacheCount] = useState<number | null>(null)
 
   // Once per mount — see the same pair in options.tsx. A popup cannot outlive
   // a language change: choosing one happens on the settings page.
@@ -210,6 +222,8 @@ export function Popup() {
         POPUP_SECTION_KEY,
         USAGE_STATS_KEY,
         RATE_PROMPT_KEY,
+        SHARED_CACHE_KEY,
+        SHARED_CACHE_COUNT_KEY,
       ])
       .then((r) => {
         setEnabled(readSetting(EXTENSION_ENABLED_KEY, r))
@@ -219,6 +233,10 @@ export function Popup() {
         setBlocked(readSetting(BLOCKED_COUNTRIES_KEY, r))
         setKeywords(readSetting(HIGHLIGHT_KEYWORDS_KEY, r))
         setSection(normalizePopupSection(r[POPUP_SECTION_KEY]))
+        setSharedCache(readSetting(SHARED_CACHE_KEY, r))
+        // Last time anyone asked, so the line is already there when the panel
+        // paints rather than appearing under the cursor a moment later.
+        setCacheCount(rememberedCount(r))
         setAskRating(
           shouldAskForRating(
             normalizeUsageStats(r[USAGE_STATS_KEY]),
@@ -228,6 +246,33 @@ export function Popup() {
         setLoaded(true)
       })
   }, [])
+
+  // The one thing in this panel that costs a request, so it asks only while the
+  // panel is open — and keeps asking, because the number belongs to everyone
+  // using the cache and moves while you are looking at it. What keeps that from
+  // being a load on the server is in shared-cache.ts, above COUNT_POLL_MS.
+  //
+  // Held back until `loaded`: the defaults say the cache is on, and asking on
+  // those before storage answers would query a server the user opted out of.
+  useEffect(() => {
+    if (!loaded || !enabled || !sharedCache || !isSharedCacheConfigured()) {
+      return
+    }
+    let stopped = false
+    const ask = async () => {
+      // The Android build opens this page as a tab, which can sit in the
+      // background for hours; a popup proper is only ever visible.
+      if (document.visibilityState !== 'visible') return
+      const n = await refreshCacheCount()
+      if (!stopped && n !== null) setCacheCount(n)
+    }
+    void ask()
+    const timer = setInterval(() => void ask(), COUNT_POLL_MS)
+    return () => {
+      stopped = true
+      clearInterval(timer)
+    }
+  }, [loaded, enabled, sharedCache])
 
   // The same keys the options page writes, which the content script is already
   // listening on — so an edit lands on the timeline behind the popup.
@@ -422,6 +467,14 @@ export function Popup() {
           )}
         </Section>
       </div>
+
+      {/* Not while paused, and not to someone who turned the shared cache off:
+          both of them have said they want nothing from it. */}
+      {cacheCount !== null && enabled && sharedCache && (
+        <p class={css.cacheCount} title={t('popupCacheCountTitle')}>
+          {t('popupCacheCount', cacheCount.toLocaleString(uiLocale()))}
+        </p>
+      )}
 
       {/* Not while paused. Someone who has just switched it off is answering a
           different question, and the ask keeps — `status` stays 'idle'. */}

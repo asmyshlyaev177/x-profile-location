@@ -292,6 +292,41 @@ sqlite3 /var/lib/x-loc-cache/x-loc-cache.db \
 Stored under `MIN_CONFIDENCE_KEY` rather than compiled in, so it can be raised on
 one install and measured without shipping a build.
 
+### How much the cache holds (`/v1/stats`, popup)
+
+The popup's last line is how many accounts the community cache can answer for —
+`GET /v1/stats` → `{ profiles }`, `fetchCacheCount` in shared-cache.ts. It is the
+only request in the extension that isn't driven by someone reading a timeline,
+so it is the only one that could arrive as a crowd. Four things keep it cheap,
+and none of them work without the others:
+
+- **Only while the popup is open.** The effect lives in popup.tsx and is torn
+  down with the panel. Nothing polls in the background, and nothing asks while
+  the extension is paused or the shared cache is switched off — that setting is
+  a decision not to talk to that server, and a number is not a reason to go
+  behind it.
+- **`COUNT_POLL_MS` is 30s**, under the server's `max-age`, so roughly every
+  other ask is answered by the browser's own cache and never leaves the machine.
+  A popup is usually open for seconds; this is for the Android build, where the
+  same page opens as a tab. It re-asks only while `document.visibilityState` is
+  `'visible'`.
+- **The server memoises for 60s** and answers `Cache-Control: public,
+max-age=60`. One `COUNT(*)` a minute, however many people are looking.
+- **The count is remembered** under `SHARED_CACHE_COUNT_KEY`, so the panel opens
+  with a number instead of growing a line under the cursor a moment later. It is
+  written only when the figure moves — every write wakes the service worker and
+  each open x.com tab's storage listener, and this runs on a timer. `at` is
+  therefore when the number last _moved_, and one that hasn't in a week is
+  dropped rather than shown.
+
+A server that 404s (every deployment older than this) reads as "no answer": the
+line keeps whatever it had, or stays away. Nothing about the reader goes with the
+request — it is a bodyless GET, and the response is the same for everyone.
+
+Why the server counts without a `WHERE` clause, though it serves with one, is in
+[`server/README.md`](server/README.md#api): the two are the same number, and the
+filtered form costs a table scan.
+
 ---
 
 ## Data types
@@ -516,6 +551,7 @@ THEME_KEY = 'theme' // 'system' | 'light' | 'dark'; default 'system'; extension 
 
 USAGE_STATS_KEY = 'usageStats' // { activeDays, lastDay }
 RATE_PROMPT_KEY = 'ratePrompt' // { status, snoozeUntil }
+SHARED_CACHE_COUNT_KEY = 'sharedCacheCount' // { n, at }; what /v1/stats last said
 ```
 
 **Nobody reads one of these by hand.** `SETTINGS_REGISTRY` (settings.ts) maps each
@@ -538,9 +574,11 @@ absence means `true`.
 The one deliberate exception: content.tsx starts `hideMode` at `'off'`, not the
 stored default `'collapse'`, so nothing is hidden on a guess before the read resolves.
 
-`USAGE_STATS_KEY` / `RATE_PROMPT_KEY` are **not settings** and are absent from the
-registry — an export is a record of decisions, and "has used this five days" isn't
-one. The counter lives in `buildInfoRow()`, the one place meaning "something
+`USAGE_STATS_KEY` / `RATE_PROMPT_KEY` / `SHARED_CACHE_COUNT_KEY` are **not
+settings** and are absent from the registry — an export is a record of decisions,
+and "has used this five days" isn't one, nor is what a server answered.
+`SHARED_CACHE_COUNT_KEY` is the one key opening the popup may write, which is why
+the "writes nothing merely by being opened" test now names it. The counter lives in `buildInfoRow()`, the one place meaning "something
 visible happened today"; `usage.ts` memoises the day so scrolling costs no reads.
 
 ### The rating ask
