@@ -1,8 +1,5 @@
-// The stylesheet the content script injects, and the names it is written
-// against. They live together because renaming one without the other turns a
-// rule into a selector that matches nothing, silently — and because a test can
-// then render the real CSS without importing content.tsx, which talks to chrome
-// APIs the moment it loads.
+// The injected stylesheet and the names it is written against, together —
+// renaming one without the other makes a rule match nothing, silently.
 
 // Set on tweets collapsed by the "hide blocked locations" feature; a user "Show"
 // click swaps it for HIDDEN_REVEALED_ATTR so the tweet is never re-hidden.
@@ -14,30 +11,20 @@ export const QUOTE_HIDDEN_ATTR = 'data-x-loc-quote-hidden'
 // Set on a people-list row whose account matches a rule. Rows there are marked,
 // never hidden.
 export const PEOPLE_MATCH_ATTR = 'data-x-loc-cell-match'
-// Set on a post whose account matched a rule that marks rather than hides —
-// account age, today the only one. Carries the rule as its value so a later one
-// could be styled apart, but they all draw the same bar: one mark to learn
-// beats a colour code to decode.
+// Carries the rule as its value so a later one could be styled apart, though
+// they all draw the same bar today.
 export const TWEET_MARK_ATTR = 'data-x-loc-mark'
 // Set on a hover card whose account the keyword/flag rule is firing on; scopes
 // the generated emoji-keyword rules (see updateKeywordEmojiStyle).
 export const KEYWORD_MATCH_ATTR = 'data-x-loc-kw'
 // The name the matched-keyword ranges are registered under in CSS.highlights.
 export const KEYWORD_HIGHLIGHT_NAME = 'x-loc-keyword'
-// The one-time rating ask. Shares the bottom-centre slot with the rate-limit
-// and swipe toasts, so all three know this id: whichever of them needs the slot
-// takes it, and this is the one that yields.
+// Shares the bottom-centre slot with both toasts, and is the one that yields.
 export const RATING_ASK_ID = 'x-loc-ask-toast'
 
 /**
- * The rules that mark emoji keywords, generated from the current keyword list.
- *
- * X renders emoji as `<img alt="🇷🇺">`, so there is no text node for a Range to
- * cover; a rule matching the alt changes no markup either. Scoped to
- * KEYWORD_MATCH_ATTR, or every hover card in the session lights up.
- *
- * The alt is user input reaching a selector — unescaped, a keyword could close
- * the attribute value and write rules of its own.
+ * X renders emoji as `<img alt="🇷🇺">`, with no text node for a Range to cover.
+ * The alt is user input reaching a selector, hence the escaping.
  */
 export function emojiKeywordCss(keywords: string[]): string {
   if (keywords.length === 0) return ''

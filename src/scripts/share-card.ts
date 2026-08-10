@@ -1,12 +1,5 @@
-// Render a post and the flags we show for it into a PNG, locally.
-//
-// The card states what X returned and stops — no claim of evidence, no drafted
-// reply. Every string here is chosen on that basis, and so should any added
-// later. Drawn in the page and written to the clipboard: nothing leaves the
-// browser, so sharing a card doesn't tell anyone you looked.
-//
-// Layout is computed apart from the drawing because happy-dom has no 2D context
-// — anything living inside a draw call is untestable by construction.
+// The card states what X returned and stops: no claim of evidence, no drafted
+// reply. Layout is computed apart from the drawing, which happy-dom cannot run.
 
 import type { LocationData } from './cache'
 import { canonicalLocation, COUNTRY_FLAGS, REGION_FLAGS } from './countries'

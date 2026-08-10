@@ -10,10 +10,8 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
   let headersCaptured = false
   let storedHeaders: Record<string, string> | null = null
 
-  // The CustomEvent carrying these is observable by the page and by any other
-  // extension, so the list is an allowlist of non-secrets. x-csrf-token (the ct0
-  // cookie) is excluded — the content script reads it from document.cookie — and
-  // anything X adds later is dropped by omission rather than leaked.
+  // An allowlist of non-secrets: the CustomEvent carrying these is observable by
+  // the page. Anything X adds later is dropped by omission rather than leaked.
   const FORWARDED_HEADERS = [
     'authorization',
     'x-twitter-client-language',
@@ -49,9 +47,6 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
   // ---------------------------------------------------------------------------
   // Bio extraction from timeline/tweet API responses
   // ---------------------------------------------------------------------------
-  // Which GraphQL operations carry bios, and how urgently their accounts want a
-  // location. The tweet the user opened doesn't depend on this — content.tsx
-  // looks that one up directly (processPrimaryTweet).
   const BIO_INTERCEPT: Array<[operation: string, priority: PrefetchPriority]> =
     [
       ['HomeTimeline', 'high'],
@@ -65,13 +60,9 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
     return null
   }
 
-  // page-script runs at document_start, the content script attaches its
-  // USERS_DATA listener at document_idle — so the first timeline response is
-  // dispatched to nobody, and the first screen highlights nothing until the next
-  // fetch. Buffered (bounded) and replayed on request, like the headers.
+  // document_start here, document_idle there: without a replay buffer the first
+  // timeline response is dispatched to nobody and the first screen stays blank.
   const USER_BUFFER_CAP = 500
-  // Users are dispatched (and buffered) carrying the priority of the response
-  // they came from, so the content script can queue each one accordingly.
   type PrefetchUser = UserBio & { priority: PrefetchPriority }
   const userBuffer = new Map<string, PrefetchUser>()
   let bufferUsers = true

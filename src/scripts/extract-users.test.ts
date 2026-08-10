@@ -373,6 +373,44 @@ describe('HomeTimeline-like shape', () => {
       facts: {},
     })
   })
+
+  it('returns them in the order the timeline listed them', () => {
+    // The prefetch queue is plain FIFO and treats this as page order, so
+    // locations fill in down the feed as the reader scrolls. Nothing else pins
+    // it: the walk could reorder and every other test here would still pass.
+    const makeEntry = (name: string) => ({
+      content: {
+        itemContent: {
+          tweet_results: {
+            result: {
+              __typename: 'Tweet',
+              core: { user_results: { result: makeUser(name) } },
+            },
+          },
+        },
+      },
+    })
+
+    const result = extractUsers({
+      data: {
+        home: {
+          home_timeline_urt: {
+            instructions: [
+              {
+                entries: [
+                  makeEntry('first'),
+                  makeEntry('second'),
+                  makeEntry('third'),
+                ],
+              },
+            ],
+          },
+        },
+      },
+    })
+
+    expect(result.map((u) => u.userName)).toEqual(['first', 'second', 'third'])
+  })
 })
 
 describe('TweetDetail-like shape (replies)', () => {

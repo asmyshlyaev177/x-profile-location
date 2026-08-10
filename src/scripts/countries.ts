@@ -204,9 +204,8 @@ export const COUNTRY_FLAGS: Record<string, string> = {
   Zambia: '🇿🇲',
   Zimbabwe: '🇿🇼',
 
-  // Territories and dependencies. X reports these in their own right ("Jersey
-  // App Store"), so without an entry they fall through to 🌐 and can't be
-  // filtered. The question is whether X can name it, not who governs it.
+  // X reports these in their own right ("Jersey App Store"), so the question is
+  // whether X can name it, not who governs it.
   Anguilla: '🇦🇮',
   Aruba: '🇦🇼',
   Bermuda: '🇧🇲',
@@ -278,11 +277,8 @@ export const REGION_ABBR: Record<string, string> = {
   'West Asia': 'WAS',
 }
 
-// Alternate names, abbreviations and native spellings, keyed by the canonical
-// name (the vocabulary X itself reports). The picker matches on these, so "USA"
-// finds "United States", and canonicalLocation() folds them together, so
-// "Czechia" matches a list entry saved as "Czech Republic". An alias that is
-// also a flag key stops being offered separately in the picker.
+// Keyed by the canonical name, which is the vocabulary X itself reports. An
+// alias that is also a flag key stops being offered separately in the picker.
 export const LOCATION_ALIASES: Record<string, string[]> = {
   Afghanistan: ['AF'],
   Algeria: ['DZ'],
@@ -480,23 +476,14 @@ for (const [canonical, aliases] of Object.entries(LOCATION_ALIASES)) {
   }
 }
 
-/**
- * The one name a location is stored and compared under. Unknown locations come
- * back trimmed but otherwise untouched — X's vocabulary is not ours to police,
- * and a name we don't know yet must still be blockable.
- */
+/** Unknown locations come back trimmed but untouched: X's vocabulary is X's. */
 export function canonicalLocation(value: string): string {
   const trimmed = value.trim()
   return CANONICAL_BY_NAME.get(trimmed.toLowerCase()) ?? trimmed
 }
 
-// Which countries each region contains. Without these, blocking "Europe" only
-// matched accounts X had literally reported as "Europe" — not France.
-//
-// Membership is deliberately generous and overlapping: Egypt is in Africa and
-// North Africa both, and an arguable country (Russia, Turkey, Cyprus) belongs to
-// every region it is commonly counted in. Over-inclusion costs a country the
-// user adds back by name; under-inclusion costs a filter that does nothing.
+// Deliberately generous and overlapping: over-inclusion costs a country the user
+// adds back by name, under-inclusion costs a filter that does nothing.
 export const REGION_MEMBERS: Record<string, string[]> = {
   'North America': [
     'Canada',
@@ -811,12 +798,8 @@ REGION_MEMBERS['East Asia & Pacific'] = [
 ]
 
 /**
- * Every canonical location a saved list actually blocks, each region replaced by
- * itself *plus* its members — X reports both, some accounts as "South Asia" and
- * some as "Pakistan".
- *
- * Only the content script expands. Storage keeps the user's actual picks, so
- * blocking Africa stays one removable chip rather than fifty-seven.
+ * Each region replaced by itself plus its members — X reports both. Only the
+ * content script expands; storage keeps the user's picks as they made them.
  */
 export function expandLocations(list: Iterable<string>): Set<string> {
   const out = new Set<string>()
@@ -846,9 +829,7 @@ export const CANONICAL_LOCATIONS = [
   .filter((name) => canonicalLocation(name) === name)
   .sort((a, b) => a.localeCompare(b))
 
-// Master switch: off means X renders exactly as it would with the extension
-// uninstalled. The toggle for "not right now", which is otherwise a trip to
-// chrome://extensions.
+// Off means X renders exactly as it would with the extension uninstalled.
 export const EXTENSION_ENABLED_KEY = 'extensionEnabled'
 
 export const BLOCKED_COUNTRIES_KEY = 'blockedCountries'
@@ -867,10 +848,7 @@ export const DEFAULT_HIGHLIGHT_FLAGS: HighlightFlagsSetting = {
   uniqueOnly: false,
 }
 
-/**
- * The flag-count rule, cleaned. A negative threshold would highlight every bio,
- * which is the one outcome nobody chose on purpose.
- */
+/** A negative threshold would highlight every bio, which nobody chose. */
 export function normalizeHighlightFlags(value: unknown): HighlightFlagsSetting {
   const v = (
     typeof value === 'object' && value !== null ? value : {}
@@ -929,9 +907,7 @@ export const DEFAULT_PREFETCH_SHARE = 0.7
 /** The shares the options page offers, as fractions. */
 export const PREFETCH_SHARE_CHOICES = [0.3, 0.5, 0.7, 0.9] as const
 
-// Numbers from storage, numeric strings from the <select>, counts X sends as
-// strings ("3"). Hand-rolled because bare Number() turns null, '' and objects
-// alike into 0. Exported for profile.ts, which parses the same shapes.
+// Hand-rolled because bare Number() turns null, '' and objects alike into 0.
 export function finiteNumber(value: unknown): number | null {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null
   if (typeof value !== 'string' || value.trim() === '') return null
@@ -965,15 +941,8 @@ export function normalizePrefetchPacing(value: unknown): PrefetchPacing {
   return value === 'instant' ? 'instant' : 'spread'
 }
 
-// Distinct clients that must report the same location before this install trusts
-// it (server/README.md; the measurement behind the default is in
-// shared-cache.ts).
-//
-// A setting rather than a constant because open-sourcing publishes POST /v1/loc,
-// making single-vote trust a documented poisoning path — but raising the bar
-// globally today would empty the cache. So the default stays 1 and this can be
-// raised per-install and measured. Kept behind Advanced: it needs this paragraph
-// to mean anything.
+// A setting rather than a constant, and kept behind Advanced. See "Community
+// cache consensus" in CLAUDE.md.
 export const MIN_CONFIDENCE_KEY = 'sharedCacheMinConfidence'
 
 export const DEFAULT_MIN_CONFIDENCE = 1
@@ -996,9 +965,8 @@ export function normalizeMinConfidence(value: unknown): number {
 // documented trade-offs, not preferences.
 export const SHOW_ADVANCED_KEY = 'showAdvancedOptions'
 
-// Which tab the options page opens on — the only options-page UI state left to
-// remember. `optionsSections` was deleted with the accordions rather than left
-// describing a UI that no longer exists; an older version's value is never read.
+// The only options-page UI state left to remember; an older version's
+// `optionsSections` is never read.
 export const OPTIONS_TAB_KEY = 'optionsTab'
 
 export const OPTIONS_TABS = [
@@ -1017,15 +985,8 @@ export function normalizeOptionsTab(value: unknown): OptionsTabId {
     : 'display'
 }
 
-// Colour scheme for the extension's own pages.
-//
-// 'system' is the default and the only value that writes no attribute onto
-// <html>: the stylesheets resolve `light-dark()` themselves, so the first frame
-// is right instead of waiting on an async storage read. An explicit choice pins
-// `color-scheme`, which is what native checkboxes and scrollbars follow.
-//
-// Not applied to what the content script draws on X — those rows sit inside X's
-// UI and follow X's theme, or a light card lands on a dark timeline.
+// The extension's own pages only: what the content script draws follows X's
+// theme, or a light card lands on a dark timeline.
 export const THEME_KEY = 'theme'
 
 export const THEMES = ['system', 'light', 'dark'] as const
@@ -1038,10 +999,8 @@ export function normalizeTheme(value: unknown): ThemePreference {
     : 'system'
 }
 
-// Which of the popup's filter accordions was last open. They came out of the
-// options page (a full tab lays flat) and into the popup (~300px, where two list
-// editors push the switches off the bottom). Collapsed by default, but
-// remembered — adding three countries shouldn't mean three re-opens.
+// Collapsed by default but remembered: adding three countries shouldn't mean
+// three re-opens in a ~300px popup.
 export const POPUP_SECTION_KEY = 'popupSection'
 
 export const POPUP_SECTIONS = ['locations', 'keywords'] as const
@@ -1058,11 +1017,9 @@ export function normalizePopupSection(value: unknown): PopupSection | null {
 // ---------------------------------------------------------------------------
 // Use, and the one thing the popup asks for
 // ---------------------------------------------------------------------------
-// Neither key is a setting: they are not exported, not importable, and nothing
-// on the options page edits them. They exist so the rating ask in the popup can
-// wait for the extension to have actually been used, rather than counting the
-// days since it was installed — an install that has never resolved a profile
-// has no opinion to give.
+// Neither key is a setting: not exported, not importable, not editable. They
+// count days of use, because an install that never resolved a profile has no
+// opinion to give.
 
 export const USAGE_STATS_KEY = 'usageStats'
 
@@ -1086,11 +1043,7 @@ export function normalizeUsageStats(value: unknown): UsageStats {
 
 export const RATE_PROMPT_KEY = 'ratePrompt'
 
-/**
- * `asked` is the only state that can come back: 'later' is a snooze, 'done'
- * covers both rating and refusing, because a second ask after either one is
- * the behaviour that makes people uninstall.
- */
+/** 'done' covers rating and refusing alike: a second ask loses the install. */
 export interface RatePromptState {
   status: 'idle' | 'later' | 'done'
   /** Epoch ms the snooze expires. Meaningless unless status is 'later'. */
@@ -1111,9 +1064,7 @@ export function normalizeRatePrompt(value: unknown): RatePromptState {
   }
 }
 
-// The account card (age, affiliation, verification, handle history) under the
-// location row. On by default — the data rides along with responses the
-// extension already receives, so showing it costs nothing.
+// On by default: the data rides along with responses we already receive.
 export const SHOW_ACCOUNT_CARD_KEY = 'showAccountCard'
 
 // The hover-card "Copy card" button. On by default: a feature reachable only by
@@ -1124,9 +1075,8 @@ export const SHOW_SHARE_BUTTON_KEY = 'showShareButton'
 // Filters, exceptions, and the allowlist
 // ---------------------------------------------------------------------------
 
-// Organisations whose badged staff accounts are filtered, as the parent handle
-// (lowercased, no @) — an org renames its badge freely, but not what it points
-// at. See parseAffiliation in profile.ts.
+// The parent handle, lowercased and without @: an org renames its badge freely,
+// but not what it points at.
 export const BLOCKED_AFFILIATIONS_KEY = 'blockedAffiliations'
 
 // Filter accounts younger than `days`. Off by default: this is the filter most
@@ -1141,10 +1091,8 @@ export interface AccountAgeFilter {
 export const DEFAULT_ACCOUNT_AGE_DAYS = 180
 
 /**
- * The thresholds the options page offers, in days — deliberately months and
- * years. Farmed accounts are registered in batches and left to age before use,
- * so the useful question is "younger than a year", not "younger than a
- * fortnight", and a week-old account is visibly new without a filter.
+ * Months and years, not weeks: farmed accounts are registered in batches and
+ * left to age, and a week-old account is visibly new without a filter.
  */
 export const ACCOUNT_AGE_CHOICES = [90, 180, 365, 1095] as const
 
@@ -1163,10 +1111,8 @@ export function normalizeAccountAge(value: unknown): AccountAgeFilter {
   const days = finiteNumber(v.days)
   return {
     enabled: Boolean(v.enabled),
-    // Clamped, not snapped: any positive day count is coherent here, so the
-    // <select> choices are convenience rather than the domain. A value the list
-    // doesn't offer is kept and added to the dropdown — snapping would quietly
-    // widen or narrow somebody's filter.
+    // Clamped, not snapped: the <select> choices are convenience, not the
+    // domain, and snapping would quietly widen somebody's filter.
     days:
       days === null || days < 1
         ? DEFAULT_ACCOUNT_AGE_DAYS
@@ -1185,12 +1131,8 @@ export const FILTER_RULES = [
 export type FilterRule = (typeof FILTER_RULES)[number]
 
 /**
- * The rules allowed to take a post away. Every other rule can only point at one.
- *
- * Account age is deliberately absent. Location and affiliation catch what the
- * user named on purpose, so removing the post is doing what was asked; an age
- * threshold catches whoever falls under it, and "joined recently" describes a
- * farmed account and a new signup equally well.
+ * Account age is deliberately absent: location and affiliation catch what the
+ * user named on purpose, where "joined recently" catches whoever falls under it.
  */
 export const HIDING_RULES: readonly FilterRule[] = ['location', 'affiliation']
 

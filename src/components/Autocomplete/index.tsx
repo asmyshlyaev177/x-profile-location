@@ -12,18 +12,13 @@ export interface AutocompleteProps {
   allowFreeInput?: boolean
   /** Close the dropdown after an option is selected (default: true) */
   closeOnSelect?: boolean
-  /**
-   * Extra strings an option also matches on, keyed by option — e.g.
-   * `{ 'United States': ['USA', 'America'] }`. Only ever a search aid: the
-   * value committed is always the option itself.
-   */
+  /** A search aid only — the value committed is always the option itself. */
   aliases?: Record<string, string[]>
   renderOption?: (opt: string, matchedAlias?: string) => ComponentChild
 }
 
-// Lower is better. Whole-string beats prefix beats substring, and the option's
-// own name beats an alias at each tier — so "us" offers United States before
-// Belarus, and "united" doesn't lose United States to a country aliased "US".
+// Lower is better: whole-string beats prefix beats substring, and a name beats
+// an alias at each tier — so "us" offers United States before Belarus.
 function score(name: string, aliases: string[], query: string) {
   if (name === query) return 0
   if (aliases.includes(query)) return 1

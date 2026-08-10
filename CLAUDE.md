@@ -10,22 +10,38 @@ Project-specific context. Read before editing any source file.
 function named for what it answers, a `describe`/`it` pair that reads as a
 sentence. If a comment seems needed to explain what code does, rename or split it
 until it isn't — a comment is not a substitute for either, and it is the only part
-that can quietly stop being true.
+that can quietly stop being true. (`hasFacts` carried a docblock saying it was
+true when there were _no_ facts. Nobody noticed, because nobody needed it.)
 
-Comments are the exception, not the habit. Write one for what neither a name nor a
-test can hold: an edge case, a decision that reads as wrong until you know why, a
-constraint from outside (X's DOM, a browser bug, a spec), what broke last time.
-One or two lines, and never a restatement of the line under it —
-`if (kw.trim() === '') continue` needs nothing.
+**If the name and what's around it already say it, say nothing.**
+`RATE_PROMPT_IGNORED_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000` and `REVIEW_URL` need no
+docblock; neither does `/** Whole days since the account was created. */` over
+`accountAgeDays`. Deleting those is not losing anything — it is removing a second
+copy of the name.
 
-**Tests are the exception.** A spec file is where the reasoning belongs, and
-prose is welcome there: why the case is worth pinning, what it regressed on,
-which behaviour of X's forces the answer, what the bug looked like. The name
-still says what is asserted — the comment says why anyone should care, and that
-is the part a reader cannot reconstruct from the assertion.
+**Two lines is the ceiling**, and most comments should be none. What earns them:
 
-Some older comments here run long — do not match them. Prune when you are editing
-that code anyway; don't go on a comment-deleting pass of your own.
+- a constraint from outside — X's DOM, a browser bug, a spec, a store rule
+- a measured fact a reader can't see (`all 57 User nodes carried an empty legacy`)
+- a decision that reads as a mistake until you know why
+- what broke last time
+
+If the reasoning needs more than two lines, it is not a comment — it belongs in
+**this file**, under the section for that area, and the source points at it by
+name (`// … see "Localization" in CLAUDE.md`). That way it is findable by somebody
+who isn't already looking at the line it hangs off, and there is one copy of it.
+Source carries the note; CLAUDE.md carries the argument.
+
+**Tests are the exception.** A spec file is where the reasoning belongs, and prose
+is welcome there: why the case is worth pinning, what it regressed on, which
+behaviour of X's forces the answer, what the bug looked like. The name still says
+what is asserted — the comment says why anyone should care, which is the part a
+reader cannot reconstruct from the assertion.
+
+**A deleted comment often wants to become a test.** If it was describing
+behaviour rather than a constraint, that is a missing assertion: the document
+order `extractUsers` guarantees was a docblock nothing checked, and is now
+`returns them in the order the timeline listed them`.
 
 ---
 
@@ -169,6 +185,52 @@ the budget covers hovers + swipes + prefetch together.
   so a build with an empty `CACHE_API_BASE` still prefetches. The options page
   mirrors this — the cache toggle leads **Background lookups** and disables
   everything below it.
+
+### Shared cache backends (`CACHE_API_BASE`, constants.ts)
+
+Which backend a build talks to is a build-time switch, never a source edit:
+
+| Command              | Backend                               |
+| -------------------- | ------------------------------------- |
+| `pnpm build`         | self-hosted Node+SQLite box (default) |
+| `pnpm build:worker`  | the Cloudflare Worker                 |
+| `pnpm build:nocache` | feature fully inert                   |
+
+Self-hosted is the default because D1's free plan caps out around 150 users on
+rows-written/day — the ceiling this project outgrew (see "Backend" in
+`server/README.md`). The Worker build is kept working and one command away: it is
+still the cheapest way to stand up a new instance, and it is what
+already-installed extensions keep talking to until their users update.
+
+**The empty case is deliberate and reachable.** `??` only falls back on an _unset_
+variable, so an empty `VITE_CACHE_API_BASE` disables the shared cache outright —
+no requests to any server, and the options page hides the toggle
+(`isSharedCacheConfigured`).
+
+**The `?.` is for Playwright, not Vite.** The e2e suite imports this module through
+Playwright's own TypeScript loader, which knows nothing of Vite and leaves
+`import.meta.env` undefined — a bare property access throws at import time and
+takes the whole suite down with it ("0 tests in 0 files"). Vite still substitutes
+the full expression, and an explicitly empty value is still `''` rather than
+`undefined`, so the disable case is unaffected.
+
+### Community cache consensus (`minConfidence`, shared-cache.ts)
+
+How many distinct clients must agree before a served location is trusted.
+
+**Still 1, deliberately.** Measured 2026-07-27, 52 of 4242 profiles had reached 2,
+so raising it today would drop what the cache can answer by ~99% — and a cache that
+answers nothing costs more than it protects. `VOTE_CAP` keeps only the 10 newest
+votes per handle anyway, so 2 guards against one honest-but-wrong client, not a
+poisoner who can mint ids. Flip it once this is a majority:
+
+```bash
+sqlite3 /var/lib/x-loc-cache/x-loc-cache.db \
+  'SELECT COUNT(*) AS profiles, SUM(location_confidence >= 2) AS ready FROM profiles;'
+```
+
+Stored under `MIN_CONFIDENCE_KEY` rather than compiled in, so it can be raised on
+one install and measured without shipping a build.
 
 ---
 
@@ -339,6 +401,35 @@ gets the alias that earned the row its place, only when the name itself didn't m
 
 ---
 
+## Localization (i18n.ts)
+
+Catalogues live in `public/_locales/<locale>/messages.json` and are copied verbatim
+by Vite's publicDir, so the browser loads exactly one locale and the bundle carries
+no strings. That is also what localizes the **store listing**: `default_locale` plus
+`__MSG_appName__` in the manifest points Chrome and AMO at the same files, so a
+translation lands on the listing and in the UI at once.
+
+`chrome.i18n` follows the browser's UI language with no way to override it, which
+isn't good enough — plenty of people read Russian in an English Chrome. A chosen
+language is honoured by loading that catalogue ourselves and answering from it
+first (`chosen`); the browser stays the default and the fallback, and costs one
+storage read when nobody has chosen anything.
+
+**`uiLocale()` reads the locale out of the catalogue, not from the browser** — they
+disagree. A Chrome started with `--lang=ru` serves the `ru` catalogue while _both_
+`getUILanguage()` and `@@ui_locale` still report `en_US`, which rendered every
+country name in English inside an otherwise fully Russian settings page. `localeTag`
+is one of the strings, so it cannot disagree with the ones beside it;
+`messages.test.ts` holds each to its own directory name.
+
+**A content script can't read `_locales/` itself.** `fetch` on a
+`chrome-extension:` URL from x.com needs the file in `web_accessible_resources`,
+and a fetchable extension URL is something the page can probe for — the same reason
+the toolbar icon is inlined. So it asks the service worker (`GET_MESSAGES`), and
+nothing under `_locales/` is reachable from the page.
+
+---
+
 ## Chrome storage keys (countries.ts)
 
 ```typescript
@@ -454,6 +545,29 @@ Default blocked regions on install (service-worker.ts):
 ⚠️ This now **expands** — with `REGION_MEMBERS`, seeding `Africa` and `South Asia`
 blocks ~60 countries on a fresh install. See `ROADMAP.md` §1; the recommendation
 there is to ship `[]`.
+
+---
+
+## Snapshots (snapshot.ts)
+
+Clone the node, inline every computed style, re-embed every image as a data URI,
+then draw it through `<foreignObject>`. Steps two and three cannot be skipped: an
+SVG data URL is a **restricted context**, where no stylesheet of the page applies
+and no external resource is fetched. Anything still pointing at a URL silently
+disappears; `<video>` cannot play, so it is swapped for its `poster`.
+
+X's own webfont is behind such a URL too, so text falls back to the system sans
+serif — close, not identical, and the reason `unclampText` exists: X sizes its
+`text-overflow: ellipsis` boxes for its own font, and the wider fallback turns a
+name that fitted into "Some Very Long Nam…".
+
+Images are **fetched** rather than redrawn from the loaded element: X loads them
+without `crossorigin`, so a canvas drawn from them is tainted and cannot be
+exported at all. `credentials: 'omit'` — public CDN assets, and a snapshot has no
+business carrying cookies. A refusal becomes a same-size placeholder.
+
+Every step degrades rather than aborting, and the caller keeps the hand-drawn card
+for when the whole thing fails.
 
 ---
 
@@ -803,6 +917,29 @@ sideloading an XPI into `<profile>/extensions/` is silently ignored (removed in
 Playwright cannot navigate to `moz-extension://` pages at all (`page.goto` never
 commits, under every wait state, headless and headed). That kills it —
 `openOptionsPage()` drives four of six spec files.
+
+---
+
+## Store listing (base.manifest.ts)
+
+`name` is the **store listing title** on Chrome and AMO, not just the in-browser
+label, so it carries the search keywords. `short_name` is what the browser shows
+when space is tight.
+
+Two halves, deliberately: "X profile location" is the exact phrase people search
+and doubles as what the extension reveals; "filter and highlight" are verbs, so
+the title says what you _do_ rather than listing topics. **No "VPN"** — the
+weakest of the three signals, it reads as a VPN product in a store search, and
+over-claiming fights the neutral posture the brand is built on. It stays in the
+store description and the landing copy, both of which are indexed.
+
+Currently 48 characters. **AMO caps the name at 50**, Chrome at 75 — check any
+edit against 50, not 75. (Edge caps at 45; we publish to Chrome and AMO only.)
+
+The text lives in `public/_locales/*/messages.json`, which is what localizes the
+listing as well as the UI: both stores resolve `__MSG_*__` against the catalogue
+the extension reads. `messages.test.ts` holds `appDesc` to `pkg.description`, so
+the two cannot drift the way a hand-copied string would.
 
 ---
 

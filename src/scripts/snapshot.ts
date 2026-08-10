@@ -1,23 +1,7 @@
-// Snapshot a live element to a PNG, keeping the styles it is actually wearing.
-// Beats drawing a card by hand: avatar, badges, media and quoted tweets come
-// free, and it stays right when X changes its layout.
-//
-// Clone the node, inline every computed style, re-embed every image as a data
-// URI, then draw it through <foreignObject>. Steps two and three cannot be
-// skipped: an SVG data URL is a restricted context, where no stylesheet of the
-// page applies and no external resource is fetched.
-//
-// X's own webfont is behind such a URL, so text falls back to the system sans
-// serif — close, not identical. Embedding it would mean shipping it.
-//
-// Every step degrades rather than aborting; the caller keeps the hand-drawn card
-// for when the whole thing fails.
+// Snapshot a live element to a PNG, keeping the styles it is wearing. Every step
+// degrades rather than aborting — see "Snapshots" in CLAUDE.md.
 
-/**
- * The computed properties copied onto the clone — curated, not everything
- * getComputedStyle returns. A tweet is ~200 elements × ~340 properties, and the
- * data URL that produces is large enough to become its own problem.
- */
+/** Curated: ~200 elements × ~340 properties is a data URL big enough to break. */
 const STYLE_PROPS = [
   'box-sizing',
   'display',
@@ -140,12 +124,8 @@ export function inlineStyles(source: Element, clone: Element): void {
 }
 
 /**
- * Let an inserted element's ancestors grow around it.
- *
- * A computed height is always a pixel value — the height before the insertion —
- * so every ancestor is pinned to a box with no room, and the new row overflows
- * or is clipped by an `overflow: hidden` further up. Clearing the chain from the
- * insertion point to the root back to `auto` is enough.
+ * A computed height is a pixel value from before the insertion, so every ancestor
+ * is pinned to a box with no room for what was just added.
  */
 export function allowGrowth(from: Element, root: Element): void {
   let node: Element | null = from
@@ -162,12 +142,8 @@ export function allowGrowth(from: Element, root: Element): void {
 }
 
 /**
- * Stop text being cut off with an ellipsis.
- *
- * X sizes its `text-overflow: ellipsis` boxes for its own webfont. The fallback
- * font is wider, so text that fitted on the page comes out as "Some Very Long
- * Nam…". Only the elements set to truncate are touched, and they size to their
- * content — preserving the exact box would preserve the bug.
+ * X sizes its ellipsis boxes for its own webfont; the fallback is wider, so text
+ * that fitted on the page comes out as "Some Very Long Nam…".
  */
 export function unclampText(clone: Element): void {
   for (const el of Array.from(clone.querySelectorAll<HTMLElement>('*'))) {
@@ -181,13 +157,8 @@ export function unclampText(clone: Element): void {
 }
 
 /**
- * The box the clone actually needs, by laying it out off-screen — every style is
- * already inlined, so it lays out exactly as the SVG will. Guessing came first
- * (a flat 80px of slack) and left a band of dead background under every post.
- *
- * Measured from the union of every descendant's box: overflow doesn't widen a
- * parent's rect, so the root alone gives back the width unclampText was
- * deliberately allowed to exceed, and the viewport clips the handle off.
+ * Laid out off-screen rather than guessed — a flat 80px of slack left a band of
+ * dead background. The union of every descendant, or overflow is clipped off.
  */
 export function measureClone(
   clone: Element,
@@ -236,10 +207,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   })
 }
 
-/**
- * A post photo can be megabytes, base64'd inside a data URL that is then
- * URL-encoded. Two of those is a string big enough to be its own failure mode.
- */
+/** A photo base64'd inside a URL-encoded data URL is its own failure mode. */
 const MAX_IMAGE_EDGE = 1400
 
 // Below this, decoding to measure costs more than it could save. Avatars and
@@ -279,13 +247,8 @@ function placeholderFor(el: Element, glyph: string): HTMLElement {
 }
 
 /**
- * Swap `<video>` for something that can render: there is no playback in the
- * restricted context, so a post with a video would come out with a hole in it.
- * X's `poster` is the frame the user is looking at anyway; without one it
- * becomes a play-glyph box.
- *
- * Runs after the styles are inlined, so the replacement inherits the video's box
- * and the surrounding layout doesn't move.
+ * There is no playback in the restricted context, so a video leaves a hole. Runs
+ * after the styles are inlined, so the replacement inherits its box.
  */
 export function replaceVideos(clone: Element): void {
   for (const video of Array.from(clone.querySelectorAll('video'))) {
@@ -312,16 +275,8 @@ function backgroundUrls(value: string): string[] {
 }
 
 /**
- * Re-embed every image the clone references as a data URI — anything left
- * pointing at a URL silently disappears inside the SVG.
- *
- * `credentials: 'omit'`: these are public CDN assets and a snapshot has no
- * business carrying cookies. Redrawing the loaded element onto a canvas would
- * skip the round trip, but X loads its images without `crossorigin`, so that
- * canvas is tainted and cannot be exported at all.
- *
- * A refusal becomes a placeholder of the same size, so a post with an
- * unreachable photo still looks like a post with a photo in it.
+ * Anything left pointing at a URL disappears inside the SVG. Fetched rather than
+ * redrawn: X loads images without `crossorigin`, so that canvas is tainted.
  */
 export async function inlineImages(clone: Element): Promise<void> {
   const embed = async (url: string): Promise<string> => {
@@ -380,11 +335,7 @@ export function buildSvgDataUrl(
 
 const LOAD_TIMEOUT_MS = 15_000
 
-/**
- * Decode a data URL into an image. The timeout is load-bearing: an `<img>` that
- * neither loads nor errors leaves the promise pending and the "Rendering…" toast
- * up forever. Failing is recoverable, hanging is not.
- */
+/** The timeout is load-bearing: failing is recoverable, hanging is not. */
 function loadImage(
   src: string,
   timeoutMs = LOAD_TIMEOUT_MS,
@@ -414,16 +365,9 @@ export interface SnapshotOptions {
   scale?: number
   /** Padding around the element, in CSS pixels. */
   padding?: number
-  /**
-   * Last chance to edit the clone. Runs after the styles are inlined, so
-   * anything added here has to carry its own.
-   */
+  /** Runs after the styles are inlined, so anything added carries its own. */
   decorate?: (clone: Element) => void
-  /**
-   * Drawn over the finished canvas, in CSS pixels. `height` is the room left
-   * for it under the element — the canvas is cropped to the element, so
-   * anything below it needs the space made first.
-   */
+  /** `height` is room made under the element, which the canvas is cropped to. */
   finish?: {
     height: number
     draw: (
@@ -433,10 +377,7 @@ export interface SnapshotOptions {
   }
 }
 
-/**
- * Render an element to a PNG as it currently appears. Throws rather than
- * returning something half-drawn, so the caller can fall back to its own card.
- */
+/** Throws rather than returning something half-drawn. */
 export async function snapshotElement(
   el: Element,
   { background, scale = 2, padding = 16, decorate, finish }: SnapshotOptions,
@@ -465,9 +406,8 @@ export async function snapshotElement(
     clone.style.position = 'static'
   }
 
-  // The viewport has to match the real box or the image comes out cropped one
-  // side and padded the other. Never smaller than the element started at, so a
-  // failed measurement can't shrink it.
+  // Must match the real box, or the image is cropped one side and padded the
+  // other. Never smaller than the element started at.
   const measured = measureClone(clone, width)
   const finalWidth = Math.max(width, measured.width)
   const finalHeight = Math.max(height, measured.height)

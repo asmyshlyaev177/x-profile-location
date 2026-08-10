@@ -1,26 +1,12 @@
-// Country and region names in the reader's language.
-//
-// None of this is translated by hand. A flag emoji is a pair of regional
-// indicators encoding the ISO 3166-1 alpha-2 code — 🇦🇫 is literally A+F — so
-// COUNTRY_FLAGS already carries the code for every country the extension knows,
-// and `Intl.DisplayNames` turns that into a name in any locale the browser
-// ships. 232 countries and twelve of the fourteen regions, for no strings.
-//
-// Display only. What gets stored, compared and sent anywhere stays the
-// canonical English name: it is the vocabulary X itself reports, so folding a
-// localized name into storage would make a blocked-country list unreadable to
-// the code that has to match it against X's own strings — and unportable
-// between two browsers set to different languages.
+// Country and region names in the reader's language, from CLDR rather than by
+// hand. Display only — see "Location names & aliases" in CLAUDE.md.
 
 import { COUNTRY_FLAGS } from './countries'
 import { t, uiLocale } from './i18n'
 
 const REGIONAL_INDICATOR_A = 0x1f1e6
 
-/**
- * The ISO 3166-1 alpha-2 code inside a flag emoji, or null for anything that
- * isn't one — the globes and continents REGION_FLAGS uses, mostly.
- */
+/** A flag emoji is its ISO 3166-1 alpha-2 code: 🇦🇫 is literally A+F. */
 export function isoFromFlag(flag: string): string | null {
   const points = [...flag].map((c) => c.codePointAt(0)!)
   if (points.length !== 2) return null
@@ -29,16 +15,9 @@ export function isoFromFlag(flag: string): string | null {
   return letters.map((n) => String.fromCharCode(65 + n)).join('')
 }
 
-/**
- * UN M49 codes for the regions the picker offers. `Intl.DisplayNames` accepts
- * these alongside country codes, so "South Asia" localizes from the same table
- * the countries do.
- *
- * `North America` is 003 rather than 021: REGION_MEMBERS puts Guatemala, Cuba
- * and Jamaica in it, which is the whole continent (003), not the northern part
- * of it (021). The two regions with no M49 equivalent are absent and fall
- * through to a message key instead.
- */
+// `North America` is 003, the whole continent, because REGION_MEMBERS puts
+// Guatemala and Cuba in it — 021 is only the northern part.
+
 const REGION_M49: Record<string, string> = {
   Africa: '002',
   'North Africa': '015',
@@ -60,26 +39,15 @@ const REGION_MESSAGE: Record<string, string> = {
   'Eastern Europe (Non-EU)': 'regionEasternEuropeNonEu',
 }
 
-/** Every canonical name that has a code, and the code to look it up by. */
 function codeFor(canonical: string): string | null {
   const flag = COUNTRY_FLAGS[canonical]
   if (flag) return isoFromFlag(flag)
   return REGION_M49[canonical] ?? null
 }
 
-/**
- * CLDR carries three widths for a country name, and both of the other two earn
- * their place:
- *
- * - `long` is the formal name — "Соединенные Штаты", "Amerika Birleşik
- *   Devletleri", "中華人民共和国香港特別行政区".
- * - `short` is what people actually say and type — "США", "ABD", "香港".
- *
- * So `short` is what gets *displayed*, because these sit in chips and one-line
- * rows where the formal name of Hong Kong is thirteen characters of nobody's
- * time; and every width goes into what the picker *matches*, so whichever one
- * the reader reaches for finds the country.
- */
+// Short-first: `short` is displayed ("США"), every width is searchable, so
+// whichever the reader reaches for finds the country.
+
 const STYLES = ['short', 'long', 'narrow'] as const
 
 function displayNamesFor(
@@ -117,10 +85,8 @@ function buildNames(locale: string): Localized {
   const display = new Map<string, string>()
   const search = new Map<string, string[]>()
 
-  // An English UI is the identity case, and going through DisplayNames for it
-  // would quietly rename things: CLDR calls Myanmar "Myanmar (Burma)" and
-  // Palestine "Palestinian Territories", where X — and so this extension —
-  // says what X says.
+  // Identity case. CLDR would rename things — "Myanmar (Burma)" — where the
+  // extension says what X says.
   if (locale.toLowerCase().startsWith('en')) return { display, search }
 
   // Translated by hand, so these two work even where Intl has no data at all.
@@ -138,8 +104,7 @@ function buildNames(locale: string): Localized {
   ]) {
     const code = codeFor(canonical)
     if (!code) continue
-    // STYLES is short-first, so `names[0]` is the shortest CLDR offers and the
-    // one worth putting on screen.
+    // STYLES is short-first, so `names[0]` is the shortest CLDR offers.
     const names = [
       ...new Set(byStyle.flatMap((d) => (d ? (nameOf(d, code) ?? []) : []))),
     ]
@@ -151,9 +116,8 @@ function buildNames(locale: string): Localized {
   return { display, search }
 }
 
-// Built once per locale rather than per render: ~750 DisplayNames lookups is
-// nothing on its own and a great deal inside a list that re-renders on every
-// keystroke of the picker's search box.
+// Per locale, not per render: ~750 lookups inside a list that re-renders on
+// every keystroke of the picker.
 let cache: { locale: string; localized: Localized } | null = null
 
 function localized(): Localized {
@@ -168,26 +132,16 @@ function displayNames(): Map<string, string> {
   return localized().display
 }
 
-/** Test seam: locale is read once and cached, so a test changing it needs this. */
 export function __resetLocationNames(): void {
   cache = null
 }
 
-/**
- * `canonical` in the reader's language, or unchanged when there is no
- * translation for it — an English UI, a browser without the locale data, or a
- * string X reported that isn't a country the extension knows.
- */
+/** Unchanged when there is no translation — including anything X made up. */
 export function localizedLocation(canonical: string): string {
   return displayNames().get(canonical) ?? canonical
 }
 
-/**
- * Sort by what the reader actually sees. The canonical list is alphabetical in
- * English, which puts a Russian picker in an order with no relation to the
- * names down its left edge — and a Japanese one in codepoint order rather than
- * by kana.
- */
+/** By what the reader sees: the canonical list is alphabetical in English. */
 export function sortByLocalizedName(canonicals: readonly string[]): string[] {
   const locale = uiLocale()
   return [...canonicals].sort((a, b) =>
@@ -195,13 +149,7 @@ export function sortByLocalizedName(canonicals: readonly string[]): string[] {
   )
 }
 
-/**
- * The alias worth showing beside a row in the picker, or undefined.
- *
- * The localized name is already the row's label, so repeating it underneath as
- * "this is why it matched" is noise — but "USA" or "Österreich" still is worth
- * saying.
- */
+/** Undefined when the alias is just the label again — that would be noise. */
 export function aliasNote(
   canonical: string,
   alias: string | undefined,
@@ -210,12 +158,8 @@ export function aliasNote(
 }
 
 /**
- * The picker's alias table with each option's localized name folded in, so a
- * Russian reader can find Japan by typing "Япония" and not only "Japan".
- *
- * Additive on purpose: the English name and the existing aliases ("USA", "BR",
- * "Österreich") keep working, which matters for anyone who set their browser to
- * one language and thinks about countries in another.
+ * Localized names folded into the alias table, additively — "Япония" finds
+ * Japan, and so do "Japan" and "JP" for whoever thinks in another language.
  */
 export function withLocalizedAliases(
   base: Record<string, string[]>,

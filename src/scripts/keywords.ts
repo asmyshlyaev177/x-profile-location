@@ -1,5 +1,4 @@
 const segmenter = new Intl.Segmenter()
-// Pre-compiled once; not recreated per isWordChar call.
 const wordCharRe = /^[\p{L}\p{N}_]$/u
 
 export function toGraphemes(text: string): string[] {
@@ -47,12 +46,8 @@ function isWordChar(g: string): boolean {
 }
 
 /**
- * Every position `needle` starts at in `haystack`, as grapheme indices.
- *
- * The plural of graphemeIncludes, kept separate rather than folded into it:
- * graphemeIncludes runs against every bio the extension sees and returns the
- * moment it finds anything, and marking — which is cosmetic and runs on one
- * hover card at a time — has no business slowing that down.
+ * Every position `needle` starts at, as grapheme indices. Separate from
+ * graphemeIncludes, which returns early and runs against every bio we see.
  */
 /* jscpd:ignore-start -- the duplicated scan is the point; see above. */
 export function graphemeIndicesOf(
@@ -73,12 +68,8 @@ export function graphemeIndicesOf(
 }
 /* jscpd:ignore-end */
 
-// Like graphemeIncludes but only matches at word boundaries.
-// Adjacent letters/digits/underscores prevent a match; symbols like # $ . do not.
-//
-// One tight loop on purpose: this runs against every bio the extension sees, and
-// the boundary test needs five values that only make sense at the candidate
-// position — passing them to a helper is an object per candidate on a hot path.
+// Adjacent letters/digits/underscores prevent a match; symbols like # $ . don't.
+// One loop on purpose — a helper would be an object per candidate on a hot path.
 // oxlint-disable-next-line sonarjs/cognitive-complexity
 export function graphemeIncludesWord(
   haystack: string[],
@@ -106,22 +97,17 @@ export function graphemeIncludesWord(
 // Keyword matching (stateful — call setKeywords whenever the set changes)
 // ---------------------------------------------------------------------------
 
-// Text keywords: compiled into a single regex for performance.
 let keywordPattern: RegExp | null = null
-// The same pattern with /g, for finding *every* occurrence rather than
-// answering whether there is one. Compiled alongside so the two can never
-// describe different keywords.
+// Compiled alongside the above, so the two can never describe different keywords.
 let keywordPatternGlobal: RegExp | null = null
-// Emoji keywords (surrogate pairs — flags etc.): must use grapheme search to
-// respect grapheme cluster boundaries (avoids matching 🇵🇸 inside 🇰🇵🇸🇴).
+// Grapheme search, or 🇵🇸 matches inside 🇰🇵🇸🇴.
 let emojiKeywordGraphemes: string[][] = []
 
 export function setKeywords(keywords: string[]): void {
   const textKws: string[] = []
   emojiKeywordGraphemes = []
   for (const kw of keywords) {
-    // An empty alternative matches almost everywhere, and content.tsx passes
-    // raw storage through, so blanks do reach here.
+    // An empty alternative matches almost everywhere, and blanks do reach here.
     if (kw.trim() === '') continue
     if ([...kw].length !== kw.length) {
       emojiKeywordGraphemes.push(toGraphemes(kw))
@@ -134,44 +120,28 @@ export function setKeywords(keywords: string[]): void {
     keywordPatternGlobal = null
   } else {
     const parts = textKws.map((kw) => kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    // Negative lookbehind/lookahead on \p{L}\p{N}_ gives correct word boundaries
-    // for any script (Cyrillic, Arabic, …) without needing grapheme segmentation.
-    // The lookahead also rejects \p{M}, so a match cannot end mid-grapheme:
-    // keyword "☭" was firing on "☭⃠", the same symbol crossed out. A mark
-    // *before* the match belongs to the previous cluster, so the lookbehind
-    // leaves it out. ZWJ binds both ways — "⚧" sits inside "🏳️‍⚧️".
+    // Word boundaries for any script, without grapheme segmentation. \p{M} and
+    // ZWJ keep a match from ending mid-cluster — see the cases in keywords.test.ts.
     const source = `(?<![\\p{L}\\p{N}_\\u200d])(${parts.join('|')})(?![\\p{L}\\p{N}_\\p{M}\\u200d])`
     keywordPattern = new RegExp(source, 'iu')
     keywordPatternGlobal = new RegExp(source, 'giu')
   }
 }
 
-/** The keywords held as emoji, in the form the user typed them. */
 export function emojiKeywords(): string[] {
   return emojiKeywordGraphemes.map((graphemes) => graphemes.join(''))
 }
 
-/** Where a keyword sits in `text`, as code-unit offsets into it. */
+/** Code-unit offsets, not grapheme indices. */
 export interface KeywordMatch {
   start: number
   end: number
 }
 
-/**
- * Every keyword occurrence in `text`, for marking it where the reader can see
- * it.
- *
- * Runs the same two matchers matchesAnyKeyword does, in the same order and with
- * the same rules — so a mark can never appear on a word the highlight rule did
- * not fire on, and the answer to "why is this account highlighted?" is always
- * the word actually responsible.
- */
-/** Where each emoji keyword sits in `text`, as code-unit offsets. */
 function emojiMatchesIn(text: string): KeywordMatch[] {
   const matches: KeywordMatch[] = []
   const graphemes = toGraphemes(text)
-  // Grapheme index → code-unit offset. One entry longer than the text, so the
-  // end of the last grapheme is addressable.
+  // Grapheme index → code-unit offset, one longer so the last end is addressable.
   const offsets: number[] = []
   let at = 0
   for (const grapheme of graphemes) {
@@ -192,8 +162,7 @@ export function findKeywordMatches(text: string): KeywordMatch[] {
   const matches: KeywordMatch[] = []
 
   if (keywordPatternGlobal !== null) {
-    // matchAll clones the regex, so the stored one's lastIndex is never left
-    // pointing into a string it has finished with.
+    // matchAll clones the regex, so the stored one's lastIndex is never left set.
     for (const m of text.matchAll(keywordPatternGlobal)) {
       if (m.index === undefined) continue
       matches.push({ start: m.index, end: m.index + m[0].length })
