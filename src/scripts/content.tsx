@@ -2722,7 +2722,11 @@ function buildAccountCard(
   return card
 }
 
-function buildRateLimitRow(): HTMLElement {
+/**
+ * `onExpiry` runs when the window it is counting reaches zero, and the row is
+ * gone by the time it does — a countdown that has finished has nothing left to
+ */
+function buildRateLimitRow(onExpiry: () => void): HTMLElement {
   const row = document.createElement('div')
   row.className = 'x-loc-info'
 
@@ -2733,9 +2737,17 @@ function buildRateLimitRow(): HTMLElement {
   row.appendChild(badge)
 
   const interval = setInterval(() => {
-    const remaining = rateLimitResetAt - Date.now()
-    if (remaining <= 0 || !badge.isConnected) {
+    // Taken off the page by something else — a hover card closing, the master
+    // switch stripping the page. Whatever removed it did not ask for a lookup.
+    if (!badge.isConnected) {
       clearInterval(interval)
+      return
+    }
+    const remaining = rateLimitResetAt - Date.now()
+    if (remaining <= 0) {
+      clearInterval(interval)
+      row.remove()
+      onExpiry()
       return
     }
     badge.textContent = `⏱ ${formatCountdown(remaining)}`
@@ -2895,7 +2907,15 @@ async function processCard(card: Element) {
   const data = await fetchLocationData(userName)
 
   if (data === null && rateLimitResetAt > Date.now()) {
-    wrap.prepend(buildRateLimitRow())
+    // The whole pass starts again rather than the row being patched: by the
+    // time the window ends the card may be showing a different account
+    wrap.prepend(
+      buildRateLimitRow(() => {
+        wrap.remove()
+        card.removeAttribute(HOVER_CARD_DONE_ATTR)
+        void processCard(card)
+      }),
+    )
     return
   }
 
@@ -3006,7 +3026,10 @@ async function processPrimaryTweet() {
 
   let row: HTMLElement | null = null
   if (data === null && rateLimitResetAt > Date.now()) {
-    row = buildRateLimitRow()
+    row = buildRateLimitRow(() => {
+      tweet.removeAttribute(PRIMARY_TWEET_ATTR)
+      void processPrimaryTweet()
+    })
   } else if (data && (data.location || !data.locationAccurate || data.source)) {
     row = buildInfoRow(data)
   }
