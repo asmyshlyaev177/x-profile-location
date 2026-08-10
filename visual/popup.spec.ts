@@ -100,6 +100,23 @@ test('the ask sits below the filters and above the footer', async ({
   expect(rate.y).toBeLessThan(footer.y)
 })
 
+test('the cache count is a note, not a control, and fits on one line', async ({
+  page,
+}) => {
+  // It says something about the panel rather than offering anything to do, so
+  // it is quieter than the labels above it — and at 300px, a count in the
+  // millions with a translated sentence around it is what would wrap.
+  const panel = await box(page.locator('.popup'))
+  const count = await box(page.locator('#cache-count'))
+  const rate = await box(page.locator('#rate'))
+
+  expect(right(count)).toBeLessThanOrEqual(right(panel))
+  expect(count.y).toBeLessThan(rate.y)
+  expect(await styleOf(page.locator('#cache-count'), 'color')).not.toBe(
+    await styleOf(page.locator('.summaryTitle').first(), 'color'),
+  )
+})
+
 test('the ask is tinted rather than boxed', async ({ page }) => {
   // A border would make it read as another control to deal with. The tint is
   // the only thing separating it from the panel, so it has to actually differ.

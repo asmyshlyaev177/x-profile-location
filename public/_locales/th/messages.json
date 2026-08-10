@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "ไม่มีคำสำคัญ — ไม่มีการเน้นข้อความ"
   },
+  "popupCacheCount": {
+    "message": "มี $1 บัญชีในแคชชุมชน"
+  },
+  "popupCacheCountTitle": {
+    "message": "ตำแหน่งที่คนอื่นค้นหาไว้แล้ว ของคุณจะโหลดจากที่นี่โดยไม่ต้องถาม X"
+  },
   "popupAllSettings": {
     "message": "การตั้งค่าทั้งหมด →"
   },

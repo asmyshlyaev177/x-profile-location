@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "无关键词 — 未高亮任何内容。"
   },
+  "popupCacheCount": {
+    "message": "共享社区缓存中有 $1 个账号"
+  },
+  "popupCacheCountTitle": {
+    "message": "其他人已经查过的位置。你的会从这里加载，无需再问 X。"
+  },
   "popupAllSettings": {
     "message": "全部设置 →"
   },

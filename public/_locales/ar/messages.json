@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "لا كلمات مفتاحية — لا شيء مُميّز."
   },
+  "popupCacheCount": {
+    "message": "حسابات في الذاكرة المؤقتة المشتركة: $1"
+  },
+  "popupCacheCountTitle": {
+    "message": "مواقع سبق أن بحث عنها آخرون. تُحمَّل مواقعك من هنا دون سؤال X."
+  },
   "popupAllSettings": {
     "message": "كل الإعدادات ←"
   },

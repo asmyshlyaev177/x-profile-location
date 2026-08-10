@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "Chưa có từ khóa — không có gì được tô sáng."
   },
+  "popupCacheCount": {
+    "message": "$1 tài khoản trong bộ nhớ đệm chung"
+  },
+  "popupCacheCountTitle": {
+    "message": "Vị trí người khác đã tra cứu. Của bạn được tải từ đây mà không cần hỏi X."
+  },
   "popupAllSettings": {
     "message": "Tất cả cài đặt →"
   },

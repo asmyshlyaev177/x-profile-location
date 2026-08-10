@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "Anahtar kelime yok — hiçbir şey vurgulanmıyor."
   },
+  "popupCacheCount": {
+    "message": "Topluluk önbelleğinde $1 hesap"
+  },
+  "popupCacheCountTitle": {
+    "message": "Başkalarının daha önce baktığı konumlar. Sizinkiler X'e sorulmadan buradan yüklenir."
+  },
   "popupAllSettings": {
     "message": "Tüm ayarlar →"
   },

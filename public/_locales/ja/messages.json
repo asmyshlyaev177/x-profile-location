@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "キーワードなし — ハイライトされていません。"
   },
+  "popupCacheCount": {
+    "message": "共有キャッシュに $1 アカウント"
+  },
+  "popupCacheCountTitle": {
+    "message": "他の人がすでに調べた位置情報です。X に問い合わせずにここから読み込まれます。"
+  },
   "popupAllSettings": {
     "message": "すべての設定 →"
   },

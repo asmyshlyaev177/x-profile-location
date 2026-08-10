@@ -26,6 +26,22 @@ describe('Stats', () => {
     expect(snap.other).toBe(1)
   })
 
+  it('keeps popups asking for the count out of the scanner number', () => {
+    // `other` is how much junk traffic this box is taking. /v1/stats is a real
+    // endpoint and the only one a client polls, so counting it there would
+    // leave `other` saying nothing.
+    const s = new Stats()
+    s.noteRequest('/v1/stats', '', '{"profiles":44210}', 1)
+    s.noteRequest('/v1/stats', '', '{"profiles":44210}', 1)
+    s.noteRequest('/wp-login.php', '', 'Not found', 1)
+
+    const snap = s.snapshot()
+    expect(snap.statsReads).toBe(2)
+    expect(snap.other).toBe(1)
+    expect(s.drain().statsReads).toBe(2)
+    expect(s.snapshot().statsReads).toBe(0)
+  })
+
   it('computes a hit rate, and reports null rather than 0 when idle', () => {
     const idle = new Stats()
     expect(idle.snapshot().hitRate).toBeNull()

@@ -6,9 +6,12 @@ import {
   HIGHLIGHT_KEYWORDS_KEY,
   POPUP_SECTION_KEY,
   RATE_PROMPT_KEY,
+  SHARED_CACHE_COUNT_KEY,
+  SHARED_CACHE_KEY,
   USAGE_STATS_KEY,
 } from '../scripts/countries'
 import { RATE_PROMPT_MIN_DAYS, RATE_PROMPT_SNOOZE_MS } from '../scripts/usage'
+import { COUNT_POLL_MS } from '../scripts/shared-cache'
 
 // Mutable backing store for the chrome.storage.local mock. It has to be in
 // place before popup.tsx is imported below — the module renders itself into
@@ -32,6 +35,17 @@ const setMock = vi.fn()
   tabs: { create: vi.fn().mockResolvedValue(undefined) },
 }
 
+// The popup asks the community cache how much it holds. Unstubbed, every test
+// in this file would make a real request to the live server — and the import
+// below renders a Popup, so it has to be in place before that too.
+const CACHED_ACCOUNTS = 12_480
+const fetchMock = vi.fn()
+;(globalThis as unknown as { fetch: unknown }).fetch = fetchMock
+
+function answerCount(profiles: unknown) {
+  fetchMock.mockResolvedValue({ ok: true, json: async () => ({ profiles }) })
+}
+
 const { Popup } = await import('./popup')
 
 function mountStored(stored: Record<string, unknown>) {
@@ -51,6 +65,8 @@ function lastWrite(key: string): unknown {
 
 beforeEach(() => {
   setMock.mockClear()
+  fetchMock.mockReset()
+  answerCount(CACHED_ACCOUNTS)
   storedRef.current = {}
   // The module rendered itself into document.body on import; clear it so each
   // test's own render is the only Popup in the tree.
@@ -194,10 +210,11 @@ describe('editing the filters from the popup', () => {
     )
   })
 
-  it('writes nothing merely by being opened', async () => {
+  it('writes no setting merely by being opened', async () => {
     // A popup that saved on load would rewrite every key each time it is
     // opened, and a normalizer disagreeing with what is stored would quietly
-    // become a migration.
+    // become a migration. The community-cache count is the one key opening it
+    // may write, and it is not a setting — it is what the server just said.
     mountStored({
       [BLOCKED_COUNTRIES_KEY]: ['Japan'],
       [HIGHLIGHT_KEYWORDS_KEY]: ['nft'],
@@ -207,7 +224,10 @@ describe('editing the filters from the popup', () => {
       expect(document.querySelector('[aria-expanded]')).toBeTruthy(),
     )
 
-    expect(setMock).not.toHaveBeenCalled()
+    const written = setMock.mock.calls.flatMap((c) =>
+      Object.keys(c[0] as object),
+    )
+    expect(written.filter((key) => key !== SHARED_CACHE_COUNT_KEY)).toEqual([])
   })
 })
 
@@ -325,5 +345,144 @@ describe('the rating ask', () => {
     )
 
     expect(queryByText(/Rate it/)).toBeNull()
+  })
+})
+
+describe('how much the community cache holds', () => {
+  /** Resolves once the popup has finished its first storage read. */
+  async function settled() {
+    await waitFor(() =>
+      expect(document.querySelector('[aria-expanded]')).toBeTruthy(),
+    )
+  }
+
+  /**
+   * The poll interval only. Faking `setTimeout` as well would take
+   * `waitFor` with it, and every assertion here waits on a promise.
+   */
+  function fakePollClock() {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+  }
+
+  afterEach(() => vi.useRealTimers())
+
+  it('says what the server answered, in the reader’s digits', async () => {
+    const { findByText } = mountStored({})
+
+    expect(
+      await findByText(
+        `${CACHED_ACCOUNTS.toLocaleString('en')} accounts in the community cache`,
+      ),
+    ).toBeTruthy()
+  })
+
+  it('asks nobody when the shared cache is switched off', async () => {
+    // The setting is a decision not to talk to that server. A number on the
+    // panel is not a reason to go behind it.
+    const { queryByText } = mountStored({
+      [SHARED_CACHE_KEY]: false,
+      [SHARED_CACHE_COUNT_KEY]: { n: 99, at: Date.now() },
+    })
+    await settled()
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(queryByText(/accounts in the community cache/)).toBeNull()
+  })
+
+  it('asks nobody while the extension is paused', async () => {
+    const { queryByText } = mountStored({ [EXTENSION_ENABLED_KEY]: false })
+    await settled()
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(queryByText(/accounts in the community cache/)).toBeNull()
+  })
+
+  it('shows the remembered number before the server answers', async () => {
+    // Otherwise the panel grows by a line a moment after it opens, under a
+    // cursor that is already on its way to the footer.
+    fetchMock.mockImplementation(() => new Promise(() => {}))
+    const { findByText } = mountStored({
+      [SHARED_CACHE_COUNT_KEY]: { n: 4242, at: Date.now() },
+    })
+
+    expect(
+      await findByText('4,242 accounts in the community cache'),
+    ).toBeTruthy()
+  })
+
+  it('keeps the last number when the server has nothing to say', async () => {
+    // A dead server, an expired token, a laptop on a train: none of them are
+    // reasons to blank a figure that was true a minute ago.
+    fetchMock.mockResolvedValue({ ok: false, status: 502 })
+    const { findByText } = mountStored({
+      [SHARED_CACHE_COUNT_KEY]: { n: 4242, at: Date.now() },
+    })
+
+    expect(
+      await findByText('4,242 accounts in the community cache'),
+    ).toBeTruthy()
+  })
+
+  it('forgets a number nothing has confirmed for a week', async () => {
+    fetchMock.mockImplementation(() => new Promise(() => {}))
+    const { queryByText } = mountStored({
+      [SHARED_CACHE_COUNT_KEY]: {
+        n: 4242,
+        at: Date.now() - 8 * 24 * 60 * 60 * 1000,
+      },
+    })
+    await settled()
+
+    expect(queryByText(/accounts in the community cache/)).toBeNull()
+  })
+
+  it('keeps asking while the panel is open', async () => {
+    // The number belongs to everyone using the cache, so it moves while you are
+    // looking at it. What stops that being load on the server is the max-age it
+    // is served with — see COUNT_POLL_MS.
+    fakePollClock()
+    mountStored({})
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    answerCount(CACHED_ACCOUNTS + 3)
+    vi.advanceTimersByTime(COUNT_POLL_MS)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    await waitFor(() =>
+      expect(
+        document.body.textContent?.includes(
+          (CACHED_ACCOUNTS + 3).toLocaleString('en'),
+        ),
+      ).toBe(true),
+    )
+  })
+
+  it('stops asking once the panel is gone', async () => {
+    fakePollClock()
+    const { unmount } = mountStored({})
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    unmount()
+    vi.advanceTimersByTime(COUNT_POLL_MS * 3)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('writes the number only when it has moved', async () => {
+    // Every write wakes the service worker and each open x.com tab's storage
+    // listener, and this runs on a timer.
+    mountStored({
+      [SHARED_CACHE_COUNT_KEY]: { n: CACHED_ACCOUNTS, at: Date.now() },
+    })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(
+        document.body.textContent?.includes(
+          CACHED_ACCOUNTS.toLocaleString('en'),
+        ),
+      ).toBe(true),
+    )
+
+    expect(lastWrite(SHARED_CACHE_COUNT_KEY)).toBeUndefined()
   })
 })

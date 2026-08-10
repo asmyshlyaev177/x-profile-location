@@ -114,6 +114,7 @@ All endpoints are CORS-open and take/return JSON; no credentials.
 | -------------------- | -------------------------------- | ------------------------ |
 | `POST /v1/loc/batch` | `{ usernames: string[] }` (≤100) | `{ profiles: Served[] }` |
 | `POST /v1/loc`       | `{ clientId, entries: Vote[] }`  | `{ ok: true }`           |
+| `GET /v1/stats`      | —                                | `{ profiles: number }`   |
 | `GET /healthz`       | —                                | `ok` (Node backend only) |
 
 ```ts
@@ -125,6 +126,29 @@ All endpoints are CORS-open and take/return JSON; no credentials.
 
 `rev: true` is a stochastic (~5%) hint asking the client to re-verify against X,
 so relocations propagate without every client hammering the API.
+
+`GET /v1/stats` is how many accounts the cache can answer for — the extension's
+toolbar popup shows it, and asks again every 30s for as long as that popup is
+open. It is the only endpoint whose traffic tracks popups rather than reading,
+so it is the only one shaped against a crowd all asking the same question:
+
+- The count is memoised for 60s (`STATS_TTL_MS`), so the database is asked once
+  a minute however many clients turn up.
+- The response carries `Cache-Control: public, max-age=60`, which is what keeps
+  most of those repeats inside the browser. On the Worker backend this is the
+  part that matters: module state is per isolate, so the memo alone does not
+  bound it to one query per window, and an unfiltered `COUNT(*)` reads every
+  row of `profiles` against D1's 5M rows/day.
+- The query is a bare `COUNT(*)`, not `WHERE location_confidence > 0`, though
+  it is the latter that `/v1/loc/batch` serves. They are the same number —
+  `pickConsensus` never returns a confidence below 1, so no row is written
+  below it — and the filtered form cannot use the `username` index: 5.3ms
+  against 0.05ms over 200k rows, which better-sqlite3 makes an event-loop stall
+  rather than a slow query. Do not add an index to "fix" that; see
+  [Indexes](#indexes-dont-add-any).
+
+It counts as its own line (`statsReads`) in the daily stats, so `other` still
+means what it did: scanners.
 
 ## Pointing the extension at a backend
 
@@ -856,6 +880,7 @@ sudo journalctl -u x-loc-cache | grep 'stats ' | sed 's/.*stats //' | jq .
   "hitRate": 0.794,
   "contributions": 388,
   "contributedEntries": 9012,
+  "statsReads": 219,
   "other": 6,
   "users": 34,
   "rateLimited": 0,
@@ -880,6 +905,7 @@ sudo journalctl -u x-loc-cache | grep 'stats ' | sed 's/.*stats //' | jq .
 | `users`                               | distinct anonymous installs that contributed **during this window** — counted in-process from the clientId already on the wire, so it costs nothing         |
 | `users24h` / `users7d`                | the same figure over a trailing 24h / 7d, from SQL. Survives restarts and is independent of the log cadence, but costs a full scan — see Performance above  |
 | `usersCapped`                         | present only if the in-process set hit its 50k ceiling, meaning `users` is a floor                                                                          |
+| `statsReads`                          | `GET /v1/stats` — popups asking how much the cache holds. Its own line so `other` still means scanners                                                      |
 | `profiles` / `votes` / `dbMb`         | current totals, not window deltas                                                                                                                           |
 | `rateLimited` / `tooLarge` / `errors` | rejections; these never reached a handler, so they're excluded from the request counts above                                                                |
 

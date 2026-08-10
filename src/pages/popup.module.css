@@ -228,6 +228,15 @@
   color: var(--text-dim);
 }
 
+/* How much the community cache holds. Quiet, in the same register as the paused
+   notice: it is something the panel says, not something to do. */
+.cacheCount {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
 /* The rating ask. Tinted rather than boxed in a border, so it reads as a note
    in the panel and not as another control to deal with. */
 .rate {

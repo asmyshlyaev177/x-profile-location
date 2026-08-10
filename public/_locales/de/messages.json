@@ -50,6 +50,12 @@
   "popupNoKeywords": {
     "message": "Keine Stichwörter — nichts wird hervorgehoben."
   },
+  "popupCacheCount": {
+    "message": "$1 Konten im Community-Cache"
+  },
+  "popupCacheCountTitle": {
+    "message": "Standorte, die andere bereits abgefragt haben. Deine werden von dort geladen, ohne X zu fragen."
+  },
   "popupAllSettings": {
     "message": "Alle Einstellungen →"
   },
