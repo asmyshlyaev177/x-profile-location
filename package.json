@@ -27,7 +27,7 @@
     "test:e2e": "playwright test --retries 1",
     "shots": "SHOOT=1 E2E_HEADED=1 xvfb-run --auto-servernum playwright test e2e/screenshots.test.ts && node landing/scripts/store-canvas.mjs && cd landing && xvfb-run --auto-servernum node scripts/shoot-options.mjs",
     "scrub": "node --max-old-space-size=6144 scripts/scrub-recordings.mjs",
-    "scrub:check": "node scripts/scrub-recordings.mjs --check",
+    "scrub:check": "node --max-old-space-size=6144 scripts/scrub-recordings.mjs --check",
     "test:e2e:ui": "E2E_HEADED=1 playwright test --ui",
     "convert:safari": "xcrun safari-web-extension-converter dist/safari --project-location . --app-name $npm_package_name-safari",
     "proxy": "test-proxy-recorder",

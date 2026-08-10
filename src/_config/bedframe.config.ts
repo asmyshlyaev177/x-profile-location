@@ -37,6 +37,11 @@ export default createBedframe({
           globals: true,
           setupFiles: ['./_config/tests.config.ts'],
           environment: 'happy-dom',
+          // Vite's root is `src`, so the default include stops at the extension
+          // itself. The build-tooling under `scripts/` is opted in by name rather
+          // than by widening the glob, because `e2e/` also holds `.test.ts` files
+          // and those belong to Playwright.
+          include: ['**/*.test.{ts,tsx}', '../scripts/**/*.test.mjs'],
           coverage: {
             provider: 'istanbul',
             reporter: ['text', 'json', 'html'],
