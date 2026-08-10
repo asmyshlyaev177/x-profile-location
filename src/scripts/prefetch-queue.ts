@@ -1,19 +1,6 @@
-// Background location prefetcher.
-//
-// X allows 50 AboutAccountQuery lookups per 15-minute window (from its
-// x-rate-limit-* headers). This queue trickles lookups for on-screen accounts to
-// warm the caches, holding a share of the window back so the user's own hovers
-// are never starved.
-//
-// Two queues by PrefetchPriority: the feed being scrolled ('high') drains
-// entirely before a thread's replies ('low'). Each is plain FIFO, and the
-// timeline hands accounts over in render order, so locations fill in down the
-// feed roughly where the user is reading.
-//
-// Budget comes from the live remaining count the content script syncs from those
-// headers, which every lookup decrements — hovers included. Default pacing
-// spreads it over the time left in the window (nextDelayMs) and is
-// self-correcting: hovers stretch the gap, a refilled window shrinks it.
+// Background location prefetcher: trickles lookups for on-screen accounts,
+// holding a share of the window back so hovers are never starved. See
+// "Prefetch" in CLAUDE.md.
 //
 // Every effect is injected, so runOnce() and nextDelayMs() are testable without
 // timers or a DOM.

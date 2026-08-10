@@ -1,15 +1,5 @@
-// Every user-facing setting, with the function that makes a stored value safe —
-// and, because that function also answers for `undefined`, its default.
-//
-// Settings are written from three surfaces (options page, popup, imported file)
-// and read by all four. Without a registry, "which keys are settings" drifts
-// apart the first time one is added, and so does what each one means when it has
-// never been set: the content script showing a switch as on while the popup
-// draws it off is one `?? true` written in only two of the three places.
-// Read one with readSetting / settingValue / defaultSetting, never by hand.
-//
-// An imported file is untrusted input — hand-edited, older, somebody else's — so
-// import stores the normalizer's output, never the value it was given.
+// Every user-facing setting, with the function that makes a stored value safe
+// and — because it answers for `undefined` too — its default. Never read by hand.
 
 import {
   ACCOUNT_AGE_KEY,
@@ -48,21 +38,16 @@ import { normalizeUiLanguage, t, UI_LANGUAGE_KEY } from './i18n'
 /** A stored value, cleaned. Returning undefined drops the key entirely. */
 type Normalizer = (value: unknown) => unknown
 
-/**
- * A switch, and what it means before the user has touched it. `undefined` is the
- * only value that can mean "never set" — chrome.storage omits absent keys, and a
- * removed one arrives as an undefined `newValue` — so the default belongs here
- * rather than at each of the three surfaces that read it.
- */
+// `undefined` is the only value meaning "never set": chrome.storage omits absent
+// keys, and a removed one arrives as an undefined `newValue`.
+
 const asBoolean =
   (fallback: boolean) =>
   (value: unknown): boolean =>
     value === undefined ? fallback : Boolean(value)
 
-// Folded through the alias table, so a list saved before an alias existed
-// ('Czech Republic', 'Czechia') is one entry wherever it is read. Regions are
-// *not* expanded here: that is a content-script concern, and baking it into
-// storage would turn one removable chip into fifty-seven.
+// Regions are deliberately not expanded here — that would turn one removable
+// chip into fifty-seven. content.tsx expands them.
 const asLocationList = (v: unknown): string[] =>
   Array.isArray(v)
     ? [
@@ -86,12 +71,7 @@ const asKeywordList = (v: unknown): string[] =>
       ]
     : []
 
-/**
- * Every setting, with the one function that turns whatever storage holds — a
- * stale value, a hand-edited import, nothing at all — into the value the code
- * uses. Being total is the point: each normalizer answers for `undefined` too,
- * which is what makes this the single place a default is written down.
- */
+/** The one place a default is written down: every normalizer is total. */
 export const SETTINGS_REGISTRY = {
   [EXTENSION_ENABLED_KEY]: asBoolean(true),
   [BLOCKED_COUNTRIES_KEY]: asLocationList,
@@ -123,7 +103,6 @@ export type SettingValue<K extends SettingKey> = ReturnType<
   (typeof SETTINGS_REGISTRY)[K]
 >
 
-/** What a setting is worth, given the raw value storage handed over. */
 export function settingValue<K extends SettingKey>(
   key: K,
   stored: unknown,
@@ -131,7 +110,6 @@ export function settingValue<K extends SettingKey>(
   return SETTINGS_REGISTRY[key](stored) as SettingValue<K>
 }
 
-/** The same, out of a `chrome.storage.local.get()` result. */
 export function readSetting<K extends SettingKey>(
   key: K,
   stored: Record<string, unknown>,
@@ -139,7 +117,6 @@ export function readSetting<K extends SettingKey>(
   return settingValue(key, stored[key])
 }
 
-/** What a setting is worth before storage has answered. */
 export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
   return settingValue(key, undefined)
 }
@@ -147,12 +124,8 @@ export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
 // ---------------------------------------------------------------------------
 // The two list edits both editors make
 // ---------------------------------------------------------------------------
-// The popup and the options page edit the same two keys, and had a copy of each
-// of these four functions. They must agree on more than the key: a keyword is
-// stored trimmed, lowercased and sorted, a location canonicalised — get one of
-// those wrong on one side and the same edit means two different things.
-//
-// Pure, and returning the list they were given when nothing changes: a caller
+// Shared by the popup and the options page, which must agree on more than the
+// key. Each returns the list it was given when nothing changed, so a caller
 // comparing by identity knows whether it has anything to write.
 
 export function withKeyword(keywords: string[], keyword: string): string[] {
@@ -177,7 +150,6 @@ export function withoutLocation(blocked: string[], name: string): string[] {
   return blocked.filter((l) => l !== location)
 }
 
-/** Bumped only if a future shape needs migrating on the way in. */
 export const SETTINGS_FORMAT = 1
 
 export interface SettingsFile {
@@ -187,13 +159,8 @@ export interface SettingsFile {
 }
 
 /**
- * Everything the user has actually set, as pretty-printed JSON. Untouched keys
- * are left out: an export is a record of decisions, so importing it into a
- * future version can't pin today's defaults forever.
- *
- * Deliberately absent: the shared-cache client id, which would let two installs
- * be linked by importing one file into both, and the location cache, which
- * re-fetches itself.
+ * Only keys the user has actually set, so importing into a future version can't
+ * pin today's defaults. Never the client id — it would link two installs.
  */
 export async function exportSettings(): Promise<SettingsFile> {
   const stored = await chrome.storage.local.get(SETTINGS_KEYS)
@@ -216,11 +183,7 @@ export interface ImportResult {
 
 export class SettingsImportError extends Error {}
 
-/**
- * Apply a settings file, validating every value on the way in. Merges rather
- * than replaces, so a partial or older export doesn't silently reset everything
- * it fails to mention.
- */
+/** Merges rather than replaces: an older export must not reset what it omits. */
 export async function importSettings(raw: string): Promise<ImportResult> {
   let parsed: unknown
   try {
@@ -248,7 +211,7 @@ export async function importSettings(raw: string): Promise<ImportResult> {
   const patch: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(settings)) {
-    // A file's keys are arbitrary strings — an older export, a newer one, a typo.
+    // A file's keys are arbitrary strings: an older export, a newer one, a typo.
     const normalize = (SETTINGS_REGISTRY as Record<string, Normalizer>)[key] as
       | Normalizer
       | undefined
@@ -264,8 +227,7 @@ export async function importSettings(raw: string): Promise<ImportResult> {
     throw new SettingsImportError(t('errNoSettings'))
   }
 
-  // The old highlight list mirrors the rule list's highlight bucket. Setting one
-  // and not the other lets merge-on-read resurrect the stale side.
+  // Setting one and not the other lets merge-on-read resurrect the stale side.
   if (RULE_EXCEPTIONS_KEY in patch) {
     const rules = patch[RULE_EXCEPTIONS_KEY] as { highlight: string[] }
     patch[HIGHLIGHT_EXCEPTIONS_KEY] = rules.highlight
@@ -280,7 +242,6 @@ export async function importSettings(raw: string): Promise<ImportResult> {
   return { applied, ignored }
 }
 
-/** A filename that sorts by date and says what it is. */
 export function settingsFileName(now: Date = new Date()): string {
   return `x-pat-settings-${now.toISOString().slice(0, 10)}.json`
 }

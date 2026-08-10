@@ -1,20 +1,6 @@
-// Localized UI strings, from the browser's own i18n machinery — or from the
-// language the reader picked.
-//
-// The catalogue lives in `public/_locales/<locale>/messages.json` and is copied
-// verbatim into the build by Vite's publicDir, so the browser loads exactly one
-// locale and the extension bundle carries no strings at all. That is also what
-// makes the *store listing* localized: `default_locale` plus `__MSG_appName__`
-// in the manifest tells Chrome and AMO to read the same files, so a translation
-// lands on the listing and in the UI at once.
-//
-// `chrome.i18n` follows the browser's UI language and offers no way to override
-// it, which is not good enough — plenty of people read Russian in an English
-// Chrome. So a chosen language is honoured by loading that catalogue ourselves
-// and answering from it first. The browser's own answer stays the default and
-// the fallback, and costs nothing when nobody has chosen anything.
+// Localized strings: the reader's chosen catalogue first, the browser's own
+// answer as default and fallback. See "Localization" in CLAUDE.md.
 
-/** Locale directories, which are also the values `UI_LANGUAGE_KEY` stores. */
 export const UI_LOCALES = [
   'en',
   'ar',
@@ -47,36 +33,25 @@ export function localeTagOf(locale: string): string {
   return locale.replace('_', '-')
 }
 
-/**
- * The language's name in itself — "Русский", "日本語" — for the picker. Taken
- * from the same CLDR data the country names come from rather than a hand-kept
- * list, so it cannot go stale or disagree with them.
- */
 export function nativeLanguageName(locale: string): string {
   const tag = localeTagOf(locale)
   try {
     const name = new Intl.DisplayNames([tag], { type: 'language' }).of(tag)
-    // CLDR lowercases these in several languages, and a picker reads better
-    // with them capitalised the way a name is.
+    // CLDR lowercases these in several languages; a name reads better capitalised.
     return name ? name[0].toLocaleUpperCase(tag) + name.slice(1) : tag
   } catch {
     return tag
   }
 }
 
-/**
- * Messages for contexts with no `chrome.i18n` — which in practice means the
- * happy-dom test environment. `tests.config.ts` fills this from the English
- * catalogue so assertions can keep reading real copy; in a browser it stays
- * null and every lookup goes to the browser or to the chosen language.
- */
+/** For contexts with no `chrome.i18n`, i.e. happy-dom. Null in a browser. */
 let injected: Record<string, string> | null = null
 
 export function __setMessages(messages: Record<string, string> | null): void {
   injected = messages
 }
 
-/** The chosen language's catalogue, once loaded. Null means "use the browser". */
+/** Null means "use the browser". */
 let chosen: Record<string, string> | null = null
 
 /** `$1`…`$9`, and `$$` for a literal dollar — the messages.json rules. */
@@ -87,36 +62,22 @@ function substitute(message: string, subs: string[]): string {
 }
 
 /**
- * The localized string for `key`.
- *
- * Falls back to the key itself rather than throwing or rendering empty: a
- * missing message should be obvious in the UI and greppable in a bug report,
- * not an invisible gap. `messages.test.ts` is what actually keeps that from
- * happening — it checks every key used here exists in every locale.
+ * The localized string for `key`, falling back to the key itself — a missing
+ * message should be greppable in a bug report rather than an invisible gap.
  */
 export function t(key: string, ...subs: (string | number)[]): string {
   const strings = subs.map(String)
   const local = injected?.[key] ?? chosen?.[key]
   if (local !== undefined) return substitute(local, strings)
-  // `?.` on the whole chain: a content script in a page where the extension is
-  // being torn down can lose `chrome` between one call and the next.
+  // `?.` throughout: a content script in a page being torn down can lose
+  // `chrome` between one call and the next.
   const message = globalThis.chrome?.i18n?.getMessage?.(key, strings)
   return message ? message : key
 }
 
 /**
- * The locale the messages above are actually coming from, as a BCP 47 tag
- * ("ru", "pt-BR") — for the two things that need the locale itself rather than
- * a string: `Intl.DisplayNames` for country names, and `localeCompare` for
- * sorting them.
- *
- * Read out of the catalogue rather than asked of the browser, because the
- * browser gives a different answer. A Chrome started with `--lang=ru` serves
- * the `ru` catalogue while **both** `getUILanguage()` and `@@ui_locale` still
- * report `en_US` — which rendered every country name in English inside an
- * otherwise fully Russian settings page. `localeTag` cannot disagree with the
- * strings beside it, because it is one of them. `messages.test.ts` holds each
- * one to its own directory name.
+ * Which locale the strings are coming from, read out of the catalogue rather
+ * than asked of the browser — which answers differently, see CLAUDE.md.
  */
 export function uiLocale(): string {
   const tag = t('localeTag')
@@ -127,12 +88,8 @@ export function uiLocale(): string {
 // ---------------------------------------------------------------------------
 // Loading a chosen language
 // ---------------------------------------------------------------------------
-// Extension pages and the service worker can read their own files. A content
-// script cannot: `fetch` on a `chrome-extension:` URL from x.com needs the file
-// in `web_accessible_resources`, and a fetchable extension URL is something the
-// page can probe for — the same reason the toolbar icon is inlined rather than
-// exposed. So the content script asks the service worker, which has no such
-// problem, and nothing under `_locales/` is reachable from the page.
+// A content script cannot read `_locales/` without exposing it to x.com, so it
+// asks the service worker instead. See "Localization" in CLAUDE.md.
 
 function isExtensionPage(): boolean {
   return /^(chrome|moz|safari-web)-extension:$/.test(
@@ -148,7 +105,7 @@ function flatten(catalogue: Catalogue): Record<string, string> {
   )
 }
 
-/** Read a catalogue straight off disk. Extension pages and the worker only. */
+/** Extension pages and the worker only — a content script cannot. */
 export async function readCatalogue(
   locale: string,
 ): Promise<Record<string, string>> {
@@ -169,25 +126,12 @@ async function loadMessages(
     })
     return (reply as Record<string, string> | null) ?? null
   } catch {
-    // A worker that is asleep and slow to wake, a locale directory that isn't
-    // there. The browser's own language is a perfectly good answer.
+    // A sleeping worker, a missing directory: the browser's language will do.
     return null
   }
 }
 
-/**
- * Apply the stored language choice. Every entry point awaits this before it
- * renders — the strings are read synchronously afterwards, and a popup that
- * painted English and then swapped to Russian a frame later would be worse
- * than one that waited.
- *
- * Cheap when nothing is chosen, which is the common case: one storage read and
- * no fetch at all.
- *
- * Answers the locale now in effect, or '' for "whatever the browser said" —
- * which is how the content script knows whether anything it has already drawn
- * needs redrawing.
- */
+/** Every entry point awaits this before its first paint. */
 export async function initI18n(): Promise<UiLocale | ''> {
   let choice: UiLocale | ''
   try {
@@ -200,7 +144,6 @@ export async function initI18n(): Promise<UiLocale | ''> {
   return chosen ? choice : ''
 }
 
-/** Test seam, and how the service worker rebuilds its menu after a change. */
 export function __setChosenMessages(
   messages: Record<string, string> | null,
 ): void {

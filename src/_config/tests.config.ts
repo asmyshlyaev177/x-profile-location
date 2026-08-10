@@ -6,13 +6,8 @@ import enMessages from '../../public/_locales/en/messages.json'
 // ---------------------------------------------------------------------------
 // UI strings, without a browser to hold them
 // ---------------------------------------------------------------------------
-// `chrome.i18n` is the only part of the extension API happy-dom cannot be given
-// a plausible stub for: every test file builds its own `globalThis.chrome`, and
-// whichever one ran last would decide what the strings are. So `t()` reads an
-// injected catalogue when there is one, and this fills it from the English
-// messages — the same file the built extension ships. Assertions keep matching
-// on real copy, and a message deleted from the catalogue fails the test that
-// reads it rather than silently rendering its own key.
+// From the shipped English catalogue, so assertions read real copy and a deleted
+// message fails a test rather than rendering its own key.
 __setMessages(
   Object.fromEntries(
     Object.entries(enMessages as Record<string, { message: string }>).map(
@@ -24,36 +19,10 @@ __setMessages(
 // ---------------------------------------------------------------------------
 // Keep happy-dom's MutationObserver alive across a garbage collection
 // ---------------------------------------------------------------------------
-// happy-dom 20.8.9 registers each observer's dispatch closure like this
-// (mutation-observer/MutationObserverListener.js):
-//
-//     this.mutationListener = {
-//       options: init.options,
-//       callback: new WeakRef((record) => this.report(record))
-//     }
-//
-// That arrow function is created inline and the WeakRef is the only thing
-// referencing it, so it is collectable immediately. Once a GC takes it, the
-// observer stops receiving mutations — silently, permanently, and with the
-// observer object itself still very much alive.
-//
-// Whether a GC happens mid-run is a matter of allocation pressure, which is why
-// this only ever showed up under `vitest run --coverage` (what `pnpm test`
-// runs): Istanbul instrumentation allocates enough to trigger one partway
-// through content.test.ts, and every test after it that waited for the content
-// script's observer — an injected feed row, an exception button, a keyword
-// mark — failed. The same tests passed under a bare `vitest run`, and passed
-// under coverage when run alone. Nothing is wrong with the extension: it only
-// ever runs in a real browser, where the DOM spec keeps a registered observer's
-// callback alive for as long as the node is being observed.
-//
-// So the fix belongs here rather than in the source. `observe()` is wrapped so
-// that the WeakRef happy-dom constructs during that one call holds strongly,
-// and every other WeakRef in the process is left exactly as it was. The
-// retained closures live until the test process exits, which is the point.
-//
-// Remove this when happy-dom holds the callback strongly. The symptom is
-// silent, so re-checking is cheap: delete this block and run `pnpm test`.
+// happy-dom 20.8.9 holds each observer's dispatch closure in a WeakRef that
+// nothing else references, so the first GC silently stops mutation delivery.
+// Wrapped here, not in the source: a real browser keeps it alive per the spec.
+// Remove when happy-dom does — delete this block and run `pnpm test`.
 const RealWeakRef = globalThis.WeakRef
 
 class StrongRef<T extends WeakKey> {

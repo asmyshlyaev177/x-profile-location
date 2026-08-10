@@ -1,24 +1,10 @@
-// Account facts that ride along with data we already receive.
-//
-// Most of this is on the `__typename: 'User'` nodes in HomeTimeline /
-// TweetDetail responses *and* on the AboutAccountQuery result, both of which the
-// extension already handles — so none of it costs an API call. Two are on one
-// side only: `handleChanges` is AboutAccountQuery's alone, `blockedBy` the
-// timeline's.
-//
-// Nothing here reads X's `legacy` object. It still arrives, hollowed out to the
-// counters, but every field this file wants moved off it — and the one counter
-// it was still the source of, `followers_count`, stopped arriving too.
+// Account facts riding along with responses the extension already receives, so
+// none of it costs an API call. Never reads `legacy` — X hollowed it out.
 
 import { finiteNumber } from './countries'
 import { t } from './i18n'
 
-/**
- * The org an account is badged as belonging to — X's affiliate badge.
- *
- * `handle` is the filtering key, not `name`: an org renames itself freely and
- * the description is its own text, but the account it points at is stable.
- */
+/** X's affiliate badge. `handle` is the filtering key — a `name` is renameable. */
 export interface Affiliation {
   handle: string | null
   name: string | null
@@ -39,10 +25,7 @@ export interface AccountFacts {
   /** X verified an actual identity document. */
   identityVerified: boolean | null
   isProtected: boolean | null
-  /**
-   * This account blocks the signed-in user. Timeline nodes only —
-   * AboutAccountQuery carries no relationship at all.
-   */
+  /** Timeline nodes only — AboutAccountQuery carries no relationship at all. */
   blockedBy: boolean | null
 }
 
@@ -77,13 +60,9 @@ const MONTHS: Record<string, number> = {
 const RE_X_DATE =
   /^\w{3}\s+(\w{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+([+-]\d{4})\s+(\d{4})$/
 
-/**
- * Parse X's `created_at` to epoch ms, or null.
- *
- * Hand-rolled, not `Date.parse`: the format is outside the spec, so V8 accepting
- * it says nothing about a Firefox or Safari build — and a wrong answer here
- * becomes an account age shown next to somebody's name.
- */
+// Hand-rolled, not `Date.parse`: the format is outside the spec, so V8 accepting
+// it says nothing about a Firefox or Safari build.
+
 export function parseXDate(value: unknown): number | null {
   if (typeof value !== 'string') return null
   const m = RE_X_DATE.exec(value.trim())
@@ -97,20 +76,13 @@ export function parseXDate(value: unknown): number | null {
     return null
 
   const utc = Date.UTC(year, month, day, hour, minute, second)
-  // The offset is the zone the timestamp is in, so it comes back off to reach
-  // UTC. X only ever sends +0000, but reading it costs nothing.
+  // The offset is the zone the timestamp is in, so it comes back off for UTC.
   const sign = m[6][0] === '-' ? 1 : -1
   const offsetMinutes = Number(m[6].slice(1, 3)) * 60 + Number(m[6].slice(3, 5))
   return utc + sign * offsetMinutes * 60_000
 }
 
-/**
- * The value X sent, if it sent a boolean at all.
- *
- * "Absent" and "false" are different answers here — AboutAccountQuery carries
- * no relationship at all, and reading that as "does not block you" would be an
- * answer we were never given.
- */
+/** Absent and false are different answers: null is one X never gave. */
 function boolFrom(value: unknown): boolean | null {
   return typeof value === 'boolean' ? value : null
 }
@@ -118,14 +90,9 @@ function boolFrom(value: unknown): boolean | null {
 const RE_PROFILE_URL =
   /^https?:\/\/(?:www\.)?(?:twitter|x)\.com\/([A-Za-z0-9_]{1,50})\/?$/
 
-/**
- * Affiliate badges and government/identity labels share one shape:
- *
- *     { label: { badge: { url }, description, url: { url, urlType }, … } }
- *
- * No badge sends `{}`, which yields null rather than an affiliation with every
- * field empty — only one of those two answers is worth showing.
- */
+// Affiliate badges and identity labels share one shape:
+// { label: { badge: { url }, description, url: { url, urlType }, … } }
+
 export function parseAffiliation(value: unknown): Affiliation | null {
   if (!value || typeof value !== 'object') return null
   const label = (value as Record<string, unknown>).label
@@ -146,14 +113,9 @@ export function parseAffiliation(value: unknown): Affiliation | null {
   return { handle, name, badgeUrl }
 }
 
-/**
- * Pull the facts off a User node — timeline or AboutAccountQuery alike, since
- * the second is a User node with an `about_profile` attached.
- *
- * Takes `unknown` and checks every field: this is X's response shape, which
- * changes between deploys, and the failure mode has to be a missing badge rather
- * than a content script that throws mid-timeline.
- */
+// Every field is checked because this is X's shape, which changes between
+// deploys — the failure mode has to be a missing badge, not a thrown script.
+
 export function parseAccountFacts(node: unknown): AccountFacts {
   if (!node || typeof node !== 'object') return { ...EMPTY_FACTS }
   const u = node as Record<string, unknown>
@@ -172,8 +134,7 @@ export function parseAccountFacts(node: unknown): AccountFacts {
     | Record<string, unknown>
     | undefined
 
-  // Affiliate badge (org) or identity label (government/official). Both at once
-  // is vanishingly rare, so the affiliate one wins.
+  // Both at once is vanishingly rare, so the affiliate badge wins.
   const affiliation =
     parseAffiliation(u.affiliates_highlighted_label) ??
     parseAffiliation(u.identity_profile_labels_highlighted_label)
@@ -192,7 +153,6 @@ export function parseAccountFacts(node: unknown): AccountFacts {
   }
 }
 
-/** True when the facts carry nothing worth storing or showing. */
 export function hasFacts(facts: AccountFacts): boolean {
   return (
     facts.createdAt !== null ||
@@ -207,11 +167,7 @@ export function hasFacts(facts: AccountFacts): boolean {
   )
 }
 
-/**
- * Only the fields carrying a value, so a merge can't blank what a richer earlier
- * sighting supplied — a timeline node has no `username_changes`, an
- * AboutAccountQuery result no relationship.
- */
+/** Only the fields carrying a value, so a merge can't blank an earlier one. */
 export function definedFacts(facts: AccountFacts): Partial<AccountFacts> {
   const out: Partial<AccountFacts> = {}
   for (const [key, value] of Object.entries(facts)) {
@@ -222,7 +178,6 @@ export function definedFacts(facts: AccountFacts): Partial<AccountFacts> {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-/** Whole days since the account was created, or null. */
 export function accountAgeDays(
   createdAt: number | null | undefined,
   now: number = Date.now(),
@@ -231,10 +186,7 @@ export function accountAgeDays(
   return Math.max(0, Math.floor((now - createdAt) / DAY_MS))
 }
 
-/**
- * Account age at the resolution a reader uses it: days, then months, then years.
- * "4271d" is the same fact as "11y" and nobody reads it that way.
- */
+/** Days, then months, then years: "4271d" is "11y" and nobody reads it that way. */
 export function formatAccountAge(
   createdAt: number | null | undefined,
   now: number = Date.now(),

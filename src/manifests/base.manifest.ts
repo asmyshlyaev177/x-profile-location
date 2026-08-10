@@ -2,30 +2,8 @@ import { type Manifest } from '@bedframe/core'
 import pkg from '../../package.json'
 
 export const baseManifest = {
-  // Required
-  // - - - - - - - - -
-  // This is the store listing title on both Chrome and AMO, not just the
-  // in-browser label, so it carries the search keywords the old literal name
-  // won on. `short_name` is what the browser UI shows when space is tight.
-  //
-  // Two halves, deliberately: "X profile location" is the exact phrase people
-  // search, and doubles as the thing the extension reveals; "filter and
-  // highlight" are verbs, so the title says what you *do* rather than listing
-  // topics. No "VPN" — it is the weakest of the three signals, it reads as a
-  // VPN product to anyone scanning a store search, and over-claiming it fights
-  // the neutral posture the whole brand is built on. It stays in the store
-  // description and the landing copy, both of which are indexed.
-  //
-  // 48 characters. **AMO caps the name at 50** and Chrome at 75, so the
-  // Firefox limit is the binding one — check any future edit against 50, not
-  // 75. (Edge Add-ons caps at 45, but we publish to Chrome and AMO only.)
-  //
-  // The text itself now lives in `public/_locales/*/messages.json`, which is
-  // what makes the *store listing* localized as well as the UI: Chrome and AMO
-  // resolve `__MSG_*__` against the same catalogue the extension reads, so a
-  // translated `appName` reaches the search result, not just the popup.
-  // `messages.test.ts` holds `appDesc` to `pkg.description`, so the two can't
-  // drift the way a hand-copied string would.
+  // The store listing title on Chrome and AMO, not just the in-browser label.
+  // AMO caps it at 50 characters — see "Store listing" in CLAUDE.md.
   name: '__MSG_appName__',
   short_name: '__MSG_appShortName__',
   version: pkg.version,

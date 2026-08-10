@@ -119,11 +119,7 @@ const RE_AT_MENTION = /^@[A-Za-z0-9_]{1,50}$/
 // ---------------------------------------------------------------------------
 let blockedCountries = new Set<string>()
 
-// Canonicalised and region-expanded, and every location is canonicalised before
-// being tested — so a list saved as "USA" blocks the "United States" X reports,
-// and one holding "South Asia" blocks Pakistan too.
-//
-// Expansion lives here, not in storage: what the user picked and what that picks
+// Expansion lives here, not in storage: what the user picked and what it picks
 // out are different things, and only the second belongs in a comparison.
 function toBlockedSet(stored: unknown): Set<string> {
   return expandLocations(settingValue(BLOCKED_COUNTRIES_KEY, stored))
@@ -142,10 +138,8 @@ let highlightFlagsEnabled = DEFAULT_FLAGS.enabled
 let highlightFlagsThreshold = DEFAULT_FLAGS.threshold
 let highlightFlagsUniqueOnly = DEFAULT_FLAGS.uniqueOnly
 let showLocationInFeed = defaultSetting(SHOW_LOCATION_IN_FEED_KEY)
-// How to treat tweets whose author's location is on the blocked list. Starts
-// 'off' only as a pre-load placeholder — nothing should be hidden on a guess
-// before settings arrive — so this is deliberately not the stored default
-// ('collapse'), which the storage load below applies.
+// 'off' is a pre-load placeholder, not the stored default: nothing should be
+// hidden on a guess before settings arrive.
 let hideMode: HideBlockedMode = 'off'
 // Per-rule exemptions: which accounts each filter must skip. `highlight` is the
 // old single-purpose exception list, generalised — see normalizeRuleExceptions.
@@ -164,12 +158,10 @@ let showAccountCard = defaultSetting(SHOW_ACCOUNT_CARD_KEY)
 let showShareButton = defaultSetting(SHOW_SHARE_BUTTON_KEY)
 // Whether background location prefetching runs.
 let prefetchEnabled = defaultSetting(BACKGROUND_PREFETCH_KEY)
-// Master switch. Everything this script does is gated on it, and flipping it
-// off strips what is already on screen — a switch that only stopped *new* work
-// would leave the page half-decorated and read as a bug.
+// Flipping it off strips what is already on screen; a switch that only stopped
+// new work would leave the page half-decorated.
 let extensionEnabled = defaultSetting(EXTENSION_ENABLED_KEY)
 
-/** Never filtered, never highlighted — the user said always show this account. */
 function isAlwaysShown(userName: string): boolean {
   return alwaysShow.has(userName.toLowerCase())
 }
@@ -232,9 +224,8 @@ chrome.storage.local
     setSharedCacheEnabled(readSetting(SHARED_CACHE_KEY, r))
     setMinConfidence(r[MIN_CONFIDENCE_KEY])
 
-    // Tweets can render before this async load resolves, in which case nothing
-    // was highlighted. Re-scan and replay the buffered bios, so the first screen
-    // is decorated without waiting for a scroll.
+    // Tweets can render before this resolves, so the first screen is decorated
+    // here rather than waiting for a scroll.
     rehighlightAll()
     refreshFeedLocations()
     void refreshHiddenTweets()
@@ -242,11 +233,7 @@ chrome.storage.local
     window.dispatchEvent(new CustomEvent(EVENTS.REQUEST_USERS))
   })
 
-/**
- * Undo every visible thing this script has done to the page. Attribute-and-CSS
- * throughout, so this is removing attributes and a few injected nodes rather
- * than restoring markup React owns.
- */
+/** Attributes and injected nodes only — never markup React owns. */
 function stripAllInjections(): void {
   for (const article of Array.from(
     document.querySelectorAll<Element>(SEL_TWEET),
@@ -284,12 +271,7 @@ function stripAllInjections(): void {
 
 type StorageChanges = Record<string, chrome.storage.StorageChange>
 
-/**
- * The master switch, which is not like the others: turning it off strips the
- * page and skips every remaining setting, turning it back on re-decorates what
- * is already on screen rather than making the user scroll to trigger the
- * observer. Returns whether the rest of the changes are worth applying.
- */
+/** Returns whether the rest of the changes are worth applying at all. */
 function applyMasterSwitch(changes: StorageChanges): boolean {
   if (changes[EXTENSION_ENABLED_KEY]) {
     extensionEnabled = settingValue(
@@ -309,17 +291,14 @@ function applyMasterSwitch(changes: StorageChanges): boolean {
   return extensionEnabled
 }
 
-/** Which posts a rule catches, and what happens to one it caught. */
 function applyFilterChanges(changes: StorageChanges): void {
   if (changes[BLOCKED_COUNTRIES_KEY]) {
     blockedCountries = toBlockedSet(changes[BLOCKED_COUNTRIES_KEY].newValue)
     // Editing the list can newly block (or unblock) locations already on screen.
     void refreshHiddenTweets()
   }
-  // Both keys arrive in one `changes` object, so the general one wins and the
-  // legacy one is only a fallback — that is what makes a *removal* stick.
-  // Synchronous on purpose: re-reading storage would let a highlight survive a
-  // frame past the edit that removed it.
+  // Both keys arrive together, so the general one wins and the legacy one is a
+  // fallback — that is what makes a removal stick.
   if (changes[RULE_EXCEPTIONS_KEY]) {
     // The write already folded in the legacy list (writeHighlightExceptions),
     // so merging it again here would resurrect anything just removed.
@@ -371,7 +350,6 @@ function applyFilterChanges(changes: StorageChanges): void {
   }
 }
 
-/** What the extension draws, on a post or on a card. */
 function applyDisplayChanges(changes: StorageChanges): void {
   if (changes[HIGHLIGHT_KEYWORDS_KEY]) {
     highlightKeywords = new Set(
@@ -422,7 +400,6 @@ function applyDisplayChanges(changes: StorageChanges): void {
   }
 }
 
-/** Where a location may come from, and how hard the extension looks for one. */
 function applyLookupChanges(changes: StorageChanges): void {
   if (changes[SHARED_CACHE_KEY]) {
     setSharedCacheEnabled(
@@ -455,14 +432,8 @@ function applyLookupChanges(changes: StorageChanges): void {
 }
 
 /**
- * Everything on screen, redrawn.
- *
- * A language change is the one setting that alters text the extension has
- * already written into somebody else's page, and none of the incremental
- * refreshes notice: they compare a post's *rule* against what the placeholder
- * says it was built for, and the rule has not moved — only the words have. So
- * this takes the injections away and lets them be built again, which is what
- * the master switch already does for the same reason.
+ * Everything on screen, redrawn. The incremental refreshes compare rules, and a
+ * language change moves none of them — only the words.
  */
 function relocalize(): void {
   if (!extensionEnabled) return
@@ -480,11 +451,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
   if (!applyMasterSwitch(changes)) return
   if (changes[USAGE_STATS_KEY] || changes[RATE_PROMPT_KEY]) {
-    // The ask is decided once per page, at the first flag drawn. Re-arm it when
-    // the two values that decide it move, or a tab open across the day that
-    // earns the ask never asks — and X is precisely the page people leave open
-    // for days at a time. Costs nothing: the re-check is one storage read on
-    // the next flag, and it answers "no" for the rest of the page's life.
+    // Re-arm, or a tab left open across the day that earns the ask never asks —
+    // and X is exactly the page people leave open for days.
     ratingAskConsidered = false
   }
   applyFilterChanges(changes)
@@ -508,9 +476,7 @@ function getLocationDisplay(
   // Flags are looked up by canonical name, so an alias X hasn't used before
   // ("Russia", "Vietnam") still gets its flag instead of the 🌐 fallback.
   const key = canonicalLocation(loc)
-  // The label is the one thing here that is for reading rather than matching,
-  // so it is the one thing translated. A name X used that isn't a country the
-  // extension knows comes back unchanged.
+  // The one value here for reading rather than matching, so the one translated.
   const label = localizedLocation(key)
 
   // ⚠️ is the rule showing, not a property of the country: once the reader has
@@ -528,10 +494,8 @@ function getLocationDisplay(
   return { emoji: '🌐', label }
 }
 
-// Which blocked location a profile is hidden for, or null. The store country is
-// the primary signal — a store region is hard to fake — so it outranks the stated
-// location. Without one, fall back to `account_based_in`, but only when X hasn't
-// flagged it inaccurate.
+// The store country outranks the stated location — a store region is hard to
+// fake — and a stated one X flagged inaccurate does not count at all.
 function effectiveBlockedLocation(data: LocationData): string | null {
   const { country: sourceCountry } = classifySource(data.source)
   if (sourceCountry) {
@@ -546,20 +510,13 @@ function effectiveBlockedLocation(data: LocationData): string | null {
 /** Why a post is being collapsed or hidden, for the placeholder to explain. */
 export interface FilterMatch {
   rule: FilterRule
-  /** What to name in the placeholder: a country, an org, an age. */
   label: string
-  /** The flag or icon that goes with it. */
   icon: string
 }
 
 /**
- * Every data-driven rule an account matches, exceptions ignored. Location leads,
- * since it is the rule the user most certainly set up on purpose.
- *
- * Split out of activeMatches because the exception button has to be able to name
- * a rule the user has *already* excepted, in order to undo it — the one thing
- * activeMatches must never return. Highlighting is judged from the bio instead,
- * and activeRulesFor folds it back in.
+ * Every data-driven rule an account matches, exceptions ignored — the exception
+ * button has to be able to name a rule already excepted, in order to undo it.
  */
 function ruleMatches(data: LocationData | null | undefined): FilterMatch[] {
   if (!data) return []
@@ -598,11 +555,7 @@ function ruleMatches(data: LocationData | null | undefined): FilterMatch[] {
   return matches
 }
 
-/**
- * The single decision point for "which rules are acting on this account". The
- * allowlist and the per-rule exceptions are applied here and nowhere else, so
- * they cannot be applied in three subtly different ways.
- */
+/** The one place the allowlist and the per-rule exceptions are applied. */
 function activeMatches(
   userName: string,
   data: LocationData | undefined,
@@ -611,17 +564,8 @@ function activeMatches(
   return ruleMatches(data).filter((m) => !isExcepted(m.rule, userName))
 }
 
-// Every hide judgement made this session, so the next sighting of the same
-// account can be answered without waiting on IndexedDB. X recreates article
-// nodes as you scroll — nothing the extension sets survives the unmount — and
-// a post that comes back at full height and collapses a cache read later is a
-// resize, which is what moves the page (see whenSafeToResize). Answered from
-// here, it is collapsed in the microtask the node arrives in and never laid out
-// at any other height.
-//
-// Bounded LRU-by-write like bioCache, and only ever a fast path: the answer is
-// recomputed from the cache whenever it is missing, and dropped wholesale by
-// refreshHiddenTweets, which every rule change goes through.
+// Answered without waiting on IndexedDB, so a recycled post is collapsed in the
+// microtask it arrives in and never laid out at another height.
 const HIDE_VERDICT_CAP = 1000
 const hideVerdicts = new Map<string, FilterMatch | null>()
 
@@ -638,20 +582,15 @@ function rememberHideVerdict(
   }
 }
 
-/**
- * The rule a post is hidden for, or null — the first that both fires and is
- * allowed to hide. An account matching only a marking rule (age) must not have
- * its post collapsed, which is the whole difference between the two kinds.
- */
+/** The first rule that both fires and is allowed to hide, or null. */
 function hideMatchFor(
   userName: string,
   data: LocationData | undefined,
 ): FilterMatch | null {
   const match =
     activeMatches(userName, data).find((m) => ruleHides(m.rule)) ?? null
-  // Only a judgement made on a record we actually have. An account nothing is
-  // known about yet has not been judged not to match — it has not been looked
-  // up, and remembering that as "no" would keep it from ever being hidden.
+  // Only judgements made on a record we have: remembering "not looked up yet"
+  // as "no" would keep the account from ever being hidden.
   if (data) rememberHideVerdict(userName, match)
   return match
 }
@@ -664,11 +603,7 @@ function markMatchFor(
   return activeMatches(userName, data).find((m) => !ruleHides(m.rule)) ?? null
 }
 
-/**
- * The rule to name on a people-list row, hiding or not. Rows are marked and
- * never removed, so the hide/mark distinction doesn't apply — the tag should say
- * "blocked location" even though that rule collapses a post elsewhere.
- */
+/** Rows are marked and never removed, so the hide/mark split doesn't apply. */
 function cellMatchFor(
   userName: string,
   data: LocationData | undefined,
@@ -713,14 +648,12 @@ const checkedThisSession = new Set<string>()
 const pendingMap = new NormalizedMap<Promise<LocationData | null>>()
 let rateLimitResetAt = 0
 let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null
-// The reset time of the window whose toast the user clicked away. Every blocked
-// lookup calls showRateLimitToast, so without this the very next hover would
-// undo the click.
+// Every blocked lookup calls showRateLimitToast, so without this the next hover
+// would undo the click.
 let rateLimitToastDismissedUntil = 0
 
-// Live AboutAccountQuery budget: seeded at the limit, decremented by every
-// request (hover, swipe, prefetch alike) and corrected from x-rate-limit-*.
-// Counting all of it is what lets the prefetcher stop short of the user's share.
+// Counts every request — hover, swipe, prefetch alike — which is what lets the
+// prefetcher stop short of the user's share.
 let rateWindowLimit = LOOKUP_LIMIT_PER_WINDOW
 let rateWindowRemaining = LOOKUP_LIMIT_PER_WINDOW
 let rateWindowResetAt = 0
@@ -733,9 +666,7 @@ function rollRateWindowIfElapsed(): void {
   }
 }
 
-// Single choke point, called just before every network AboutAccountQuery, so
-// in-flight usage is counted optimistically; readRateHeaders makes it exact once
-// the response lands.
+// Optimistic: readRateHeaders makes it exact once the response lands.
 function noteRequestSent(): void {
   rollRateWindowIfElapsed()
   if (rateWindowRemaining > 0) rateWindowRemaining -= 1
@@ -770,13 +701,8 @@ function currentRateState() {
   }
 }
 
-// Bios captured from timeline JSON this session, in memory so highlighting reads
-// them synchronously rather than racing mergeCached's async write. Without it, a
-// fresh load highlights nothing until a reload has populated IDB.
-//
-// Bounded LRU-by-write, and only ever a fast path: every bio also lands in IDB,
-// so an evicted entry (long since written) falls back to getCached — the same
-// fallback that covers users first seen in an earlier session.
+// In memory so highlighting reads synchronously rather than racing mergeCached.
+// A fast path only — every bio also lands in IDB, and eviction falls back to it.
 const BIO_CACHE_CAP = 1000
 
 interface ProfileInfo {
@@ -820,10 +746,8 @@ async function getBioInfo(userName: string): Promise<ProfileInfo> {
   }
 }
 
-// Restore module-level state to its post-import value. The module is imported
-// once per test file, so anything a test mutates leaks into every test after it
-// and the suite passes only in the order it happens to run. Keep this
-// exhaustive: a module-scope `let` missing here is a new order dependency.
+// Keep exhaustive: a module-scope `let` missing here is a new order dependency,
+// and the suite would pass only in the order it happens to run.
 export function __testResetState() {
   // settings, back to what the declarations above start them at
   blockedCountries = new Set()
@@ -922,11 +846,7 @@ function dismissRateLimitToast(): void {
   document.getElementById('x-loc-rate-toast')?.remove()
 }
 
-/**
- * `force` un-dismisses first: an explicit gesture (a swipe) is the user asking
- * again, so the countdown comes back — and a click puts it away again. Passive
- * lookups (hover, prefetch) never force.
- */
+/** `force` un-dismisses: a swipe is the user asking again. Hovers never force. */
 function showRateLimitToast(force = false) {
   if (force) rateLimitToastDismissedUntil = 0
 
@@ -942,9 +862,7 @@ function showRateLimitToast(force = false) {
   if (!toast) {
     toast = document.createElement('div')
     toast.id = 'x-loc-rate-toast'
-    // Interactive now, so it has to be reachable: a real role and tab stop,
-    // and keys doing what the click does. The ticking text stays the
-    // accessible name — the countdown is the content.
+    // Interactive, so it needs a role, a tab stop and keys doing what a click does.
     toast.title = t('toastDismiss')
     toast.setAttribute('role', 'button')
     toast.tabIndex = 0
@@ -1007,10 +925,7 @@ export function locationSummaryText(
   return parts.join(' · ')
 }
 
-/**
- * Render (or replace) the swipe overlay. `pending` has no auto-dismiss timer, so
- * every pending toast must be resolved by a later call or it never goes away.
- */
+/** A `pending` toast has no dismiss timer: a later call must resolve it. */
 function dismissLocationToast() {
   document.getElementById('x-loc-location-toast')?.remove()
   if (locationToastTimer) clearTimeout(locationToastTimer)
@@ -1042,14 +957,8 @@ function showLocationOverlay(data: LocationData, userName?: string | null) {
 // ---------------------------------------------------------------------------
 // The rating ask
 // ---------------------------------------------------------------------------
-// The popup card reaches people who open the popup, which after the first day
-// is almost nobody. This is the same ask where they actually are — once, on a
-// page the extension has already done something useful on.
-//
-// Everything here is built to be easy to be rid of: it appears after a flag has
-// been drawn (so it interrupts a working extension, not a blank one), both ways
-// of saying no are one click, saying nothing at all snoozes it for days, and it
-// gives up the screen to either of the toasts that carry information.
+// The popup's ask, put where people actually are. See "The rating ask" in
+// CLAUDE.md for the rules it has to keep.
 
 /** Long enough that the flag it is riding on has been read. */
 const RATING_ASK_DELAY_MS = 6000
@@ -1061,17 +970,8 @@ function dismissRatingAsk(): void {
 }
 
 /**
- * The toolbar icon itself, inlined at build time.
- *
- * `?inline` makes Vite emit it as a data URI, so it needs no entry in
- * `web_accessible_resources` — the manifest deliberately exposes nothing under
- * `assets/`, because a fetchable extension URL is something x.com can probe
- * for, passively, even while the extension is paused.
- *
- * It is the same file the manifest ships, which is the whole point: the user is
- * being asked to rate the thing behind that icon, so it has to be *that* icon
- * and not a second drawing of it. (The site's mark is a different one — see
- * `landing/src/data/brand-mark.json`.)
+ * The manifest's own icon, inlined by `?inline` — a fetchable extension URL is
+ * something x.com can probe for, even while the extension is paused.
  */
 function buildBrandMark(): HTMLImageElement {
   const img = document.createElement('img')
@@ -1103,9 +1003,7 @@ function showRatingAsk(): void {
   bar.id = RATING_ASK_ID
   bar.setAttribute('role', 'status')
 
-  // Named and marked, because this appears inside somebody else's page: an
-  // unattributed bar over X reads as X asking, and nobody can rate what they
-  // cannot identify.
+  // Named, because an unattributed bar over X reads as X asking.
   const message = document.createElement('span')
   message.className = 'x-loc-ask-msg'
   message.appendChild(buildBrandMark())
@@ -1126,9 +1024,7 @@ function showRatingAsk(): void {
 
   bar.appendChild(
     ratingAskButton(t('rateAskYes'), false, () => {
-      // window.open rather than a message to the service worker: this is inside
-      // a click, so the popup blocker allows it, and it keeps the ask working
-      // whether or not the worker happens to be alive.
+      // Inside a click, so the popup blocker allows it and no worker need be awake.
       window.open(REVIEW_URL, '_blank', 'noopener')
       answer('done')
     }),
@@ -1139,14 +1035,8 @@ function showRatingAsk(): void {
   bar.appendChild(ratingAskButton(t('rateAskNo'), true, () => answer('done')))
 
   document.body.appendChild(bar)
-  // No dismiss timer: it stays until one of the three buttons is pressed. A
-  // timed one asked people who happened to be reading something else, then took
-  // the question away before they could answer it — and it only ever appears
-  // once, so it can afford to wait.
-  //
-  // Written before it can be answered, so a page navigated away from with the
-  // bar still up counts as asked and does not hound them on the next one. The
-  // answer buttons overwrite this.
+  // Written before it can be answered, so a page navigated away from still
+  // counts as asked. The answer buttons overwrite it.
   void noteRatingAskShown()
 }
 
@@ -1175,7 +1065,6 @@ async function considerRatingAsk(): Promise<void> {
 // API fetch
 // ---------------------------------------------------------------------------
 
-/** The captured session headers, as AboutAccountQuery wants them. */
 function aboutAccountHeaders(
   captured: Record<string, string>,
 ): Record<string, string> {
@@ -1185,18 +1074,13 @@ function aboutAccountHeaders(
     'x-twitter-client-language': captured['x-twitter-client-language'] ?? 'en',
     'x-twitter-active-user': captured['x-twitter-active-user'] ?? 'yes',
   }
-  // page-script deliberately never forwards the csrf token, so in practice this
-  // always comes from the ct0 cookie; the header is only used when a caller (a
-  // test, say) supplied one directly.
+  // page-script never forwards the csrf token, so in practice this is the cookie.
   const csrf = captured['x-csrf-token'] || getCookie('ct0')
   if (csrf) headers['x-csrf-token'] = csrf
   return headers
 }
 
-/**
- * An AboutAccountQuery response as a cache record, or null when it carried no
- * profile at all — which is not the same as a profile saying "no location".
- */
+/** Null means no profile at all, which is not "a profile with no location". */
 function toLocationData(
   json: any,
   storedBio: string | null,
@@ -1308,9 +1192,7 @@ function getNameEl(el: Element): Element | null {
   )
 }
 
-// The quoted tweet embedded inside an article is rendered as a clickable
-// role="link" container that holds its own User-Name block (the quoted author).
-// Returns that container, or null when the tweet doesn't quote another post.
+// X renders a quote as a role="link" container holding its own User-Name block.
 function getQuotedTweetEl(article: Element): Element | null {
   for (const link of Array.from(
     article.querySelectorAll<Element>('div[role="link"]'),
@@ -1365,9 +1247,8 @@ function extractTweetUserInfo(article: Element): {
   return { userName, displayName }
 }
 
-// Quoted posts render the author as plain text, not links (the whole quote is a
-// single role="link"), so the anchor-based extractor above finds nothing. Parse
-// the name block instead: "<displayName>@<handle> · <time>".
+// A quote's author is plain text, not links, so the extractor above finds
+// nothing. The name block reads "<displayName>@<handle> · <time>".
 function extractQuotedTweetUserInfo(quote: Element): {
   userName: string | null
   displayName: string
@@ -1414,19 +1295,9 @@ function shouldHighlight(
 // ---------------------------------------------------------------------------
 // Marking the matched keyword in a hover card
 // ---------------------------------------------------------------------------
-// The bar says *that* an account matched; the hover card is where the reader
-// finds out *why*, so the word responsible is marked in the bio.
-//
-// Nothing here touches the DOM X owns — a <mark> would mean restructuring text
-// nodes inside a card React re-renders. Instead, text keywords are painted with
-// the CSS Custom Highlight API (Ranges, no markup change), and emoji keywords,
-// which X renders as <img alt="🇷🇺"> with no text node to range over, get a
-// generated rule matching the alt.
-//
-// Both are cosmetic: without CSS.highlights (Firefox before 140) the text half
-// simply does not paint.
+// Nothing here touches the DOM X owns. Cosmetic either way — see "Marking the
+// matched keyword" in CLAUDE.md.
 
-/** The highlight registry, or null in a browser (or a test) without one. */
 function highlightRegistry(): HighlightRegistry | null {
   return typeof CSS !== 'undefined' && 'highlights' in CSS
     ? CSS.highlights
@@ -1434,12 +1305,8 @@ function highlightRegistry(): HighlightRegistry | null {
 }
 
 /**
- * Ranges over every keyword occurrence in `root`.
- *
  * Text node by text node, so a keyword split across two is missed rather than
- * mismarked — X breaks bios up around links and emoji, and a Range spanning that
- * split underlines the wrong characters. Our own injected text is skipped, or
- * the extension ends up pointing at itself.
+ * mismarked. Our own injected text is skipped, or we point at ourselves.
  */
 export function keywordRangesIn(root: Element): Range[] {
   const ranges: Range[] = []
@@ -1464,11 +1331,7 @@ export function keywordRangesIn(root: Element): Range[] {
   return ranges
 }
 
-/**
- * Re-mark every hover card on screen. A full rescan, because the registry is one
- * global object — rebuilding it from what is open is the only version that can't
- * strand a mark from a closed card or a rule since turned off.
- */
+/** A full rescan: the registry is one global object, so nothing can be stranded. */
 async function markKeywords(): Promise<void> {
   const registry = highlightRegistry()
   const cards = Array.from(document.querySelectorAll<Element>(SEL_HOVER_CARD))
@@ -1494,7 +1357,6 @@ async function markKeywords(): Promise<void> {
   else registry.set(KEYWORD_HIGHLIGHT_NAME, new Highlight(...ranges))
 }
 
-/** Drop every mark, and the registry entry with it. */
 function clearKeywordMarks(): void {
   highlightRegistry()?.delete(KEYWORD_HIGHLIGHT_NAME)
   document
@@ -1502,11 +1364,7 @@ function clearKeywordMarks(): void {
     .forEach((el) => el.removeAttribute(KEYWORD_MATCH_ATTR))
 }
 
-/**
- * Rewrite the emoji half of the marking — a stylesheet rather than ranges. Kept
- * in its own <style> so the static rules stay static; the rule itself is built
- * in styles.ts, where a test can render the real thing.
- */
+/** Its own <style>, so the static rules stay static. */
 function updateKeywordEmojiStyle(): void {
   const emoji = extensionEnabled ? emojiKeywords() : []
   let style = document.getElementById('x-loc-kw-styles')
@@ -1557,13 +1415,9 @@ async function tryHighlightQuote(article: Element) {
 
 function rehighlightAll() {
   if (!extensionEnabled) return
-  // Keyword marks answer "why is this highlighted", so they follow the same
-  // rule changes the highlighting itself does — including an exception added
-  // from the card the marks are on.
+  // Marks answer "why is this highlighted", so they follow the same changes.
   void markKeywords()
-  // The primary tweet's exception button follows the same rules, so it is
-  // re-evaluated on every rule change — including the clearing branch below,
-  // where it has to disappear.
+  // Also on the clearing branch below, where the button has to disappear.
   void syncPrimaryExceptionButton()
 
   const articles = Array.from(document.querySelectorAll<Element>(SEL_TWEET))
@@ -1581,10 +1435,7 @@ function rehighlightAll() {
   })
 }
 
-/**
- * Mark every tweet on screen by this account, and every quote of them — for when
- * a bio arrives after the tweets have already rendered.
- */
+/** For a bio that arrives after the tweets have already rendered. */
 function markHighlightedArticles(userName: string) {
   const lc = userName.toLowerCase()
   for (const article of document.querySelectorAll<Element>(SEL_TWEET)) {
@@ -1601,12 +1452,8 @@ function markHighlightedArticles(userName: string) {
 
 const FEED_LOCATION_ATTR = 'data-x-loc-feed-done'
 
-// A feed row grows the tweet, so injecting one above the viewport pushes
-// everything below it down and the feed jumps. X positions timeline cells
-// absolutely with a computed translateY and re-runs scroll restoration on
-// navigation, which defeats native scroll anchoring — so tweets still above the
-// fold are parked on an IntersectionObserver and injected on the way back.
-// `let` rather than `const` only so __testResetState can swap in a fresh map.
+// A row grows the tweet, so one injected above the viewport jumps the feed. See
+// "Resizing without moving the scroll" in CLAUDE.md.
 let pendingFeedRows = new WeakMap<Element, FeedRowPlan>()
 let feedRowObserver: IntersectionObserver | null = null
 
@@ -1635,9 +1482,8 @@ function placeFeedRow(article: Element, plan: FeedRowPlan): void {
 
 function getFeedRowObserver(): IntersectionObserver {
   if (feedRowObserver) return feedRowObserver
-  // Several thresholds so the callback re-fires as a parked tweet scrolls
-  // through the viewport, letting us wait until its name line clears the fold
-  // (rather than injecting the instant its bottom edge peeks in from the top).
+  // Several thresholds, so the callback re-fires until the name line clears the
+  // fold rather than firing the instant the bottom edge peeks in.
   feedRowObserver = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
@@ -1724,9 +1570,8 @@ function refreshFeedLocations() {
 // ---------------------------------------------------------------------------
 // Hide tweets from blocked locations
 // ---------------------------------------------------------------------------
-// Collapse behind a placeholder rather than removing: a visible, reversible
-// trace, and an attribute plus CSS survives React's re-renders where surgery on
-// its nodes would not.
+// Collapsed behind a placeholder, never removed: attribute-and-CSS survives
+// React's re-renders where surgery on its nodes would not.
 /** Everything of `match` a placeholder shows — so a change to it is visible. */
 function placeholderKey(match: FilterMatch): string {
   return `${match.rule}|${match.icon}|${match.label}`
@@ -1740,10 +1585,8 @@ function buildHiddenPlaceholder(
 ): HTMLElement {
   const ph = document.createElement('div')
   ph.className = HIDDEN_PLACEHOLDER_CLASS
-  // What this placeholder says, for hideArticle to compare against. Rebuilding
-  // it on every refresh is what used to churn every post on the page for an
-  // exception that concerned one account; never rebuilding it would leave it
-  // naming a rule that has since stopped being the one that caught this post.
+  // For hideArticle to compare against: rebuilding every refresh churned the
+  // whole page, never rebuilding left it naming the wrong rule.
   ph.dataset.match = placeholderKey(match)
 
   const labelEl = document.createElement('span')
@@ -1754,9 +1597,8 @@ function buildHiddenPlaceholder(
   btn.type = 'button'
   btn.className = 'x-loc-hidden-show'
   btn.textContent = t('hiddenShow')
-  // Naming the rule matters more now that four of them can produce this
-  // placeholder: "hidden — 🌱 3d old" is only actionable if you know which
-  // setting to go and change.
+  // Four rules can produce this placeholder, and "🌱 3d old" is only actionable
+  // if you know which setting to go and change.
   btn.title = t(
     'hiddenShowTitle',
     FILTER_RULE_LABEL[match.rule](),
@@ -1771,19 +1613,16 @@ function buildHiddenPlaceholder(
   ph.appendChild(labelEl)
   ph.appendChild(btn)
 
-  // A collapsed post leaves nothing to hover, so the hover card the button
-  // normally lives in can't be opened here. "Show" spares this post; this spares
-  // the account. Only the rule that hid it — the one it can name.
+  // A collapsed post leaves nothing to hover, so the card this button lives in
+  // cannot be opened. "Show" spares the post; this spares the account.
   if (showExceptionButton) {
     ph.appendChild(buildExceptionButton(userName, [match.rule]))
   }
   return ph
 }
 
-// Thunks rather than a map of strings: read at call time, because the reader
-// can change the extension's language from the options page and this script
-// stays loaded across it — and still spelled `t('key')`, so messages.test.ts
-// can see which messages are used.
+// Thunks, because the language can change while this script stays loaded — and
+// still spelled `t('key')`, so messages.test.ts can see which keys are used.
 const FILTER_RULE_LABEL: Record<FilterRule, () => string> = {
   highlight: () => t('ruleNameHighlight'),
   location: () => t('ruleNameLocation'),
@@ -1791,12 +1630,7 @@ const FILTER_RULE_LABEL: Record<FilterRule, () => string> = {
   age: () => t('ruleNameAge'),
 }
 
-/**
- * What a match names, for reading. Only the location rule carries something
- * translatable — an org name and an age are already the account's own — and
- * localizedLocation returns anything else unchanged, so this is safe for all
- * four.
- */
+/** Only the location rule names something translatable; the rest are X's own. */
 function matchLabel(match: FilterMatch): string {
   return match.rule === 'location'
     ? localizedLocation(canonicalLocation(match.label))
@@ -1804,31 +1638,15 @@ function matchLabel(match: FilterMatch): string {
 }
 
 // --- resizing a post without moving the scroll ------------------------------
-// Collapsing a post takes height out of the page from its top edge down. While
-// that edge is above the viewport top the height leaves the scrollport, and X's
-// timeline answers by scrolling the window itself to compensate. It issues one
-// `window.scrollBy` per cell it saw resize, and each carries the running total
-// for the batch rather than that cell's own delta — so one cell at a time is
-// exact, and k cells resizing in the same frame scroll by roughly k× the height
-// actually removed. Measured on a status page: seven replies collapsed together
-// took out 2065px of content and moved the scroll 8244px. Growth is the same in
-// reverse — eleven posts expanded at once added 774px and scrolled 13982px.
-//
-// Nothing above the fold has to be resized on the spot, so a change that would
-// resize up there is parked until the post's top edge is back in view, where it
-// only moves content the user can see and X compensates for nothing at all.
-// The same deal pendingFeedRows strikes for the row it injects.
-// `let` rather than `const` only so __testResetState can swap in fresh state.
+// A resize above the fold makes X's timeline scroll the window by a multiple of
+// the height that changed. See "Resizing without moving the scroll" in CLAUDE.md.
 let pendingResizes = new WeakMap<Element, () => void>()
 let resizeObserverIO: IntersectionObserver | null = null
 
-// Every 5%, rather than the quarters the feed row settles for. A post taller
-// than the viewport holds a constant intersection ratio for the whole time its
-// top edge is climbing to the fold, so coarse steps leave it parked well past
-// the moment it became safe.
+// Every 5%: a post taller than the viewport holds a constant ratio while its top
+// edge climbs, so coarse steps leave it parked long past being safe.
 const RESIZE_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20)
 
-/** True when resizing `target` would take height out of the scrollport. */
 function resizeAboveFold(target: Element): boolean {
   return target.getBoundingClientRect().top < 0
 }
@@ -1873,7 +1691,6 @@ function whenSafeToResize(target: Element, apply: () => void): void {
   if (!parked) getResizeObserver().observe(target)
 }
 
-/** Drop a parked change — the post was revealed, or no longer matches a rule. */
 function cancelPendingResize(target: Element): void {
   if (!pendingResizes.has(target)) return
   pendingResizes.delete(target)
@@ -1956,7 +1773,6 @@ function isCollapsedFor(
   return ownPlaceholder(target)?.dataset.match === placeholderKey(match)
 }
 
-/** Take back a collapse the rules no longer call for; a no-op if there was none. */
 function unhideArticle(article: Element): void {
   cancelPendingResize(article)
   if (!article.hasAttribute(HIDDEN_ATTR)) return
@@ -1978,9 +1794,8 @@ function revealArticle(article: Element): void {
 }
 
 // --- quoted posts -----------------------------------------------------------
-// A quoted post has its own author, unrelated to whoever quoted them. Collapsing
-// the whole row for the quoted account takes away a post the user never filtered
-// (X-Posed shipped that and had to fix it), so the quote collapses alone.
+// The quote collapses alone: taking the whole row removes a post the reader
+// never filtered. X-Posed shipped that and had to fix it.
 
 function hideQuote(
   quote: Element,
@@ -2009,7 +1824,6 @@ function hideQuote(
   })
 }
 
-/** The quoted-post half of unhideArticle. */
 function unhideQuote(quote: Element): void {
   cancelPendingResize(quote)
   if (!quote.hasAttribute(QUOTE_HIDDEN_ATTR)) return
@@ -2027,17 +1841,8 @@ function revealQuote(quote: Element): void {
 }
 
 /**
- * Collapse a just-inserted post when this account has already been judged this
- * session, in the same microtask the node arrived in.
- *
- * X recreates article nodes as you scroll, and nothing the extension sets
- * survives the unmount — of eighteen tagged articles, none came back. So a post
- * that was collapsed returns at full height, and collapsing it again one
- * IndexedDB read later is a resize above the fold, which is what moves the page
- * on the way back up. Judged from hideVerdicts instead, the post is collapsed
- * before it is ever laid out and there is no height change at all: measured
- * over a sixteen-step scroll, that is the difference between 2188px of
- * uncommanded scroll and none.
+ * Collapse a just-inserted post in the microtask it arrived in, so it is never
+ * laid out at full height. Worth 2188px of uncommanded scroll — see CLAUDE.md.
  */
 function applyKnownHide(article: Element): void {
   if (hideMode === 'off') return
@@ -2089,11 +1894,8 @@ async function tryHideArticle(article: Element) {
   if (match) hideArticle(article, userName, match)
 }
 
-// Hide every on-screen tweet by this user once their data is known (e.g. a
-// shared-cache hit or the prefetcher resolved it), mirroring
-// injectFeedLocationForUser.
-//
-// `hideNow: false` judges without collapsing
+// For data arriving after the posts did — a cache hit, a resolved prefetch.
+// `hideNow: false` judges without collapsing.
 function hideTweetsForUser(
   userName: string,
   data: LocationData,
@@ -2122,7 +1924,6 @@ function hideTweetsForUser(
   })
 }
 
-/** What the rules say about one post, with the cache reads already done. */
 interface PostVerdict {
   article: Element
   quote: Element | null
@@ -2192,33 +1993,22 @@ function applyPostVerdict(v: PostVerdict): void {
   setMark(v.article, v.articleMark)
 }
 
-// Re-evaluate every on-screen tweet after a rule change.
-//
 // Ask first, mutate second, and only where the answer changed. Stripping every
-// attribute up front and asking the cache afterwards — which is what this did —
-// sprang every collapsed post back to full height for as long as an IndexedDB
-// read takes, then collapsed them all again: two page-wide resize storms, and
-// the worst possible input to X's scroll compensation (see whenSafeToResize).
-// An exception added for one account would move the whole page. Now it touches
-// that account's posts and leaves every other post's DOM exactly as it was.
+// attribute up front made an exception for one account move the whole page.
 async function refreshHiddenTweets(): Promise<void> {
   if (!extensionEnabled) return
-  // Every rule change comes through here, and every one of them can change what
-  // a remembered verdict should have been — so this is where they are dropped.
-  // judgePost re-fills the map as it goes.
+  // Every rule change comes through here, and any of them can change a remembered
+  // verdict. judgePost re-fills the map as it goes.
   hideVerdicts.clear()
   // Before the awaits, so the glyph turns over in the task the click landed in.
   refreshLocationFlags()
-  // The one button covers these rules too, so a change to any of them can make
-  // it appear, change what it offers, or go away — the same reason
-  // rehighlightAll syncs it for the keyword rules.
+  // A rule change can make the button appear, change what it offers, or go away.
   void syncPrimaryExceptionButton()
 
   const articles = Array.from(document.querySelectorAll<Element>(SEL_TWEET))
   const verdicts = await Promise.all(articles.map(judgePost))
-  // Bottom-up: collapsing a post moves everything after it, so working from the
-  // end leaves each post's geometry — which whenSafeToResize is about to read —
-  // untouched by the changes already applied.
+  // Bottom-up, so the geometry whenSafeToResize is about to read is untouched by
+  // the changes already applied.
   for (let i = verdicts.length - 1; i >= 0; i--) {
     if (verdicts[i].article.isConnected) applyPostVerdict(verdicts[i])
   }
@@ -2228,9 +2018,8 @@ async function refreshHiddenTweets(): Promise<void> {
 // ---------------------------------------------------------------------------
 // Marking posts a rule points at rather than hides
 // ---------------------------------------------------------------------------
-// Same mechanism as hiding, but nothing is taken away — so no placeholder, no
-// "Show", no revealed-flag, and no reason to skip the post a status page is
-// about. A young author is worth knowing on the post you opened.
+// Nothing is taken away, so no placeholder and no reason to skip the post a
+// status page is about — a young author is worth knowing on the post you opened.
 
 async function tryMarkArticle(article: Element) {
   // The quote's author is judged on their own, exactly as they are for hiding
@@ -2255,11 +2044,7 @@ async function tryMarkQuote(article: Element) {
   if (match) quote.setAttribute(TWEET_MARK_ATTR, match.rule)
 }
 
-/**
- * Mark every post on screen by this account once their data arrives. A post is
- * judged when it first appears, usually before anything is known about the
- * author, so the answer from an empty cache has to be revisited.
- */
+/** A post is judged before its author is known, so the answer is revisited. */
 function markTweetsForUser(userName: string, data: LocationData): void {
   const match = markMatchFor(userName, data)
   if (!match) return
@@ -2283,11 +2068,9 @@ function markTweetsForUser(userName: string, data: LocationData): void {
 // ---------------------------------------------------------------------------
 // People lists (Followers / Following / the People tab of search)
 // ---------------------------------------------------------------------------
-// Marked, never removed. Hiding rows breaks what the page exists to show: the
-// count says 400 and you scroll past 380, with no way to tell whether the
-// extension ate them or the list is stale.
+// Marked, never removed: hiding rows means the count says 400, you scroll past
+// 380, and nothing says whether the extension ate them or the list is stale.
 
-/** The handle a people-list row is about, from its first profile link. */
 function userCellName(cell: Element): string | null {
   for (const link of Array.from(
     cell.querySelectorAll<HTMLAnchorElement>('a[href]'),
@@ -2319,10 +2102,7 @@ async function tryMarkPeopleCell(cell: Element) {
   nameEl.insertAdjacentElement('beforeend', tag)
 }
 
-/**
- * A row is marked when first seen, usually before the account's data arrives — so
- * a resolving lookup has to re-judge the rows rather than leave them.
- */
+/** Rows are marked before their data arrives, so a lookup must re-judge them. */
 function markPeopleCellsForUser(userName: string, data: LocationData): void {
   if (!cellMatchFor(userName, data)) return
   const lc = userName.toLowerCase()
@@ -2337,13 +2117,8 @@ function markPeopleCellsForUser(userName: string, data: LocationData): void {
 }
 
 /**
- * Everything that happens when an account's data lands: the feed row, the
- * filters, the people rows. One function, so no caller wires up two of three.
- *
- * `hideNow: false` judges without collapsing, for a lookup the reader started by
- * hand: a hover card opens *at* a post, and taking that post away the moment the
- * answer arrives is not what asking about it meant. The verdict still stands, so
- * the post collapses the next time X renders it.
+ * One function, so no caller wires up two of three. `hideNow: false` judges
+ * without collapsing — a hover card opens at a post, and asking is not filtering.
  */
 function applyFiltersForUser(
   userName: string,
@@ -2356,7 +2131,6 @@ function applyFiltersForUser(
   markPeopleCellsForUser(userName, data)
 }
 
-/** Re-evaluate every people row after a rule change. */
 async function refreshPeopleCells() {
   for (const cell of Array.from(
     document.querySelectorAll<Element>(SEL_USER_CELL),
@@ -2408,9 +2182,8 @@ function buildInfoRow(
   data: LocationData,
   userName?: string | null,
 ): HTMLElement {
-  // Every surface that shows a flag — feed, hover card, primary tweet, swipe —
-  // goes through here, which makes it the one place that means "the extension
-  // did something visible today". The popup's rating ask counts those days.
+  // The one place meaning "the extension did something visible today", which is
+  // what the rating ask counts.
   void noteActiveDay().then(considerRatingAsk)
 
   const row = document.createElement('div')
@@ -2499,19 +2272,12 @@ function refreshLocationFlags(): void {
 // ---------------------------------------------------------------------------
 // The exception button
 // ---------------------------------------------------------------------------
-// One button, whatever the reason. Keyword, country, affiliate badge, age — from
-// the reader's side these are one complaint, "not this account", and four
-// buttons would make them learn the extension's rule names first.
-//
-// So it covers every rule acting on the account and names them in its tooltip.
-// The exceptions stay per-rule underneath; the button just writes to all of
-// them.
+// One button whatever the rule: from the reader's side these are one complaint,
+// "not this account". The exceptions stay per-rule underneath.
 
 /**
- * Persist the exception record to both keys. Reads merge the old
- * `HIGHLIGHT_EXCEPTIONS_KEY` into the general one, so writing only the new key
- * would let a *removal* come straight back from the stale copy — and keeping the
- * mirror also lets a downgrade find its exceptions.
+ * Both keys: reads merge the legacy one in, so writing only the new key would let
+ * a removal come straight back — and a downgrade still finds its exceptions.
  */
 function writeRuleExceptions(next: RuleExceptions): void {
   ruleExceptions = next
@@ -2522,10 +2288,8 @@ function writeRuleExceptions(next: RuleExceptions): void {
 }
 
 /**
- * Every rule acting on an account right now, exceptions included — a rule already
- * excepted is exactly the one the button must keep offering, or a mistake could
- * only be undone from the options page. An account nothing applies to gets no
- * button rather than one that writes a setting with no effect.
+ * Exceptions included: a rule already excepted is the one the button must keep
+ * offering, or a mistake could only be undone from the options page.
  */
 export function activeRulesFor(
   userName: string,
@@ -2533,9 +2297,7 @@ export function activeRulesFor(
   displayName: string,
   bio: string | null | undefined,
 ): FilterRule[] {
-  // Nothing acts on an allowlisted account, so there is nothing to except it
-  // from; a button here would only write a second, redundant entry for the user
-  // to find later and wonder about.
+  // Nothing acts on an allowlisted account, so there is nothing to except.
   if (isAlwaysShown(userName)) return []
 
   const lc = userName.toLowerCase()
@@ -2584,17 +2346,14 @@ function buildExceptionButton(
   function render() {
     const excepted = exceptedFromAll(userName, rules)
     const phrase = joinPhrases(rules.map((r) => RULE_EXCEPTION_PHRASE[r]()))
-    // The label stays the same whatever the rule; only the tooltip names it.
-    // Four different labels would make the same control look like four, which
-    // is the thing this button exists to avoid.
+    // One label whatever the rule — four would make one control look like four.
     btn.textContent = excepted ? t('excUndo') : t('excAdd')
     btn.title = excepted
       ? t('excUndoTitle', userName, phrase)
       : t('excAddTitle', userName, phrase)
     btn.classList.toggle('x-loc-exc-active', excepted)
-    // Read back by syncExceptionButton: a click here settles the state locally,
-    // and the sync the resulting storage write triggers must not then rebuild
-    // the button from the same state it already shows.
+    // Read back by syncExceptionButton, so the storage write a click triggers
+    // doesn't rebuild the button from the state it already shows.
     btn.dataset.excepted = excepted ? '1' : '0'
   }
   render()
@@ -2620,10 +2379,8 @@ function buildExceptionButton(
 }
 
 /**
- * Put the button where it belongs in `host`, or take it away. Called more than
- * once per card — the highlight rule answers from the bio at once, the rest wait
- * on the lookup — and rebuilt rather than patched, so the label, tooltip and
- * handler always describe the same rule set.
+ * Called more than once per card — the bio answers before the lookup does — and
+ * rebuilt rather than patched, so label, tooltip and handler never disagree.
  */
 function syncExceptionButton({
   host,
@@ -2664,10 +2421,8 @@ function syncExceptionButton({
 // ---------------------------------------------------------------------------
 // Account card
 // ---------------------------------------------------------------------------
-// The facts X already sent, under the location row: age, affiliate badge,
-// verification, handle history, reach. All of it rides along with responses the
-// extension already receives, so the card costs no lookups — and nothing is
-// inferred, each chip being a field X returned, phrased as X phrased it.
+// Nothing here is inferred: every chip is a field X returned, phrased as X
+// phrased it, out of a response the extension already had.
 
 interface Chip {
   text: string
@@ -2696,9 +2451,8 @@ const ageChip: ChipBuilder = (facts, now) => {
   return {
     text: t('chipAge', age),
     title: t('chipAgeTitle', created),
-    // Under three months is the one age worth flagging visually: it is the
-    // single strongest tell for a bought or freshly farmed account, and it is
-    // also just what a new user looks like — hence a tint, not a warning.
+    // The strongest tell for a farmed account, and also just what a new user
+    // looks like — hence a tint rather than a warning.
     tone: days < 90 ? 'warn' : 'plain',
   }
 }
@@ -2716,9 +2470,8 @@ const affiliationChip: ChipBuilder = (facts) => {
   }
 }
 
-// No chip for plain Premium: X already draws the blue check. These two earn
-// their place by being invisible otherwise — X renders identity and legacy
-// verification with the same badge as a paid one.
+// No chip for plain Premium — X draws that. These two are invisible otherwise:
+// X renders identity and legacy verification with the same badge as a paid one.
 const verificationChip: ChipBuilder = (facts) => {
   if (facts.identityVerified) {
     return { text: t('chipIdVerified'), title: t('chipIdVerifiedTitle') }
@@ -2745,12 +2498,8 @@ const protectedChip: ChipBuilder = (facts) =>
     : null
 
 /**
- * Every chip an account can earn, in the order they are worth reading — the
- * blocked-you one first, because it explains everything the card is missing.
- *
- * A table rather than a run of `if`s: each rule answers independently from the
- * same facts, so the order is the only thing they share, and this is the one
- * place it is stated.
+ * In the order they are worth reading — blocked-you first, because it explains
+ * everything else the card is missing. The order is all these rules share.
  */
 const CHIP_BUILDERS: ChipBuilder[] = [
   blockedByChip,
@@ -2761,7 +2510,6 @@ const CHIP_BUILDERS: ChipBuilder[] = [
   protectedChip,
 ]
 
-/** The chips an account's facts earn. */
 export function accountChips(
   facts: Partial<AccountFacts> | undefined,
   now: number = Date.now(),
@@ -2793,10 +2541,7 @@ function buildAccountCard(
   return card
 }
 
-/**
- * `onExpiry` runs when the window it is counting reaches zero, and the row is
- * gone by the time it does — a countdown that has finished has nothing left to
- */
+/** `onExpiry` fires when the countdown reaches zero; the row is gone by then. */
 function buildRateLimitRow(onExpiry: () => void): HTMLElement {
   const row = document.createElement('div')
   row.className = 'x-loc-info'
@@ -2854,18 +2599,13 @@ function insertIntoCard(card: Element, userName: string, el: HTMLElement) {
 // ---------------------------------------------------------------------------
 // The bio X declined to render
 // ---------------------------------------------------------------------------
-// An account that blocks the reader gets a stripped hover card — no bio, no
-// follow button, no counts — but the bio is still in the timeline response the
-// extension already read, and the highlight rule still fires on it. Without
-// this the card carries a mark and no reason for it.
+// A blocker's card is stripped of its bio, but the highlight rule still fires on
+// the bio the timeline response carried — so the card would show a mark and no
+// reason for it.
 
 /**
- * A slice of `bio` distinctive enough to look for in a card, or '' if there
- * isn't one.
- *
- * URLs come out first: they are the one part of a bio X does not render
- * verbatim — it substitutes a t.co display form — so leaving them in would
- * report a bio as missing from a card that is showing it.
+ * A slice distinctive enough to look for in a card. URLs come out first: X
+ * substitutes a t.co display form, so they never match verbatim.
  */
 export function bioProbe(bio: string): string {
   const plain = bio
@@ -2887,12 +2627,8 @@ function cardShowsBio(card: Element, probe: string): boolean {
   return text.replace(/\s+/g, ' ').trim().toLowerCase().includes(probe)
 }
 
-/**
- * Put the bio back when X's card carries none.
- *
- * Rebuilt rather than appended, and run again once the lookup returns, so a
- * card React filled in late ends up with X's own bio rather than two of them.
- */
+/** Rebuilt rather than appended: a card React fills in late must not end up
+ * with two bios. */
 function syncBioRow(
   wrap: HTMLElement,
   card: Element,
@@ -2907,10 +2643,8 @@ function syncBioRow(
   el.className = 'x-loc-bio'
   el.textContent = bio
   el.title = t('bioTitle')
-  // Before the wrap, not inside it: this is the account's own words and belongs
-  // under the handle, above anything the extension has to say. Sitting outside
-  // .x-loc-hover also puts it back in reach of keywordRangesIn, so the word that
-  // matched is marked here the way it would be in a bio X had rendered.
+  // Outside .x-loc-hover, or keywordRangesIn skips it as our own furniture and
+  // the word that matched goes unmarked.
   wrap.before(el)
 }
 
@@ -2933,11 +2667,7 @@ function syncAccountCard(
   else wrap.prepend(accountCard)
 }
 
-/**
- * The "Copy card" button, in the flags row rather than under it: an action on
- * exactly what that row shows, and a hover card is short on vertical space. No
- * row means nothing to copy but a handle.
- */
+/** In the flags row, not under it: a hover card is short on vertical space. */
 function syncShareButton(
   card: Element,
   infoRow: HTMLElement | null,
@@ -2959,16 +2689,14 @@ async function processCard(card: Element) {
 
   card.setAttribute(HOVER_CARD_DONE_ATTR, '1')
 
-  // One container, filled as each piece resolves. Inserted separately they came
-  // out backwards: insertIntoCard anchors every call to the same node, so each
-  // new element landed above the last.
+  // One container: insertIntoCard anchors every call to the same node, so
+  // separate inserts came out backwards.
   const wrap = document.createElement('div')
   wrap.className = 'x-loc-hover'
   insertIntoCard(card, userName, wrap)
 
-  // The highlight rule answers from the bio alone, so the button can go in
-  // before the lookup — a hover card gets a second or two of attention and the
-  // lookup can eat all of it. Synced again below for the other rules.
+  // The bio answers the highlight rule on its own, and a hover card only gets a
+  // second or two of attention. Synced again below for the other rules.
   const place = (btn: HTMLElement) => wrap.appendChild(btn)
   const known = await getBioInfo(userName)
   syncBioRow(wrap, card, known.bio)
@@ -2998,8 +2726,7 @@ async function processCard(card: Element) {
       : null
   if (infoRow) wrap.prepend(infoRow)
 
-  // getBioInfo, not `data`: the in-memory record is the merged view, so a hover
-  // shows the follower count the timeline supplied alongside the handle history
+  // The merged view: the timeline's follower count beside the handle history
   // only AboutAccountQuery carries.
   const info = await getBioInfo(userName)
 
@@ -3010,9 +2737,7 @@ async function processCard(card: Element) {
   syncAccountCard(wrap, card, infoRow, info.facts)
   syncShareButton(card, infoRow, userName, info.displayName ?? '')
 
-  // Now that the country, the badge and the age are known, the button may cover
-  // more rules than the bio alone could offer — or become the first thing worth
-  // offering at all.
+  // The lookup may have added rules the bio alone could not offer.
   syncExceptionButton({ host: wrap, userName, data, info, place })
   // Again: React often fills the card in after the first pass, and the bio is
   // the part being marked.
@@ -3025,7 +2750,6 @@ async function processCard(card: Element) {
 // ---------------------------------------------------------------------------
 // Process primary tweet author on status pages
 // ---------------------------------------------------------------------------
-/** The account a status page is about, or null when this isn't one. */
 function primaryTweetTarget(): {
   tweet: Element
   userNameEl: Element
@@ -3046,29 +2770,22 @@ function primaryTweetTarget(): {
   return { tweet, userNameEl, userName: m[1] }
 }
 
-// The button goes inline under the name line on a status page, because X cannot
-// be relied on to open a hover card for the account the page is *about*. It
-// sometimes does — measured August 2026 — but a control that appears only when
-// X feels like opening a card is not a control. Synced rather than injected
-// once: the keyword that makes it relevant often arrives long after the page
-// settled, and removing it must take the button away again.
+// Inline, because X only sometimes opens a hover card for the account a status
+// page is about — measured August 2026 — and that is no place for a control.
 async function syncPrimaryExceptionButton(): Promise<void> {
   const target = primaryTweetTarget()
   if (!target) return
   const { userNameEl, userName } = target
 
-  // getBioInfo, not getCached, for the bio: it reads the same in-memory record
-  // that decided the highlight, so the button can never disagree with the
-  // highlight it undoes. The location data has no such in-memory view, and this
-  // runs on every rule change — so it reads the cache rather than the network.
+  // getBioInfo reads the record that decided the highlight, so the button cannot
+  // disagree with what it undoes. The location has no such view, so: the cache.
   const [info, data] = await Promise.all([
     getBioInfo(userName),
     getCached(userName),
   ])
 
-  // Re-queried after the awaits, not before: two rule changes in quick
-  // succession put two of these in flight, and a stale handle to "the existing
-  // button" means the second run appends a duplicate instead of replacing it.
+  // After the awaits: two rule changes in quick succession put two of these in
+  // flight, and a stale handle appends a duplicate instead of replacing it.
   syncExceptionButton({
     host: userNameEl,
     userName,
@@ -3107,9 +2824,8 @@ async function processPrimaryTweet() {
 
   if (!row) return
 
-  // Guard against double-injection if React re-renders before await resolves.
-  // Searched rather than read off handleDiv.nextElementSibling: the exception
-  // button can already sit between the two.
+  // Searched, not read off nextElementSibling: the exception button can already
+  // sit between the two.
   if (userNameEl.querySelector('.x-loc-info')) return
 
   const handleDiv = userNameEl.children[1] as Element | undefined
@@ -3138,9 +2854,8 @@ document.addEventListener(
   true,
 )
 
-// The post a hover card was opened from. The card carries only the account, and
-// X gives it no link back to the post the pointer was on — so the anchor is
-// remembered as the pointer enters the profile link that will open it.
+// X gives a card no link back to the post the pointer was on, so the anchor is
+// remembered as the pointer enters the profile link.
 let lastHoveredTweet: { article: Element; userName: string } | null = null
 
 document.addEventListener(
@@ -3158,11 +2873,7 @@ document.addEventListener(
   true,
 )
 
-/**
- * The post this account is being copied from, or null. The remembered hover
- * anchor first, then any post by the same account still on screen — which covers
- * a card opened from a mention or the profile header.
- */
+/** The hover anchor first, then any post by the account still on screen. */
 function postElementForAccount(userName: string): Element | null {
   const lc = userName.toLowerCase()
 
@@ -3190,30 +2901,20 @@ function tweetText(article: Element): string {
   return el ? textWithEmoji(el).trim() : ''
 }
 
-/**
- * The flag for a location, ignoring the blocked list. getLocationDisplay swaps in
- * ⚠️ for a filtered location, which is right on the page and wrong in a shared
- * image, where the reader would take the warning for something X said.
- */
+/** Ignores the blocked list: in a shared image a ⚠️ reads as something X said. */
 function flagEmojiFor(location: string): string {
   const key = canonicalLocation(location)
   return COUNTRY_FLAGS[key] ?? REGION_FLAGS[key] ?? '🌐'
 }
 
 /**
- * The location strip added to a snapshot: country names in words, next to their
- * flags. A flag is hoverable on screen; in a reposted image it is a small
- * coloured rectangle, and plenty are near-identical at that size. Reusing
- * `shareChips` keeps the wording identical to the drawn card.
- *
- * Every style is inline: this is added after the computed styles are copied, and
- * no stylesheet reaches inside the SVG.
+ * Names in words, because a flag in a reposted image is a coloured rectangle
+ * nobody can hover. Inline styles — no stylesheet reaches inside the SVG.
  */
 function buildSnapshotLocationRow(data: LocationData): HTMLElement {
   const row = document.createElement('div')
-  // Laid out exactly like the row on the page — the same strip the user already
-  // reads, not a new component. No `color`, so it inherits X's own from the
-  // inlined ancestor styles and reads correctly on either theme.
+  // No `color`: it inherits X's own from the inlined ancestor styles, so it
+  // reads correctly on either theme.
   row.setAttribute(
     'style',
     'display:flex;align-items:center;flex-wrap:nowrap;gap:8px;' +
@@ -3273,7 +2974,6 @@ function buildSnapshotLocationRow(data: LocationData): HTMLElement {
 /** Buttons aimed at the reader rather than part of the post. */
 const RE_READER_ACTION = /^(subscribe|follow|following|unfollow)$/i
 
-/** Strip our own on-page furniture from a clone, then add the location strip. */
 export function decorateSnapshot(clone: Element, data: LocationData): void {
   clone
     .querySelectorAll(
@@ -3281,10 +2981,8 @@ export function decorateSnapshot(clone: Element, data: LocationData): void {
     )
     .forEach((el) => el.remove())
 
-  // The ⋯ menu, Grok, Subscribe/Follow: controls pointed at whoever is looking,
-  // not part of the post, and in a shared image an invitation to click something
-  // that cannot work. Grok is matched on a substring of its aria-label, since X
-  // localises the label but not the product name inside it.
+  // Controls aimed at the reader, which in a shared image invite a click that
+  // cannot work. Grok by substring: X localises the label, not the name in it.
   clone
     .querySelectorAll('[data-testid="caret"], [aria-label*="Grok" i]')
     .forEach((el) => el.remove())
@@ -3296,11 +2994,8 @@ export function decorateSnapshot(clone: Element, data: LocationData): void {
 
   const row = buildSnapshotLocationRow(data)
 
-  // Where the extension places it on the page, which differs by layout: after
-  // the name block in a feed or reply (placeFeedRow), inside it and straight
-  // after the handle on a status page (processPrimaryTweet). Inserting after the
-  // block in both cases left the detail-page flags floating away from the
-  // account, since that layout sizes the block's bottom spacing for the text.
+  // Where the page puts it, which differs by layout — after the block in a feed,
+  // inside it on a status page, whose block is sized for the text.
   const nameEl = getNameEl(clone)
   const handleDiv = clone.matches(SEL_PRIMARY_TWEET)
     ? (nameEl?.children[1] ?? null)
@@ -3325,12 +3020,9 @@ export function decorateSnapshot(clone: Element, data: LocationData): void {
 }
 
 /**
- * Render and deliver a card. One path for both entry points, so the toast
- * wording, the "never spend a lookup" rule and the failure handling can't drift.
- *
- * Snapshots the real post when there is one, for X's own layout and media. The
- * drawn card stays as the fallback — the snapshot renders in a restricted
- * context on a page we don't control, so it has more ways to fail.
+ * One path for both entry points, so the wording and the "never spend a lookup"
+ * rule can't drift. The drawn card is the fallback: a snapshot has more ways to
+ * fail, rendering in a restricted context on a page we don't control.
  */
 async function shareCardFor(
   userName: string,
@@ -3415,14 +3107,7 @@ async function shareLastRightClickedPost(): Promise<void> {
   await shareCardFor(userName, displayName, article)
 }
 
-/**
- * The copy button that rides in the hover card's flags row — on that line to keep
- * the card short. The context menu was the only way in, and a feature reachable
- * solely by right-clicking is one most people never find.
- *
- * Copies the post the card was opened from (postTextForAccount), falling back to
- * an account-only card.
- */
+/** A second way in: a feature reachable only by right-clicking goes unfound. */
 function buildShareButton(userName: string, displayName: string): HTMLElement {
   const btn = document.createElement('button')
   btn.className = 'x-loc-share-btn'
@@ -3442,11 +3127,7 @@ function buildShareButton(userName: string, displayName: string): HTMLElement {
 // ---------------------------------------------------------------------------
 // MutationObserver
 // ---------------------------------------------------------------------------
-/**
- * `fn` on the node itself when it matches, otherwise on every match inside it.
- * A node added to the timeline is sometimes the article and sometimes the
- * container it arrived in, and every caller here has to handle both.
- */
+/** A node added to the timeline is sometimes the article, sometimes its container. */
 function eachMatching(
   node: Element,
   selector: string,
@@ -3456,11 +3137,9 @@ function eachMatching(
   else node.querySelectorAll<Element>(selector).forEach(fn)
 }
 
-/** Everything the extension does to a tweet the moment it appears. */
 function decorateTweet(article: Element): void {
-  // First, and synchronously: a post whose account is already judged is
-  // collapsed here, before this node has been laid out even once. Everything
-  // below waits on a cache read, by which time collapsing it is a resize.
+  // First and synchronously, before this node is laid out even once: everything
+  // below waits on a cache read, by which time collapsing is a resize.
   applyKnownHide(article)
   tryHighlightArticle(article)
   tryInjectFeedLocation(article)
@@ -3520,11 +3199,7 @@ const SWIPE_MIN_X = 40 // px of rightward travel before the gesture commits
 const SWIPE_MAX_Y = 50 // px of vertical drift still counted as horizontal
 const SWIPE_X_DOMINANCE = 1.5 // dx must beat dy by this factor
 
-/**
- * Far enough and straight enough to be a deliberate rightward swipe rather than a
- * tap or a scroll? The dominance ratio earns its place mid-drag, where a vertical
- * fling starting on a diagonal briefly satisfies the raw thresholds.
- */
+/** The dominance ratio is for mid-drag, where a vertical fling starts diagonal. */
 export function isCommittedSwipe(dx: number, dy: number): boolean {
   const drift = Math.abs(dy)
   if (dx < SWIPE_MIN_X || drift > SWIPE_MAX_Y) return false
@@ -3536,7 +3211,6 @@ function tweetFromTouch(e: TouchEvent): Element | null {
   return target instanceof Element ? target.closest<Element>(SEL_TWEET) : null
 }
 
-/** Look up the swiped tweet's author and show the result. */
 async function revealLocationForSwipe(article: Element) {
   if (!extensionEnabled) return
   const { userName } = extractTweetUserInfo(article)
@@ -3548,9 +3222,8 @@ async function revealLocationForSwipe(article: Element) {
 
   const data = await fetchLocationData(userName)
   if (!data || !locationSummaryText(data, userName)) {
-    // Separate "X knows nothing about this account" from "we couldn't ask":
-    // the rate-limit toast owns the same corner and explains itself, and a
-    // swipe before the session headers land is transient.
+    // "X knows nothing" and "we couldn't ask" are different answers, and the
+    // rate-limit toast owns this corner when it is the second.
     const rateLimited = rateLimitResetAt > Date.now()
     if (rateLimited || apiHeaders === null) {
       dismissLocationToast()
@@ -3578,9 +3251,8 @@ async function revealLocationForSwipe(article: Element) {
 }
 
 /**
- * The gesture commits mid-drag, not on touchend: waiting for the lift spent the
- * rest of the swipe — usually longer than the lookup — before starting. touchend
- * stays as a backstop for flicks no touchmove reported past the threshold.
+ * Commits mid-drag: waiting for the lift spent the rest of the swipe, usually
+ * longer than the lookup. touchend is the backstop for an unreported flick.
  */
 function startSwipeListener() {
   let startX = 0
@@ -3666,9 +3338,7 @@ window.addEventListener(EVENTS.HEADERS_CAPTURED, (e: Event) => {
 // ---------------------------------------------------------------------------
 // Listen for user bio data intercepted from timeline/tweet API responses
 // ---------------------------------------------------------------------------
-// Look up a batch of just-loaded usernames in the shared cache and apply the
-// confirmed hits, so a flag can show without a per-profile X call. Bios arrive
-// free with the timeline JSON (the USERS_DATA handler below).
+// Confirmed hits only, so a flag can show without a per-profile X call.
 async function applySharedHits(userNames: string[]) {
   const hits = await sharedBatchLookup(userNames)
   for (const hit of hits) {
@@ -3701,12 +3371,7 @@ const prefetcher = new BackgroundPrefetcher({
 })
 
 // Prefetch exists to warm the shared cache, so opting out of that switches it
-// off too. A build with no cache server can't be opted out of (the toggle isn't
-// shown), so there the setting gates nothing.
-//
-// Settings-level answer only — prefetchWanted() adds the runtime requirement of
-// captured headers. Independent of feed display, since the cache is worth warming
-// either way.
+// off too. Settings only — prefetchWanted() adds the runtime requirements.
 function prefetchAllowedBySettings(): boolean {
   if (!extensionEnabled) return false
   if (!prefetchEnabled) return false
@@ -3733,9 +3398,8 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
     | undefined
   if (!users) return
   void applySharedHits(users.map((u) => u.userName))
-  // Queue even before auth headers arrive; syncPrefetcher() starts the draining.
-  // The array is in timeline order and the queue is FIFO, so lookups follow the
-  // feed down. page-script tags each user with the queue they belong in.
+  // Queued before auth headers arrive; syncPrefetcher() starts the draining.
+  // Timeline order into a FIFO, so lookups follow the feed down.
   if (prefetchAllowedBySettings()) {
     prefetcher.enqueue(
       users.map((u) => ({
@@ -3745,9 +3409,7 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
     )
   }
   for (const { userName, displayName, bio, facts } of users) {
-    // Record bio/displayName/facts synchronously so highlighting and the
-    // account filters can read them immediately — before, and independent of,
-    // the async mergeCached write.
+    // Synchronously, so highlighting can read them without racing mergeCached.
     rememberBio(userName, bio, displayName ?? null, facts)
 
     const patch: Parameters<typeof mergeCached>[1] = { bio: bio ?? null }
@@ -3771,9 +3433,8 @@ injectStyles()
 startObserver()
 startSwipeListener()
 cleanupCache()
-// The browser's own language is already right for most readers and needs no
-// waiting, so nothing here is gated on this — it only redraws when the reader
-// has chosen a language the browser would not have picked.
+// Nothing is gated on this: it only redraws when the reader chose a language
+// the browser would not have picked.
 void initI18n().then((chosen) => {
   if (chosen) relocalize()
 })
@@ -3783,8 +3444,6 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') flushContributions()
 })
 window.addEventListener('pagehide', () => flushContributions())
-// Replay auth headers captured before this content script (document_idle)
-// attached its listener. (The parallel REQUEST_USERS replay for bios is fired
-// from the settings-load callback above instead — it must wait until keywords
-// are loaded, or the replayed bios would be evaluated against empty settings.)
+// Replays headers captured before this script attached its listener. The bios
+// replay waits for the settings load, or it runs against empty keywords.
 window.dispatchEvent(new CustomEvent(EVENTS.REQUEST_HEADERS))

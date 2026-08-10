@@ -1,14 +1,5 @@
-// The toolbar popup: the handful of switches worth flipping mid-scroll.
-//
-// Split out from the options page, which until now served both. One component
-// rendered into a ~350px popup *and* a full settings tab is why the options
-// page could not grow — every control added had to stay legible in a panel the
-// size of a phone screen. With Phase 2 roughly doubling the number of settings
-// that stopped being workable.
-//
-// The rule for what lives here: things you change *while reading X* and want to
-// see take effect immediately. Everything you set up once and forget lives in
-// the tab, one click away.
+// The toolbar popup. What lives here: things you change while reading X and want
+// to see take effect at once. Everything set up once lives in the options tab.
 
 import type { ComponentChildren } from 'preact'
 import { render } from 'preact'
@@ -69,17 +60,8 @@ function write(key: string, value: unknown) {
 const DONATE_URL = 'https://nowpayments.io/donation/asmyshlyaev177'
 
 /**
- * Open the settings page and then close the popup.
- *
- * Two things this has to get right, both of which broke it before:
- *
- * 1. `openOptionsPage()` needs `options_ui` in the manifest or it rejects with
- *    "No Options page defined". That key now exists; `chrome.tabs.create` stays
- *    as the fallback for anywhere it doesn't (and it needs no permission — only
- *    *reading* tab properties does).
- * 2. `window.close()` must not run synchronously after the call. Closing the
- *    popup tears down this page's context, and the open can be cancelled with
- *    it — so the click appears to do nothing at all.
+ * `openOptionsPage()` needs `options_ui` in the manifest, and `window.close()`
+ * must not run synchronously after it — that cancels the open it just asked for.
  */
 async function openOptions() {
   try {
@@ -99,20 +81,8 @@ async function openOptions() {
 }
 
 /**
- * One collapsible filter list.
- *
- * A real accordion — opening one closes the other — because two open list
- * editors is already more than this panel has room for, and the switches above
- * them are the reason most people opened it.
- *
- * A button and a conditional body rather than `<details>`/`<summary>`, which
- * this was first. Two reasons, and the first is a behaviour bug rather than a
- * matter of taste: a `<details open>` fires `toggle` as it mounts, so restoring
- * the remembered section wrote that section straight back to storage — the
- * popup saved on every open, and the one thing it must never do is treat being
- * looked at as being edited. The second is that happy-dom does not implement
- * summary-click toggling at all, which left the accordion untestable. Owning
- * the open state costs an `aria-expanded` and a chevron.
+ * A button and a body, not `<details>`: `<details open>` fires `toggle` as it
+ * mounts, so restoring a remembered section wrote it straight back to storage.
  */
 function Section({
   id,
@@ -155,15 +125,7 @@ function Section({
   )
 }
 
-/**
- * The one thing this extension asks for, and it asks once.
- *
- * It waits for `RATE_PROMPT_MIN_DAYS` separate days on which the content script
- * actually put a flag on screen (see `usage.ts`) rather than days since install,
- * and both answers are final in the sense that matters: "Later" is a two-week
- * snooze, "No thanks" never comes back. Nothing here is a modal or an overlay
- * on X — it lives in a panel the user opened themselves.
- */
+/** Days the extension was used, not days since install. See usage.ts. */
 function RatePrompt({ onAnswer }: { onAnswer: () => void }) {
   return (
     <div class={css.rate}>
@@ -267,9 +229,8 @@ export function Popup() {
       })
   }, [])
 
-  // The same writes the options page makes, to the same keys — the content
-  // script is already listening on them, so an edit here lands on the timeline
-  // behind the popup without it being reopened.
+  // The same keys the options page writes, which the content script is already
+  // listening on — so an edit lands on the timeline behind the popup.
   function editBlocked(next: string[]) {
     if (next === blocked) return
     setBlocked(next)

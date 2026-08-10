@@ -1,15 +1,5 @@
-// The full settings page.
-//
-// Five tabs, flat cards inside them. There used to be `<details>` accordions
-// here, inherited from when this same component was also the toolbar popup and
-// everything had to fit in ~350px. Once the popup moved to popup.tsx that
-// constraint went away, and folding a four-line section behind a click on a
-// page with room to spare only made settings harder to find — so the accordions
-// (and the storage that remembered which were open) are gone.
-//
-// The one piece of UI state still worth remembering is which tab you were on,
-// since that is a real choice about where you were working. It lives in
-// OPTIONS_TAB_KEY.
+// The full settings page: five tabs, flat cards. Only the tab you were on is
+// remembered (OPTIONS_TAB_KEY) — the accordions went with the popup split.
 
 import { render } from 'preact'
 import type { ComponentChildren } from 'preact'
@@ -103,13 +93,8 @@ const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 
 const DEFAULT_FLAGS = defaultSetting(HIGHLIGHT_FLAGS_KEY)
 
-// Looked up per call rather than built once at import. The order lives in
-// OPTIONS_TABS and FILTER_RULES, which is where it belonged anyway — these are
-// only the words.
-// Thunks, not a map of strings: read at call time so the language can change
-// under the page, and still spelled `t('key')` so `messages.test.ts` can see
-// which messages the page uses. The order lives in OPTIONS_TABS and
-// FILTER_RULES, which is where it belonged anyway — these are only the words.
+// Thunks, so the language can change under the page — and still spelled
+// `t('key')`, so messages.test.ts can see which keys the page uses.
 const TAB_LABEL: Record<OptionsTabId, () => string> = {
   display: () => t('tabDisplay'),
   filters: () => t('tabFilters'),
@@ -158,10 +143,8 @@ const KEYWORD_SUGGESTIONS = [
 ].sort((a, b) => a.localeCompare(b))
 
 // --- layout pieces ----------------------------------------------------------
-// Three small components, and the reason the page stays consistent: every
-// section is a Card, every control is a Setting or lives in a Stack. The rhythm
-// can't drift as settings get added, which is what makes the page scannable —
-// you find a setting by reading down the left edge.
+// Every section is a Card and every control a Setting, so the rhythm can't drift
+// as settings are added — you find one by reading down the left edge.
 
 function Card({
   title,
@@ -189,11 +172,7 @@ function Setting({
   description,
   control,
   disabled,
-  /**
-   * Wraps the row in a <label> so clicking anywhere on it hits the control.
-   * Off for `<select>`s: a label wrapping a select swallows the click that
-   * should be opening the dropdown.
-   */
+  /** Off for `<select>`s: a wrapping label swallows the click that opens it. */
   clickable = true,
 }: {
   label: string
@@ -226,10 +205,8 @@ function Stack({ children }: { children: ComponentChildren }) {
   return <div class={css.stack}>{children}</div>
 }
 
-// A settings page's branches are its settings: one tab guard per tab, one
-// conditional per control that can be disabled or hidden. Getting under the
-// threshold means splitting this into five tab components, which is worth doing
-// on its own terms and is not a change a linter should be driving.
+// A settings page's branches are its settings. Getting under the threshold means
+// five tab components, which a linter should not be the one to drive.
 // oxlint-disable-next-line complexity
 export function Options() {
   const [tab, setTab] = useState<OptionsTabId>('display')
@@ -288,9 +265,8 @@ export function Options() {
   const [transferError, setTransferError] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
-  // Once per mount. The language cannot change under the page — choosing one
-  // reloads it — and re-sorting 246 names on every keystroke of the picker's
-  // search box is the one place that would be felt.
+  // Once per mount: choosing a language reloads the page, and re-sorting 246
+  // names per keystroke is the one place that would be felt.
   const pickerOptions = useMemo(
     () => sortByLocalizedName(CANONICAL_LOCATIONS),
     [],
@@ -366,13 +342,8 @@ export function Options() {
         setTheme(readSetting(THEME_KEY, result))
         setLanguage(normalizeUiLanguage(result[UI_LANGUAGE_KEY]))
 
-        // The advanced tab is revealed by opening the options page as
-        // `options.html?advanced=1` (and hidden again with `?advanced=0`), then
-        // remembered. Deliberately undiscoverable from the UI: the setting it
-        // holds is a documented trade-off rather than a preference, and it
-        // needs the reasoning in server/README.md to mean anything. A URL
-        // parameter costs the normal page nothing and is easy to talk someone
-        // through in a bug report.
+        // `options.html?advanced=1` reveals it, `?advanced=0` hides it again.
+        // Undiscoverable on purpose: a trade-off, not a preference.
         const param = new URLSearchParams(location.search).get('advanced')
         if (param === null) {
           setShowAdvanced(Boolean(result[SHOW_ADVANCED_KEY]))
@@ -392,10 +363,8 @@ export function Options() {
   }
 
   /**
-   * Reloaded rather than re-rendered: every module in this page reads its
-   * strings through `t()` at call time, but the country-name tables and the
-   * sorted picker are built once per mount, and a settings page showing two
-   * languages at once is worse than one that blinks.
+   * Reloaded, not re-rendered: the name tables are built once per mount, and a
+   * page showing two languages at once is worse than one that blinks.
    */
   function updateLanguage(next: string) {
     setLanguage(next)
@@ -443,14 +412,7 @@ export function Options() {
     chrome.storage.local.set({ [HIGHLIGHT_KEYWORDS_KEY]: next })
   }
 
-  /**
-   * Write the whole exception record.
-   *
-   * The old highlight-only key is written alongside it as a mirror of the
-   * highlight bucket: reads merge the two, so writing only the new one would
-   * let a removal come straight back from the stale copy. Same reasoning as
-   * writeHighlightExceptions in content.tsx — the two have to agree.
-   */
+  /** Both keys, or a removal comes back from the stale copy — see content.tsx. */
   function writeExceptions(next: RuleExceptions) {
     setExceptions(next)
     chrome.storage.local.set({
@@ -527,9 +489,8 @@ export function Options() {
   }
 
   // --- import / export -------------------------------------------------------
-  // A download and a file picker rather than the `downloads` permission: asking
-  // for a new permission to save one JSON file would cost every user a scarier
-  // install prompt for something an anchor already does.
+  // An anchor and a file picker, not the `downloads` permission: one JSON file
+  // is not worth a scarier install prompt for every user.
   async function handleExport() {
     const file = await exportSettings()
     const blob = new Blob([JSON.stringify(file, null, 2)], {
@@ -555,9 +516,8 @@ export function Options() {
             ? ` ${t('noteImportedSkipped', result.ignored.length)}`
             : ''),
       )
-      // Simplest honest way to show every control at its new value: the page
-      // reads storage once on mount, and re-deriving 20 pieces of state by hand
-      // is how one of them ends up stale.
+      // The page reads storage once on mount, and re-deriving 20 pieces of
+      // state by hand is how one of them ends up stale.
       setTimeout(() => location.reload(), 600)
     } catch (err) {
       setTransferError(true)
@@ -567,9 +527,7 @@ export function Options() {
     }
   }
 
-  // Background prefetch feeds the community cache, so opting out of the cache
-  // switches the rest of the section off. Without a server configured the
-  // toggle isn't rendered at all and so can't gate anything.
+  // Prefetch feeds the community cache, so opting out switches the rest off.
   const cacheOff = isSharedCacheConfigured() && !sharedCacheEnabled
 
   // Spell the share out in lookups, which is what users actually feel.
@@ -579,10 +537,8 @@ export function Options() {
     (LOOKUP_WINDOW_MINUTES * 60) / Math.max(1, shareLookups),
   )
 
-  // A stored threshold the list doesn't offer — hand-edited, or saved before
-  // the choices changed — is added to the dropdown rather than snapped onto a
-  // neighbour. Snapping would quietly widen or narrow a filter the user set on
-  // purpose, and a <select> whose value matches no option just renders blank.
+  // Added to the dropdown rather than snapped onto a neighbour: snapping would
+  // quietly move somebody's filter, and an unmatched <select> renders blank.
   const ageChoices = ACCOUNT_AGE_CHOICES.includes(
     accountAge.days as (typeof ACCOUNT_AGE_CHOICES)[number],
   )
@@ -590,9 +546,7 @@ export function Options() {
     : [...ACCOUNT_AGE_CHOICES, accountAge.days].sort((a, b) => a - b)
 
   const exceptionQuery = exceptionFilter.trim().toLowerCase()
-  // The Advanced tab holds exactly one setting, and that setting only means
-  // anything when there is a cache server to tune. Without one the tab would be
-  // an empty room, so it isn't offered at all.
+  // Its one setting only means anything with a cache server to tune.
   const visibleTabs = OPTIONS_TABS.filter(
     (id) => id !== 'advanced' || (showAdvanced && isSharedCacheConfigured()),
   )

@@ -8,21 +8,12 @@ import {
 import { ratingAskDue } from './usage'
 import { initI18n, readCatalogue, t, UI_LANGUAGE_KEY } from './i18n'
 
-// ---------------------------------------------------------------------------
-// The rating ask, in the browser chrome
-// ---------------------------------------------------------------------------
-// The quietest of the three surfaces and the only permanent one: a mark on the
-// toolbar icon, which is where the popup holding the actual ask already lives.
-// It costs no permission (`action` is declared) and touches no page.
-//
-// Gated on exactly the condition the popup card and the in-page bar use, so the
-// three never disagree — a badge inviting a click that opens a popup with
-// nothing in it is worse than no badge at all.
+// Gated on exactly the condition the popup card and the in-page bar use, so a
+// badge never invites a click onto a popup with nothing in it.
 const RATING_BADGE = '★'
 
 async function syncRatingBadge(): Promise<void> {
-  // Paused means quiet everywhere: the popup hides the card while paused, so a
-  // badge left up would be an invitation to open a popup with nothing in it.
+  // Paused means quiet everywhere — the popup hides the card too.
   const { [EXTENSION_ENABLED_KEY]: enabled } = await chrome.storage.local.get(
     EXTENSION_ENABLED_KEY,
   )
@@ -46,21 +37,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
   ) {
     void syncRatingBadge()
   }
-  // The context menu's title is drawn once, when the menu is created, so a
-  // language change has to go back and redraw it.
+  // The menu title is drawn once at create time, so a language change redraws it.
   if (changes[UI_LANGUAGE_KEY]) void createShareMenu()
 })
 
-/**
- * The share entry in x.com's right-click menu.
- *
- * `create` throws on a duplicate id rather than replacing, so this removes
- * first — it runs again whenever the language changes, not only on install.
- * Sharing lives here rather than as a button on every post: a per-post button
- * is permanent clutter bought for something people do rarely, and the
- * right-click menu is where "do something with this thing" already lives.
- * Scoped to X so it never appears anywhere else.
- */
+/** Removes first because `create` throws on a duplicate id, and this re-runs. */
 async function createShareMenu(): Promise<void> {
   await initI18n()
   await chrome.contextMenus.removeAll()
@@ -90,9 +71,7 @@ chrome.runtime.onInstalled.addListener((details): void => {
     }
   })
 
-  // No hand-made "Options" entry on the action menu: declaring `options_ui` in
-  // the manifest makes the browser add one itself, and ours sat right next to
-  // it saying the same word.
+  // No hand-made "Options" entry: `options_ui` makes the browser add its own.
   void createShareMenu()
 })
 
@@ -102,10 +81,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 })
 
-// The content script cannot read `_locales/` itself: `fetch` on an extension
-// URL from x.com needs the file in `web_accessible_resources`, and a fetchable
-// extension URL is something the page can probe for. So it asks here, where
-// reading our own files costs nothing and exposes nothing.
+// The content script cannot read `_locales/` without exposing it to x.com, so
+// it asks here instead. See "Localization" in CLAUDE.md.
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === 'GET_MESSAGES') {
     readCatalogue(String(message.locale))
