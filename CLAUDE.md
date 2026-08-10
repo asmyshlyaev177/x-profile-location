@@ -477,6 +477,12 @@ person who signed up last month equally well. Three readers:
 - `cellMatchFor()` — first match of any kind, for people-list rows, where
   everything is marked and nothing is removed.
 
+**A lookup the reader started by hand never collapses on the spot.** `processCard`
+passes `hideNow: false` to `applyFiltersForUser`, and the swipe gesture applies no
+filters at all — a hover card opens _at_ a post, and taking that post away is not
+an answer to the question it asked. The verdict is still recorded, so every post
+the account renders after it is collapsed at birth like any other.
+
 **Marking the matched keyword** (`markKeywords`, `keywordRangesIn`) never touches
 a node X owns — the hover card is React's and it re-renders. Text keywords use the
 **CSS Custom Highlight API** (Ranges under `x-loc-keyword`, styled by

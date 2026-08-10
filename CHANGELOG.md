@@ -69,6 +69,11 @@ issue, your name belongs here.
 
 ### Changed
 
+- **Hovering a name no longer collapses the post you hovered from.** A hover is
+  a question about the author, so it is answered with a flag in the card and
+  nothing else moves — the reply you were reading stays where it is, even when
+  the answer turns out to be a blocked country. The account is still filtered:
+  every post it renders from then on is hidden as usual.
 - **The toolbar popup and the settings page are separate.** The popup holds what
   you flip while reading; the settings page is now five tabs of plain cards —
   no more accordions to open, and it follows your light/dark theme. It also

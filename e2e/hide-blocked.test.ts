@@ -14,11 +14,15 @@
 import type { BrowserContext, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
+  hoverCardLocation,
+  hoverForLocationRow,
   mockAboutAccount,
+  mockLocationApis,
   mockSharedCache,
   mostLikedReply,
   openOptionsPage,
   optionsSection,
+  setCheckboxOption,
   TWEET_ARTICLE,
   waitForReplies,
 } from './helpers'
@@ -107,6 +111,50 @@ test('the placeholder can spare the account, not just the post', async ({
   await setHideMode(context, extensionId, 'hide')
   await expect(article).toBeVisible()
   await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 10_000 })
+})
+
+test('a hover leaves the post it was opened from where it is', async ({
+  page,
+  context,
+  extensionId,
+}) => {
+  // Hovering a name asks about the author. Answering it by taking away the post
+  // the question was asked from is the one thing that answer must not do — so
+  // the flag lands in the card and nothing under the pointer moves. The account
+  // is judged all the same, which the mode change at the end shows.
+  //
+  // Prefetch off, so the hover is the only lookup on the page: left on, the
+  // prefetcher resolves the account on its own schedule and collapses the post
+  // before the pointer ever reaches it.
+  await setCheckboxOption(
+    context,
+    extensionId,
+    'Prefetch locations in the background',
+    false,
+  )
+  // The community cache answers with no hits, so the reply renders un-collapsed
+  // and stays that way until something looks its author up.
+  await mockLocationApis(page, { account_based_in: 'India' })
+
+  await page.goto(NASA_TWEET)
+  await waitForReplies(page)
+
+  const { article, link } = await mostLikedReply(page)
+  await expect(article).not.toHaveAttribute(HIDDEN, /.*/)
+
+  const card = await hoverForLocationRow(page, link)
+  expect((await hoverCardLocation(card)).basedIn).toBe('India')
+
+  // A collapse would follow the card's own row within a frame or two, so by
+  // here it has either happened or it never will.
+  await page.waitForTimeout(2_000)
+  await expect(article).not.toHaveAttribute(HIDDEN, /.*/)
+  await expect(article.locator('.x-loc-hidden-ph')).toHaveCount(0)
+
+  // Spared, not excepted: the next pass over the rules reads the location the
+  // hover cached and takes the post away like any other.
+  await setHideMode(context, extensionId, 'hide')
+  await expect(article).toHaveAttribute(HIDDEN, 'hide', { timeout: 10_000 })
 })
 
 test('hide mode drops the tweet silently, and switching off brings it back', async ({

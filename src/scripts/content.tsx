@@ -2070,12 +2070,18 @@ async function tryHideArticle(article: Element) {
 }
 
 // Hide every on-screen tweet by this user once their data is known (e.g. a
-// shared-cache hit or a hover lookup resolved it), mirroring
+// shared-cache hit or the prefetcher resolved it), mirroring
 // injectFeedLocationForUser.
-function hideTweetsForUser(userName: string, data: LocationData): void {
+//
+// `hideNow: false` judges without collapsing
+function hideTweetsForUser(
+  userName: string,
+  data: LocationData,
+  hideNow = true,
+): void {
   if (hideMode === 'off') return
   const match = hideMatchFor(userName, data)
-  if (!match) return
+  if (!match || !hideNow) return
   const lc = userName.toLowerCase()
   document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
     const quote = getQuotedTweetEl(article)
@@ -2311,10 +2317,19 @@ function markPeopleCellsForUser(userName: string, data: LocationData): void {
 /**
  * Everything that happens when an account's data lands: the feed row, the
  * filters, the people rows. One function, so no caller wires up two of three.
+ *
+ * `hideNow: false` judges without collapsing, for a lookup the reader started by
+ * hand: a hover card opens *at* a post, and taking that post away the moment the
+ * answer arrives is not what asking about it meant. The verdict still stands, so
+ * the post collapses the next time X renders it.
  */
-function applyFiltersForUser(userName: string, data: LocationData): void {
+function applyFiltersForUser(
+  userName: string,
+  data: LocationData,
+  { hideNow = true }: { hideNow?: boolean } = {},
+): void {
   injectFeedLocationForUser(userName, data)
-  hideTweetsForUser(userName, data)
+  hideTweetsForUser(userName, data, hideNow)
   markTweetsForUser(userName, data)
   markPeopleCellsForUser(userName, data)
 }
@@ -2948,7 +2963,7 @@ async function processCard(card: Element) {
   void markKeywords()
 
   if (!data) return
-  applyFiltersForUser(userName, data)
+  applyFiltersForUser(userName, data, { hideNow: false })
 }
 
 // ---------------------------------------------------------------------------
