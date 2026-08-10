@@ -120,9 +120,14 @@ to each area. Read the nearest one before editing.
 
 ```bash
 pnpm test              # unit, with coverage
-pnpm test:e2e          # Playwright, replay mode
+pnpm test:e2e          # Playwright, replay mode — headless, nothing appears on screen
 pnpm e2e:profile       # one-time: hand a logged-in browser profile to Playwright
 ```
+
+The e2e suite runs **headless**, which needs `channel: 'chromium'` to work at all:
+Playwright's plain headless build is a separate binary with no extension support.
+`E2E_HEADED=1` shows the browser when you want to watch a run — `test:e2e:ui` and
+`test:e2e:record` set it for you, since both exist to be watched.
 
 **Unit tests** use Vitest + Happy DOM. `content.test.ts` alone has 97 tests;
 `prefetch-queue.test.ts` has 47 and drives the scheduler through injected clocks

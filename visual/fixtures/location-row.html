@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Location row</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <h4>Ordinary country — the row every other one is measured against</h4>
+    <article data-testid="tweet" id="plain-post">
+      <div class="tweetbody">
+        <div data-testid="User-Name">Someone · @someone</div>
+        <div
+          class="x-loc-info x-loc-feed-row"
+          id="plain-row"
+          data-user="someone"
+        >
+          <span class="x-loc-store-block" title="Japan App Store">
+            <svg class="x-loc-glyph" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" fill="currentColor" />
+            </svg>
+            <span class="x-loc-icon-flag" data-country="Japan" id="plain-store"
+              >🇯🇵</span
+            >
+          </span>
+          <span
+            class="x-loc-icon x-loc-icon-flag"
+            data-country="Japan"
+            title="Japan"
+            id="plain-flag"
+            >🇯🇵</span
+          >
+        </div>
+        <div>The post itself.</div>
+      </div>
+    </article>
+
+    <h4>Blocked location — the rule is acting, so the row warns instead</h4>
+    <article data-testid="tweet" id="warned-post">
+      <div class="tweetbody">
+        <div data-testid="User-Name">Stranger · @stranger</div>
+        <div
+          class="x-loc-info x-loc-feed-row"
+          id="warned-row"
+          data-user="stranger"
+        >
+          <span class="x-loc-store-block" title="India App Store">
+            <svg class="x-loc-glyph" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" fill="currentColor" />
+            </svg>
+            <span class="x-loc-icon-flag" data-country="India" id="warned-store"
+              >⚠️</span
+            >
+          </span>
+          <span
+            class="x-loc-icon x-loc-icon-flag"
+            data-country="India"
+            title="India"
+            id="warned-flag"
+            >⚠️</span
+          >
+        </div>
+        <div>The post itself.</div>
+      </div>
+    </article>
+
+    <h4>
+      Same location, account excepted — the country is drawn as a country again
+    </h4>
+    <article data-testid="tweet" id="excepted-post">
+      <div class="tweetbody">
+        <div data-testid="User-Name">Friend · @friend</div>
+        <div
+          class="x-loc-info x-loc-feed-row"
+          id="excepted-row"
+          data-user="friend"
+        >
+          <span class="x-loc-store-block" title="India App Store">
+            <svg class="x-loc-glyph" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" fill="currentColor" />
+            </svg>
+            <span
+              class="x-loc-icon-flag"
+              data-country="India"
+              id="excepted-store"
+              >🇮🇳</span
+            >
+          </span>
+          <span
+            class="x-loc-icon x-loc-icon-flag"
+            data-country="India"
+            title="India"
+            id="excepted-flag"
+            >🇮🇳</span
+          >
+        </div>
+        <div>The post itself.</div>
+      </div>
+    </article>
+
+    <h4>Still filtered — a collapsed post shows no row at all</h4>
+    <article
+      data-testid="tweet"
+      data-x-loc-hidden="collapse"
+      id="collapsed-post"
+    >
+      <div class="tweetbody">
+        <div data-testid="User-Name">Stranger · @stranger</div>
+        <div class="x-loc-info x-loc-feed-row" id="collapsed-row">
+          <span class="x-loc-icon x-loc-icon-flag" data-country="India"
+            >⚠️</span
+          >
+        </div>
+        <div>The post itself.</div>
+      </div>
+      <div class="x-loc-hidden-ph">
+        <span class="x-loc-hidden-label">🚫 Hidden · 🇮🇳 India</span>
+        <button type="button" class="x-loc-hidden-show">Show</button>
+        <button type="button" class="x-loc-exc-btn">🚫 Add exception</button>
+      </div>
+    </article>
+
+    <h4>Blocked region — no flag of its own, so text stands in for one</h4>
+    <article data-testid="tweet" id="region-post">
+      <div class="tweetbody">
+        <div data-testid="User-Name">Stranger · @stranger</div>
+        <div class="x-loc-info x-loc-feed-row" data-user="stranger">
+          <span
+            class="x-loc-icon x-loc-icon-flag"
+            data-country="South Asia"
+            title="South Asia"
+            id="region-warned"
+            >⚠️</span
+          >
+        </div>
+        <div>The post itself.</div>
+      </div>
+    </article>
+
+    <h4>Same region, account excepted — the abbreviation, sized as text</h4>
+    <article data-testid="tweet" id="region-excepted-post">
+      <div class="tweetbody">
+        <div data-testid="User-Name">Friend · @friend</div>
+        <div class="x-loc-info x-loc-feed-row" data-user="friend">
+          <span
+            class="x-loc-icon x-loc-icon-flag x-loc-icon-abbr"
+            data-country="South Asia"
+            title="South Asia"
+            id="region-excepted"
+            >SAS</span
+          >
+        </div>
+        <div>The post itself.</div>
+      </div>
+    </article>
+
+    <h4>The hover card the exception is usually added from</h4>
+    <div class="hovercard" data-testid="HoverCard" id="card">
+      <div class="name">Friend</div>
+      <div class="handle">@friend</div>
+      <div class="x-loc-hover">
+        <div class="x-loc-info" id="card-row" data-user="friend">
+          <span class="x-loc-store-block" title="India App Store">
+            <svg class="x-loc-glyph" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" fill="currentColor" />
+            </svg>
+            <span class="x-loc-icon-flag" data-country="India" id="card-store"
+              >🇮🇳</span
+            >
+          </span>
+          <span
+            class="x-loc-icon x-loc-icon-flag"
+            data-country="India"
+            title="India"
+            id="card-flag"
+            >🇮🇳</span
+          >
+        </div>
+        <button
+          type="button"
+          class="x-loc-exc-btn x-loc-exc-active"
+          id="card-exc"
+        >
+          ✓ Exception (undo)
+        </button>
+      </div>
+    </div>
+  </body>
+</html>

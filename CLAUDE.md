@@ -6,18 +6,26 @@ Project-specific context. Read before editing any source file.
 
 ## How to comment
 
-Keep comments short, and write one only when the code cannot say it itself: why a
-non-obvious choice was made, what broke last time, a constraint imposed from
-outside (X's DOM, a browser bug, a spec). One or two lines is usually enough.
+**The intent has to be readable without comments.** Names and tests carry it: a
+function named for what it answers, a `describe`/`it` pair that reads as a
+sentence. If a comment seems needed to explain what code does, rename or split it
+until it isn't — a comment is not a substitute for either, and it is the only part
+that can quietly stop being true.
 
-Do not restate the line above it. `if (kw.trim() === '') continue` needs nothing.
+Comments are the exception, not the habit. Write one for what neither a name nor a
+test can hold: an edge case, a decision that reads as wrong until you know why, a
+constraint from outside (X's DOM, a browser bug, a spec), what broke last time.
+One or two lines, and never a restatement of the line under it —
+`if (kw.trim() === '') continue` needs nothing.
+
+**Tests are the exception.** A spec file is where the reasoning belongs, and
+prose is welcome there: why the case is worth pinning, what it regressed on,
+which behaviour of X's forces the answer, what the bug looked like. The name
+still says what is asserted — the comment says why anyone should care, and that
+is the part a reader cannot reconstruct from the assertion.
 
 Some older comments here run long — do not match them. Prune when you are editing
 that code anyway; don't go on a comment-deleting pass of your own.
-
-Test names carry the intent. A `describe`/`it` pair that reads as a sentence does
-the job; add a comment only for the fact behind the test — the account it
-regressed on, the spec that forces the answer.
 
 ---
 
@@ -502,6 +510,27 @@ a direct call: hover cards (`processCard`), the primary tweet of a status page
 placeholder (a collapsed post leaves nothing to hover). Any rule change re-syncs
 from `rehighlightAll()` **and** `refreshHiddenTweets()`.
 
+**⚠️ is the location rule showing, not a property of the country.**
+`getLocationDisplay(loc, userName)` swaps the flag for ⚠️ only while that rule is
+_acting_ on the account — `locationRuleActs()`, which is `isExcepted('location', …)`
+inverted, so the allowlist counts too. Excepted, the row shows the country's own
+flag again; with no handle to judge by it warns, which is the answer that cannot
+under-warn. Every caller has a handle: `buildInfoRow(data, userName)` (feed rows,
+hover cards, the primary tweet, the swipe) and `locationSummaryText(data, userName)`.
+Deliberately _not_ affected: `ruleMatches()`' icons and `flagEmojiFor()` (the
+snapshot strip), which never warn — a placeholder names the rule in words, and a
+warning in a reposted image reads as something X said.
+
+**The swap happens in place, on rows already drawn.** `refreshLocationFlags()`
+re-answers it for every `.x-loc-info` on the page, from `data-user` on the row and
+`data-country` on each flag — no cache read, so it runs synchronously from
+`refreshHiddenTweets()`, which every rule change already goes through. Rebuilding
+the rows instead would take height out of a post and put it back, which is exactly
+what X's timeline compensates for by scrolling the window (see `whenSafeToResize`).
+That invariant is why `.x-loc-icon-abbr` carries a `min-height`: a region is drawn
+as a word and the warning as an emoji, and without it the swap was 12px of post
+height appearing and disappearing (`visual/location-row.spec.ts` measures it).
+
 `extensionEnabled` is honoured by **stripping what is already on screen**
 (`stripAllInjections`), not only by skipping new work.
 
@@ -527,7 +556,7 @@ pnpm test:lighthouse # playwright + lighthouse over the built landing site
 pnpm fix             # oxlint --fix, then oxfmt (that order)
 pnpm lint:dup        # jscpd over src/ and server/src/
 pnpm e2e:profile     # seed a real-browser profile for the e2e suite
-pnpm test:e2e        # playwright under xvfb
+pnpm test:e2e        # playwright, headless (E2E_HEADED=1 to watch it)
 ```
 
 **`pnpm fix` lints before it formats.** `oxlint --fix` rewrites code, so formatting
@@ -555,7 +584,7 @@ callback alive.
 | ---------------------- | -------------------------------------- | ------------------------------ | ----------------- |
 | `pnpm test`            | Does the logic hold?                   | nothing                        | yes               |
 | `pnpm test:visual`     | Interactions and styles as expected?   | a headless browser             | yes               |
-| `pnpm test:e2e`        | Does any of it survive contact with X? | a session, a display, the HARs | no                |
+| `pnpm test:e2e`        | Does any of it survive contact with X? | a session and the HARs         | no                |
 | `pnpm test:lighthouse` | Does the landing site still score 100? | a headless browser             | `landing/**` only |
 
 **What a new extension feature owes the first three.** They are not tiers of
@@ -684,6 +713,30 @@ to an extension. `intent.skills` in `package.json` is the allowlist.)
 
 Secret redaction has been on by default since 1.0.2 — Authorization / Cookie /
 Set-Cookie are stripped when _recording_. Replaying existing HARs is unaffected.
+
+### Headless
+
+The suite runs headless and shows nothing on screen. It used to be `headless:
+false` under `xvfb-run`, which only works from the one npm script — anything else
+(a bare `playwright test`, the VS Code extension, an IDE gutter button) put a
+browser window on the real display for every test, thirty-odd times a run.
+
+**Plain `headless: true` is not enough, and fails in a way that looks unrelated.**
+Since 1.49 Playwright serves headless `chromium` from `chromium_headless_shell`,
+a separate binary with no extension support: `--load-extension` is ignored and
+`chrome://extensions` is not even a valid URL there, so the `extensionId` fixture
+throws `net::ERR_INVALID_URL` before a single test runs. `channel: 'chromium'`
+asks for the full browser instead, whose new headless mode loads an extension
+exactly as a headed one does — `navigator.webdriver` included. A seeded profile
+supplies its own real binary, and takes `headless: true` without a channel (both
+are verified in `e2e/fixtures.ts`; passing `channel` _and_ `executablePath` is
+what to avoid).
+
+`E2E_HEADED=1` (`e2e/headed.ts`) shows the browser. `test:e2e:ui`,
+`test:e2e:record` and `shots` set it — the first two exist to be watched, and the
+screenshots are shipped assets that should keep being taken the way they always
+were. `auth.setup.ts` ignores the flag and is always headed: it is a human
+logging in.
 
 ### Browser profile
 

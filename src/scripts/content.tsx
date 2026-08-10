@@ -492,7 +492,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
   applyLookupChanges(changes)
 })
 
-function getLocationDisplay(loc: string): {
+/** With no handle to judge by, the rule counts as acting — it cannot under-warn. */
+function locationRuleActs(userName?: string | null): boolean {
+  return !userName || !isExcepted('location', userName)
+}
+
+function getLocationDisplay(
+  loc: string,
+  userName?: string | null,
+): {
   emoji: string
   label: string
   isText?: boolean
@@ -505,7 +513,11 @@ function getLocationDisplay(loc: string): {
   // extension knows comes back unchanged.
   const label = localizedLocation(key)
 
-  if (isBlockedLocation(loc)) return { emoji: '⚠️', label }
+  // ⚠️ is the rule showing, not a property of the country: once the reader has
+  // excepted the account, nothing is being filtered for it to warn about.
+  if (isBlockedLocation(loc) && locationRuleActs(userName)) {
+    return { emoji: '⚠️', label }
+  }
   if (COUNTRY_FLAGS[key]) return { emoji: COUNTRY_FLAGS[key], label }
   if (REGION_FLAGS[key]) {
     const abbr = REGION_ABBR[key]
@@ -977,14 +989,17 @@ let locationToastTimer: ReturnType<typeof setTimeout> | null = null
  * corroborates it — so that pairing drops the VPN warning even when X flagged
  * the location inaccurate. Exported for tests.
  */
-export function locationSummaryText(data: LocationData): string {
+export function locationSummaryText(
+  data: LocationData,
+  userName?: string | null,
+): string {
   const { country: sourceCountry } = classifySource(data.source)
   const corroborated = sourceCountry !== null && sourceCountry === data.location
   const country = sourceCountry ?? data.location
 
   const parts: string[] = []
   if (country) {
-    const { emoji, label } = getLocationDisplay(country)
+    const { emoji, label } = getLocationDisplay(country, userName)
     parts.push(`${emoji} ${label}`)
   }
   if (data.locationAccurate === false && !corroborated)
@@ -1018,8 +1033,8 @@ function renderLocationToast(text: string, pending = false) {
   }
 }
 
-function showLocationOverlay(data: LocationData) {
-  const text = locationSummaryText(data)
+function showLocationOverlay(data: LocationData, userName?: string | null) {
+  const text = locationSummaryText(data, userName)
   if (!text) return
   renderLocationToast(text)
 }
@@ -1592,8 +1607,13 @@ const FEED_LOCATION_ATTR = 'data-x-loc-feed-done'
 // navigation, which defeats native scroll anchoring — so tweets still above the
 // fold are parked on an IntersectionObserver and injected on the way back.
 // `let` rather than `const` only so __testResetState can swap in a fresh map.
-let pendingFeedRows = new WeakMap<Element, LocationData>()
+let pendingFeedRows = new WeakMap<Element, FeedRowPlan>()
 let feedRowObserver: IntersectionObserver | null = null
+
+interface FeedRowPlan {
+  data: LocationData
+  userName: string | null
+}
 
 // True when the row's insertion point (just under the name line) sits entirely
 // above the viewport top, i.e. placing the row here would shift the scroll.
@@ -1602,13 +1622,13 @@ function insertionAboveFold(article: Element): boolean {
   return anchor.getBoundingClientRect().bottom < 0
 }
 
-function placeFeedRow(article: Element, data: LocationData): void {
+function placeFeedRow(article: Element, plan: FeedRowPlan): void {
   if (!showLocationInFeed) return
   if (article.querySelector('.x-loc-feed-row')) return
   const userNameEl = getNameEl(article)
   if (!userNameEl) return
   article.setAttribute(FEED_LOCATION_ATTR, '1')
-  const row = buildInfoRow(data)
+  const row = buildInfoRow(plan.data, plan.userName)
   row.classList.add('x-loc-feed-row')
   userNameEl.insertAdjacentElement('afterend', row)
 }
@@ -1623,8 +1643,8 @@ function getFeedRowObserver(): IntersectionObserver {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue
         const article = entry.target
-        const data = pendingFeedRows.get(article)
-        if (!data || !showLocationInFeed) {
+        const plan = pendingFeedRows.get(article)
+        if (!plan || !showLocationInFeed) {
           pendingFeedRows.delete(article)
           feedRowObserver!.unobserve(article)
           continue
@@ -1632,7 +1652,7 @@ function getFeedRowObserver(): IntersectionObserver {
         if (insertionAboveFold(article)) continue // still above the fold — wait
         pendingFeedRows.delete(article)
         feedRowObserver!.unobserve(article)
-        placeFeedRow(article, data)
+        placeFeedRow(article, plan)
       }
     },
     { threshold: [0, 0.25, 0.5, 0.75, 1] },
@@ -1642,18 +1662,18 @@ function getFeedRowObserver(): IntersectionObserver {
 
 // Place the row now if doing so won't shift the scroll, otherwise park it until
 // the tweet is scrolled into view (see pendingFeedRows / getFeedRowObserver).
-function injectFeedRow(article: Element, data: LocationData): void {
+function injectFeedRow(article: Element, plan: FeedRowPlan): void {
   if (article.querySelector('.x-loc-feed-row')) return
   if (pendingFeedRows.has(article)) {
-    pendingFeedRows.set(article, data)
+    pendingFeedRows.set(article, plan)
     return
   }
   if (insertionAboveFold(article)) {
-    pendingFeedRows.set(article, data)
+    pendingFeedRows.set(article, plan)
     getFeedRowObserver().observe(article)
     return
   }
-  placeFeedRow(article, data)
+  placeFeedRow(article, plan)
 }
 
 async function tryInjectFeedLocation(article: Element) {
@@ -1669,7 +1689,7 @@ async function tryInjectFeedLocation(article: Element) {
   const data = await getCached(userName)
   if (!data || (!data.location && data.locationAccurate && !data.source)) return
 
-  injectFeedRow(article, data)
+  injectFeedRow(article, { data, userName })
 }
 
 function injectFeedLocationForUser(userName: string, data: LocationData) {
@@ -1681,7 +1701,7 @@ function injectFeedLocationForUser(userName: string, data: LocationData) {
     if (article.matches(SEL_PRIMARY_TWEET)) return
     if (!getNameEl(article) || article.querySelector('.x-loc-feed-row')) return
     article.setAttribute(FEED_LOCATION_ATTR, '1')
-    injectFeedRow(article, data)
+    injectFeedRow(article, { data, userName })
   })
 }
 
@@ -2187,6 +2207,8 @@ async function refreshHiddenTweets(): Promise<void> {
   // a remembered verdict should have been — so this is where they are dropped.
   // judgePost re-fills the map as it goes.
   hideVerdicts.clear()
+  // Before the awaits, so the glyph turns over in the task the click landed in.
+  refreshLocationFlags()
   // The one button covers these rules too, so a change to any of them can make
   // it appear, change what it offers, or go away — the same reason
   // rehighlightAll syncs it for the keyword rules.
@@ -2382,7 +2404,10 @@ function makeIcon(emoji: string, tooltip: string): HTMLElement {
   return span
 }
 
-function buildInfoRow(data: LocationData): HTMLElement {
+function buildInfoRow(
+  data: LocationData,
+  userName?: string | null,
+): HTMLElement {
   // Every surface that shows a flag — feed, hover card, primary tweet, swipe —
   // goes through here, which makes it the one place that means "the extension
   // did something visible today". The popup's rating ask counts those days.
@@ -2390,12 +2415,17 @@ function buildInfoRow(data: LocationData): HTMLElement {
 
   const row = document.createElement('div')
   row.className = 'x-loc-info'
+  // This and the `country` below are read back by refreshLocationFlags, which
+  // re-answers the row without a cache read.
+  if (userName) row.dataset.user = userName
 
   const { platform, country: sourceCountry } = classifySource(data?.source)
 
   if (sourceCountry) {
-    const { emoji: storeFlag, isText: storeFlagIsText } =
-      getLocationDisplay(sourceCountry)
+    const { emoji: storeFlag, isText: storeFlagIsText } = getLocationDisplay(
+      sourceCountry,
+      userName,
+    )
     const block = document.createElement('span')
     block.className = 'x-loc-store-block'
     // The raw string is the honest tooltip: it names the store *and* which one,
@@ -2416,16 +2446,18 @@ function buildInfoRow(data: LocationData): HTMLElement {
     const flag = document.createElement('span')
     flag.className = `x-loc-icon-flag ${storeFlagIsText ? 'x-loc-icon-abbr' : ''}`
     flag.textContent = storeFlag
+    flag.dataset.country = sourceCountry
 
     block.appendChild(flag)
     row.appendChild(block)
   }
 
   if (data?.location) {
-    const { emoji, label, isText } = getLocationDisplay(data.location)
+    const { emoji, label, isText } = getLocationDisplay(data.location, userName)
     const icon = makeIcon(emoji, label)
     icon.classList.add('x-loc-icon-flag')
     if (isText) icon.classList.add('x-loc-icon-abbr')
+    icon.dataset.country = data.location
     row.appendChild(icon)
   }
 
@@ -2438,6 +2470,30 @@ function buildInfoRow(data: LocationData): HTMLElement {
   }
 
   return row
+}
+
+/**
+ * Redraw every flag already on the page, for a rule change that moved one.
+ *
+ * One glyph, swapped where it stands: rebuilding the rows would take height out
+ * of a post and put it back, which is the resize X's timeline answers by
+ * scrolling the window (see whenSafeToResize).
+ */
+function refreshLocationFlags(): void {
+  for (const row of Array.from(
+    document.querySelectorAll<HTMLElement>('.x-loc-info'),
+  )) {
+    const userName = row.dataset.user
+    for (const flag of Array.from(
+      row.querySelectorAll<HTMLElement>('.x-loc-icon-flag'),
+    )) {
+      const country = flag.dataset.country
+      if (!country) continue
+      const { emoji, isText } = getLocationDisplay(country, userName)
+      if (flag.textContent !== emoji) flag.textContent = emoji
+      flag.classList.toggle('x-loc-icon-abbr', Boolean(isText))
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2938,7 +2994,7 @@ async function processCard(card: Element) {
   // X has no country for can still show its age and badges.
   const infoRow =
     data && (data.location || !data.locationAccurate || data.source)
-      ? buildInfoRow(data)
+      ? buildInfoRow(data, userName)
       : null
   if (infoRow) wrap.prepend(infoRow)
 
@@ -3046,7 +3102,7 @@ async function processPrimaryTweet() {
       void processPrimaryTweet()
     })
   } else if (data && (data.location || !data.locationAccurate || data.source)) {
-    row = buildInfoRow(data)
+    row = buildInfoRow(data, userName)
   }
 
   if (!row) return
@@ -3491,7 +3547,7 @@ async function revealLocationForSwipe(article: Element) {
   renderLocationToast(t('toastLookingUp', userName), true)
 
   const data = await fetchLocationData(userName)
-  if (!data || !locationSummaryText(data)) {
+  if (!data || !locationSummaryText(data, userName)) {
     // Separate "X knows nothing about this account" from "we couldn't ask":
     // the rate-limit toast owns the same corner and explains itself, and a
     // swipe before the session headers land is transient.
@@ -3512,13 +3568,13 @@ async function revealLocationForSwipe(article: Element) {
     const userNameEl = getNameEl(article)
     if (userNameEl) {
       article.setAttribute(FEED_LOCATION_ATTR, '1')
-      const row = buildInfoRow(data)
+      const row = buildInfoRow(data, userName)
       row.classList.add('x-loc-feed-row')
       userNameEl.insertAdjacentElement('afterend', row)
     }
   }
 
-  showLocationOverlay(data)
+  showLocationOverlay(data, userName)
 }
 
 /**

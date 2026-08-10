@@ -75,6 +75,12 @@ export const CONTENT_CSS = `
   font-weight: 700;
   letter-spacing: 0.5px;
 }
+/* An abbreviation is text where the rest of the slot's fillings are emoji, and
+   the slot is redrawn in place (⚠️ ⇄ flag, see refreshLocationFlags). Without a
+   height to hold, that swap took 12px out of the post around it. */
+.x-loc-icon.x-loc-icon-flag.x-loc-icon-abbr {
+  min-height: 26px;
+}
 .x-loc-store-block .x-loc-icon-flag {
   font-size: 19px;
 }

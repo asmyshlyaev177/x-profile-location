@@ -113,6 +113,44 @@ test('the placeholder can spare the account, not just the post', async ({
   await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 10_000 })
 })
 
+test('an excepted account gets its country back, in place', async ({
+  page,
+}) => {
+  // ⚠️ is what the location rule looks like while it is acting. Excepted, the
+  // account is one the reader decided to keep seeing, so the row goes back to
+  // naming the country — the only thing it was ever there to say.
+  //
+  // Here as well as in the other two suites because only this one can say the
+  // swap survives X: the row is drawn into a post X owns and re-renders, the
+  // exception is added from a placeholder inside that same post, and the two
+  // halves have to still be talking about the same node afterwards. The unit
+  // suite builds the DOM itself; the visual suite is handed both states already
+  // rendered.
+  await mockSharedCache(page, FROM_INDIA)
+  await mockAboutAccount(page, { account_based_in: 'India' })
+
+  await page.goto(NASA_TWEET)
+
+  const { article } = await mostLikedReply(page)
+  await expect(article).toHaveAttribute(HIDDEN, 'collapse', { timeout: 15_000 })
+
+  // Drawn under the name line, collapsed away with the rest of the post.
+  const flag = article.locator('.x-loc-feed-row .x-loc-icon.x-loc-icon-flag')
+  await expect(flag).toHaveAttribute('title', 'India', { timeout: 15_000 })
+  await expect(flag).toHaveText('⚠️')
+
+  await article.locator('.x-loc-hidden-ph .x-loc-exc-btn').click()
+
+  await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 5_000 })
+  // The same locator still resolves: the glyph was swapped where it stood
+  // rather than the row being taken out and rebuilt. That is what keeps the post
+  // the same height, which is what keeps the page still — the two scroll tests
+  // below are about the same property from the other end.
+  await expect(flag).toBeVisible()
+  await expect(flag).toHaveText('🇮🇳')
+  await expect(flag).toHaveAttribute('title', 'India')
+})
+
 test('a hover leaves the post it was opened from where it is', async ({
   page,
   context,

@@ -11,6 +11,7 @@ import {
 import { chromium } from 'playwright-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { playwrightProxy } from 'test-proxy-recorder'
+import { HEADED } from './headed'
 
 type Mode = 'record' | 'replay'
 
@@ -91,8 +92,16 @@ export const test = base.extend<Fixtures>({
     if (seeded) await cp(seeded.profileDir, userDataDir, { recursive: true })
 
     const context = (await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      executablePath: seeded?.executablePath,
+      headless: !HEADED,
+      // Playwright's default headless build is the headless *shell*, a separate
+      // binary with no extension support at all — under it `chrome://extensions`
+      // is not even a valid URL, so the extensionId fixture fails before any
+      // test runs. `channel: 'chromium'` asks for the full browser instead,
+      // whose new headless mode loads an extension exactly as a headed one does.
+      // A seeded profile brings its own real binary, which needs no channel.
+      ...(seeded
+        ? { executablePath: seeded.executablePath }
+        : { channel: 'chromium' as const }),
       args: [
         '--no-sandbox',
         `--disable-extensions-except=${EXTENSION_PATH}`,

@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test'
+import { HEADED } from './e2e/headed'
 
 export default defineConfig({
   testDir: './e2e',
@@ -11,7 +12,10 @@ export default defineConfig({
   timeout: 60_000,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    headless: false,
+    // The default for anything using Playwright's own browser fixture. Every
+    // test here builds a persistent context instead (fixtures.ts, auth.setup.ts),
+    // so this is only here to keep the two from ever disagreeing.
+    headless: !HEADED,
     trace: 'on-first-retry',
     // Playwright's default is unlimited, which turns a single element that never
     // settles — routine on X's virtualised timeline — into a test that hangs
