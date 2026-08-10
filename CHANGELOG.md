@@ -5,7 +5,7 @@ Notable changes to X Profile Location. Newest first.
 Bug reporters and feature requesters are credited by handle — if you filed the
 issue, your name belongs here.
 
-## [Unreleased]
+## [1.7.1]
 
 ### Added
 
