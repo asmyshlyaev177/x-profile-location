@@ -3,8 +3,10 @@
   "include": [
     "e2e/**/*",
     "visual/**/*",
+    "integration/**/*",
     "playwright.config.ts",
-    "playwright.visual.config.ts"
+    "playwright.visual.config.ts",
+    "playwright.integration.config.ts"
   ],
   "compilerOptions": {
     "lib": ["ES2023", "DOM"],
