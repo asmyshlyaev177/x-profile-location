@@ -202,6 +202,24 @@ async function flushAsync() {
   await new Promise<void>((resolve) => setTimeout(resolve, 0))
 }
 
+/** Opens a hover card for `userName` and waits for processCard to finish. */
+async function addHoverCard(
+  userName: string,
+  bodyHtml = '',
+): Promise<HTMLElement> {
+  const card = document.createElement('div')
+  card.setAttribute('data-testid', 'HoverCard')
+  card.innerHTML = `<span>@${userName}</span>${bodyHtml}`
+  document.body.appendChild(card)
+  await flushAsync()
+  return card
+}
+
+/** The bio block, as X renders it inside a card that has one. */
+function userDescription(html: string): string {
+  return `<div data-testid="UserDescription">${html}</div>`
+}
+
 function enableFeedLocation() {
   onChangedCallback({ showLocationInFeed: { newValue: true } }, 'local')
 }
@@ -1467,15 +1485,6 @@ describe('hover card exception button', () => {
     onChangedCallback({ highlightExceptions: { newValue: [] } }, 'local')
   })
 
-  async function addHoverCard(userName: string): Promise<HTMLElement> {
-    const card = document.createElement('div')
-    card.setAttribute('data-testid', 'HoverCard')
-    card.innerHTML = `<span>@${userName}</span>`
-    document.body.appendChild(card)
-    await flushAsync()
-    return card
-  }
-
   it('shows the button when the account matches a keyword rule', async () => {
     onChangedCallback({ highlightKeywords: { newValue: ['nafo'] } }, 'local')
     vi.mocked(getCached).mockResolvedValue({
@@ -1703,18 +1712,6 @@ describe('bio injected into a card that carries none', () => {
     onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
   })
 
-  async function addHoverCard(
-    userName: string,
-    bodyHtml = '',
-  ): Promise<HTMLElement> {
-    const card = document.createElement('div')
-    card.setAttribute('data-testid', 'HoverCard')
-    card.innerHTML = `<span>@${userName}</span>${bodyHtml}`
-    document.body.appendChild(card)
-    await flushAsync()
-    return card
-  }
-
   it('shows the bio when the card has none — the blocked case', async () => {
     // An account blocking the reader gets a card with no bio, no follow button
     // and no counts, while the extension still holds the bio from a timeline
@@ -1885,18 +1882,6 @@ describe('keyword marks on hover cards', () => {
     return registry
   }
 
-  async function addHoverCard(
-    userName: string,
-    bioHtml: string,
-  ): Promise<HTMLElement> {
-    const card = document.createElement('div')
-    card.setAttribute('data-testid', 'HoverCard')
-    card.innerHTML = `<span>@${userName}</span><div data-testid="UserDescription">${bioHtml}</div>`
-    document.body.appendChild(card)
-    await flushAsync()
-    return card
-  }
-
   describe('keywordRangesIn', () => {
     it('covers the keyword exactly, wherever it sits in the bio', () => {
       onChangedCallback({ highlightKeywords: { newValue: ['nft'] } }, 'local')
@@ -1932,7 +1917,7 @@ describe('keyword marks on hover cards', () => {
       bio: 'nft trader',
     })
 
-    await addHoverCard('trader', 'nft trader')
+    await addHoverCard('trader', userDescription('nft trader'))
     await flushAsync()
 
     expect(registry.get('x-loc-keyword')?.ranges.map(String)).toEqual(['nft'])
@@ -1948,7 +1933,10 @@ describe('keyword marks on hover cards', () => {
       bio: 'just a normal bio',
     })
 
-    const card = await addHoverCard('normaluser', 'just a normal bio')
+    const card = await addHoverCard(
+      'normaluser',
+      userDescription('just a normal bio'),
+    )
     await flushAsync()
 
     expect(card.hasAttribute('data-x-loc-kw')).toBe(false)
@@ -1971,7 +1959,7 @@ describe('keyword marks on hover cards', () => {
       bio: 'nft trader',
     })
 
-    const card = await addHoverCard('trader', 'nft trader')
+    const card = await addHoverCard('trader', userDescription('nft trader'))
     await flushAsync()
 
     expect(card.hasAttribute('data-x-loc-kw')).toBe(false)
@@ -1989,7 +1977,7 @@ describe('keyword marks on hover cards', () => {
       bio: 'nft trader',
     })
 
-    const card = await addHoverCard('trader', 'nft trader')
+    const card = await addHoverCard('trader', userDescription('nft trader'))
     await flushAsync()
 
     // The attribute half still works — that is the emoji marking, which is CSS.
@@ -2657,6 +2645,91 @@ describe('hide tweets by blocked location', () => {
       'India',
     )
     vi.mocked(getCached).mockResolvedValue(undefined)
+  })
+
+  it('leaves the post a hover card was opened from where it is', async () => {
+    // A hover is the reader asking about the author, and it is asked *at* a
+    // post — so answering it by taking that post away is answering a question
+    // nobody put. The swipe gesture, the other lookup asked for by hand, has
+    // never collapsed anything either.
+    const article = makeTweetArticle('hovered')
+    document.body.appendChild(article)
+    await flushAsync()
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+
+    // What the hover's own lookup resolves to: fetchLocationData answers a
+    // known location from the cache, so this is the network reply's path with
+    // no network in it.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+    const card = await addHoverCard('hovered')
+
+    expect(card.querySelector('.x-loc-info')).not.toBeNull()
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+    expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
+  })
+
+  it('judges the hovered account all the same, so its next post is collapsed', async () => {
+    // Spared, not excepted: the post under the pointer stays, and the verdict
+    // the hover made stands for every post X renders after it.
+    const hovered = makeTweetArticle('hovered')
+    document.body.appendChild(hovered)
+    await flushAsync()
+
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+    await addHoverCard('hovered')
+    expect(hovered.getAttribute('data-x-loc-hidden')).toBeNull()
+
+    // Cache unreachable, so only the verdict the hover recorded can answer —
+    // and it has to, in the microtask the node arrives in (see whenSafeToResize).
+    vi.mocked(getCached).mockReturnValue(new Promise(() => {}))
+    const next = makeTweetArticle('hovered')
+    document.body.appendChild(next)
+    await flushAsync()
+
+    expect(next.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    vi.mocked(getCached).mockResolvedValue(undefined)
+  })
+
+  it('collapses an on-screen post the moment the community cache answers for it', async () => {
+    // The other half of that rule: an answer nobody asked for, arriving while
+    // the reader is somewhere else on the page, still collapses on the spot.
+    const article = makeTweetArticle('fromcache')
+    document.body.appendChild(article)
+    await flushAsync()
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+
+    const data = {
+      location: 'India',
+      locationAccurate: true,
+      source: 'web' as const,
+      bio: null,
+    }
+    vi.mocked(sharedBatchLookup).mockResolvedValue([
+      { userName: 'fromcache', data, revalidate: false },
+    ])
+    vi.mocked(getCached).mockResolvedValue(data)
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', {
+        detail: {
+          users: [
+            { userName: 'fromcache', displayName: 'From Cache', bio: null },
+          ],
+        },
+      }),
+    )
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
   })
 
   it('forgets a remembered verdict when the rules change under it', async () => {
