@@ -50,6 +50,7 @@
  *
  *   node scripts/scrub-recordings.mjs             scrub the recordings in place
  *   node scripts/scrub-recordings.mjs --check     exit 1 if anything is unscrubbed (CI)
+ *   node scripts/scrub-recordings.mjs --stdin     scrub one recording, stdin → stdout
  *   node scripts/scrub-recordings.mjs --id <h>    print the synthetic id for a handle
  *   node scripts/scrub-recordings.mjs --verbose   per-file detail
  */
@@ -70,6 +71,7 @@ const CONFIG = path.join(ROOT, 'e2e', 'scrub.config.json')
 
 const CHECK = process.argv.includes('--check')
 const VERBOSE = process.argv.includes('--verbose')
+const STDIN = process.argv.includes('--stdin')
 // indexOf returns -1 when the flag is absent, and argv[0] is the node binary —
 // so guard on presence rather than reading the slot unconditionally.
 const idFlag = process.argv.indexOf('--id')
@@ -200,6 +202,14 @@ function synthetic(handle) {
 
 const displayNameFor = (handle) => `User ${synthetic(handle).slice(5, 9)}`
 
+/** A trend name this script has already rewritten — makes re-runs no-ops. */
+const SYNTHETIC_TREND = /^Trend [0-9a-f]{4}$/
+
+const syntheticTrend = (name) =>
+  SYNTHETIC_TREND.test(name)
+    ? name
+    : `Trend ${createHash('sha256').update(name).digest('hex').slice(0, 4)}`
+
 // ---------------------------------------------------------------------------
 // Structural pass — rewrite identity fields inside parsed JSON bodies
 // ---------------------------------------------------------------------------
@@ -256,6 +266,26 @@ function walk(node, stats) {
   const handle = userHandle(node)
   if (handle !== null) rewriteUser(node, handle, stats)
 
+  // A trend is a `name` with `trend_metadata` beside it (X also marks it
+  // `__typename: 'TimelineTrend'`, but the shape is the thing).
+  if (typeof node.name === 'string' && isObject(node.trend_metadata)) {
+    rewriteTrend(node, stats)
+  }
+  // The name is welded into the timeline entry's id as well as into the trend.
+  if (typeof node.entryId === 'string' && node.entryId.includes(TREND_ENTRY)) {
+    const cut = node.entryId.lastIndexOf(TREND_ENTRY) + TREND_ENTRY.length
+    const id = syntheticTrend(node.entryId.slice(cut))
+    if (node.entryId.slice(cut) !== id) stats.trends++
+    node.entryId = node.entryId.slice(0, cut) + id
+  }
+  // An opaque blob that base64-encodes whatever the entry is about — the trend
+  // name included, so a rewritten trend hands it straight back. Nothing renders
+  // from it; it is the payload of X's "not interested in this" control.
+  if (typeof node.feedbackMetadata === 'string' && node.feedbackMetadata) {
+    node.feedbackMetadata = ''
+    stats.trends++
+  }
+
   // Shape B: core.screen_name, with avatar/legacy as siblings of `core`.
   if (node.core && typeof node.core.screen_name === 'string') {
     const nested = node.core.screen_name
@@ -278,6 +308,44 @@ function walk(node, stats) {
   }
 
   for (const value of Object.values(node)) walk(value, stats)
+}
+
+const isObject = (v) => Boolean(v) && typeof v === 'object'
+
+/** How a timeline entry id carries the trend it is for. */
+const TREND_ENTRY = '-trend-'
+
+/**
+ * Rewrite one trend out of the sidebar.
+ *
+ * Trends are public, but *which* trends X chose to show is not: the panel is
+ * personalised to where the viewer is, and labels them "Trending in <country>"
+ * to say so. Left alone it puts the recording account in a country as reliably as
+ * the profile field this already blanks, only from the other direction — so the
+ * name, the label and the search URLs all go.
+ *
+ * The `cd` request param is dropped rather than rewritten: it is a base64 blob
+ * that encodes the trend name, so leaving it would hand back what the rename took
+ * away.
+ */
+function rewriteTrend(node, stats) {
+  const id = syntheticTrend(node.name)
+  if (node.name !== id) stats.trends++
+  node.name = id
+
+  const meta = node.trend_metadata
+  if (typeof meta.domain_context === 'string') meta.domain_context = 'Trending'
+  for (const holder of [meta.url, node.trend_url]) {
+    if (!isObject(holder)) continue
+    if (typeof holder.url === 'string') {
+      holder.url =
+        `twitter://search/?query=${encodeURIComponent(id)}` +
+        '&src=trend_click&pc=true&vertical=trends'
+    }
+    for (const param of holder.urtEndpointOptions?.requestParams ?? []) {
+      if (typeof param?.value === 'string') param.value = ''
+    }
+  }
 }
 
 /** Blank one avatar/banner URL, counting it only when it actually changed. */
@@ -661,13 +729,14 @@ const RESERVED_PATHS = new Set([
  * word someone uses as a handle, so the guard is general, not a list of the ones
  * already seen.
  */
-function discover(files) {
+function discover(texts) {
   const byScreenName = new Set()
   const byUrl = new Set()
   const urlRe = new RegExp(`x\\.com\\\\?/(${HANDLE_TOKEN})\\\\?/`, 'g')
 
-  for (const file of files) {
-    const raw = readFileSync(file, 'utf8')
+  // An iterable of strings rather than a list of paths, so the corpus can be
+  // streamed a file at a time and a single recording can arrive on stdin.
+  for (const raw of texts) {
     for (const m of raw.matchAll(screenNameRe())) byScreenName.add(m[1])
     for (const m of raw.matchAll(urlRe)) byUrl.add(m[1])
   }
@@ -755,6 +824,39 @@ const harFiles = () =>
     .map((f) => path.join(RECORDINGS, f))
     .sort()
 
+/** Lazily, so discovery never holds the whole corpus in memory at once. */
+function* readEach(files) {
+  for (const file of files) yield readFileSync(file, 'utf8')
+}
+
+/**
+ * Scrub one recording from stdin to stdout.
+ *
+ * This is how a recording that is already committed gets fixed: a history rewrite
+ * pipes every historical `.har` blob through it, so the repair is done by the code
+ * that scrubs the working tree rather than by a second implementation of the same
+ * rules in whatever language the rewrite tool speaks. See "Fixing a recording
+ * already in history" in CONTRIBUTING.md.
+ *
+ *   git filter-repo --blob-callback '<pipe HAR blobs through this>'
+ *
+ * Subjects come from the test sources as they are *now*, not as they were at the
+ * commit the blob came from: today's policy applied uniformly. An account the
+ * suite has since stopped naming is pseudonymised in the old recording too, which
+ * is the safe direction to be wrong in.
+ */
+function scrubStdin() {
+  const raw = readFileSync(0, 'utf8')
+  const discovered = discover([raw])
+  findTestSubjects(discovered)
+  for (const handle of discovered) {
+    if (!SYNTHETIC.test(handle.toLowerCase())) synthetic(handle)
+  }
+  // Nothing but the recording may reach stdout — the caller is reading it as the
+  // new blob. Every other message in this script goes to stderr already.
+  process.stdout.write(scrubHar(parseHar('<stdin>', raw), blankStats()))
+}
+
 /**
  * What a run changed. Every counter is incremented only when a value actually
  * moved, never merely because the field was there — otherwise a clean recording
@@ -768,6 +870,8 @@ const STAT_KEYS = [
   'names',
   'bios',
   'pii',
+  'trends',
+  'telemetry',
   'credentials',
   'avatars',
   'posts',
@@ -777,6 +881,11 @@ const STAT_KEYS = [
   'unparsed',
   'bytesDropped',
 ]
+
+/** A zeroed counter set, for a caller scrubbing one thing rather than a corpus. */
+export function blankStats() {
+  return Object.fromEntries(STAT_KEYS.map((k) => [k, 0]))
+}
 
 const describe = (stats) =>
   STAT_KEYS.filter((k) => !/^(unparsed|bytesDropped)$/.test(k) && stats[k])
@@ -809,9 +918,30 @@ function parseHar(file, raw) {
 function scrubHar(har, stats) {
   for (const entry of har.log.entries) {
     scrubUrls(entry, stats)
+    scrubTelemetry(entry, stats)
     scrubEntry(entry, stats)
   }
   return JSON.stringify(har)
+}
+
+/**
+ * Drop the body of a client-event beacon.
+ *
+ * X's client posts back what it rendered, so the sidebar's trend names arrive a
+ * second time as a percent-encoded blob in a *request* — and along with them,
+ * what was on screen and what was clicked. The whole body goes rather than the
+ * names within it, for two reasons: it is the report of one person's session and
+ * none of it is under test, and matching names would need every trend in the
+ * capture known in advance, which is impossible when a recording is scrubbed on
+ * its own — as it is when one is repaired inside a history rewrite.
+ */
+function scrubTelemetry(entry, stats) {
+  const body = entry.request?.postData
+  if (typeof body?.text !== 'string' || !body.text) return
+  if (!body.text.includes('client_event')) return
+  body.text = ''
+  if (Array.isArray(body.params)) body.params = []
+  stats.telemetry++
 }
 
 /**
@@ -835,6 +965,7 @@ function main() {
     console.log(synthetic(ID_OF))
     return
   }
+  if (STDIN) return scrubStdin()
 
   const files = harFiles()
   if (files.length === 0) {
@@ -842,7 +973,7 @@ function main() {
     process.exit(1)
   }
 
-  const discovered = discover(files)
+  const discovered = discover(readEach(files))
   const sourceCount = findTestSubjects(discovered)
   // Only now is it safe to allocate ids: subjects are known, so synthetic()
   // returns their real handle and they never enter the replacement map.
@@ -921,7 +1052,8 @@ function main() {
   console.log(
     `\n  handles ${totals.handles} · names ${totals.names} · bios ${totals.bios} · ` +
       `avatars ${totals.avatars} · posts ${totals.posts}\n` +
-      `  birthdates ${totals.pii} · session blobs ${totals.credentials} · ` +
+      `  birthdates ${totals.pii} · trends ${totals.trends} · ` +
+      `event beacons ${totals.telemetry} · session blobs ${totals.credentials} · ` +
       `images blanked ${totals.images} · media dropped ${totals.media} · ` +
       `url/text tokens ${totals.tokens}`,
   )
@@ -942,12 +1074,10 @@ export {
   scrubHar,
   scrubEntry,
   scrubMarkup,
+  scrubTelemetry,
   walk,
   userHandle,
   synthetic,
   SUBJECTS,
   STAT_KEYS,
 }
-
-/** A zeroed counter set, for a caller scrubbing one thing rather than a corpus. */
-export const blankStats = () => Object.fromEntries(STAT_KEYS.map((k) => [k, 0]))
