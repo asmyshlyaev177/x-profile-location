@@ -20,11 +20,15 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   CORRUPTION_MARKERS,
+  DEFAULT_VACUUM_ALERT_PCT,
+  VACUUM_STATUS_FILE,
   buildFailureMessage,
   buildReportMessage,
   collectBackupStats,
   isCorruption,
+  readAlertPct,
   readConfig,
+  readVacuumStatus,
   send,
 } from './alert.ts'
 
@@ -247,6 +251,149 @@ describe('the weekly heartbeat', () => {
       newestAgeHours: null,
       totalMb: 0,
     })
+  })
+})
+
+describe('the vacuum measurement', () => {
+  let dir = ''
+  afterEach(() => dir && rmSync(dir, { recursive: true, force: true }))
+
+  function status(body: string): string {
+    dir = mkdtempSync(join(tmpdir(), 'x-loc-vac-'))
+    writeFileSync(join(dir, VACUUM_STATUS_FILE), body)
+    return dir
+  }
+
+  it('derives the reclaimable share from the two sizes backup.sh writes', () => {
+    const v = readVacuumStatus(
+      status('stamp=20260806-233000\nlive_bytes=400\nvacuumed_bytes=300\n'),
+    )
+    expect(v).toEqual({
+      liveBytes: 400,
+      vacuumedBytes: 300,
+      reclaimPct: 25,
+      stamp: '20260806-233000',
+    })
+  })
+
+  it('reports nothing at all when no backup has measured yet', () => {
+    expect(readVacuumStatus('/nonexistent/backups')).toBeNull()
+    dir = mkdtempSync(join(tmpdir(), 'x-loc-vac-'))
+    expect(readVacuumStatus(dir)).toBeNull()
+  })
+
+  it('reports nothing rather than a wrong number from a garbled file', () => {
+    // A half-written file is the realistic case — a run killed between the
+    // open and the flush. A fabricated percentage here sends somebody to stop
+    // the service for no reason, so anything unparseable has to read as
+    // "unknown", not as a value.
+    expect(readVacuumStatus(status('live_bytes=400\n'))).toBeNull()
+    expect(
+      readVacuumStatus(status('live_bytes=\nvacuumed_bytes=300\n')),
+    ).toBeNull()
+    expect(
+      readVacuumStatus(status('live_bytes=lots\nvacuumed_bytes=300\n')),
+    ).toBeNull()
+    expect(
+      readVacuumStatus(status('live_bytes=-400\nvacuumed_bytes=300\n')),
+    ).toBeNull()
+    // Nothing to divide by, so there is no share to report.
+    expect(
+      readVacuumStatus(status('live_bytes=0\nvacuumed_bytes=0\n')),
+    ).toBeNull()
+  })
+
+  it('never reports negative bloat', () => {
+    // A rebuilt file can come out marginally larger than a freshly-packed
+    // small one; that is 0% reclaimable, not -3%.
+    const v = readVacuumStatus(status('live_bytes=1000\nvacuumed_bytes=1030\n'))
+    expect(v!.reclaimPct).toBe(0)
+  })
+
+  it('falls back to the default threshold rather than letting a typo silence it', () => {
+    expect(readAlertPct(undefined)).toBe(DEFAULT_VACUUM_ALERT_PCT)
+    expect(readAlertPct('')).toBe(DEFAULT_VACUUM_ALERT_PCT)
+    expect(readAlertPct('twenty')).toBe(DEFAULT_VACUUM_ALERT_PCT)
+    expect(readAlertPct('0')).toBe(DEFAULT_VACUUM_ALERT_PCT)
+    expect(readAlertPct('101')).toBe(DEFAULT_VACUUM_ALERT_PCT)
+    expect(readAlertPct('40')).toBe(40)
+  })
+})
+
+describe('reporting the vacuum measurement', () => {
+  const HEALTHY = {
+    stats: {
+      count: 7,
+      newest: 'x-loc-cache-20260806-000000.db.gz',
+      newestAgeHours: 5,
+      totalMb: 210,
+    },
+    host: 'vps-1',
+    when: '2026-08-06T12:00:00.000Z',
+  }
+  /** 402.7 MB live, 330.3 MB rebuilt — 18%, comfortably under the threshold. */
+  const SETTLED = {
+    liveBytes: 422_000_000,
+    vacuumedBytes: 346_000_000,
+    reclaimPct: 18,
+    stamp: '20260806-233000',
+  }
+  const BLOATED = { ...SETTLED, vacuumedBytes: 253_200_000, reclaimPct: 40 }
+
+  it('carries the number every week, whether or not it is actionable', () => {
+    const m = buildReportMessage({ ...HEALTHY, vacuum: SETTLED }, '[x]')
+    expect(m.text).toContain('DB reclaimable:  18% (72.5 MB of 402.5 MB)')
+    // Under the threshold it is a fact, not a request: the subject and the
+    // lead line stay exactly as they are on any other quiet week.
+    expect(m.subject).toBe('[x] backups healthy on vps-1')
+    expect(m.text).toContain('Nothing to do')
+    expect(m.text).not.toContain('vacuum.sh')
+  })
+
+  it('says so in the subject once it is worth the stop', () => {
+    const m = buildReportMessage({ ...HEALTHY, vacuum: BLOATED }, '[x]')
+    expect(m.subject).toBe(
+      '[x] backups healthy on vps-1 (database 40% reclaimable)',
+    )
+    expect(m.text).toContain('DB reclaimable:  40%')
+    // Leads with the finding, and the body says exactly what to run.
+    expect(m.text).toMatch(/^Backups are current\. The database has 40%/)
+    expect(m.text).toContain('deploy/vacuum.sh')
+    expect(m.text).toContain('keeps the old file')
+  })
+
+  it('honours a threshold raised past the reading', () => {
+    const m = buildReportMessage(
+      { ...HEALTHY, vacuum: BLOATED, vacuumAlertPct: 50 },
+      '[x]',
+    )
+    expect(m.subject).toBe('[x] backups healthy on vps-1')
+    expect(m.text).toContain('DB reclaimable:  40%')
+  })
+
+  it('lets a stale backup own the subject, and still reports the number', () => {
+    // Backups that stopped are the thing to fix this week; reclaimable disk
+    // can wait, and two findings in one subject line reads as neither.
+    const m = buildReportMessage(
+      {
+        ...HEALTHY,
+        stats: { ...HEALTHY.stats, newestAgeHours: 100 },
+        vacuum: BLOATED,
+      },
+      '[x]',
+    )
+    expect(m.subject).toBe('[x] backups are STALE on vps-1')
+    expect(m.subject).not.toContain('reclaimable')
+    expect(m.text).toContain('DB reclaimable:  40%')
+    expect(m.text).not.toContain('vacuum.sh')
+  })
+
+  it('distinguishes "not measured yet" from "nothing to reclaim"', () => {
+    // An upgraded box has no reading until its next backup runs. Omitting the
+    // line entirely would make that look identical to 0%.
+    const m = buildReportMessage(HEALTHY, '[x]')
+    expect(m.text).toContain('DB reclaimable:  (not measured yet)')
+    expect(m.subject).toBe('[x] backups healthy on vps-1')
   })
 })
 

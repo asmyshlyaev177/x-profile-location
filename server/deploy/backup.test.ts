@@ -25,6 +25,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -36,6 +37,7 @@ const DEPLOY = import.meta.dirname
 const SERVER = join(DEPLOY, '..')
 const BACKUP = join(DEPLOY, 'backup.sh')
 const RESTORE = join(DEPLOY, 'restore.sh')
+const VACUUM = join(DEPLOY, 'vacuum.sh')
 
 function available(cmd: string): boolean {
   return spawnSync('sh', ['-c', `command -v ${cmd}`]).status === 0
@@ -131,6 +133,39 @@ function archives(): string[] {
   return readdirSync(backupDir)
     .filter((f) => /^x-loc-cache-\d{8}-\d{6}\.db\.gz$/.test(f))
     .sort()
+}
+
+/** The two sizes backup.sh records for the heartbeat, parsed as it writes them. */
+function vacuumStatus(): Record<string, string> {
+  const raw = readFileSync(join(backupDir, '.vacuum-status'), 'utf8')
+  const fields: Record<string, string> = {}
+  for (const line of raw.trim().split('\n')) {
+    const eq = line.indexOf('=')
+    if (eq > 0) fields[line.slice(0, eq)] = line.slice(eq + 1)
+  }
+  return fields
+}
+
+/** Main file plus any un-checkpointed WAL, the way the scripts count it. */
+function liveBytes(file = dbPath): number {
+  let total = 0
+  for (const suffix of ['', '-wal']) {
+    if (existsSync(file + suffix)) total += statSync(file + suffix).size
+  }
+  return total
+}
+
+/**
+ * Free pages, the way a database really acquires them: one mass delete, not
+ * steady churn. Retention deletes votes where new ones land, so those pages
+ * come straight back — this is the one-off the whole measurement exists for.
+ */
+function emptyVotes(): void {
+  const db = new Database(dbPath)
+  db.pragma('journal_mode = WAL')
+  db.exec('DELETE FROM location_votes')
+  db.pragma('wal_checkpoint(TRUNCATE)')
+  db.close()
 }
 
 function corrupt(file: string): void {
@@ -275,6 +310,60 @@ describe.skipIf(MISSING.length > 0)(
       expect(r.status).toBe(1)
       expect(r.stderr).toContain('refusing to run as root')
       expect(archives()).toEqual([])
+    })
+
+    it('records what a vacuum would reclaim, since it just measured it', () => {
+      // The snapshot IS the database rebuilt from scratch, so the two sizes
+      // are a measurement of what a VACUUM would hand back — not an estimate,
+      // and not a second pass over the file to obtain.
+      seed(dbPath, 200)
+      const before = liveBytes()
+      const r = run(BACKUP, [])
+      expect(r.status).toBe(0)
+
+      const status = vacuumStatus()
+      expect(status.stamp).toMatch(/^\d{8}-\d{6}$/)
+      expect(Number(status.live_bytes)).toBe(before)
+      expect(Number(status.vacuumed_bytes)).toBeGreaterThan(0)
+      // Journal line and file agree, so `journalctl -u x-loc-backup` answers
+      // the question without anyone opening the status file.
+      const live = Number(status.live_bytes)
+      const pct = Math.round(
+        ((live - Number(status.vacuumed_bytes)) / live) * 100,
+      )
+      expect(r.stdout).toContain(`vacuum check: ${pct}%`)
+    })
+
+    it('sees the free space a mass delete leaves behind', () => {
+      seed(dbPath, 600)
+      emptyVotes()
+      expect(run(BACKUP, []).status).toBe(0)
+
+      const status = vacuumStatus()
+      const live = Number(status.live_bytes)
+      const pct = Math.round(
+        ((live - Number(status.vacuumed_bytes)) / live) * 100,
+      )
+      // The deleted pages stay in the file on the freelist; only the rebuild
+      // gives them back. Well past the 25% the heartbeat asks about.
+      expect(pct).toBeGreaterThan(25)
+      expect(Number(status.vacuumed_bytes)).toBeLessThan(live)
+    })
+
+    it('never lets the status file pass for an archive', () => {
+      // It lives in the backups directory, so every glob that rotates or
+      // restores archives gets to see it.
+      seed(dbPath, 20)
+      expect(run(BACKUP, [], { XLOC_BACKUP_KEEP: '1' }).status).toBe(0)
+      expect(run(BACKUP, [], { XLOC_BACKUP_KEEP: '1' }).status).toBe(0)
+
+      expect(existsSync(join(backupDir, '.vacuum-status'))).toBe(true)
+      expect(archives()).toHaveLength(1)
+      expect(readdirSync(backupDir).filter((f) => f.endsWith('.part'))).toEqual(
+        [],
+      )
+      const usage = run(RESTORE, [], stubs({ id: 'echo 0' }))
+      expect(usage.stderr).not.toContain('vacuum-status')
     })
 
     it('refuses a second concurrent run rather than racing it', () => {
@@ -510,6 +599,225 @@ describe.skipIf(MISSING.length > 0)('backup.sh — under write load', () => {
     expect(live.pragma('integrity_check', { simple: true })).toBe('ok')
     live.close()
   }, 60_000)
+})
+
+describe.skipIf(MISSING.length > 0)('vacuum.sh', () => {
+  /** systemctl/curl/chown/sudo/id, so the script can run outside a real box. */
+  function vacuumStubs(log: string, extra: Record<string, string> = {}) {
+    return stubs(
+      {
+        id: 'echo 0',
+        systemctl: `echo "systemctl $*" >> '${log}'`,
+        chown: `echo "chown $*" >> '${log}'`,
+        curl: 'exit 0',
+        sudo: 'shift 2; exec "$@"',
+        ...extra,
+      },
+      { XLOC_PORT: '8787' },
+    )
+  }
+
+  /** The real sqlite3, for stubs that intercept one query and pass the rest. */
+  function realSqlite3(): string {
+    return spawnSync('sh', ['-c', 'command -v sqlite3'], {
+      encoding: 'utf8',
+    }).stdout.trim()
+  }
+
+  function replaced(): string[] {
+    return readdirSync(dir).filter((f) => f.includes('.replaced-'))
+  }
+
+  it('rebuilds the database, verifies it, and keeps the original beside it', () => {
+    seed(dbPath, 600)
+    emptyVotes()
+    const before = liveBytes()
+    const log = join(dir, 'systemctl.log')
+
+    const r = run(VACUUM, ['-y'], vacuumStubs(log))
+    expect(r.stderr).toBe('')
+    expect(r.status).toBe(0)
+    expect(r.stdout).toContain('healthz ok')
+    expect(r.stdout).toContain('compacted')
+
+    // The point of the exercise.
+    expect(liveBytes()).toBeLessThan(before)
+
+    const order = readFileSync(log, 'utf8')
+    expect(order).toContain('systemctl stop x-loc-cache')
+    expect(order).toContain('systemctl start x-loc-cache')
+    expect(order.indexOf('stop')).toBeLessThan(order.indexOf('start'))
+    // Owned by the service user before it becomes the service's database.
+    expect(order).toContain('chown xloc:xloc')
+
+    // Rollback is a mv away until the operator deletes it — and the path the
+    // script prints for that is a file that exists, holding the bigger
+    // original rather than a copy of what just replaced it.
+    const original = r.stdout.match(/kept as (\S+)/)![1]!
+    expect(existsSync(original)).toBe(true)
+    expect(statSync(original).size).toBeGreaterThan(statSync(dbPath).size)
+
+    const db = new Database(dbPath)
+    expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
+    expect(db.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+      n: 600,
+    })
+    // And the server can write to what it was handed.
+    db.prepare('INSERT INTO profiles (username, location) VALUES (?, ?)').run(
+      'after-vacuum',
+      'Somewhere',
+    )
+    db.close()
+  })
+
+  it('leaves nothing of the old database beside the new one', () => {
+    // A -wal belongs to the file it was written for. Left in place across the
+    // swap it is something SQLite would try to replay over a database it knows
+    // nothing about. SQLite removes it itself on a clean close; the move-aside
+    // loop covers the times there is no clean close, like a hard-killed server.
+    seed(dbPath, 100)
+    writeFileSync(`${dbPath}-wal`, 'stale')
+    const log = join(dir, 'systemctl.log')
+
+    expect(run(VACUUM, ['-y'], vacuumStubs(log)).status).toBe(0)
+
+    expect(existsSync(`${dbPath}-wal`)).toBe(false)
+    expect(existsSync(`${dbPath}-shm`)).toBe(false)
+    expect(readdirSync(dir).filter((f) => f.startsWith('vacuum-'))).toEqual([])
+
+    const db = new Database(dbPath)
+    expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
+    expect(db.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+      n: 100,
+    })
+    db.close()
+  })
+
+  it('refuses to compact a corrupt database, without stopping the service', () => {
+    // Rebuilding a corrupt file carries the fault across and destroys the
+    // evidence. Restoring is the answer, and that needs the original intact.
+    seed(dbPath, 100)
+    const log = join(dir, 'systemctl.log')
+    const r = run(
+      VACUUM,
+      ['-y'],
+      vacuumStubs(log, {
+        sqlite3: `
+case "$*" in
+  *"${dbPath}"*integrity_check* | *integrity_check*"${dbPath}"*)
+    echo "*** in database main ***"
+    echo "wrong # of entries in index sqlite_autoindex_profiles_1"
+    exit 0 ;;
+esac
+exec ${realSqlite3()} "$@"`,
+      }),
+    )
+
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('do NOT compact it')
+    expect(r.stderr).toContain('Restore')
+    expect(existsSync(log)).toBe(false) // the service was never stopped
+    expect(replaced()).toEqual([])
+  })
+
+  it('restarts the service and keeps the original when the rebuild is short', () => {
+    seed(dbPath, 300)
+    const log = join(dir, 'systemctl.log')
+    const r = run(
+      VACUUM,
+      ['-y'],
+      vacuumStubs(log, {
+        // Only the rebuilt file's counts are faked; that query runs against
+        // nothing else.
+        sqlite3: `
+case "$*" in
+  *"COUNT(*) FROM profiles; SELECT COUNT(*) FROM location_votes"*) echo 7; echo 9; exit 0 ;;
+esac
+exec ${realSqlite3()} "$@"`,
+      }),
+    )
+
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('failed verification')
+    expect(r.stderr).toContain('7 rebuilt vs 300 live')
+    // Stopped, so it must come back — and nothing may have been swapped.
+    const order = readFileSync(log, 'utf8')
+    expect(order).toContain('systemctl start x-loc-cache')
+    expect(r.stderr).toContain('the database was not modified')
+    expect(replaced()).toEqual([])
+    expect(readdirSync(dir).filter((f) => f.startsWith('vacuum-'))).toEqual([])
+
+    const db = new Database(dbPath, { readonly: true })
+    expect(db.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+      n: 300,
+    })
+    db.close()
+  })
+
+  it('puts the original back if it dies in the one-mv window', () => {
+    // Between moving the database aside and putting the rebuilt one in its
+    // place there is exactly one mv. Dying there and restarting the service
+    // would leave it opening a database that is not there — SQLite creates an
+    // empty one, and the server starts answering from it while the real file
+    // sits beside it under another name.
+    seed(dbPath, 300)
+    const log = join(dir, 'systemctl.log')
+    const realMv = spawnSync('sh', ['-c', 'command -v mv'], {
+      encoding: 'utf8',
+    }).stdout.trim()
+    const r = run(
+      VACUUM,
+      ['-y'],
+      vacuumStubs(log, {
+        // Only the swap itself; the move-aside and the rollback both pass
+        // through, since neither has the rebuilt file as its source.
+        mv: `
+case "$1" in
+  */vacuum-*.db) echo "mv: simulated failure" >&2; exit 1 ;;
+esac
+exec ${realMv} "$@"`,
+      }),
+    )
+
+    expect(r.status).not.toBe(0)
+    expect(r.stderr).toContain('putting the original database back')
+    expect(existsSync(dbPath)).toBe(true)
+    expect(replaced()).toEqual([])
+    expect(readFileSync(log, 'utf8')).toContain('systemctl start x-loc-cache')
+
+    const db = new Database(dbPath, { readonly: true })
+    expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
+    expect(db.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+      n: 300,
+    })
+    db.close()
+  })
+
+  it('will not run unattended without being told to', () => {
+    // spawnSync gives it a pipe, not a terminal — the same as cron or a
+    // half-written unit file would. Stopping the service is not something to
+    // do because a prompt went unanswered.
+    seed(dbPath, 20)
+    const log = join(dir, 'systemctl.log')
+    const r = run(VACUUM, [], vacuumStubs(log))
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('not a terminal')
+    expect(existsSync(log)).toBe(false)
+  })
+
+  it('refuses to run as a normal user, before touching anything', () => {
+    seed(dbPath, 20)
+    const r = run(VACUUM, ['-y'])
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('run as root')
+  })
+
+  it('rejects an argument it does not understand rather than ignoring it', () => {
+    seed(dbPath, 20)
+    const r = run(VACUUM, ['--force'], vacuumStubs(join(dir, 'systemctl.log')))
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('usage:')
+  })
 })
 
 describe.skipIf(MISSING.length > 0)('restore.sh', () => {

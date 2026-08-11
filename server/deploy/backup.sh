@@ -69,13 +69,17 @@ SNAP="$BACKUP_DIR/x-loc-cache-$STAMP.db"
 # there is at most one, and neither the prune, the orphan sweep, the kept-count
 # nor restore.sh's "available:" listing may see it as an archive.
 EVIDENCE="$BACKUP_DIR/corrupt-evidence.db.gz"
+# What a VACUUM would reclaim, for the weekly heartbeat to report. Dotfile for
+# the same reason as .backup.lock: nothing that globs x-loc-cache-*.db.gz may
+# ever see it as an archive.
+STATUS="$BACKUP_DIR/.vacuum-status"
 
 # A run killed too hard for its traps (SIGKILL, power loss) leaves working
 # files nothing else would ever touch — any present now are orphans. The
 # ?-globs match only stamped names, so a kept archive is never at risk.
 rm -f "$BACKUP_DIR"/x-loc-cache-????????-??????.db \
   "$BACKUP_DIR"/x-loc-cache-????????-??????.db.gz.part \
-  "$EVIDENCE.part"
+  "$EVIDENCE.part" "$STATUS.part"
 
 trap 'rm -f "$SNAP" "$SNAP.gz.part"' EXIT
 # dash runs the EXIT trap on exit and SIGINT but not on SIGTERM — which is what
@@ -140,6 +144,35 @@ if [ "$CHECK" != "ok" ] || [ -z "$COUNTS" ] || [ "$SHORT" = yes ]; then
   exit 1
 fi
 
+# What a VACUUM would reclaim, measured rather than estimated — and already
+# paid for. $SNAP *is* the live database rebuilt from scratch, so the gap
+# between the two files is exactly the free and half-filled pages a VACUUM
+# would hand back. Taken here because the next three lines delete $SNAP.
+#
+# No threshold is applied to it: this records the two measurements and stops
+# there, so what counts as "worth compacting" lives in exactly one place
+# (DEFAULT_VACUUM_ALERT_PCT in deploy/alert.ts) rather than drifting between a
+# shell script and the email that reports it.
+bytes() {
+  # wc -c rather than stat: stat's flags differ between GNU and BSD, and the
+  # arithmetic strips the padding wc adds on some of them.
+  if [ -f "$1" ]; then echo $(($(wc -c < "$1"))); else echo 0; fi
+}
+# Main file plus the WAL that has not been checkpointed yet — what the database
+# occupies now, and what a rebuild hands back. Matches dbBytes() in
+# src/node-server.ts. The WAL is a rounding error at the default 1000-page
+# autocheckpoint, but including it keeps the comparison from ever reading
+# backwards on a database whose newest pages have not landed in the main file.
+LIVE_BYTES=$(($(bytes "$DB") + $(bytes "${DB}-wal")))
+SNAP_BYTES="$(bytes "$SNAP")"
+RECLAIM_PCT=0
+if [ "$LIVE_BYTES" -gt 0 ] && [ "$SNAP_BYTES" -lt "$LIVE_BYTES" ]; then
+  # Rounded, not truncated: alert.ts rounds the same two numbers for the email,
+  # and a journal line reading 17% beside an email reading 18% is a minute
+  # somebody spends wondering which one is lying.
+  RECLAIM_PCT=$((((LIVE_BYTES - SNAP_BYTES) * 100 + LIVE_BYTES / 2) / LIVE_BYTES))
+fi
+
 gzip -c "$SNAP" > "$SNAP.gz.part"
 mv "$SNAP.gz.part" "$SNAP.gz"
 rm -f "$SNAP"
@@ -172,4 +205,21 @@ ls -1 "$BACKUP_DIR"/x-loc-cache-*.db.gz | sort -r | tail -n +"$PRUNE_FROM" \
   | while read -r old; do rm -f -- "$old"; done
 
 KEPT="$(ls -1 "$BACKUP_DIR"/x-loc-cache-*.db.gz | wc -l)"
+
+# Written last, and only on a run that got all the way through: a measurement
+# taken from a database that then failed its integrity check is not something
+# the weekly heartbeat should be quoting. Whole file, then rename, so a reader
+# never catches half of it.
+#
+# A plain text file rather than a query the alerter runs for itself — the
+# heartbeat is the one thing on the box that has to keep working when SQLite is
+# what broke, so it gets to read three lines instead of opening the database.
+{
+  echo "stamp=$STAMP"
+  echo "live_bytes=$LIVE_BYTES"
+  echo "vacuumed_bytes=$SNAP_BYTES"
+} > "$STATUS.part"
+mv "$STATUS.part" "$STATUS"
+
 echo "backup ok: $SNAP.gz ($(du -h "$SNAP.gz" | cut -f1), $PROFILES profiles / $VOTES votes), $KEPT kept"
+echo "vacuum check: ${RECLAIM_PCT}% of the database is reclaimable ($LIVE_BYTES live, $SNAP_BYTES rebuilt)"
