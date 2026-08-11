@@ -23,7 +23,7 @@
 
 import { spawnSync } from 'node:child_process'
 import { hostname } from 'node:os'
-import { readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import nodemailer from 'nodemailer'
 
@@ -211,33 +211,137 @@ export function collectBackupStats(
   }
 }
 
+export interface VacuumStatus {
+  liveBytes: number
+  vacuumedBytes: number
+  /** Share of the live file a VACUUM would hand back; 0 when it would gain nothing. */
+  reclaimPct: number
+  stamp: string | null
+}
+
+/** Written by backup.sh beside the archives. */
+export const VACUUM_STATUS_FILE = '.vacuum-status'
+
+/**
+ * Below this, a VACUUM buys back a slice that ordinary churn re-consumes
+ * anyway, and costs a stop / rebuild / restart to do it. The database only
+ * accumulates free pages after a one-off — a shortened retention window, a
+ * tightened cap, a peak that did not come back — so this is a threshold that
+ * should fire rarely and mean something when it does.
+ */
+export const DEFAULT_VACUUM_ALERT_PCT = 25
+
+/**
+ * The two sizes the nightly backup left behind. It rebuilds the whole database
+ * to make its snapshot, so that snapshot is what a compacted file would weigh —
+ * this is a measurement of what a VACUUM would reclaim, not an estimate.
+ *
+ * Reads a text file rather than opening the database, for the same reason the
+ * rest of this file touches no SQLite: the heartbeat has to keep arriving when
+ * SQLite is the thing that broke.
+ */
+export function readVacuumStatus(backupDir: string): VacuumStatus | null {
+  let raw: string
+  try {
+    raw = readFileSync(join(backupDir, VACUUM_STATUS_FILE), 'utf8')
+  } catch {
+    return null
+  }
+
+  const fields = new Map<string, string>()
+  for (const line of raw.split('\n')) {
+    const eq = line.indexOf('=')
+    if (eq > 0) fields.set(line.slice(0, eq).trim(), line.slice(eq + 1).trim())
+  }
+  const size = (key: string): number | null => {
+    const value = fields.get(key)
+    if (value === undefined || value === '') return null
+    const n = Number(value)
+    return Number.isSafeInteger(n) && n >= 0 ? n : null
+  }
+
+  const liveBytes = size('live_bytes')
+  const vacuumedBytes = size('vacuumed_bytes')
+  // A truncated or hand-edited file reports nothing rather than something
+  // wrong. A missing line in the email is honest; a fabricated percentage that
+  // sends somebody to stop the service is not.
+  if (liveBytes === null || vacuumedBytes === null || liveBytes === 0) {
+    return null
+  }
+  return {
+    liveBytes,
+    vacuumedBytes,
+    reclaimPct:
+      vacuumedBytes < liveBytes
+        ? Math.round(((liveBytes - vacuumedBytes) / liveBytes) * 100)
+        : 0,
+    stamp: fields.get('stamp') ?? null,
+  }
+}
+
+/** Ignores a garbled override rather than letting it silence the report. */
+export function readAlertPct(raw: string | undefined): number {
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 && n <= 100 ? n : DEFAULT_VACUUM_ALERT_PCT
+}
+
 export interface ReportInput {
   stats: BackupStats
   host: string
   when: string
   /** Older than this and the heartbeat reports STALE instead of healthy. */
   staleAfterHours?: number
+  /** What the last backup measured; null until one has run since this shipped. */
+  vacuum?: VacuumStatus | null
+  /** At or above this share reclaimable, the heartbeat says so. */
+  vacuumAlertPct?: number
 }
+
+/** One decimal, the same rounding collectBackupStats uses for its own total. */
+const mb = (bytes: number): number => Math.round((bytes / 1_048_576) * 10) / 10
 
 export function buildReportMessage(
   input: ReportInput,
   prefix: string,
 ): { subject: string; text: string } {
-  const { stats, host, when, staleAfterHours = 48 } = input
+  const {
+    stats,
+    host,
+    when,
+    staleAfterHours = 48,
+    vacuum = null,
+    vacuumAlertPct = DEFAULT_VACUUM_ALERT_PCT,
+  } = input
   const stale =
     stats.count === 0 ||
     stats.newestAgeHours === null ||
     stats.newestAgeHours > staleAfterHours
+  // Only ever mentioned when the backups themselves are fine. A stale-backup
+  // week has one thing worth acting on, and reclaimable disk is not it — the
+  // measurement still appears in the body, just not in the subject line.
+  const bloated =
+    !stale && vacuum !== null && vacuum.reclaimPct >= vacuumAlertPct
   const subject = stale
     ? `${prefix} backups are STALE on ${host}`
-    : `${prefix} backups healthy on ${host}`
+    : `${prefix} backups healthy on ${host}${bloated ? ` (database ${vacuum!.reclaimPct}% reclaimable)` : ''}`
+
+  const reclaimable = vacuum
+    ? `${vacuum.reclaimPct}% (${mb(vacuum.liveBytes - vacuum.vacuumedBytes)} MB of ${mb(vacuum.liveBytes)} MB)`
+    : '(not measured yet)'
+
+  // Lead with whichever finding is worth a Monday morning, at most one of them.
+  let lead =
+    'Backups are current. Nothing to do — this is the weekly heartbeat.'
+  if (stale) {
+    lead = `No backup newer than ${staleAfterHours}h. Check: systemctl list-timers x-loc-backup`
+  } else if (bloated) {
+    lead = `Backups are current. The database has ${vacuum!.reclaimPct}% reclaimable space — see below.`
+  }
 
   return {
     subject,
     text: [
-      stale
-        ? `No backup newer than ${staleAfterHours}h. Check: systemctl list-timers x-loc-backup`
-        : 'Backups are current. Nothing to do — this is the weekly heartbeat.',
+      lead,
       '',
       `Host:            ${host}`,
       `Time:            ${when}`,
@@ -245,6 +349,18 @@ export function buildReportMessage(
       `Newest:          ${stats.newest ?? '(none)'}`,
       `Newest age:      ${stats.newestAgeHours === null ? '(n/a)' : `${stats.newestAgeHours}h`}`,
       `Total on disk:   ${stats.totalMb} MB`,
+      `DB reclaimable:  ${reclaimable}`,
+      ...(bloated
+        ? [
+            '',
+            `A VACUUM would return ${mb(vacuum!.liveBytes - vacuum!.vacuumedBytes)} MB. That is measured, not`,
+            'estimated: the nightly backup rebuilds the database to snapshot it,',
+            'so the snapshot is what a compacted file weighs. To reclaim it:',
+            '  sudo /opt/x-loc-cache/server/deploy/vacuum.sh',
+            'It stops the service for the rebuild, verifies the result before',
+            'swapping it in, and keeps the old file beside the new one.',
+          ]
+        : []),
       '',
       'If this email stops arriving, the heartbeat timer itself has stopped —',
       'that silence is the thing it exists to make noticeable.',
@@ -299,16 +415,17 @@ async function main(): Promise<void> {
 
   const host = hostname()
   const when = new Date().toISOString()
+  const backupDir =
+    process.env.XLOC_BACKUP_DIR ?? '/var/lib/x-loc-cache/backups'
   const message =
     arg === '--report'
       ? buildReportMessage(
           {
-            stats: collectBackupStats(
-              process.env.XLOC_BACKUP_DIR ?? '/var/lib/x-loc-cache/backups',
-              Date.now(),
-            ),
+            stats: collectBackupStats(backupDir, Date.now()),
             host,
             when,
+            vacuum: readVacuumStatus(backupDir),
+            vacuumAlertPct: readAlertPct(process.env.XLOC_VACUUM_ALERT_PCT),
           },
           config.subjectPrefix,
         )

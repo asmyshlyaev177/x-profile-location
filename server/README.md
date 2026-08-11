@@ -605,6 +605,10 @@ Each run ([`deploy/backup.sh`](deploy/backup.sh)) takes a snapshot with
 prunes to the newest `XLOC_BACKUP_KEEP` (default 7). Nothing here needs the
 server stopped, and none of it runs on the server's event loop.
 
+Rebuilding the file is also the only way to know how much of it is free space,
+so each run writes that down on the way past — see
+[Compacting the database](#compacting-the-database).
+
 **Why `VACUUM INTO` and not `.backup`.** Both are consistent against a live WAL
 database where a plain `cp` reads torn pages mid-write, but SQLite's backup API
 **restarts from scratch whenever another connection writes**, so under a steady
@@ -701,6 +705,103 @@ they hold in IndexedDB as they browse, so the cache refills on its own.
 
 Set up [Alerting](#alerting) and neither of those has to be noticed by hand.
 
+### Compacting the database
+
+There is no scheduled `VACUUM`, and adding one would be a mistake. What there
+is instead: the nightly backup measures what a `VACUUM` would reclaim, and
+[`deploy/vacuum.sh`](deploy/vacuum.sh) reclaims it on the rare occasion the
+number says to.
+
+```bash
+sudo /opt/x-loc-cache/server/deploy/vacuum.sh        # prompts first
+sudo /opt/x-loc-cache/server/deploy/vacuum.sh -y     # or don't
+```
+
+**Why nothing is scheduled.** `location_votes` is keyed
+`(username, client_id)` while retention ages rows out by `seen_at`, so the
+daily delete frees space scattered across the b-tree — which is exactly where
+new votes land, because they are scattered by the same key. Deletes and
+inserts are balanced in steady state and the space comes straight back. The
+file plateaus rather than sawtoothing, and there is no secondary index to
+fragment ([above](#indexes-dont-add-any)). A monthly timer would run eleven
+useless times to catch the one month that mattered.
+
+What actually leaves free pages behind is a one-off: shortening
+`VOTE_RETENTION_MS` (the 60-day window in `src/index.ts`), tightening the
+[contribution budget](#contribution-budget), or a peak in traffic that does
+not come back. Those are events. So this is triggered by a measurement, not a
+calendar.
+
+**The measurement is free.** `backup.sh` already rebuilds the whole database
+every night — that is what `VACUUM INTO` does to produce the snapshot. So the
+snapshot's size _is_ what a compacted database would weigh, and the gap
+between it and the live file is what a `VACUUM` would hand back. Not an
+estimate: the same operation produces the prediction and, later, the result.
+Each run leaves the two sizes in `<backups>/.vacuum-status` and prints them:
+
+```text
+vacuum check: 3% of the database is reclaimable (7892992 live, 7651328 rebuilt)
+```
+
+That reading is a freshly built 20k-profile / 80k-vote database: low single
+digits is what nothing-to-do looks like. The weekly heartbeat reads that file
+— never the database, for the reason in
+[Alerting](#alerting) — and puts the share in every email, in the subject too
+once it reaches `XLOC_VACUUM_ALERT_PCT` (default 25). That threshold lives in
+exactly one place, `DEFAULT_VACUUM_ALERT_PCT` in
+[`deploy/alert.ts`](deploy/alert.ts); `backup.sh` records the two numbers and
+draws no conclusion from them.
+
+It is also strictly better than `PRAGMA freelist_count`, which counts only
+wholly-free pages. Rebuilding the file accounts for the half-empty ones too.
+
+**What the script does.** It rebuilds into a new file and swaps, rather than
+running `VACUUM` in place:
+
+1. `integrity_check` on the live database **first**. Compacting a corrupt one
+   carries the fault across — an index out of sync with its table copies over
+   verbatim — while destroying the file holding the evidence. It refuses, and
+   points at [Restore](#restore).
+2. Checks there is room beside the database for a second copy of it. This is
+   the one script that can fill the disk the server writes to.
+3. Stops the service, rebuilds with `VACUUM INTO`, and verifies the result
+   with the same three checks `backup.sh` runs on a snapshot — `integrity_check`,
+   the row counts, and a profile count that cannot have shrunk. A failure at
+   any point restarts the service and leaves the original in place.
+4. Swaps it in, moving `-wal`/`-shm` aside with the file they belong to, and
+   confirms `/healthz`. The original is kept as `*.replaced-<stamp>`; delete
+   it once this has proven out.
+
+The service is stopped for the whole rebuild, on purpose. Snapshotting a
+_live_ database would be faster — 0.6 s flat under write load, which is why
+`backup.sh` does it that way — but every contribution arriving between the
+snapshot and the swap would be silently dropped. Stopping first drops none,
+and a client that cannot reach the server keeps its votes in IndexedDB and
+re-contributes them.
+
+[`deploy/vacuum-live.test.ts`](deploy/vacuum-live.test.ts) is where that stops
+being an argument: it boots the real server, keeps contributing over HTTP
+throughout the run, and checks that every vote the server acknowledged is in
+the compacted file afterwards. What the window costs, measured the same way:
+
+| Database | Requests refused | Window  | Slowest failure |
+| -------- | ---------------- | ------- | --------------- |
+| 0.3 MB   | 8                | ~176 ms | 2 ms            |
+| 12.9 MB  | 14               | ~274 ms | 1 ms            |
+
+Roughly 175 ms of that is fixed — stopping and restarting Node — and the rest
+tracks the size of the file being rebuilt, so a 400 MB database is seconds
+rather than milliseconds. Requests inside the window fail as `ECONNREFUSED`,
+which is the point of the second measurement: they come back in 1–2 ms rather
+than hanging on a socket nobody will answer, so a client retries instead of
+waiting out a timeout with its votes in hand.
+
+An in-place `VACUUM` would be worse on both counts: it holds the write lock
+for the entire rewrite, against a `busy_timeout` of 5 s, and it stages the new
+database in the WAL before checkpointing — peak disk of roughly twice the
+file, on the disk the backups are already sharing. It also cannot be verified
+before it commits, or rolled back after.
+
 ### Alerting
 
 Email on failure, and a weekly heartbeat. Optional: with no config file the
@@ -771,10 +872,18 @@ Archives kept:   7
 Newest:          x-loc-cache-20260806-030000.db.gz
 Newest age:      6.2h
 Total on disk:   271.4 MB
+DB reclaimable:  3% (11.8 MB of 402.5 MB)
 ```
 
 Past 48 hours without a fresh archive the subject becomes
 `backups are STALE`, which catches a timer that stopped without ever failing.
+
+`DB reclaimable` is the one number here that is not about backups — see
+[Compacting the database](#compacting-the-database). At or above
+`XLOC_VACUUM_ALERT_PCT` (default 25) it also appears in the subject, and the
+body says what to run. A stale week keeps its own subject: backups that
+stopped are the thing to fix, and two findings in one subject line read as
+neither.
 
 The alerter deliberately touches no SQLite. `nodemailer` is pure JavaScript
 with no native module, so it still sends when `better-sqlite3` is the thing
@@ -1059,7 +1168,35 @@ Running it through the `x-loc-cache` image rather than `alpine` is what
 supplies `sqlite3`, and writes the new file as uid 1000 so the server can open
 it. Keep `x-loc-cache.db.replaced` until the restore has proven out.
 
-### Alerting (container)
+### Compacting (container)
+
+`vacuum.sh` is **not** in the image either, for the same reason as
+`restore.sh` — it drives `systemctl`. The measurement that decides whether to
+run it needs nothing extra: `backup.sh` is the same script here, so
+`/data/backups/.vacuum-status` and the `vacuum check:` line are there as
+described under [Compacting the database](#compacting-the-database).
+
+When it says so, the container equivalent is the restore recipe with a rebuild
+where the `gunzip` was:
+
+```bash
+docker compose stop
+docker run --rm -v x-loc-data:/data x-loc-cache:latest sh -c '
+  set -e
+  sqlite3 /data/x-loc-cache.db "PRAGMA integrity_check;"
+  sqlite3 /data/x-loc-cache.db "VACUUM INTO '\''/data/vacuum.tmp.db'\''"
+  sqlite3 /data/vacuum.tmp.db "PRAGMA integrity_check; SELECT COUNT(*) FROM profiles;"
+  mv /data/x-loc-cache.db /data/x-loc-cache.db.replaced
+  rm -f /data/x-loc-cache.db-wal /data/x-loc-cache.db-shm
+  mv /data/vacuum.tmp.db /data/x-loc-cache.db'
+docker compose start
+curl -s localhost:8787/healthz
+```
+
+The `-wal`/`-shm` warning above applies here in full: they describe the file
+being replaced. Check the integrity of the live database **before** rebuilding
+it, not after — the rebuild copies a fault across and destroys the original
+that a restore would need.
 
 `deploy/alert.ts` is in the image too, so the weekly heartbeat works the same
 way — put the SMTP variables from
