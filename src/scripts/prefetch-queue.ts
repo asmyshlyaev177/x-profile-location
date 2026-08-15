@@ -55,6 +55,14 @@ export interface PacingOptions {
   minSpacingMs?: number
   /** Ceiling on the paced gap, so a stale reset can't park a queue with work in it. */
   maxSpacingMs?: number
+  /**
+   * Share of the window's budget spent at `sprintSpacingMs` before the trickle
+   * takes over. The reader is looking at the feed now; the spread is what keeps
+   * the rest of the window alive, not what fills the first screen.
+   */
+  sprintShare?: number
+  /** Gap while sprinting, floored by `minSpacingMs` like any other. */
+  sprintSpacingMs?: number
   /** Window length assumed when X hasn't told us when the budget rolls over. */
   windowMs?: number
 }
@@ -65,6 +73,8 @@ export const PACING_DEFAULTS: Required<PacingOptions> = {
   minSpacingMs: 1500,
   maxSpacingMs: 2 * 60 * 1000,
   windowMs: 15 * 60 * 1000,
+  sprintShare: 0.25,
+  sprintSpacingMs: 3000,
 }
 
 // Measured 2026-08-15 in a loaded dist/chrome: at 1000 per tab the broker
@@ -158,6 +168,14 @@ export class CandidateQueue {
     return this.queueFor(priority).length > 0
   }
 
+  /** Whether anything of this priority survives the owner's own filter. */
+  some(
+    priority: PrefetchPriority,
+    keep: (candidate: PrefetchCandidate) => boolean,
+  ): boolean {
+    return this.queueFor(priority).some(keep)
+  }
+
   /** Next candidate of exactly this priority (removed), or null. */
   take(priority: PrefetchPriority): PrefetchCandidate | null {
     const c = this.queueFor(priority).shift() ?? null
@@ -223,17 +241,18 @@ function msLeftInWindow(
  * Background lookups allowed right now — zero during a hard backoff, else
  * whatever is left above the user's reserved share.
  */
+/** Lookups the window allows prefetch in total, before any have gone out. */
+function usableShare(rate: RateState, reserveFraction: number): number {
+  return Math.max(1, Math.floor(rate.limit * clampFraction(reserveFraction)))
+}
+
 export function prefetchBudget(
   rate: RateState,
   reserveFraction: number,
   now: number,
 ): number {
   if (rate.resetAt > now) return 0 // hard paused (e.g. 429)
-  const mayUse = Math.max(
-    1,
-    Math.floor(rate.limit * clampFraction(reserveFraction)),
-  )
-  const reservedForUser = rate.limit - mayUse
+  const reservedForUser = rate.limit - usableShare(rate, reserveFraction)
   return Math.max(0, rate.remaining - reservedForUser)
 }
 
@@ -246,6 +265,8 @@ export function nextDelayMs(
   rate: RateState,
   opts: Required<PacingOptions>,
   now: number,
+  /** Whether the next lookup would be a feed account — the only kind sprinted. */
+  sprintable = false,
 ): number {
   if (rate.resetAt > now)
     return Math.min(rate.resetAt - now + 500, opts.windowMs)
@@ -256,6 +277,16 @@ export function nextDelayMs(
   if (budget <= 0) return msLeft + 500
   // 'instant': spend the share as fast as the floor allows.
   if (opts.pacing === 'instant') return opts.minSpacingMs
+
+  // The first quarter of the share goes out at a sprint: spread evenly, the
+  // screen the reader is on now fills at one flag per 22s. The trickle keeps
+  // the rest of the window alive and still gets three quarters of it. Only the
+  // feed earns it — a thread's replies are the tier that waits, by definition.
+  const sprintFloor =
+    usableShare(rate, opts.reserveFraction) * (1 - opts.sprintShare)
+  if (sprintable && budget > sprintFloor) {
+    return Math.max(opts.minSpacingMs, opts.sprintSpacingMs)
+  }
 
   return Math.min(
     Math.max(msLeft / budget, opts.minSpacingMs),

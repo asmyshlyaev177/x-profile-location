@@ -298,31 +298,37 @@ describe('nextDelayMs', () => {
     ...over,
   })
   const opts = (over: PacingOptions = {}) => ({ ...PACING_DEFAULTS, ...over })
+  // Past the sprint: half the 40-lookup share is gone — well past the quarter
+  // it covers — so the trickle answers, with 20 left to spread.
+  const cruising = (over: Partial<RateState> = {}) =>
+    paced({ remaining: 30, ...over })
 
   it('divides the remaining window by the remaining budget', () => {
-    expect(nextDelayMs(paced(), opts(), NOW)).toBe(WINDOW / 40)
+    expect(nextDelayMs(cruising(), opts(), NOW)).toBe(WINDOW / 20)
   })
 
   it('assumes a full window when X has not told us the reset time yet', () => {
-    expect(nextDelayMs(paced({ windowResetAt: 0 }), opts(), NOW)).toBe(
-      WINDOW / 40,
+    expect(nextDelayMs(cruising({ windowResetAt: 0 }), opts(), NOW)).toBe(
+      WINDOW / 20,
     )
   })
 
   it('stretches the gap as manual hovers eat the shared budget', () => {
-    // user spent 10 → 30 left of the prefetch share
-    expect(nextDelayMs(paced({ remaining: 40 }), opts(), NOW)).toBe(WINDOW / 30)
+    // user spent 5 more → 15 left of the prefetch share rather than 20
+    expect(nextDelayMs(cruising({ remaining: 25 }), opts(), NOW)).toBe(
+      WINDOW / 15,
+    )
   })
 
   it('shrinks the gap as the window winds down', () => {
     const twoMinutesLeft = NOW + 13 * 60 * 1000
-    expect(nextDelayMs(paced(), opts(), twoMinutesLeft)).toBe(120_000 / 40)
+    expect(nextDelayMs(cruising(), opts(), twoMinutesLeft)).toBe(120_000 / 20)
   })
 
   it('never paces faster than minSpacingMs', () => {
-    const tenSecondsLeft = NOW + WINDOW - 10_000 // budget 40 → 250ms
+    const tenSecondsLeft = NOW + WINDOW - 10_000 // budget 20 → 500ms
     expect(
-      nextDelayMs(paced(), opts({ minSpacingMs: 1500 }), tenSecondsLeft),
+      nextDelayMs(cruising(), opts({ minSpacingMs: 1500 }), tenSecondsLeft),
     ).toBe(1500)
   })
 
@@ -353,6 +359,63 @@ describe('nextDelayMs', () => {
   it('caps even a nonsense backoff at one window', () => {
     const wrong = paced({ resetAt: NOW + 5 * 60 * 60 * 1000 })
     expect(nextDelayMs(wrong, opts(), NOW)).toBe(WINDOW)
+  })
+
+  // The first quarter of the share goes out at a sprint, so the screen the
+  // reader is on fills in half a minute rather than over four of them.
+  describe('opening sprint', () => {
+    it('uses the sprint gap while the first quarter is unspent', () => {
+      expect(nextDelayMs(paced(), opts(), NOW, true)).toBe(3000)
+    })
+
+    // The tier is the whole point: a thread's replies are what waits, and
+    // sprinting them would spend the feed's head start on the wrong queue.
+    it('is the feed queue’s alone', () => {
+      expect(nextDelayMs(paced(), opts(), NOW, false)).toBe(WINDOW / 40)
+    })
+
+    it('is off unless the caller asks for it', () => {
+      expect(nextDelayMs(paced(), opts(), NOW)).toBe(WINDOW / 40)
+    })
+
+    it('hands over to the spread the moment that quarter is gone', () => {
+      // 40 remaining = 30 of the 40-lookup share left, so 10 have gone. The
+      // boundary itself is the trickle's: the sprint cannot spend past its share.
+      expect(nextDelayMs(paced({ remaining: 41 }), opts(), NOW, true)).toBe(
+        3000,
+      )
+      expect(nextDelayMs(paced({ remaining: 40 }), opts(), NOW, true)).toBe(
+        WINDOW / 30,
+      )
+    })
+
+    it('measures its quarter against the share, not the whole window', () => {
+      // 0.5 share of 50 → 25 usable, so the sprint covers the first 6.25 and a
+      // budget of 25 is still inside it.
+      const half = opts({ reserveFraction: 0.5 })
+      expect(nextDelayMs(paced(), half, NOW, true)).toBe(3000)
+      expect(nextDelayMs(paced({ remaining: 43 }), half, NOW, true)).toBe(
+        WINDOW / 18,
+      )
+    })
+
+    it('is skippable, leaving the plain spread', () => {
+      expect(nextDelayMs(paced(), opts({ sprintShare: 0 }), NOW, true)).toBe(
+        WINDOW / 40,
+      )
+    })
+
+    it('never outruns minSpacingMs', () => {
+      expect(
+        nextDelayMs(paced(), opts({ minSpacingMs: 5000 }), NOW, true),
+      ).toBe(5000)
+    })
+
+    it('still yields to a hard backoff', () => {
+      expect(
+        nextDelayMs(paced({ resetAt: NOW + 30_000 }), opts(), NOW, true),
+      ).toBe(30_500)
+    })
   })
 
   // 'instant' is the opt-out: same share, spent as fast as the floor allows.
