@@ -3472,7 +3472,7 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
   if (!users) return
   void applySharedHits(users.map((u) => u.userName))
   // Queued before auth headers arrive; syncPoller() starts the draining.
-  // Timeline order into a FIFO, so lookups follow the feed down.
+  // Timeline order within the batch; the batch itself jumps the queue.
   if (prefetchAllowedBySettings()) {
     void enqueueForLookup(
       users.map((u) => ({

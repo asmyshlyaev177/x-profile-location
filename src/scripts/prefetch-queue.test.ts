@@ -32,18 +32,31 @@ describe('enqueue', () => {
     expect(q.__state().order).toEqual(['first', 'second', 'third'])
   })
 
-  it('appends a later batch behind the earlier one', () => {
+  // Opening a tweet queues its accounts while the feed's are still waiting.
+  // The user is looking at the tweet, not the feed, so the newer batch goes
+  // first — appending left an opened thread behind a screenful it had scrolled
+  // past, and the flags landed after the user had moved on again.
+  it('puts a later batch in front of the earlier one', () => {
     const q = new CandidateQueue()
-    q.enqueue([{ userName: 'first' }, { userName: 'second' }])
-    q.enqueue([{ userName: 'third' }]) // the user scrolled further down
-    expect(q.__state().order).toEqual(['first', 'second', 'third'])
+    q.enqueue([{ userName: 'feed-1' }, { userName: 'feed-2' }])
+    q.enqueue([{ userName: 'opened-1' }, { userName: 'opened-2' }])
+    expect(q.__state().order).toEqual([
+      'opened-1',
+      'opened-2',
+      'feed-1',
+      'feed-2',
+    ])
+
+    // …and the one after that jumps the pair that just jumped the feed.
+    q.enqueue([{ userName: 'deeper' }])
+    expect(q.__state().order[0]).toBe('deeper')
   })
 
-  it('leaves a repeat sighting where it first appeared', () => {
+  it('leaves a repeat sighting where it already sat', () => {
     const q = new CandidateQueue()
     q.enqueue([{ userName: 'first' }, { userName: 'second' }])
     q.enqueue([{ userName: 'First' }, { userName: 'third' }])
-    expect(q.__state().order).toEqual(['first', 'second', 'third'])
+    expect(q.__state().order).toEqual(['third', 'first', 'second'])
   })
 
   it('caps the queue at maxQueue, dropping the latest to appear', () => {
@@ -119,9 +132,9 @@ describe('priority queues', () => {
     q.enqueue([{ userName: 'feed-1', priority: 'high' }])
     expect(q.__state().lowOrder).toEqual(['Both'])
 
-    // Promoted to the back of the feed queue: that is where it was seen.
+    // Promoted to the front of the feed queue: it is in the batch on screen now.
     q.enqueue([{ userName: 'both', priority: 'high' }])
-    expect(q.__state().highOrder).toEqual(['feed-1', 'both'])
+    expect(q.__state().highOrder).toEqual(['both', 'feed-1'])
     expect(q.__state().lowOrder).toEqual([]) // moved, not copied
     expect(q.__state().queueLength).toBe(2)
   })

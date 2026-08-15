@@ -17,7 +17,7 @@ duplicates it.
 | `extract-users.ts`   | Recursive GraphQL walker. Finds `__typename: 'User'` nodes up to depth 20.                                                     |
 | `cache.ts`           | IndexedDB wrapper (idb-keyval). 30-day TTL. Keys are lowercased usernames.                                                     |
 | `shared-cache.ts`    | Client for the optional community location cache; batch lookup + contribute, opt-in.                                           |
-| `prefetch-queue.ts`  | `CandidateQueue` (feed before replies, page order) plus the pacing arithmetic. No timers, no state of its own.                 |
+| `prefetch-queue.ts`  | `CandidateQueue` (feed before replies, newest batch first) plus the pacing arithmetic. No timers, no state of its own.      |
 | `lookup-broker.ts`   | Service worker. One queue per tab, one rate-limit ledger, one pace — the whole cross-tab decision, testable without a browser. |
 | `prefetch-poller.ts` | Content script. Asks the broker what to look up, looks it up, asks again. Holds the clock the worker cannot.                   |
 | `countries.ts`       | `COUNTRY_FLAGS`, `REGION_FLAGS`, `REGION_ABBR`, `REGION_MEMBERS` + every storage key.                                          |
@@ -86,11 +86,13 @@ covering hovers + swipes + prefetch across every tab.
   the gap, a rolled-over window shrinks it. `pacing: 'instant'` opts out of
   spreading (same share, spent at `minSpacingMs`).
 - **Two queues** (`PrefetchPriority`): `high` (`HomeTimeline`) drains completely
-  before `low` (`TweetDetail`) gets a single lookup. Each is plain FIFO — **page
-  order**, so locations fill in down the feed as the user reads. Dedup keeps the
-  slot a name first earned, in the queue and in page-script's replay buffer alike.
-  `low → high` promotes; `high` never demotes. `maxQueue` overflow sheds from the
-  **bottom**, emptying `low` first.
+  before `low` (`TweetDetail`) gets a single lookup. Within a batch it is **page
+  order**, so locations fill in down the feed as the user reads — but each new
+  batch goes **in front** of the ones already waiting: opening a tweet queues its
+  accounts behind nothing, because that is what the user is looking at. Dedup
+  keeps the slot a name already holds, in the queue and in page-script's replay
+  buffer alike. `low → high` promotes; `high` never demotes. `maxQueue` overflow
+  sheds from the **bottom** — the oldest batch — emptying `low` first.
 - The tweet the user actually **opened** skips the queue — `processPrimaryTweet()`
   fetches it directly.
 - The **community cache is the master switch**: `prefetchAllowedBySettings()`
