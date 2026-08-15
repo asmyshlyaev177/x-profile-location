@@ -110,10 +110,10 @@ describe('background lookups section', () => {
     return label.querySelector('input[type="checkbox"]') as HTMLInputElement
   }
 
-  it('defaults to a 70% share, spread, with nothing stored', async () => {
+  it('defaults to an 80% share, spread, with nothing stored', async () => {
     const { container } = mountStored({})
 
-    await waitFor(() => expect(shareSelect(container).value).toBe('0.7'))
+    await waitFor(() => expect(shareSelect(container).value).toBe('0.8'))
     expect(checkbox(container, PREFETCH).checked).toBe(true)
     expect(checkbox(container, SPREAD).checked).toBe(true)
     // Defaults are applied in memory only — the first write should be the user's.
@@ -132,7 +132,7 @@ describe('background lookups section', () => {
 
   it('persists a new share as a number, not the select’s string', async () => {
     const { container } = mountStored({})
-    await waitFor(() => expect(shareSelect(container).value).toBe('0.7'))
+    await waitFor(() => expect(shareSelect(container).value).toBe('0.8'))
 
     const select = shareSelect(container)
     select.value = '0.9'
@@ -170,7 +170,7 @@ describe('background lookups section', () => {
   describe('community cache gate', () => {
     it('comes first in the section', async () => {
       const { container } = mountStored({})
-      await waitFor(() => expect(shareSelect(container).value).toBe('0.7'))
+      await waitFor(() => expect(shareSelect(container).value).toBe('0.8'))
 
       const labels = [
         ...section(container, PREFETCH_LABEL).querySelectorAll('label'),

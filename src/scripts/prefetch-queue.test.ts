@@ -248,7 +248,7 @@ describe('prefetchBudget', () => {
   it('falls back to the default share for a non-finite one', () => {
     expect(
       prefetchBudget(rate({ limit: 10, remaining: 10 }), Number.NaN, 0),
-    ).toBe(prefetchBudget(rate({ limit: 10, remaining: 10 }), 0.7, 0))
+    ).toBe(prefetchBudget(rate({ limit: 10, remaining: 10 }), 0.8, 0))
   })
 })
 
@@ -259,9 +259,9 @@ describe('nextDelayMs', () => {
   const NOW = 1_000_000
   const WINDOW = 15 * 60 * 1000
 
-  // Real-world shape at the shipped defaults: 50/15min with a 0.7 share → 35
-  // background lookups to spread over 15 minutes ≈ one every 26s, with the last
-  // 15 of the window held back for the user's hovers.
+  // Real-world shape at the shipped defaults: 50/15min with a 0.8 share → 40
+  // background lookups to spread over 15 minutes ≈ one every 22s, with the last
+  // 10 of the window held back for the user's hovers.
   const paced = (over: Partial<RateState> = {}): RateState => ({
     remaining: 50,
     limit: 50,
@@ -272,27 +272,27 @@ describe('nextDelayMs', () => {
   const opts = (over: PacingOptions = {}) => ({ ...PACING_DEFAULTS, ...over })
 
   it('divides the remaining window by the remaining budget', () => {
-    expect(nextDelayMs(paced(), opts(), NOW)).toBe(WINDOW / 35)
+    expect(nextDelayMs(paced(), opts(), NOW)).toBe(WINDOW / 40)
   })
 
   it('assumes a full window when X has not told us the reset time yet', () => {
     expect(nextDelayMs(paced({ windowResetAt: 0 }), opts(), NOW)).toBe(
-      WINDOW / 35,
+      WINDOW / 40,
     )
   })
 
   it('stretches the gap as manual hovers eat the shared budget', () => {
-    // user spent 10 → 25 left of the prefetch share
-    expect(nextDelayMs(paced({ remaining: 40 }), opts(), NOW)).toBe(WINDOW / 25)
+    // user spent 10 → 30 left of the prefetch share
+    expect(nextDelayMs(paced({ remaining: 40 }), opts(), NOW)).toBe(WINDOW / 30)
   })
 
   it('shrinks the gap as the window winds down', () => {
     const twoMinutesLeft = NOW + 13 * 60 * 1000
-    expect(nextDelayMs(paced(), opts(), twoMinutesLeft)).toBe(120_000 / 35)
+    expect(nextDelayMs(paced(), opts(), twoMinutesLeft)).toBe(120_000 / 40)
   })
 
   it('never paces faster than minSpacingMs', () => {
-    const tenSecondsLeft = NOW + WINDOW - 10_000 // budget 35 → 286ms
+    const tenSecondsLeft = NOW + WINDOW - 10_000 // budget 40 → 250ms
     expect(
       nextDelayMs(paced(), opts({ minSpacingMs: 1500 }), tenSecondsLeft),
     ).toBe(1500)
@@ -302,7 +302,7 @@ describe('nextDelayMs', () => {
     // budget 1; an even spread would park for ~15 minutes
     expect(
       nextDelayMs(
-        paced({ remaining: 16 }),
+        paced({ remaining: 11 }),
         opts({ maxSpacingMs: 120_000 }),
         NOW,
       ),
@@ -311,7 +311,7 @@ describe('nextDelayMs', () => {
 
   it('waits for the window to roll over when out of budget', () => {
     // exactly the user's reserved share → budget 0
-    expect(nextDelayMs(paced({ remaining: 15 }), opts(), NOW)).toBe(
+    expect(nextDelayMs(paced({ remaining: 10 }), opts(), NOW)).toBe(
       WINDOW + 500,
     )
   })
@@ -336,7 +336,7 @@ describe('nextDelayMs', () => {
     })
 
     it('still stops at the share and waits for the window', () => {
-      expect(nextDelayMs(paced({ remaining: 15 }), instant, NOW)).toBe(
+      expect(nextDelayMs(paced({ remaining: 10 }), instant, NOW)).toBe(
         WINDOW + 500,
       )
     })

@@ -79,10 +79,10 @@ covering hovers + swipes + prefetch across every tab.
 
 ### Prefetch
 
-- Uses at most **70%** of the window (`reserveFraction`, user-settable), stopping
+- Uses at most **80%** of the window (`reserveFraction`, user-settable), stopping
   once `remaining` hits the user's reserved share.
 - **Paced**: `nextDelayMs()` recomputes `msLeftInWindow / budget` before every
-  lookup (≈26 s), clamped to `[1.5 s, 2 min]`. Self-correcting — hovers stretch
+  lookup (≈22 s), clamped to `[1.5 s, 2 min]`. Self-correcting — hovers stretch
   the gap, a rolled-over window shrinks it. `pacing: 'instant'` opts out of
   spreading (same share, spent at `minSpacingMs`).
 - **Two queues** (`PrefetchPriority`): `high` (`HomeTimeline`) drains completely
@@ -529,7 +529,7 @@ HIGHLIGHT_FLAGS_KEY = 'highlightFlags'
 SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed' // default ON
 HIDE_BLOCKED_LOCATIONS_KEY = 'hideBlockedLocations' // 'off' | 'collapse' | 'hide'; default 'collapse'
 BACKGROUND_PREFETCH_KEY = 'backgroundPrefetch' // default ON
-PREFETCH_SHARE_KEY = 'prefetchShare' // default 0.7
+PREFETCH_SHARE_KEY = 'prefetchShare' // default 0.8
 PREFETCH_PACING_KEY = 'prefetchPacing' // 'spread' | 'instant'; default 'spread'
 SHARED_CACHE_KEY = 'sharedCacheEnabled' // default ON (inert without CACHE_API_BASE); master switch for prefetch
 

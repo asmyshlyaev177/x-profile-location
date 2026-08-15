@@ -397,9 +397,9 @@ describe('pacing', () => {
     expect(h.broker.next(1, FOCUSED).userName).toBe('a')
     h.broker.report({ userName: 'a', spent: true, ok: true, remaining: 49 })
 
-    // 49 remaining → budget 34 over a full window. Two tabs polling does not
+    // 49 remaining → budget 39 over a full window. Two tabs polling does not
     // make that two lookups; the second is told to wait the same gap.
-    const gap = PACING_DEFAULTS.windowMs / 34
+    const gap = PACING_DEFAULTS.windowMs / 39
     const instruction = h.broker.next(2, VISIBLE)
     expect(instruction.userName).toBeUndefined()
     expect(instruction.waitMs).toBe(gap)
@@ -417,7 +417,7 @@ describe('pacing', () => {
     h.advance(10_000)
     h.broker.enqueue(1, [{ userName: 'b' }], FOCUSED)
     expect(h.broker.next(1, FOCUSED).waitMs).toBe(
-      PACING_DEFAULTS.windowMs / 34 - 10_000,
+      PACING_DEFAULTS.windowMs / 39 - 10_000,
     )
   })
 
@@ -529,7 +529,7 @@ describe('toJSON / from', () => {
     h.broker.report({ userName: 'a', spent: true, ok: true, remaining: 49 })
 
     expect(roundTrip(h.broker, h.now).next(1, FOCUSED).waitMs).toBe(
-      PACING_DEFAULTS.windowMs / 34,
+      PACING_DEFAULTS.windowMs / 39,
     )
   })
 
