@@ -15,9 +15,6 @@
       <div class="x-loc-hidden-ph" id="ph">
         <span class="x-loc-hidden-label">🚫 Hidden · 🇮🇳 India</span>
         <button type="button" class="x-loc-hidden-show" id="show">Show</button>
-        <button type="button" class="x-loc-exc-btn" id="exc">
-          🚫 Add exception
-        </button>
       </div>
     </article>
 
@@ -32,9 +29,22 @@
         <button type="button" class="x-loc-hidden-show" id="show-long">
           Show
         </button>
-        <button type="button" class="x-loc-exc-btn" id="exc-long">
-          🚫 Add exception
-        </button>
+      </div>
+    </article>
+
+    <h4>Revealed by "Show" — the exception button joins the flags row</h4>
+    <article data-testid="tweet" data-x-loc-revealed="1" id="revealed">
+      <div class="tweetbody" id="revealed-body">
+        <div data-testid="User-Name">Someone · @someone</div>
+        <div class="x-loc-info x-loc-feed-row" id="revealed-row">
+          <span class="x-loc-icon x-loc-icon-flag" data-country="India"
+            >🇮🇳</span
+          >
+          <button type="button" class="x-loc-exc-btn x-loc-exc-inline" id="exc">
+            🚫 Add exception
+          </button>
+        </div>
+        <div id="revealed-text">The post the reader asked to see.</div>
       </div>
     </article>
 

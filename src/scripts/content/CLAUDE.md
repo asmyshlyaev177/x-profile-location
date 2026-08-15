@@ -102,8 +102,17 @@ substring it never read.
 every rule acting on the account and names them only in its tooltip; the exceptions stay
 per-rule underneath. Three places, via `syncExceptionButton()` or a direct call: hover
 cards (`processCard`), the primary tweet of a status page (`syncPrimaryExceptionButton` — X
-opens no hover card for it), and the collapse placeholder. Any rule change re-syncs from
-`rehighlightAll()` **and** `refreshHiddenTweets()`.
+opens no hover card for it), and a post revealed from a collapse placeholder
+(`placeRevealedException`). Any rule change re-syncs from `rehighlightAll()` **and**
+`refreshHiddenTweets()`.
+
+**The placeholder itself never carries it.** A collapsed post shows nothing to hover, so
+the timeline has no other way to reach the button — but it is withheld until "Show", since
+sparing an account is a judgement about what it posts and a collapsed post gives the reader
+nothing to judge. On "Show" the placeholder goes and the button lands at the end of the
+account's `.x-loc-feed-row`, beside the flags; with no such row (the reader turned it off,
+or the rule that caught the post is one the row has nothing to say about) it goes where the
+row would have been, after the name line. Never into the post's own body.
 
 **⚠️ is the location rule showing, not a property of the country.**
 `getLocationDisplay(loc, userName)` swaps the flag for ⚠️ only while that rule is _acting_

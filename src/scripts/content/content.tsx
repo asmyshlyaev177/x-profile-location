@@ -1635,22 +1635,14 @@ function placeholderKey(match: FilterMatch): string {
   return `${match.rule}|${match.icon}|${match.label}`
 }
 
-function buildHiddenPlaceholder(
-  target: Element,
-  userName: string,
-  match: FilterMatch,
-  reveal: (target: Element) => void,
-): HTMLElement {
-  const ph = document.createElement('div')
-  ph.className = HIDDEN_PLACEHOLDER_CLASS
-  // For hideArticle to compare against: rebuilding every refresh churned the
-  // whole page, never rebuilding left it naming the wrong rule.
-  ph.dataset.match = placeholderKey(match)
-
+function buildHiddenLabel(match: FilterMatch): HTMLElement {
   const labelEl = document.createElement('span')
   labelEl.className = 'x-loc-hidden-label'
   labelEl.textContent = t('hiddenLabel', match.icon, matchLabel(match))
+  return labelEl
+}
 
+function buildShowButton(match: FilterMatch, onShow: () => void): HTMLElement {
   const btn = document.createElement('button')
   btn.type = 'button'
   btn.className = 'x-loc-hidden-show'
@@ -1665,17 +1657,59 @@ function buildHiddenPlaceholder(
   btn.addEventListener('click', (e) => {
     e.preventDefault()
     e.stopPropagation()
-    reveal(target)
+    onShow()
   })
+  return btn
+}
 
-  ph.appendChild(labelEl)
-  ph.appendChild(btn)
+/**
+ * The exception button, once "Show" has put the post on screen. A collapsed
+ * post leaves nothing to hover, so the card the button otherwise lives in
+ * cannot be opened from a timeline — but sparing an account is a judgement
+ * about what it posts, and until the post is readable there is nothing to
+ * judge. It rides at the end of the flags row, where everything else this
+ * extension says about the account already is.
+ */
+function placeRevealedException(
+  target: Element,
+  userName: string,
+  match: FilterMatch,
+): void {
+  if (target.querySelector('.x-loc-exc-btn')) return
+  const btn = buildExceptionButton(userName, [match.rule])
+  btn.classList.add('x-loc-exc-inline')
 
-  // A collapsed post leaves nothing to hover, so the card this button lives in
-  // cannot be opened. "Show" spares the post; this spares the account.
-  if (showExceptionButton) {
-    ph.appendChild(buildExceptionButton(userName, [match.rule]))
+  // No row when the reader turned it off, or when the rule that caught the post
+  // is one the row has nothing to say about — then it goes where the row would.
+  const row = target.querySelector('.x-loc-feed-row')
+  if (row) {
+    row.appendChild(btn)
+    return
   }
+  const nameEl = getNameEl(target)
+  if (nameEl) nameEl.insertAdjacentElement('afterend', btn)
+  else target.appendChild(btn)
+}
+
+function buildHiddenPlaceholder(
+  target: Element,
+  userName: string,
+  match: FilterMatch,
+  reveal: (target: Element) => void,
+): HTMLElement {
+  const ph = document.createElement('div')
+  ph.className = HIDDEN_PLACEHOLDER_CLASS
+  // For hideArticle to compare against: rebuilding every refresh churned the
+  // whole page, never rebuilding left it naming the wrong rule.
+  ph.dataset.match = placeholderKey(match)
+
+  const onShow = () => {
+    reveal(target)
+    ph.remove()
+    if (showExceptionButton) placeRevealedException(target, userName, match)
+  }
+
+  ph.append(buildHiddenLabel(match), buildShowButton(match, onShow))
   return ph
 }
 
@@ -1849,12 +1883,12 @@ function unhideArticle(article: Element): void {
 // User clicked "Show" on a collapsed tweet: reveal it and never re-hide it (the
 // marker lives only as long as this DOM node, which X recycles on scroll).
 // Deliberately immediate, parked change dropped: the click came from the
-// placeholder, so the post is on screen and the user is waiting on it.
+// placeholder, so the post is on screen and the user is waiting on it. The
+// placeholder is taken down by the click that got here — see onShow.
 function revealArticle(article: Element): void {
   cancelPendingResize(article)
   article.removeAttribute(HIDDEN_ATTR)
   article.setAttribute(HIDDEN_REVEALED_ATTR, '1')
-  article.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
 }
 
 // --- quoted posts -----------------------------------------------------------
@@ -1901,7 +1935,6 @@ function revealQuote(quote: Element): void {
   cancelPendingResize(quote)
   quote.removeAttribute(QUOTE_HIDDEN_ATTR)
   quote.setAttribute(QUOTE_REVEALED_ATTR, '1')
-  quote.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
 }
 
 /**
