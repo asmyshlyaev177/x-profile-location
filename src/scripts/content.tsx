@@ -1498,6 +1498,12 @@ function markHighlightedArticles(userName: string) {
 
 const FEED_LOCATION_ATTR = 'data-x-loc-feed-done'
 
+// Feed rows land *after* the name line, the primary tweet's *inside* it, so
+// neither sees the other's row without looking at the parent of both.
+function nameLineHasInfoRow(userNameEl: Element): boolean {
+  return !!userNameEl.parentElement?.querySelector('.x-loc-info')
+}
+
 // A row grows the tweet, so one injected above the viewport jumps the feed. See
 // "Resizing without moving the scroll" in CLAUDE.md.
 let pendingFeedRows = new WeakMap<Element, FeedRowPlan>()
@@ -2872,7 +2878,7 @@ async function processPrimaryTweet() {
 
   // Searched, not read off nextElementSibling: the exception button can already
   // sit between the two.
-  if (userNameEl.querySelector('.x-loc-info')) return
+  if (nameLineHasInfoRow(userNameEl)) return
 
   const handleDiv = userNameEl.children[1] as Element | undefined
   ;(row as HTMLElement).style.marginTop = '2px'
@@ -3283,14 +3289,12 @@ async function revealLocationForSwipe(article: Element) {
   }
 
   // Inject below username even if showLocationInFeed is off — user explicitly swiped
-  if (!article.querySelector('.x-loc-feed-row')) {
-    const userNameEl = getNameEl(article)
-    if (userNameEl) {
-      article.setAttribute(FEED_LOCATION_ATTR, '1')
-      const row = buildInfoRow(data, userName)
-      row.classList.add('x-loc-feed-row')
-      userNameEl.insertAdjacentElement('afterend', row)
-    }
+  const userNameEl = getNameEl(article)
+  if (userNameEl && !nameLineHasInfoRow(userNameEl)) {
+    article.setAttribute(FEED_LOCATION_ATTR, '1')
+    const row = buildInfoRow(data, userName)
+    row.classList.add('x-loc-feed-row')
+    userNameEl.insertAdjacentElement('afterend', row)
   }
 
   showLocationOverlay(data, userName)
