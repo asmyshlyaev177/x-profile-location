@@ -67,8 +67,11 @@ export const PACING_DEFAULTS: Required<PacingOptions> = {
   windowMs: 15 * 60 * 1000,
 }
 
-/** Max queued in one tab; overflow sheds from `low` first. */
-export const MAX_QUEUE = 300
+// Measured 2026-08-15 in a loaded dist/chrome: at 1000 per tab the broker
+// snapshot is 157KB and its storage.session round trip 2.5ms, 1.6MB and 31ms
+// across ten tabs — 15% of the 10MB quota, which rejects the whole write.
+/** Max queued in one tab; a backstop, not a pace. Overflow sheds the oldest. */
+export const MAX_QUEUE = 1000
 
 export interface QueueSnapshot {
   high: PrefetchCandidate[]
@@ -132,19 +135,18 @@ export class CandidateQueue {
   }
 
   /**
-   * Drop overflow from the back of each queue, emptying `low` first. The back is
-   * the oldest batch, so what the user has moved on from is shed first.
+   * Drop overflow from the back — the oldest batch — of whichever queue is
+   * longer, `low` on a tie. A scrolled feed outproduces a thread by far, so
+   * emptying `low` first threw away every reply author the moment `high` grew.
    */
   private trimToMaxQueue(): void {
     let overflow = this.high.length + this.low.length - this.maxQueue
-    if (overflow <= 0) return
-    for (const queue of [this.low, this.high]) {
-      if (overflow <= 0) break
-      const drop = Math.min(overflow, queue.length)
-      for (const c of queue.splice(queue.length - drop, drop)) {
-        this.queued.delete(c.userName.toLowerCase())
-      }
-      overflow -= drop
+    while (overflow > 0) {
+      const queue = this.low.length >= this.high.length ? this.low : this.high
+      const dropped = queue.pop()
+      if (!dropped) return
+      this.queued.delete(dropped.userName.toLowerCase())
+      overflow -= 1
     }
   }
 

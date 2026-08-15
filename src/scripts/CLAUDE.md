@@ -92,7 +92,34 @@ covering hovers + swipes + prefetch across every tab.
   accounts behind nothing, because that is what the user is looking at. Dedup
   keeps the slot a name already holds, in the queue and in page-script's replay
   buffer alike. `low → high` promotes; `high` never demotes. `maxQueue` overflow
-  sheds from the **bottom** — the oldest batch — emptying `low` first.
+  sheds from the **bottom** — the oldest batch — of whichever queue is **longer**,
+  `low` on a tie. Emptying `low` first, as it used to, meant a scrolled feed wiped
+  out every reply author queued behind it: `high` outproduces `low` by far and the
+  pair drains at one lookup per ~22 s, so the cap was reached in minutes and
+  nothing from a thread ever survived it.
+- **`MAX_QUEUE` is 1000 per tab, and it is a backstop rather than a pace.** The
+  drain rate is the window, not the queue — 40 lookups per 15 min, so 1000 is ~6 h
+  of backlog and raising it further only stores names their turn never comes for.
+  What sets the ceiling is that the **whole broker snapshot is re-serialized into
+  `chrome.storage.session` on every message** and the handler awaits it. Measured
+  2026-08-15 against a loaded `dist/chrome` (median of 15, `getBytesInUse`):
+
+  | per tab | tabs | bytes  | of quota | `set` | `get` |
+  | ------- | ---- | ------ | -------- | ----- | ----- |
+  | 300     | 1    | 48 KB  | 0.5%     | 0.8ms | 0.4ms |
+  | 1000    | 1    | 157 KB | 1.5%     | 2.5ms | 1.2ms |
+  | 1000    | 10   | 1.6 MB | 15%      | 31ms  | 22ms  |
+  | 3000    | 10   | 4.7 MB | 46%      | 90ms  | 66ms  |
+
+  The quota is 10 MB (`QUOTA_BYTES`, per extension, all keys). Chrome's accounting
+  runs ~3.5× `JSON.stringify` length, so budget against `getBytesInUse()`. Going
+  over is an **atomic reject** — `'Session storage quota bytes exceeded. Values
+  were not stored.'`, the old value intact — which here would surface as
+  `sendResponse(null)` and a snapshot frozen before the failure: after the next
+  idle teardown `asked` and `inflight` roll back and accounts are looked up twice,
+  silently. Anything above ~1000 needs `saveBroker` to shed and retry first.
+  ⚠ `QUOTA_BYTES` and `getBytesInUse` only exist in **Firefox 131+**, and the
+  manifest's floor is 128 — neither can be read without a fallback.
 - The tweet the user actually **opened** skips the queue — `processPrimaryTweet()`
   fetches it directly.
 - The **community cache is the master switch**: `prefetchAllowedBySettings()`

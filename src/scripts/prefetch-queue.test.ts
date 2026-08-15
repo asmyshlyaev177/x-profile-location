@@ -147,6 +147,21 @@ describe('priority queues', () => {
     expect(q.__state().lowOrder).toEqual([])
   })
 
+  it('sheds the longer queue, so a busy feed cannot wipe out the replies', () => {
+    // The reported symptom: scrolling the feed long enough made every reply
+    // author queued from a thread vanish, because `low` was emptied first.
+    const q = new CandidateQueue(4)
+    q.enqueue([
+      { userName: 'r1', priority: 'low' },
+      { userName: 'r2', priority: 'low' },
+    ])
+    for (let i = 1; i <= 6; i++) {
+      q.enqueue([{ userName: `f${i}`, priority: 'high' }])
+    }
+    expect(q.__state().lowOrder).toEqual(['r1', 'r2'])
+    expect(q.__state().highOrder).toEqual(['f6', 'f5'])
+  })
+
   it('sheds low-priority overflow first when over maxQueue', () => {
     const q = new CandidateQueue(3)
     q.enqueue([
@@ -161,7 +176,7 @@ describe('priority queues', () => {
     expect(q.__state().lowOrder).toEqual(['r1'])
   })
 
-  it('falls back to trimming the high queue once low is empty', () => {
+  it('trims the high queue while it is the longer one', () => {
     const q = new CandidateQueue(2)
     q.enqueue([
       { userName: 'f1', priority: 'high' },
@@ -169,8 +184,8 @@ describe('priority queues', () => {
       { userName: 'f3', priority: 'high' },
       { userName: 'r1', priority: 'low' },
     ])
-    expect(q.__state().highOrder).toEqual(['f1', 'f2'])
-    expect(q.__state().lowOrder).toEqual([])
+    expect(q.__state().highOrder).toEqual(['f1'])
+    expect(q.__state().lowOrder).toEqual(['r1'])
   })
 
   it('re-queues a dropped name (its slot in the dedup map is freed too)', () => {
