@@ -406,6 +406,14 @@ article[${HIDDEN_ATTR}='collapse'] > :not(.${HIDDEN_PLACEHOLDER_CLASS}) {
   color: rgb(113, 118, 123);
   border-bottom: 1px solid rgba(128, 128, 128, 0.15);
 }
+/* Riding at the end of the flags row after "Show", like the share button beside
+   it: an action attached to that row, not a block of its own under the post. */
+.x-loc-exc-btn.x-loc-exc-inline {
+  margin-top: 0;
+  margin-left: 4px;
+  font-size: 11px;
+  padding: 2px 8px;
+}
 .x-loc-hidden-label {
   display: inline-flex;
   align-items: center;

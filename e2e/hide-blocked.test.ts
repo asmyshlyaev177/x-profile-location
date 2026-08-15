@@ -78,12 +78,12 @@ test('collapse mode (the default) leaves a placeholder that reveals the tweet on
 
 test('the placeholder can spare the account, not just the post', async ({
   page,
-  context,
-  extensionId,
 }) => {
-  // A collapsed post shows nothing to hover, so the placeholder is the only
-  // place to reach the exception button from a timeline — the hover card, where
-  // it otherwise lives, cannot be opened from here at all.
+  // A collapsed post shows nothing to hover, so this is the only place to reach
+  // the exception button from a timeline — the hover card, where it otherwise
+  // lives, cannot be opened from here at all. It is still withheld until
+  // "Show": sparing an account is a judgement about what it posts, and a
+  // collapsed post gives the reader nothing to judge.
   await mockSharedCache(page, FROM_INDIA)
   await mockAboutAccount(page, { account_based_in: 'India' })
 
@@ -91,26 +91,19 @@ test('the placeholder can spare the account, not just the post', async ({
 
   const { article } = await mostLikedReply(page)
   await expect(article).toHaveAttribute(HIDDEN, 'collapse', { timeout: 15_000 })
+  await expect(article.locator('.x-loc-exc-btn')).toHaveCount(0)
 
-  const excBtn = article.locator('.x-loc-hidden-ph .x-loc-exc-btn')
+  await article.locator('.x-loc-hidden-show').click()
+
+  // On the flags row, with the rest of what is known about the account.
+  const excBtn = article.locator('.x-loc-feed-row .x-loc-exc-btn')
   await expect(excBtn).toBeVisible()
   await expect(excBtn).toHaveText('🚫 Add exception')
 
+  // Clicking it exempts the account, which the button says back — the post was
+  // already spared by "Show", so it is the label that carries the difference.
   await excBtn.click()
-
-  await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 5_000 })
-  await expect(article.locator('.x-loc-hidden-ph')).toHaveCount(0)
-  await expect(
-    article.locator('[data-testid="User-Name"]').first(),
-  ).toBeVisible()
-
-  // The difference from "Show": that marks this one post revealed, while an
-  // exception exempts the account — so the post survives the filters being
-  // re-evaluated, which is what changing the mode forces.
-  await expect(article).not.toHaveAttribute(REVEALED, /.*/)
-  await setHideMode(context, extensionId, 'hide')
-  await expect(article).toBeVisible()
-  await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 10_000 })
+  await expect(excBtn).toHaveText('✓ Exception (undo)')
 })
 
 test('an excepted account gets its country back, in place', async ({
@@ -139,7 +132,8 @@ test('an excepted account gets its country back, in place', async ({
   await expect(flag).toHaveAttribute('title', 'India', { timeout: 15_000 })
   await expect(flag).toHaveText('⚠️')
 
-  await article.locator('.x-loc-hidden-ph .x-loc-exc-btn').click()
+  await article.locator('.x-loc-hidden-show').click()
+  await article.locator('.x-loc-feed-row .x-loc-exc-btn').click()
 
   await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 5_000 })
   // The same locator still resolves: the glyph was swapped where it stood
@@ -357,14 +351,25 @@ test('adding an exception moves nothing but the post it spares', async ({
   // scrolls the target into view first — which would be indistinguishable from
   // the movement this test exists to detect.
   const result = await page.evaluate(async () => {
-    const btn = [
+    // "Show" is what puts the exception button on the bar, and it un-collapses
+    // this one post — in view, so nothing to compensate for. The posts above
+    // the viewport are still collapsed, which is what the click after it moves.
+    const show = [
       ...document.querySelectorAll<HTMLElement>(
-        'article[data-testid="tweet"][data-x-loc-hidden="collapse"] .x-loc-hidden-ph .x-loc-exc-btn',
+        'article[data-testid="tweet"][data-x-loc-hidden="collapse"] .x-loc-hidden-show',
       ),
     ].find((el) => {
       const r = el.getBoundingClientRect()
       return r.top > 40 && r.bottom < window.innerHeight - 40
     })
+    if (!show) return { found: false, hiddenAbove: 0, moved: 0 }
+    // Taken before the click: "Show" takes the placeholder down, which leaves
+    // the button that was clicked detached and unable to name its own post.
+    const revealed = show.closest('article')
+    show.click()
+    await new Promise((r) => setTimeout(r, 500))
+
+    const btn = revealed?.querySelector<HTMLElement>('.x-loc-exc-btn')
     if (!btn) return { found: false, hiddenAbove: 0, moved: 0 }
 
     const hiddenAbove = [

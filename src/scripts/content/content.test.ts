@@ -2531,6 +2531,7 @@ describe('hide tweets by blocked location', () => {
   afterEach(() => {
     setHideMode('off')
     setBlockedCountries([])
+    pushSettings({ showExceptionButton: true })
   })
 
   it('collapses a tweet whose cached location is blocked', async () => {
@@ -2552,9 +2553,11 @@ describe('hide tweets by blocked location', () => {
     expect(article.querySelector('.x-loc-hidden-show')).not.toBeNull()
   })
 
-  it('offers the exception button on the placeholder, for the rule that hid it', async () => {
+  it('offers the exception button only once "Show" has been clicked', async () => {
     // A collapsed post shows nothing to hover, so the hover card — where the
-    // button otherwise lives — cannot be reached from here at all.
+    // button otherwise lives — cannot be reached from here at all. It is still
+    // not offered while the post is collapsed: sparing an account is a
+    // judgement about what it posts, and there is nothing on screen to judge.
     vi.mocked(getCached).mockResolvedValue({
       location: 'India',
       locationAccurate: true,
@@ -2566,15 +2569,23 @@ describe('hide tweets by blocked location', () => {
     document.body.appendChild(article)
     await flushAsync()
 
+    expect(article.querySelector('.x-loc-exc-btn')).toBeNull()
+
+    article.querySelector<HTMLElement>('.x-loc-hidden-show')!.click()
+    await flushAsync()
+
+    // In the flags row, where the rest of what is known about the account is —
+    // the placeholder it was clicked from is gone with the collapse.
     const btn = article.querySelector<HTMLElement>(
-      '.x-loc-hidden-ph .x-loc-exc-btn',
+      '.x-loc-feed-row .x-loc-exc-btn',
     )
     expect(btn?.dataset.rules).toBe('location')
+    expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
   })
 
-  it('un-hides for good when that button is clicked', async () => {
-    // "Show" spares this one post; the exception spares the account — so the
-    // placeholder has to go, not just this instance of it.
+  it('the revealed placeholder spares the account, not just the post', async () => {
+    // "Show" spares this one post; the exception spares every other post by the
+    // same account, including the ones already collapsed further down.
     vi.mocked(getCached).mockResolvedValue({
       location: 'India',
       locationAccurate: true,
@@ -2582,14 +2593,39 @@ describe('hide tweets by blocked location', () => {
       bio: null,
     })
 
+    const shown = makeTweetArticle('inuser')
+    const other = makeTweetArticle('inuser')
+    document.body.append(shown, other)
+    await flushAsync()
+    expect(other.getAttribute('data-x-loc-hidden')).toBe('collapse')
+
+    shown.querySelector<HTMLElement>('.x-loc-hidden-show')!.click()
+    await flushAsync()
+    shown.querySelector<HTMLElement>('.x-loc-exc-btn')!.click()
+    await flushAsync()
+
+    expect(other.hasAttribute('data-x-loc-hidden')).toBe(false)
+    expect(other.querySelector('.x-loc-hidden-ph')).toBeNull()
+  })
+
+  it('adds no exception button on "Show" when the setting is off', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'India',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    pushSettings({ showExceptionButton: false })
     const article = makeTweetArticle('inuser')
     document.body.appendChild(article)
     await flushAsync()
-    article.querySelector<HTMLElement>('.x-loc-exc-btn')!.click()
+
+    article.querySelector<HTMLElement>('.x-loc-hidden-show')!.click()
     await flushAsync()
 
-    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
     expect(article.querySelector('.x-loc-hidden-ph')).toBeNull()
+    expect(article.querySelector('.x-loc-exc-btn')).toBeNull()
   })
 
   it('does not hide when the location is not on the blocked list', async () => {
@@ -2800,13 +2836,13 @@ describe('hide tweets by blocked location', () => {
     const untouched = bystander.querySelector('.x-loc-hidden-ph')
     expect(untouched).not.toBeNull()
 
-    target
-      .querySelector<HTMLElement>('.x-loc-hidden-ph .x-loc-exc-btn')!
-      .click()
+    // "Show" first — that is what puts the exception button on the flags row.
+    target.querySelector<HTMLElement>('.x-loc-hidden-show')!.click()
+    await flushAsync()
+    target.querySelector<HTMLElement>('.x-loc-exc-btn')!.click()
     await flushAsync()
 
     expect(target.getAttribute('data-x-loc-hidden')).toBeNull()
-    expect(target.querySelector('.x-loc-hidden-ph')).toBeNull()
     expect(bystander.getAttribute('data-x-loc-hidden')).toBe('collapse')
     expect(bystander.querySelector('.x-loc-hidden-ph')).toBe(untouched)
   })

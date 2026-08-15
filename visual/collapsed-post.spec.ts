@@ -39,41 +39,49 @@ test('a collapsed quote leaves the post quoting it readable', async ({
   await expect(page.locator('#quote .x-loc-hidden-ph')).toBeVisible()
 })
 
-test('the placeholder is one row: label left, actions right', async ({
+test('the placeholder is one row: label left, "Show" right', async ({
   page,
 }) => {
   const ph = await box(page.locator('#ph'))
   const label = await box(page.locator('#ph .x-loc-hidden-label'))
   const show = await box(page.locator('#show'))
-  const exception = await box(page.locator('#exc'))
 
   expectSameRow(label, show)
-  expectSameRow(show, exception)
-  // Actions right-aligned, in escalating order: reveal this post, then spare
-  // the account.
   expect(show.x).toBeGreaterThan(right(label))
-  expect(exception.x).toBeGreaterThan(right(show))
-  expect(right(exception)).toBeLessThanOrEqual(right(ph) + 1)
+  expect(right(show)).toBeLessThanOrEqual(right(ph) + 1)
 })
 
-test('the exception button drops its stacking margin in the placeholder', async ({
+test('nothing offers to spare the account while the post is collapsed', async ({
   page,
 }) => {
-  // It is styled for the hover card, where it sits under the flags on a line of
-  // its own. Carried into a centred row, that margin pushed it out of line.
-  const show = await box(page.locator('#show'))
-  const exception = await box(page.locator('#exc'))
-  expect(Math.abs(centreY(show) - centreY(exception))).toBeLessThanOrEqual(2)
+  // The reader has not seen the post yet, so there is nothing to judge the
+  // account by — the button arrives with the post "Show" reveals.
+  await expect(page.locator('#ph .x-loc-exc-btn')).toHaveCount(0)
+  await expect(page.locator('#exc')).toBeVisible()
 })
 
-test('a label long enough to wrap does not push the actions off the row', async ({
+test('the revealed exception button rides on the flags row', async ({
+  page,
+}) => {
+  // Styled for the hover card, where it sits under the flags on a line of its
+  // own. That stacking margin has pushed it out of a centred row before.
+  const flag = await box(page.locator('#revealed-row .x-loc-icon-flag'))
+  const exception = await box(page.locator('#exc'))
+  const text = await box(page.locator('#revealed-text'))
+
+  expectSameRow(flag, exception)
+  expect(Math.abs(centreY(flag) - centreY(exception))).toBeLessThanOrEqual(2)
+  expect(exception.x).toBeGreaterThan(right(flag))
+  // On the row, not in the post: the text stays a line of its own below.
+  expect(text.y).toBeGreaterThanOrEqual(exception.y + exception.height - 1)
+})
+
+test('a label long enough to wrap does not push "Show" off the row', async ({
   page,
 }) => {
   const ph = await box(page.locator('#ph-long'))
   const show = await box(page.locator('#show-long'))
-  const exception = await box(page.locator('#exc-long'))
 
-  expectSameRow(show, exception)
-  expect(right(exception)).toBeLessThanOrEqual(right(ph) + 1)
+  expect(right(show)).toBeLessThanOrEqual(right(ph) + 1)
   expect(show.width).toBeGreaterThan(0)
 })
