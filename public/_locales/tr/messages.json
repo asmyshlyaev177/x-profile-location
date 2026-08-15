@@ -206,6 +206,24 @@
   "emptyNoKeywords": {
     "message": "Anahtar kelime belirlenmedi — tüm gönderiler normal gösteriliyor."
   },
+  "setNameMatch": {
+    "message": "Adlarda ve kullanıcı adlarında"
+  },
+  "setNameMatchDesc": {
+    "message": "Görünen ad görülmek için seçilir ve çoğu zaman tam da böyle bir filtreyi atlatmak için yazılır — “NFTguy”, “#freepalestine”. Kelimenin içinde de aramak bunları yakalar."
+  },
+  "setBioMatch": {
+    "message": "Biyografilerde"
+  },
+  "setBioMatchDesc": {
+    "message": "Biyografi düz metindir: kelimenin içinde aramak “kripto” anahtar kelimesini “kriptolojik” gibi sözcüklerde de eşleştirir. Öte yandan Türkçe ek aldığı için “yalnızca tam kelime”, “kriptoyu” gibi çekimli biçimleri kaçırır."
+  },
+  "matchWord": {
+    "message": "Yalnızca tam kelime"
+  },
+  "matchPartial": {
+    "message": "Kelimenin herhangi bir yerinde"
+  },
   "cardLocations": {
     "message": "Konumlar"
   },

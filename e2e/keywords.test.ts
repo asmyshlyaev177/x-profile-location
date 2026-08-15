@@ -18,6 +18,7 @@ import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
   addKeyword,
+  HOVER_CARD,
   pickBioWord,
   PRIMARY_TWEET,
   readCachedBio,
@@ -136,7 +137,7 @@ test('highlight exception button works the same from a reply hover card', async 
   // processCard() only builds the button for accounts that match a rule, so its
   // presence already says the hover card agreed the keyword hit.
   await target.link.hover()
-  const card = page.locator('[data-testid="HoverCard"]')
+  const card = page.locator(HOVER_CARD)
   const excBtn = card.locator('.x-loc-exc-btn')
   await expect(excBtn).toBeVisible({ timeout: 10_000 })
   await expect(excBtn).toHaveText('🚫 Add exception')

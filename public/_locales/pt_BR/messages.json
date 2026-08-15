@@ -206,6 +206,24 @@
   "emptyNoKeywords": {
     "message": "Nenhuma palavra-chave definida — todos os posts aparecem normalmente."
   },
+  "setNameMatch": {
+    "message": "Em nomes e usuários"
+  },
+  "setNameMatchDesc": {
+    "message": "Um nome de exibição é escolhido para ser visto, e muitas vezes é escrito justamente para escapar de um filtro assim — “NFTguy”, “#freepalestine”. Procurar dentro da palavra pega esses casos."
+  },
+  "setBioMatch": {
+    "message": "Em bios"
+  },
+  "setBioMatchDesc": {
+    "message": "Uma bio é texto corrido: procurar dentro da palavra faz a palavra-chave “ouro” aparecer em “tesouro” e “besouro”. Aqui, apenas palavras inteiras é o mais seguro."
+  },
+  "matchWord": {
+    "message": "Apenas palavras inteiras"
+  },
+  "matchPartial": {
+    "message": "Em qualquer parte da palavra"
+  },
   "cardLocations": {
     "message": "Localizações"
   },

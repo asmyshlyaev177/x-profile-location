@@ -21,6 +21,8 @@ export const KEYWORD_MATCH_ATTR = 'data-x-loc-kw'
 export const KEYWORD_HIGHLIGHT_NAME = 'x-loc-keyword'
 // Shares the bottom-centre slot with both toasts, and is the one that yields.
 export const RATING_ASK_ID = 'x-loc-ask-toast'
+export const RATE_TOAST_ID = 'x-loc-rate-toast'
+export const LOCATION_TOAST_ID = 'x-loc-location-toast'
 
 /**
  * X renders emoji as `<img alt="🇷🇺">`, with no text node for a Range to cover.
@@ -131,7 +133,7 @@ export const CONTENT_CSS = `
   padding: 2px 5px;
 }
 /* Clickable, unlike the swipe answer: a click closes the countdown. */
-#x-loc-rate-toast {
+#${RATE_TOAST_ID} {
   position: fixed;
   bottom: 24px;
   left: 50%;
@@ -148,7 +150,7 @@ export const CONTENT_CSS = `
   white-space: nowrap;
   border: 1px solid rgba(220, 38, 38, 0.55);
 }
-#x-loc-location-toast {
+#${LOCATION_TOAST_ID} {
   position: fixed;
   bottom: 24px;
   left: 50%;
@@ -164,7 +166,7 @@ export const CONTENT_CSS = `
   white-space: nowrap;
   border: 1px solid rgba(29, 155, 240, 0.55);
 }
-#x-loc-location-toast[data-pending] {
+#${LOCATION_TOAST_ID}[data-pending] {
   color: rgba(255, 255, 255, 0.75);
   border-color: rgba(29, 155, 240, 0.28);
 }

@@ -1,11 +1,10 @@
+// Type-only, so this module keeps its runtime independence from everything else.
 import type { PrefetchPacing } from '../settings'
 // The candidate queue and the pacing arithmetic behind background lookups.
 //
 // No timers, no fetching and no rate-limit state of its own: `lookup-broker.ts`
 // holds one queue per tab and one clock for all of them, so N open x.com tabs
 // still trickle at one shared rate. See "Cross-tab lookup broker" in CLAUDE.md.
-
-// Type-only, so this module keeps its runtime independence from everything else.
 
 /**
  * Which queue a candidate lands in. 'high' — the feed being scrolled — drains to
@@ -176,11 +175,6 @@ export class CandidateQueue {
     return c
   }
 
-  /** Next candidate (removed), or null. All of `high` goes before any of `low`. */
-  takeNext(): PrefetchCandidate | null {
-    return this.take('high') ?? this.take('low')
-  }
-
   get size(): number {
     return this.high.length + this.low.length
   }
@@ -230,10 +224,6 @@ function msLeftInWindow(
   return Math.min(windowResetAt - now, windowMs)
 }
 
-/**
- * Background lookups allowed right now — zero during a hard backoff, else
- * whatever is left above the user's reserved share.
- */
 /** Lookups the window allows prefetch in total, before any have gone out. */
 function usableShare(rate: RateState, reserveFraction: number): number {
   return Math.max(1, Math.floor(rate.limit * clampFraction(reserveFraction)))

@@ -164,6 +164,15 @@ async function readBody(
   return Buffer.concat(chunks).toString('utf8')
 }
 
+function toHeaders(req: IncomingMessage): Headers {
+  const headers = new Headers()
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (Array.isArray(value)) for (const v of value) headers.append(key, v)
+    else if (value !== undefined) headers.set(key, value)
+  }
+  return headers
+}
+
 /**
  * Null when the request has no fetch equivalent, which the caller answers 400.
  *
@@ -174,15 +183,6 @@ async function readBody(
  * caught wholesale — otherwise a port scan surfaced as a 500 and an entry in
  * the error counter.
  */
-function toHeaders(req: IncomingMessage): Headers {
-  const headers = new Headers()
-  for (const [key, value] of Object.entries(req.headers)) {
-    if (Array.isArray(value)) for (const v of value) headers.append(key, v)
-    else if (value !== undefined) headers.set(key, value)
-  }
-  return headers
-}
-
 function toRequest(req: IncomingMessage, body: string | null): Request | null {
   try {
     // The handlers only read `url.pathname`, so the authority is cosmetic — but
@@ -415,26 +415,19 @@ async function runRetention(): Promise<void> {
     console.error('[x-loc-cache] retention failed:', err)
   }
 }
-const retentionTimer = setInterval(() => void runRetention(), retentionMs)
-retentionTimer.unref()
-const bootTimer = setTimeout(() => void runRetention(), 60_000)
-bootTimer.unref()
+setInterval(() => void runRetention(), retentionMs).unref()
+setTimeout(() => void runRetention(), 60_000).unref()
 // Buckets are also swept between retention runs; the map is small but the sweep
 // is O(n) and there is no reason to let it sit for a whole day.
-const sweepTimer = setInterval(
-  () => sweepBuckets(Date.now()),
-  config.rateWindowMs * 10,
-)
-sweepTimer.unref()
+setInterval(() => sweepBuckets(Date.now()), config.rateWindowMs * 10).unref()
 
 // Usage stats, on their own interval so the reporting cadence can be changed
 // without touching how often data is pruned.
 if (config.statsIntervalHours > 0) {
-  const statsTimer = setInterval(
+  setInterval(
     () => void logStats('interval'),
     config.statsIntervalHours * 60 * 60 * 1000,
-  )
-  statsTimer.unref()
+  ).unref()
 }
 
 server.listen(config.port, config.host, () => {

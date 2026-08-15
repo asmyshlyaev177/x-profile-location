@@ -24,6 +24,27 @@ export type LocationInfo = {
 export const TWEET_ARTICLE = 'article[data-testid="tweet"]'
 /** The tweet a status page is *about*. X gives only this one tabindex="-1". */
 export const PRIMARY_TWEET = `${TWEET_ARTICLE}[tabindex="-1"]`
+/** X's profile hover card — where the extension draws its row and chips. */
+export const HOVER_CARD = '[data-testid="HoverCard"]'
+// Any icon the row can carry — its presence means the author had something to
+// show, as opposed to an author X returns no location for.
+export const ANY_LOCATION_ICON =
+  '.x-loc-icon-flag, .x-loc-store-block, .x-loc-icon-vpn'
+
+/**
+ * The article authored by `screenName`.
+ *
+ * Anchored on the author, not an index: X's virtualised timeline recycles rows,
+ * and an nth() handle silently starts pointing at a different tweet as soon as
+ * the list re-renders.
+ */
+export function articleBy(page: Page, screenName: string): Locator {
+  return page
+    .locator(
+      `${TWEET_ARTICLE}:has([data-testid="User-Name"] a[href="/${screenName}" i])`,
+    )
+    .first()
+}
 
 export function tweetArticles(page: Page): Locator {
   return page.locator(TWEET_ARTICLE)
@@ -278,13 +299,7 @@ export async function mostLikedReply(page: Page): Promise<{
   }
   if (!best) throw new Error('no reply article on this page')
 
-  // Anchored on the author, not the index: an nth() handle silently starts
-  // pointing at a different tweet as soon as X re-renders the list.
-  const article = page
-    .locator(
-      `${TWEET_ARTICLE}:has([data-testid="User-Name"] a[href="/${best.screenName}" i])`,
-    )
-    .first()
+  const article = articleBy(page, best.screenName)
   const link = article
     .locator(`[data-testid="User-Name"] a[href="/${best.screenName}" i]`)
     .first()
@@ -301,15 +316,13 @@ export async function hoverForLocationRow(
   page: Page,
   link: Locator,
 ): Promise<Locator> {
-  const card = page.locator('[data-testid="HoverCard"]')
+  const card = page.locator(HOVER_CARD)
   await expect(async () => {
     await page.mouse.move(0, 0)
     await link.hover()
-    await expect(
-      card
-        .locator('.x-loc-icon-flag, .x-loc-store-block, .x-loc-icon-vpn')
-        .first(),
-    ).toBeVisible({ timeout: 4_000 })
+    await expect(card.locator(ANY_LOCATION_ICON).first()).toBeVisible({
+      timeout: 4_000,
+    })
   }).toPass({ timeout: 25_000 })
   return card
 }
@@ -562,7 +575,7 @@ type Contribution = {
 
 // Mirrors the Worker's CORS headers (server/src/index.ts): the content script
 // calls this cross-origin, and application/json makes it a preflighted request.
-const CORS_HEADERS = {
+export const CORS_HEADERS = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, OPTIONS',
   'access-control-allow-headers': 'Content-Type',
@@ -588,16 +601,14 @@ const CORS_HEADERS = {
  * exists. Which reply answers is irrelevant to callers, so take a fresh one.
  */
 export async function hoverAnyReplyForLocation(page: Page): Promise<Locator> {
-  const card = page.locator('[data-testid="HoverCard"]')
+  const card = page.locator(HOVER_CARD)
   await expect(async () => {
     const { link } = await mostLikedReply(page)
     await page.mouse.move(0, 0)
     await link.hover({ timeout: 5_000 })
-    await expect(
-      card
-        .locator('.x-loc-icon-flag, .x-loc-store-block, .x-loc-icon-vpn')
-        .first(),
-    ).toBeVisible({ timeout: 4_000 })
+    await expect(card.locator(ANY_LOCATION_ICON).first()).toBeVisible({
+      timeout: 4_000,
+    })
   }).toPass({ timeout: 20_000 })
   return card
 }
@@ -751,7 +762,7 @@ export async function hoverOwnTweet(
   await usernameLink.hover()
   await queryDone
 
-  const card = page.locator('[data-testid="HoverCard"]')
+  const card = page.locator(HOVER_CARD)
   await card.locator('.x-loc-info').waitFor({ timeout: 10_000 })
 
   return card

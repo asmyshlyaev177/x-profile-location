@@ -92,6 +92,12 @@ user input reaching a selector.** `CSS.highlights` is absent before Firefox 140,
 text half simply doesn't paint. `findKeywordMatches()` runs the same two matchers as
 `matchesAnyKeyword()`, so a mark can never point at a word the rule didn't fire on.
 
+That last guarantee is why the walker picks a **match mode per text node**. The name block
+and the bio are judged under separate settings (`KEYWORD_NAME_MATCH_KEY`,
+`KEYWORD_BIO_MATCH_KEY` — names match inside a word by default, bios don't), so marking the
+whole card under one of them would either miss a name the rule fired on or mark a bio
+substring it never read.
+
 **One exception button, whatever the rule.** `buildExceptionButton(userName, rules)` covers
 every rule acting on the account and names them only in its tooltip; the exceptions stay
 per-rule underneath. Three places, via `syncExceptionButton()` or a direct call: hover

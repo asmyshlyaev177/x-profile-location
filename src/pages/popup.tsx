@@ -1,8 +1,14 @@
 import {
+  defaultSetting,
   normalizeHideBlockedMode,
   normalizePopupSection,
   normalizeRatePrompt,
   normalizeUsageStats,
+  readSetting,
+  withKeyword,
+  withLocation,
+  withoutKeyword,
+  withoutLocation,
 } from '../scripts/settings'
 import {
   BLOCKED_COUNTRIES_KEY,
@@ -26,11 +32,10 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import {
   CANONICAL_LOCATIONS,
-  COUNTRY_FLAGS,
+  flagFor,
   type HideBlockedMode,
   LOCATION_ALIASES,
   type PopupSection,
-  REGION_FLAGS,
   REGION_MEMBERS,
 } from '../scripts/countries/countries'
 import {
@@ -44,14 +49,6 @@ import {
   setRatePromptState,
   shouldAskForRating,
 } from '../scripts/usage'
-import {
-  defaultSetting,
-  readSetting,
-  withKeyword,
-  withLocation,
-  withoutKeyword,
-  withoutLocation,
-} from '../scripts/settings'
 import { initI18n, t, uiLocale } from '../scripts/i18n'
 import {
   aliasNote,
@@ -61,8 +58,6 @@ import {
 } from '../scripts/countries/location-names'
 import css from './popup.module.css'
 import { startThemeSync } from './theme'
-
-const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 
 function write(key: string, value: unknown) {
   chrome.storage.local.set({ [key]: value })
@@ -379,9 +374,7 @@ export function Popup() {
                 const members = REGION_MEMBERS[country]
                 return (
                   <span key={country} class={css.chip}>
-                    <span class={css.chipFlag}>
-                      {ALL_FLAGS[country] ?? '🌐'}
-                    </span>
+                    <span class={css.chipFlag}>{flagFor(country)}</span>
                     {localizedLocation(country)}
                     {members && (
                       <span class={css.chipNote} title={members.join(', ')}>
@@ -414,7 +407,7 @@ export function Popup() {
               const note = aliasNote(c, alias)
               return (
                 <>
-                  <span class={css.dropdownFlag}>{ALL_FLAGS[c] ?? '🌐'}</span>
+                  <span class={css.dropdownFlag}>{flagFor(c)}</span>
                   <span>{localizedLocation(c)}</span>
                   {REGION_MEMBERS[c] && (
                     <span class={css.dropdownNote}>

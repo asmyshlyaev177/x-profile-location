@@ -113,7 +113,6 @@
   /* Signal — the extension's own mark colour (#00d4c0). Carries the brand.
      Deliberately NOT X's blue: cyan is our layer, blue is X's chrome. */
   --color-signal: oklch(78.1% 0.139 183);
-  --color-signal-deep: oklch(65.8% 0.115 184.4);
 
   /* Meaning colours. Three, each with one job:
      x-blue = X's own UI inside a mockup · attention = highlight · alarm = blocked/VPN */
@@ -136,9 +135,7 @@
   :root {
     /* Semantic stacking order. Nothing here uses a bare number. */
     --z-sticky: 30;
-    --z-backdrop: 60;
     --z-modal: 70;
-    --z-toast: 80;
 
     --shell: min(88rem, 100%);
     --gutter: clamp(1.25rem, 4vw, 3.5rem);

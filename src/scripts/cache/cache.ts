@@ -1,4 +1,4 @@
-import { createStore, del, entries, get, set } from 'idb-keyval'
+import { clear, createStore, del, entries, get, set } from 'idb-keyval'
 import type { AccountFacts } from './profile'
 
 export interface LocationData {
@@ -64,8 +64,7 @@ export async function mergeCached(
 }
 
 export async function clearAllCache(): Promise<void> {
-  const all = await entries<string, CachedEntry>(locStore)
-  await Promise.all(all.map(([key]) => del(key, locStore)))
+  await clear(locStore)
 }
 
 export async function cleanupCache(): Promise<void> {

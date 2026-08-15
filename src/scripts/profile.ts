@@ -153,20 +153,6 @@ export function parseAccountFacts(node: unknown): AccountFacts {
   }
 }
 
-export function hasFacts(facts: AccountFacts): boolean {
-  return (
-    facts.createdAt !== null ||
-    facts.affiliation !== null ||
-    facts.handleChanges !== null ||
-    facts.restId !== null ||
-    facts.blueVerified !== null ||
-    facts.verified !== null ||
-    facts.identityVerified !== null ||
-    facts.isProtected !== null ||
-    facts.blockedBy !== null
-  )
-}
-
 /** Only the fields carrying a value, so a merge can't blank an earlier one. */
 export function definedFacts(facts: AccountFacts): Partial<AccountFacts> {
   const out: Partial<AccountFacts> = {}

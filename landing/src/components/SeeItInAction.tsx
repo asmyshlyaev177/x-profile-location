@@ -322,6 +322,12 @@ function CacheShowcase({ t }: { t: Dict }) {
   )
 }
 
+const arrow = (
+  <span class="text-hair-strong text-lg rtl:-scale-x-100" aria-hidden="true">
+    →
+  </span>
+)
+
 const contributor = (flag: string) => (
   <span class="bg-hair ring-hair-strong relative grid h-8 w-8 place-items-center rounded-full ring-1">
     <span class="absolute -end-1 -bottom-1 text-[0.625rem] leading-none">
@@ -342,12 +348,7 @@ function CachePreview({ t }: { t: Dict }) {
         <span class="t-data">{t.features.cache.contributors}</span>
       </div>
 
-      <span
-        class="text-hair-strong text-lg rtl:-scale-x-100"
-        aria-hidden="true"
-      >
-        →
-      </span>
+      {arrow}
 
       <div class="flex flex-col items-center gap-1.5">
         <span class="border-signal/50 bg-signal/12 grid h-11 w-11 place-items-center rounded-full border text-lg">
@@ -356,12 +357,7 @@ function CachePreview({ t }: { t: Dict }) {
         <span class="t-data text-signal">{t.features.cache.shared}</span>
       </div>
 
-      <span
-        class="text-hair-strong text-lg rtl:-scale-x-100"
-        aria-hidden="true"
-      >
-        →
-      </span>
+      {arrow}
 
       <div class="border-hair bg-ink-2 flex items-center gap-2 rounded-xl border p-2.5">
         <span class="bg-hair h-6 w-6 shrink-0 rounded-full" />

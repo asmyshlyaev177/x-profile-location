@@ -145,9 +145,3 @@ export async function initI18n(): Promise<UiLocale | ''> {
   chosen = choice ? await loadMessages(choice) : null
   return chosen ? choice : ''
 }
-
-export function __setChosenMessages(
-  messages: Record<string, string> | null,
-): void {
-  chosen = messages
-}

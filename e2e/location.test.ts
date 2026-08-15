@@ -17,6 +17,8 @@
  */
 import { test, expect, pinExtension } from './fixtures'
 import {
+  ANY_LOCATION_ICON,
+  HOVER_CARD,
   hoverAnyReplyForLocation,
   hoverCardLocation,
   hoverForLocationRow,
@@ -208,7 +210,7 @@ test('rate limit: toast shown on 429, badge in hover card, no further API calls'
   await expect(toast).toBeVisible({ timeout: 10_000 })
   expect(await toast.textContent()).toMatch(/resets in/i)
   // Hover card for the uncached reply shows the rate limit badge.
-  const rateLimitCard = page.locator('[data-testid="HoverCard"]')
+  const rateLimitCard = page.locator(HOVER_CARD)
   await rateLimitCard
     .locator('.x-loc-icon-ratelimit')
     .waitFor({ timeout: 10_000 })
@@ -223,9 +225,9 @@ test('rate limit: toast shown on 429, badge in hover card, no further API calls'
   await replyLink(1).hover()
   expect(await extraCallFired).toBe(false)
   // Cached location (flag or app-store badge) is shown despite the active rate limit.
-  const cachedCard = page.locator('[data-testid="HoverCard"]')
+  const cachedCard = page.locator(HOVER_CARD)
   await cachedCard
-    .locator('.x-loc-icon-flag, .x-loc-store-block, .x-loc-icon-vpn')
+    .locator(ANY_LOCATION_ICON)
     .first()
     .waitFor({ timeout: 10_000 })
 
@@ -385,7 +387,7 @@ test('second hover uses checkedThisSession cache — no repeat API call', async 
   expect(await queryFired).toBe(false)
 
   // Location is still shown from the in-memory / IDB data.
-  const card = page.locator('[data-testid="HoverCard"]')
+  const card = page.locator(HOVER_CARD)
   await card.locator('.x-loc-info').waitFor({ timeout: 5_000 })
   const { basedIn } = await hoverCardLocation(card)
   expect(basedIn).not.toBeNull()

@@ -170,6 +170,8 @@ the worker (`GET_MESSAGES`), and nothing under `_locales/` is reachable from the
 ```typescript
 BLOCKED_COUNTRIES_KEY = 'blockedCountries'
 HIGHLIGHT_KEYWORDS_KEY = 'highlightKeywords'
+KEYWORD_NAME_MATCH_KEY = 'keywordNameMatch' // 'word' | 'partial'; default 'partial'
+KEYWORD_BIO_MATCH_KEY = 'keywordBioMatch' // 'word' | 'partial'; default 'word'
 HIGHLIGHT_FLAGS_KEY = 'highlightFlags'
 SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed' // default ON
 HIDE_BLOCKED_LOCATIONS_KEY = 'hideBlockedLocations' // 'off' | 'collapse' | 'hide'; default 'collapse'

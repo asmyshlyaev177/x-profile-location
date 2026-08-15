@@ -11,8 +11,7 @@
 //
 // Defaults model ~10k users. Sizing rationale in DEFAULTS below.
 
-import { rmSync } from 'node:fs'
-import { statSync } from 'node:fs'
+import { rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import worker, { type Env } from '../src/index.ts'

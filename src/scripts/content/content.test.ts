@@ -1,4 +1,9 @@
-import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from '../constants'
+import {
+  KEYWORD_BIO_MATCH_KEY,
+  KEYWORD_NAME_MATCH_KEY,
+  RATE_PROMPT_KEY,
+  USAGE_STATS_KEY,
+} from '../constants'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ---------------------------------------------------------------------------
@@ -1424,6 +1429,87 @@ describe('x-loc-users-data event', () => {
 // ---------------------------------------------------------------------------
 // Feed location injection (tryInjectFeedLocation via MutationObserver)
 // ---------------------------------------------------------------------------
+// A name and a bio are asked separately, and the defaults are opposites — see
+// the two keys in constants.ts for why.
+describe('keyword match modes', () => {
+  afterEach(() => {
+    onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
+  })
+
+  function trackNft(): void {
+    onChangedCallback({ highlightKeywords: { newValue: ['nft'] } }, 'local')
+  }
+
+  /** Renders a post, hands the extension its author, and answers: marked? */
+  function highlighted(
+    userName: string,
+    displayName: string,
+    bio: string,
+  ): boolean {
+    const article = makeTweetArticle(userName, displayName)
+    document.body.appendChild(article)
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', {
+        detail: { users: [{ userName, displayName, bio }] },
+      }),
+    )
+    return article.getAttribute('data-x-loc-highlighted') === '1'
+  }
+
+  it('catches a keyword inside a display name, and inside a handle', () => {
+    trackNft()
+    expect(highlighted('someone', 'NFTguy', 'nothing here')).toBe(true)
+    expect(highlighted('nftguy', 'Plain Name', 'nothing here')).toBe(true)
+  })
+
+  it('leaves the same keyword inside a bio word alone', () => {
+    trackNft()
+    expect(highlighted('reader', 'Plain Name', 'minting nfts today')).toBe(
+      false,
+    )
+    expect(highlighted('writer', 'Plain Name', 'minting nft today')).toBe(true)
+  })
+
+  it('catches it in a bio once bios are set to match anywhere', () => {
+    trackNft()
+    onChangedCallback(
+      { [KEYWORD_BIO_MATCH_KEY]: { newValue: 'partial' } },
+      'local',
+    )
+
+    expect(highlighted('reader', 'Plain Name', 'minting nfts today')).toBe(true)
+  })
+
+  it('holds names to whole words once told to', () => {
+    trackNft()
+    onChangedCallback(
+      { [KEYWORD_NAME_MATCH_KEY]: { newValue: 'word' } },
+      'local',
+    )
+
+    expect(highlighted('someone', 'NFTguy', 'nothing here')).toBe(false)
+    expect(highlighted('another', 'NFT guy', 'nothing here')).toBe(true)
+  })
+
+  // The mark answers "why is this highlighted?", so each half of the card is
+  // marked under the rule that actually read it.
+  it('marks under the mode belonging to the text it is marking', () => {
+    trackNft()
+    const host = document.createElement('div')
+    host.innerHTML =
+      '<div data-testid="User-Name"><span>NFTguy</span></div><p>minting nfts today</p>'
+    document.body.appendChild(host)
+
+    expect(keywordRangesIn(host).map(String)).toEqual(['NFT'])
+
+    onChangedCallback(
+      { [KEYWORD_BIO_MATCH_KEY]: { newValue: 'partial' } },
+      'local',
+    )
+    expect(keywordRangesIn(host).map(String)).toEqual(['NFT', 'nft'])
+  })
+})
+
 describe('feed location injection', () => {
   beforeEach(async () => {
     vi.clearAllMocks()

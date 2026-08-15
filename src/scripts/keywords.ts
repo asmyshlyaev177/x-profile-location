@@ -1,5 +1,4 @@
 const segmenter = new Intl.Segmenter()
-const wordCharRe = /^[\p{L}\p{N}_]$/u
 
 export function toGraphemes(text: string): string[] {
   // ASCII fast-path: each code unit is its own grapheme — skip Intl.Segmenter.
@@ -31,20 +30,6 @@ export function graphemeIncludes(
   return false
 }
 
-function isWordChar(g: string): boolean {
-  // ASCII fast-path: a-z A-Z 0-9 _  (covers keywords like "nft", "crypto").
-  const c = g.charCodeAt(0)
-  if (g.length === 1 && c < 128) {
-    return (
-      (c >= 97 && c <= 122) ||
-      (c >= 65 && c <= 90) ||
-      (c >= 48 && c <= 57) ||
-      c === 95
-    )
-  }
-  return wordCharRe.test(g)
-}
-
 /**
  * Every position `needle` starts at, as grapheme indices. Separate from
  * graphemeIncludes, which returns early and runs against every bio we see.
@@ -68,40 +53,39 @@ export function graphemeIndicesOf(
 }
 /* jscpd:ignore-end */
 
-// Adjacent letters/digits/underscores prevent a match; symbols like # $ . don't.
-// One loop on purpose — a helper would be an object per candidate on a hot path.
-// oxlint-disable-next-line sonarjs/cognitive-complexity
-export function graphemeIncludesWord(
-  haystack: string[],
-  needle: string[],
-): boolean {
-  if (needle.length === 0) return true
-  const nLen = needle.length
-  const hLen = haystack.length
-  const limit = hLen - nLen
-  const needleStartIsWord = isWordChar(needle[0])
-  const needleEndIsWord = isWordChar(needle[nLen - 1])
-  outer: for (let i = 0; i <= limit; i++) {
-    for (let j = 0; j < nLen; j++) {
-      if (haystack[i + j] !== needle[j]) continue outer
-    }
-    if (needleStartIsWord && i > 0 && isWordChar(haystack[i - 1])) continue
-    if (needleEndIsWord && i + nLen < hLen && isWordChar(haystack[i + nLen]))
-      continue
-    return true
-  }
-  return false
-}
-
 // ---------------------------------------------------------------------------
 // Keyword matching (stateful — call setKeywords whenever the set changes)
 // ---------------------------------------------------------------------------
 
-let keywordPattern: RegExp | null = null
-// Compiled alongside the above, so the two can never describe different keywords.
-let keywordPatternGlobal: RegExp | null = null
+/** Whether a keyword has to stand alone, or may sit inside a longer word. */
+export type MatchMode = 'word' | 'partial'
+
+interface Compiled {
+  /** Non-global, so `.test` never carries a lastIndex between calls. */
+  test: RegExp
+  all: RegExp
+}
+
+// Both modes compiled from one keyword list, so they can never describe
+// different keywords.
+let patterns: Record<MatchMode, Compiled | null> = { word: null, partial: null }
 // Grapheme search, or 🇵🇸 matches inside 🇰🇵🇸🇴.
 let emojiKeywordGraphemes: string[][] = []
+
+// A match may not end mid-cluster in *either* mode: \p{M} and ZWJ are what keep
+// a keyword from matching half an emoji — see the cases in keywords.test.ts.
+// Word boundaries for any script, without grapheme segmentation, are the letters
+// and digits on top of that, and only 'word' asks for them.
+const CLUSTER_CHARS = '\\p{M}\\u200d'
+const WORD_CHARS = '\\p{L}\\p{N}_'
+
+function compile(keywords: string[], mode: MatchMode): Compiled | null {
+  if (keywords.length === 0) return null
+  const parts = keywords.map((kw) => kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  const word = mode === 'word' ? WORD_CHARS : ''
+  const source = `(?<![${word}\\u200d])(${parts.join('|')})(?![${word}${CLUSTER_CHARS}])`
+  return { test: new RegExp(source, 'iu'), all: new RegExp(source, 'giu') }
+}
 
 export function setKeywords(keywords: string[]): void {
   const textKws: string[] = []
@@ -115,16 +99,9 @@ export function setKeywords(keywords: string[]): void {
       textKws.push(kw)
     }
   }
-  if (textKws.length === 0) {
-    keywordPattern = null
-    keywordPatternGlobal = null
-  } else {
-    const parts = textKws.map((kw) => kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    // Word boundaries for any script, without grapheme segmentation. \p{M} and
-    // ZWJ keep a match from ending mid-cluster — see the cases in keywords.test.ts.
-    const source = `(?<![\\p{L}\\p{N}_\\u200d])(${parts.join('|')})(?![\\p{L}\\p{N}_\\p{M}\\u200d])`
-    keywordPattern = new RegExp(source, 'iu')
-    keywordPatternGlobal = new RegExp(source, 'giu')
+  patterns = {
+    word: compile(textKws, 'word'),
+    partial: compile(textKws, 'partial'),
   }
 }
 
@@ -158,12 +135,16 @@ function emojiMatchesIn(text: string): KeywordMatch[] {
   return matches
 }
 
-export function findKeywordMatches(text: string): KeywordMatch[] {
+export function findKeywordMatches(
+  text: string,
+  mode: MatchMode = 'word',
+): KeywordMatch[] {
   const matches: KeywordMatch[] = []
+  const compiled = patterns[mode]
 
-  if (keywordPatternGlobal !== null) {
+  if (compiled !== null) {
     // matchAll clones the regex, so the stored one's lastIndex is never left set.
-    for (const m of text.matchAll(keywordPatternGlobal)) {
+    for (const m of text.matchAll(compiled.all)) {
       if (m.index === undefined) continue
       matches.push({ start: m.index, end: m.index + m[0].length })
     }
@@ -174,8 +155,11 @@ export function findKeywordMatches(text: string): KeywordMatch[] {
   return matches.sort((a, b) => a.start - b.start)
 }
 
-export function matchesAnyKeyword(text: string): boolean {
-  if (keywordPattern !== null && keywordPattern.test(text)) return true
+export function matchesAnyKeyword(
+  text: string,
+  mode: MatchMode = 'word',
+): boolean {
+  if (patterns[mode]?.test.test(text)) return true
   if (emojiKeywordGraphemes.length > 0) {
     const haystack = toGraphemes(text)
     for (const needle of emojiKeywordGraphemes) {

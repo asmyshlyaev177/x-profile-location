@@ -3,7 +3,6 @@ import {
   definedFacts,
   EMPTY_FACTS,
   formatAccountAge,
-  hasFacts,
   parseAccountFacts,
   parseAffiliation,
   parseXDate,
@@ -198,8 +197,6 @@ describe('definedFacts', () => {
 
   it('is empty for an empty account', () => {
     expect(definedFacts(EMPTY_FACTS)).toEqual({})
-    expect(hasFacts(EMPTY_FACTS)).toBe(false)
-    expect(hasFacts(parseAccountFacts(TIMELINE_USER))).toBe(true)
   })
 })
 

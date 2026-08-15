@@ -73,19 +73,18 @@ export function Autocomplete({
   const available = allOptions.filter(
     (o) => !selectedLower.has(o.toLowerCase()),
   )
+  const q = query.trim().toLowerCase()
   const suggestions =
     query.length === 0 ? available : rankMatches(available, aliases, query)
 
   // Which alias earned an option its place, so the row can show why it matched.
   // Nothing to explain when the name itself matched.
   function matchedAlias(opt: string): string | undefined {
-    const q = query.trim().toLowerCase()
     if (!aliases || !q || opt.toLowerCase().includes(q)) return undefined
     return aliases[opt]?.find((a) => a.toLowerCase().includes(q))
   }
 
   function isExactMatch(opt: string): boolean {
-    const q = query.trim().toLowerCase()
     if (!q) return false
     return (
       opt.toLowerCase() === q ||

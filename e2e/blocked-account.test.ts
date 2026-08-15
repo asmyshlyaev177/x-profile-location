@@ -25,10 +25,11 @@ import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
   addKeyword,
+  articleBy,
+  HOVER_CARD,
   mockLocationApis,
   pickBioWord,
   readCachedBio,
-  TWEET_ARTICLE,
   tweetArticles,
   waitForReplies,
 } from './helpers'
@@ -138,18 +139,6 @@ async function waitForCachedBio(
   return (await readCachedBio(page, screenName))!
 }
 
-/** The article authored by `screenName`, anchored on the handle. */
-function articleBy(page: Page, screenName: string): Locator {
-  // Anchored on the author rather than an index: X's virtualised timeline
-  // recycles rows, and an nth() handle silently starts pointing at a different
-  // tweet as soon as the list re-renders.
-  return page
-    .locator(
-      `${TWEET_ARTICLE}:has([data-testid="User-Name"] a[href="/${screenName}" i])`,
-    )
-    .first()
-}
-
 /**
  * Hovers `screenName`'s name until the extension has processed the card.
  *
@@ -158,7 +147,7 @@ function articleBy(page: Page, screenName: string): Locator {
  * judged to have left — which a plain hover would turn into a spurious failure.
  */
 async function hoverAuthor(page: Page, screenName: string): Promise<Locator> {
-  const card = page.locator('[data-testid="HoverCard"]')
+  const card = page.locator(HOVER_CARD)
   const link = articleBy(page, screenName)
     .locator(`[data-testid="User-Name"] a[href="/${screenName}" i]`)
     .first()

@@ -6,6 +6,8 @@ import {
   HIDE_BLOCKED_LOCATIONS_KEY,
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  KEYWORD_BIO_MATCH_KEY,
+  KEYWORD_NAME_MATCH_KEY,
   PREFETCH_SHARE_KEY,
   RULE_EXCEPTIONS_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
@@ -203,6 +205,27 @@ describe('reading a setting', () => {
         [BLOCKED_COUNTRIES_KEY]: ['usa', 'USA', 7],
       }),
     ).toEqual(['United States'])
+  })
+})
+
+describe('the two keyword match modes', () => {
+  // The defaults are opposites on purpose, so a name written to dodge the filter
+  // is still caught while a bio is not read a syllable at a time.
+  it('defaults names to partial and bios to whole-word', () => {
+    expect(defaultSetting(KEYWORD_NAME_MATCH_KEY)).toBe('partial')
+    expect(defaultSetting(KEYWORD_BIO_MATCH_KEY)).toBe('word')
+  })
+
+  it('keeps either explicit choice on either key', () => {
+    expect(settingValue(KEYWORD_NAME_MATCH_KEY, 'word')).toBe('word')
+    expect(settingValue(KEYWORD_BIO_MATCH_KEY, 'partial')).toBe('partial')
+  })
+
+  it('falls back to its own default, not a shared one', () => {
+    for (const stored of [undefined, null, '', 'nonsense', 0, true]) {
+      expect(settingValue(KEYWORD_NAME_MATCH_KEY, stored)).toBe('partial')
+      expect(settingValue(KEYWORD_BIO_MATCH_KEY, stored)).toBe('word')
+    }
   })
 })
 
