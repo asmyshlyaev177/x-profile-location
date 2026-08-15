@@ -275,6 +275,11 @@ export const REGION_ABBR: Record<string, string> = {
   'West Asia': 'WAS',
 }
 
+/** The marker for a canonical name — a country flag, a region flag, or 🌐. */
+export function flagFor(canonical: string): string {
+  return COUNTRY_FLAGS[canonical] ?? REGION_FLAGS[canonical] ?? '🌐'
+}
+
 // Keyed by the canonical name, which is the vocabulary X itself reports. An
 // alias that is also a flag key stops being offered separately in the picker.
 export const LOCATION_ALIASES: Record<string, string[]> = {

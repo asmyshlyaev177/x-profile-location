@@ -1,13 +1,14 @@
 import {
   BLOCKED_COUNTRIES_KEY,
   EXTENSION_ENABLED_KEY,
+  MSG,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
   RATE_PROMPT_KEY,
   USAGE_STATS_KEY,
+  X_TAB_PATTERNS,
 } from './constants'
 import { DEFAULT_BLOCKED_COUNTRIES } from './countries/countries'
-import { MSG, X_TAB_PATTERNS } from './constants'
 import {
   type BrokerSnapshot,
   LookupBroker,
@@ -28,10 +29,11 @@ const RATING_BADGE = '★'
 
 async function syncRatingBadge(): Promise<void> {
   // Paused means quiet everywhere — the popup hides the card too.
-  const { [EXTENSION_ENABLED_KEY]: enabled } = await chrome.storage.local.get(
+  const stored = (await chrome.storage.local.get(
     EXTENSION_ENABLED_KEY,
-  )
-  const due = enabled !== false && (await ratingAskDue())
+  )) as Record<string, unknown>
+  const due =
+    readSetting(EXTENSION_ENABLED_KEY, stored) && (await ratingAskDue())
 
   await chrome.action.setBadgeText({ text: due ? RATING_BADGE : '' })
   if (due) {

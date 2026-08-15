@@ -62,16 +62,12 @@ interface InflightEntry {
   optimistic: boolean
 }
 
-interface TabRecord {
+interface TabRecord extends TabState {
   queue: CandidateQueue
-  focused: boolean
-  visible: boolean
   seenAt: number
 }
 
-interface TabSnapshot {
-  focused: boolean
-  visible: boolean
+interface TabSnapshot extends TabState {
   seenAt: number
   queue: QueueSnapshot
 }

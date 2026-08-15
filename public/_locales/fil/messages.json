@@ -206,6 +206,24 @@
   "emptyNoKeywords": {
     "message": "Walang naka-set na keyword — lahat ng post normal na ipinapakita."
   },
+  "setNameMatch": {
+    "message": "Sa mga pangalan at handle"
+  },
+  "setNameMatchDesc": {
+    "message": "Ang display name ay pinipili para makita, at madalas isinusulat mismo para makalusot sa ganitong filter — “NFTguy”, “#freepalestine”. Ang pagtutugma sa loob ng salita ang humuhuli sa kanila."
+  },
+  "setBioMatch": {
+    "message": "Sa mga bio"
+  },
+  "setBioMatchDesc": {
+    "message": "Prosa ang bio: ang pagtutugma sa loob ng salita ay ginagawang tama ang keyword na “art” sa “partido” at “artikulo”. Mas ligtas dito ang buong salita lamang."
+  },
+  "matchWord": {
+    "message": "Buong salita lamang"
+  },
+  "matchPartial": {
+    "message": "Kahit saan sa loob ng salita"
+  },
   "cardLocations": {
     "message": "Mga Lokasyon"
   },

@@ -206,6 +206,24 @@
   "emptyNoKeywords": {
     "message": "未设置关键词 — 所有帖子正常显示。"
   },
+  "setNameMatch": {
+    "message": "在昵称和用户名中"
+  },
+  "setNameMatchDesc": {
+    "message": "昵称是为了被看到而取的，而且常常就是为了绕开这类过滤而写成的 ——“NFTguy”“#freepalestine”。允许在词中间匹配才能抓到它们。"
+  },
+  "setBioMatch": {
+    "message": "在简介中"
+  },
+  "setBioMatchDesc": {
+    "message": "简介是成段的文字：在词中间匹配会让关键词“投资”在“投资者”里也算命中。不过中文词与词之间没有空格，选“仅整词”几乎匹配不到任何内容。"
+  },
+  "matchWord": {
+    "message": "仅整词"
+  },
+  "matchPartial": {
+    "message": "词中任意位置"
+  },
   "cardLocations": {
     "message": "地区"
   },

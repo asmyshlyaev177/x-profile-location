@@ -989,7 +989,7 @@ function main() {
       `· ${sourceCount} test sources scanned`,
   )
 
-  const totals = Object.fromEntries(STAT_KEYS.map((k) => [k, 0]))
+  const totals = blankStats()
   let bytesBefore = 0
   let bytesAfter = 0
   const offenders = []
@@ -999,7 +999,7 @@ function main() {
     bytesBefore += before
     const raw = readFileSync(file, 'utf8')
     const har = parseHar(file, raw)
-    const stats = Object.fromEntries(STAT_KEYS.map((k) => [k, 0]))
+    const stats = blankStats()
     const out = scrubHar(har, stats)
 
     // --check asks one question of what is on disk: would scrubbing it change
@@ -1071,7 +1071,6 @@ function main() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) main()
 
 export {
-  scrubHar,
   scrubEntry,
   scrubMarkup,
   scrubTelemetry,
@@ -1079,5 +1078,4 @@ export {
   userHandle,
   synthetic,
   SUBJECTS,
-  STAT_KEYS,
 }

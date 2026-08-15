@@ -114,3 +114,10 @@ export const BLOCKED_AFFILIATIONS_KEY = 'blockedAffiliations'
 export const ACCOUNT_AGE_KEY = 'accountAgeFilter'
 export const RULE_EXCEPTIONS_KEY = 'ruleExceptions'
 export const ALWAYS_SHOW_KEY = 'alwaysShowAccounts'
+// Where a keyword has to stand as a whole word and where it may sit inside a
+// longer one, asked separately of the two things an account writes about itself.
+// A display name is chosen to be seen and is written to dodge exactly this kind
+// of filter — "NFTguy", "#freepalestine" — so it defaults to matching anywhere.
+// A bio is prose, where the same rule reads "therapist" as "the rapist".
+export const KEYWORD_NAME_MATCH_KEY = 'keywordNameMatch'
+export const KEYWORD_BIO_MATCH_KEY = 'keywordBioMatch'

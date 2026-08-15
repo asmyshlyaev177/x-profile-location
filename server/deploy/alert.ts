@@ -175,6 +175,9 @@ export interface BackupStats {
  */
 const ARCHIVE_NAME = /^x-loc-cache-\d{8}-\d{6}\.db\.gz$/
 
+/** One decimal, used for every size this report prints. */
+const mb = (bytes: number): number => Math.round((bytes / 1_048_576) * 10) / 10
+
 /** Reads the backups directory directly — no database access, on purpose. */
 export function collectBackupStats(
   backupDir: string,
@@ -184,7 +187,7 @@ export function collectBackupStats(
   try {
     files = readdirSync(backupDir).filter((f) => ARCHIVE_NAME.test(f))
   } catch {
-    return { count: 0, newest: null, newestAgeHours: null, totalMb: 0 }
+    // No backups directory yet; the empty result below says so.
   }
   let bytes = 0
   let newest: string | null = null
@@ -207,7 +210,7 @@ export function collectBackupStats(
     newestAgeHours: newest
       ? Math.round(((now - newestMs) / 3_600_000) * 10) / 10
       : null,
-    totalMb: Math.round((bytes / 1_048_576) * 10) / 10,
+    totalMb: mb(bytes),
   }
 }
 
@@ -296,9 +299,6 @@ export interface ReportInput {
   /** At or above this share reclaimable, the heartbeat says so. */
   vacuumAlertPct?: number
 }
-
-/** One decimal, the same rounding collectBackupStats uses for its own total. */
-const mb = (bytes: number): number => Math.round((bytes / 1_048_576) * 10) / 10
 
 export function buildReportMessage(
   input: ReportInput,

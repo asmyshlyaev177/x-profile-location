@@ -4,12 +4,11 @@ import {
   normalizeMinConfidence,
   normalizeSharedCacheCount,
 } from '../settings'
-import { SHARED_CACHE_COUNT_KEY } from '../constants'
+import { CACHE_API_BASE, SHARED_CACHE_COUNT_KEY } from '../constants'
 // Client for the community location cache (../../server). Only
 // location/source/accurate go over the wire — never bios or who looked up whom.
 
 import type { LocationData } from './cache'
-import { CACHE_API_BASE } from '../constants'
 
 // Distinct clients that must agree before a location is trusted. Still 1 on
 // purpose — see "Community cache consensus" in CLAUDE.md.

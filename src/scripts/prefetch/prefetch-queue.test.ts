@@ -94,11 +94,12 @@ describe('priority queues', () => {
     ])
     expect(q.__state().order).toEqual(['feed-1', 'feed-2', 'reply'])
 
-    const taken = [q.takeNext(), q.takeNext(), q.takeNext()].map(
+    const taken = [q.take('high'), q.take('high'), q.take('low')].map(
       (c) => c?.userName,
     )
     expect(taken).toEqual(['feed-1', 'feed-2', 'reply'])
-    expect(q.takeNext()).toBeNull()
+    expect(q.take('high')).toBeNull()
+    expect(q.take('low')).toBeNull()
   })
 
   it('keeps appearance order within each queue', () => {
@@ -193,7 +194,7 @@ describe('priority queues', () => {
     q.enqueue([{ userName: 'kept' }, { userName: 'dropped' }])
     expect(q.__state().order).toEqual(['kept'])
 
-    q.takeNext() // 'kept' goes out, leaving room again
+    q.take('high') // 'kept' goes out, leaving room again
     // Nothing lingers in the dedup map, so 'dropped' can come back next batch.
     q.enqueue([{ userName: 'dropped' }])
     expect(q.__state().order).toEqual(['dropped'])

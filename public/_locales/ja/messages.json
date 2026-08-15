@@ -206,6 +206,24 @@
   "emptyNoKeywords": {
     "message": "キーワード未設定 — すべての投稿が通常通り表示されます。"
   },
+  "setNameMatch": {
+    "message": "名前とユーザー名"
+  },
+  "setNameMatchDesc": {
+    "message": "表示名は見られるために選ばれ、この種のフィルターをすり抜けるように書かれることも多くあります（「NFTguy」「#freepalestine」）。単語の途中でも一致させれば、そうした名前を捉えられます。"
+  },
+  "setBioMatch": {
+    "message": "プロフィール文"
+  },
+  "setBioMatchDesc": {
+    "message": "プロフィール文は文章です。単語の途中でも一致させると、キーワード「投資」が「投資家」にも当たります。ただし日本語は単語を空白で区切らないため、「単語全体のみ」ではほとんど一致しません。"
+  },
+  "matchWord": {
+    "message": "単語全体のみ"
+  },
+  "matchPartial": {
+    "message": "単語の途中でも"
+  },
   "cardLocations": {
     "message": "地域"
   },

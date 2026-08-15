@@ -57,8 +57,3 @@
 .dropdownItemActive {
   background: var(--accent-soft, #f3f4f6);
 }
-
-.dropdownFlag {
-  font-size: 18px;
-  line-height: 1;
-}

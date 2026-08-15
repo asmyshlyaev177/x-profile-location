@@ -2,11 +2,7 @@
 // reply. Layout is computed apart from the drawing, which happy-dom cannot run.
 
 import type { LocationData } from './cache/cache'
-import {
-  canonicalLocation,
-  COUNTRY_FLAGS,
-  REGION_FLAGS,
-} from './countries/countries'
+import { canonicalLocation, flagFor } from './countries/countries'
 import { classifySource, platformLabel } from './source'
 import { t } from './i18n'
 import { localizedLocation } from './countries/location-names'
@@ -108,15 +104,10 @@ export function wrapText(
   return lines
 }
 
-/** The flag or region marker for a location name. */
-function flagFor(location: string): string {
-  const key = canonicalLocation(location)
-  return COUNTRY_FLAGS[key] ?? REGION_FLAGS[key] ?? '🌐'
-}
-
 /** The flag and the country, the country in the reader's language. */
 function locationChip(location: string): string {
-  return `${flagFor(location)} ${localizedLocation(canonicalLocation(location))}`
+  const key = canonicalLocation(location)
+  return `${flagFor(key)} ${localizedLocation(key)}`
 }
 
 /**

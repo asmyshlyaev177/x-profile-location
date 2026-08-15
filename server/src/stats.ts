@@ -151,7 +151,7 @@ export class Stats {
       lookups: this.#lookups,
       lookupNames: this.#lookupNames,
       lookupHits: this.#lookupHits,
-      // Undefined rather than 0 when nothing was asked, so an idle window reads
+      // Null rather than 0 when nothing was asked, so an idle window reads
       // as "no data" instead of "0% hit rate", which would look like an outage.
       hitRate:
         this.#lookupNames === 0

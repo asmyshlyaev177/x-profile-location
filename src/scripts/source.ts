@@ -35,12 +35,6 @@ export function classifySource(source: string | null | undefined): SourceInfo {
   return { platform: 'unknown', country: null, raw }
 }
 
-export function sourceCountry(
-  source: string | null | undefined,
-): string | null {
-  return classifySource(source).country
-}
-
 // --- glyphs -----------------------------------------------------------------
 // Drawn, not emoji: the OS decides what 📱/🍎 look like. Monochrome and
 // `currentColor`, so they follow X's themes and claim no brand.

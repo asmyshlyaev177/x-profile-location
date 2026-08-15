@@ -26,7 +26,6 @@ export interface SqliteConfig {
    * well above free RAM.
    */
   mmapMb: number
-  busyTimeoutMs?: number
 }
 
 export const DEFAULT_SQLITE_CONFIG = {
@@ -141,9 +140,7 @@ export function openDatabase(config: SqliteConfig): SqliteDb {
   // throughput. It is *not* corruption-prone; WAL still recovers cleanly.
   db.pragma('journal_mode = WAL')
   db.pragma('synchronous = NORMAL')
-  db.pragma(
-    `busy_timeout = ${config.busyTimeoutMs ?? DEFAULT_SQLITE_CONFIG.busyTimeoutMs}`,
-  )
+  db.pragma(`busy_timeout = ${DEFAULT_SQLITE_CONFIG.busyTimeoutMs}`)
   // Negative cache_size is a size in KiB rather than a page count.
   db.pragma(`cache_size = -${Math.max(1, config.cacheMb) * 1024}`)
   db.pragma(`mmap_size = ${Math.max(0, config.mmapMb) * 1024 * 1024}`)

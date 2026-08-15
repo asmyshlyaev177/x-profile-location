@@ -1,4 +1,7 @@
-import { HIGHLIGHT_KEYWORDS_KEY } from '../src/scripts/constants'
+import {
+  CACHE_API_BASE,
+  HIGHLIGHT_KEYWORDS_KEY,
+} from '../src/scripts/constants'
 /**
  * Marketing screenshots — the landing page's images and the store listing's,
  * retaken from the same recorded X pages the e2e suite replays.
@@ -34,14 +37,13 @@ import type { Locator, Page } from '@playwright/test'
 import { playwrightProxy } from 'test-proxy-recorder'
 import { CLIENT_SIDE_URL, MODE, test } from './fixtures'
 import {
+  CORS_HEADERS,
   hoverOwnTweet,
   mockAboutAccount,
   mockSharedCache,
   TWEET_ARTICLE,
   tweetArticles,
 } from './helpers'
-
-import { CACHE_API_BASE } from '../src/scripts/constants'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const LANDING = path.join(__dirname, '..', 'landing', 'public')
@@ -246,7 +248,7 @@ async function mockVariedCache(page: Page, countries: string[]): Promise<void> {
     (url) => url.host === base.host && url.pathname.endsWith('/v1/loc/batch'),
     async (route) => {
       if (route.request().method() === 'OPTIONS')
-        return route.fulfill({ status: 204, headers: SHOT_CORS })
+        return route.fulfill({ status: 204, headers: CORS_HEADERS })
 
       const body = route.request().postDataJSON() as { usernames?: string[] }
       const profiles = (body?.usernames ?? []).map((u) => {
@@ -260,7 +262,7 @@ async function mockVariedCache(page: Page, countries: string[]): Promise<void> {
 
       await route.fulfill({
         status: 200,
-        headers: { ...SHOT_CORS, 'content-type': 'application/json' },
+        headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
         body: JSON.stringify({ profiles }),
       })
     },
@@ -272,16 +274,10 @@ async function mockVariedCache(page: Page, countries: string[]): Promise<void> {
     (route) =>
       route.fulfill({
         status: 200,
-        headers: { ...SHOT_CORS, 'content-type': 'application/json' },
+        headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
         body: JSON.stringify({ ok: true }),
       }),
   )
-}
-
-const SHOT_CORS = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, POST, OPTIONS',
-  'access-control-allow-headers': 'Content-Type',
 }
 
 /** Posts, so a timeline of them does not read as the same post four times. */

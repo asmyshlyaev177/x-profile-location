@@ -1,13 +1,14 @@
 import {
   ACCOUNT_AGE_CHOICES,
   DEFAULT_MIN_CONFIDENCE,
+  defaultSetting,
+  exportSettings,
   FILTER_RULES,
+  formatAgeChoice,
+  importSettings,
   LOOKUP_LIMIT_PER_WINDOW,
   LOOKUP_WINDOW_MINUTES,
   MIN_CONFIDENCE_CHOICES,
-  OPTIONS_TABS,
-  PREFETCH_SHARE_CHOICES,
-  formatAgeChoice,
   normalizeAccountAge,
   normalizeHandle,
   normalizeHideBlockedMode,
@@ -16,6 +17,16 @@ import {
   normalizePrefetchShare,
   normalizeRuleExceptions,
   normalizeTheme,
+  OPTIONS_TABS,
+  PREFETCH_SHARE_CHOICES,
+  readSetting,
+  SETTINGS_KEYS,
+  SettingsImportError,
+  settingsFileName,
+  withKeyword,
+  withLocation,
+  withoutKeyword,
+  withoutLocation,
 } from '../scripts/settings'
 import {
   ACCOUNT_AGE_KEY,
@@ -28,7 +39,10 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  KEYWORD_BIO_MATCH_KEY,
+  KEYWORD_NAME_MATCH_KEY,
   MIN_CONFIDENCE_KEY,
+  MSG,
   OPTIONS_TAB_KEY,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
@@ -51,32 +65,19 @@ import { Autocomplete } from '../components/Autocomplete'
 import {
   type AccountAgeFilter,
   CANONICAL_LOCATIONS,
-  COUNTRY_FLAGS,
   type FilterRule,
+  flagFor,
   type HideBlockedMode,
   LOCATION_ALIASES,
   type ThemePreference,
   type OptionsTabId,
   type PrefetchPacing,
-  REGION_FLAGS,
   REGION_MEMBERS,
   type RuleExceptions,
 } from '../scripts/countries/countries'
 import { isMobile } from '../scripts/device'
-import { MSG } from '../scripts/constants'
+import type { MatchMode } from '../scripts/keywords'
 import { isSharedCacheConfigured } from '../scripts/cache/shared-cache'
-import {
-  defaultSetting,
-  exportSettings,
-  importSettings,
-  readSetting,
-  SettingsImportError,
-  settingsFileName,
-  withKeyword,
-  withLocation,
-  withoutKeyword,
-  withoutLocation,
-} from '../scripts/settings'
 import {
   initI18n,
   nativeLanguageName,
@@ -93,8 +94,6 @@ import {
 } from '../scripts/countries/location-names'
 import css from './options.module.css'
 import { applyTheme, startThemeSync } from './theme'
-
-const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 
 const DEFAULT_FLAGS = defaultSetting(HIGHLIGHT_FLAGS_KEY)
 
@@ -210,6 +209,32 @@ function Stack({ children }: { children: ComponentChildren }) {
   return <div class={css.stack}>{children}</div>
 }
 
+/** Whole word, or anywhere inside one. Asked of names and of bios separately. */
+function MatchModeSelect({
+  value,
+  onChange,
+}: {
+  value: MatchMode
+  onChange: (mode: MatchMode) => void
+}) {
+  return (
+    <select
+      class={css.modeSelect}
+      value={value}
+      onChange={(e) =>
+        onChange(
+          (e.target as HTMLSelectElement).value === 'partial'
+            ? 'partial'
+            : 'word',
+        )
+      }
+    >
+      <option value="word">{t('matchWord')}</option>
+      <option value="partial">{t('matchPartial')}</option>
+    </select>
+  )
+}
+
 // A settings page's branches are its settings. Getting under the threshold means
 // five tab components, which a linter should not be the one to drive.
 // oxlint-disable-next-line complexity
@@ -222,6 +247,12 @@ export function Options() {
     defaultSetting(ACCOUNT_AGE_KEY),
   )
   const [keywords, setKeywords] = useState<string[]>([])
+  const [nameMatch, setNameMatch] = useState(
+    defaultSetting(KEYWORD_NAME_MATCH_KEY),
+  )
+  const [bioMatch, setBioMatch] = useState(
+    defaultSetting(KEYWORD_BIO_MATCH_KEY),
+  )
   const [flagsEnabled, setFlagsEnabled] = useState(DEFAULT_FLAGS.enabled)
   const [flagsThreshold, setFlagsThreshold] = useState(DEFAULT_FLAGS.threshold)
   const [flagsUniqueOnly, setFlagsUniqueOnly] = useState(
@@ -289,37 +320,16 @@ export function Options() {
 
   useEffect(() => {
     chrome.storage.local
-      .get([
-        EXTENSION_ENABLED_KEY,
-        BLOCKED_COUNTRIES_KEY,
-        BLOCKED_AFFILIATIONS_KEY,
-        ACCOUNT_AGE_KEY,
-        HIGHLIGHT_KEYWORDS_KEY,
-        HIGHLIGHT_FLAGS_KEY,
-        SHOW_LOCATION_IN_FEED_KEY,
-        SHOW_ACCOUNT_CARD_KEY,
-        SHOW_SHARE_BUTTON_KEY,
-        HIGHLIGHT_EXCEPTIONS_KEY,
-        RULE_EXCEPTIONS_KEY,
-        ALWAYS_SHOW_KEY,
-        SHOW_EXCEPTION_BUTTON_KEY,
-        SHARED_CACHE_KEY,
-        HIDE_BLOCKED_LOCATIONS_KEY,
-        BACKGROUND_PREFETCH_KEY,
-        PREFETCH_SHARE_KEY,
-        PREFETCH_PACING_KEY,
-        OPTIONS_TAB_KEY,
-        MIN_CONFIDENCE_KEY,
-        SHOW_ADVANCED_KEY,
-        THEME_KEY,
-        UI_LANGUAGE_KEY,
-      ])
+      // Every setting, plus the two pieces of page state that are not settings.
+      .get([...SETTINGS_KEYS, OPTIONS_TAB_KEY, SHOW_ADVANCED_KEY])
       .then((result) => {
         setEnabled(readSetting(EXTENSION_ENABLED_KEY, result))
         setBlocked(readSetting(BLOCKED_COUNTRIES_KEY, result))
         setAffiliations(readSetting(BLOCKED_AFFILIATIONS_KEY, result))
         setAccountAge(readSetting(ACCOUNT_AGE_KEY, result))
         setKeywords(readSetting(HIGHLIGHT_KEYWORDS_KEY, result))
+        setNameMatch(readSetting(KEYWORD_NAME_MATCH_KEY, result))
+        setBioMatch(readSetting(KEYWORD_BIO_MATCH_KEY, result))
         const flags = readSetting(HIGHLIGHT_FLAGS_KEY, result)
         setFlagsEnabled(flags.enabled)
         setFlagsThreshold(flags.threshold)
@@ -794,6 +804,38 @@ export function Options() {
                 <p class={css.empty}>{t('emptyNoKeywords')}</p>
               )}
             </Stack>
+
+            <Setting
+              label={t('setNameMatch')}
+              description={t('setNameMatchDesc')}
+              clickable={false}
+              control={
+                <MatchModeSelect
+                  value={nameMatch}
+                  onChange={(mode) => {
+                    setNameMatch(mode)
+                    chrome.storage.local.set({
+                      [KEYWORD_NAME_MATCH_KEY]: mode,
+                    })
+                  }}
+                />
+              }
+            />
+
+            <Setting
+              label={t('setBioMatch')}
+              description={t('setBioMatchDesc')}
+              clickable={false}
+              control={
+                <MatchModeSelect
+                  value={bioMatch}
+                  onChange={(mode) => {
+                    setBioMatch(mode)
+                    chrome.storage.local.set({ [KEYWORD_BIO_MATCH_KEY]: mode })
+                  }}
+                />
+              }
+            />
           </Card>
 
           <Card title={t('cardLocations')} description={t('cardLocationsDesc')}>
@@ -804,9 +846,7 @@ export function Options() {
                     const members = REGION_MEMBERS[country]
                     return (
                       <span key={country} class={css.chip}>
-                        <span class={css.chipFlag}>
-                          {ALL_FLAGS[country] ?? '🌐'}
-                        </span>
+                        <span class={css.chipFlag}>{flagFor(country)}</span>
                         {localizedLocation(country)}
                         {members && (
                           <span class={css.chipNote} title={members.join(', ')}>
@@ -839,9 +879,7 @@ export function Options() {
                   const note = aliasNote(c, alias)
                   return (
                     <>
-                      <span class={css.dropdownFlag}>
-                        {ALL_FLAGS[c] ?? '🌐'}
-                      </span>
+                      <span class={css.dropdownFlag}>{flagFor(c)}</span>
                       <span>{localizedLocation(c)}</span>
                       {REGION_MEMBERS[c] && (
                         <span class={css.dropdownAlias}>

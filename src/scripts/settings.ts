@@ -9,6 +9,8 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  KEYWORD_BIO_MATCH_KEY,
+  KEYWORD_NAME_MATCH_KEY,
   MIN_CONFIDENCE_KEY,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
@@ -22,6 +24,13 @@ import {
 } from './constants'
 // The vocabulary of every setting — its choices, its type and the normalizer
 // that answers for `undefined`, which is what makes that answer the default.
+
+/** A stored value as something to read fields off; anything else reads empty. */
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : {}
+}
 
 export interface HighlightFlagsSetting {
   enabled: boolean
@@ -37,9 +46,7 @@ export const DEFAULT_HIGHLIGHT_FLAGS: HighlightFlagsSetting = {
 
 /** A negative threshold would highlight every bio, which nobody chose. */
 export function normalizeHighlightFlags(value: unknown): HighlightFlagsSetting {
-  const v = (
-    typeof value === 'object' && value !== null ? value : {}
-  ) as Record<string, unknown>
+  const v = asRecord(value)
   const threshold = finiteNumber(v.threshold)
   return {
     enabled: Boolean(v.enabled),
@@ -71,9 +78,7 @@ export interface SharedCacheCount {
 export function normalizeSharedCacheCount(
   value: unknown,
 ): SharedCacheCount | null {
-  const v = (
-    typeof value === 'object' && value !== null ? value : {}
-  ) as Record<string, unknown>
+  const v = asRecord(value)
   const n = finiteNumber(v.n)
   const at = finiteNumber(v.at)
   if (n === null || n < 0 || at === null || at <= 0) return null
@@ -187,9 +192,7 @@ export interface UsageStats {
 }
 
 export function normalizeUsageStats(value: unknown): UsageStats {
-  const v = (
-    typeof value === 'object' && value !== null ? value : {}
-  ) as Record<string, unknown>
+  const v = asRecord(value)
   const days = finiteNumber(v.activeDays)
   return {
     activeDays: days === null || days < 0 ? 0 : Math.floor(days),
@@ -205,9 +208,7 @@ export interface RatePromptState {
 }
 
 export function normalizeRatePrompt(value: unknown): RatePromptState {
-  const v = (
-    typeof value === 'object' && value !== null ? value : {}
-  ) as Record<string, unknown>
+  const v = asRecord(value)
   const until = finiteNumber(v.snoozeUntil)
   return {
     status:
@@ -244,9 +245,7 @@ export function formatAgeChoice(days: number): string {
 }
 
 export function normalizeAccountAge(value: unknown): AccountAgeFilter {
-  const v = (
-    typeof value === 'object' && value !== null ? value : {}
-  ) as Record<string, unknown>
+  const v = asRecord(value)
   const days = finiteNumber(v.days)
   return {
     enabled: Boolean(v.enabled),
@@ -312,9 +311,7 @@ export function normalizeRuleExceptions(
   value: unknown,
   legacyHighlight?: unknown,
 ): RuleExceptions {
-  const stored = (
-    typeof value === 'object' && value !== null ? value : {}
-  ) as Record<string, unknown>
+  const stored = asRecord(value)
 
   const out = {} as RuleExceptions
   for (const rule of FILTER_RULES) {
@@ -335,6 +332,8 @@ export function normalizeRuleExceptions(
 
 import { canonicalLocation } from './countries/countries'
 import { normalizeUiLanguage, t, UI_LANGUAGE_KEY } from './i18n'
+// Type-only, so the keyword matcher stays out of the popup and options bundles.
+import type { MatchMode } from './keywords'
 
 /** A stored value, cleaned. Returning undefined drops the key entirely. */
 type Normalizer = (value: unknown) => unknown
@@ -360,6 +359,12 @@ const asLocationList = (v: unknown): string[] =>
       ]
     : []
 
+// Each side keeps its own default — see the two keys in constants.ts.
+const asMatchMode =
+  (fallback: MatchMode) =>
+  (value: unknown): MatchMode =>
+    value === 'word' || value === 'partial' ? value : fallback
+
 const asKeywordList = (v: unknown): string[] =>
   Array.isArray(v)
     ? [
@@ -380,6 +385,8 @@ export const SETTINGS_REGISTRY = {
   [ACCOUNT_AGE_KEY]: normalizeAccountAge,
   [HIDE_BLOCKED_LOCATIONS_KEY]: normalizeHideBlockedMode,
   [HIGHLIGHT_KEYWORDS_KEY]: asKeywordList,
+  [KEYWORD_NAME_MATCH_KEY]: asMatchMode('partial'),
+  [KEYWORD_BIO_MATCH_KEY]: asMatchMode('word'),
   [HIGHLIGHT_FLAGS_KEY]: normalizeHighlightFlags,
   [RULE_EXCEPTIONS_KEY]: (v: unknown) => normalizeRuleExceptions(v),
   [HIGHLIGHT_EXCEPTIONS_KEY]: normalizeHandleList,

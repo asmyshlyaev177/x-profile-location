@@ -1,16 +1,20 @@
-import { FILTER_RULES, normalizeRuleExceptions, ruleHides } from '../settings'
 import {
   ACCOUNT_AGE_KEY,
   ALWAYS_SHOW_KEY,
   BACKGROUND_PREFETCH_KEY,
   BLOCKED_AFFILIATIONS_KEY,
   BLOCKED_COUNTRIES_KEY,
+  EVENTS,
   EXTENSION_ENABLED_KEY,
   HIDE_BLOCKED_LOCATIONS_KEY,
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  KEYWORD_BIO_MATCH_KEY,
+  KEYWORD_NAME_MATCH_KEY,
   MIN_CONFIDENCE_KEY,
+  MSG,
+  RATE_LIMIT_RESET_DEFAULT_MS,
   RATE_PROMPT_KEY,
   RULE_EXCEPTIONS_KEY,
   SHARED_CACHE_KEY,
@@ -19,6 +23,7 @@ import {
   SHOW_LOCATION_IN_FEED_KEY,
   SHOW_SHARE_BUTTON_KEY,
   USAGE_STATS_KEY,
+  X_GRAPHQL_PATH,
 } from '../constants'
 // content.tsx — plain DOM, no React/Preact
 import {
@@ -40,20 +45,24 @@ import {
   COUNTRY_FLAGS,
   expandLocations,
   type FilterRule,
+  flagFor,
   type HideBlockedMode,
   REGION_ABBR,
   REGION_FLAGS,
   type RuleExceptions,
 } from '../countries/countries'
-import { defaultSetting, readSetting, settingValue } from '../settings'
+import {
+  defaultSetting,
+  FILTER_RULES,
+  normalizeRuleExceptions,
+  readSetting,
+  ruleHides,
+  type SettingKey,
+  type SettingValue,
+  settingValue,
+} from '../settings'
 import { initI18n, t, UI_LANGUAGE_KEY } from '../i18n'
 import { localizedLocation } from '../countries/location-names'
-import {
-  EVENTS,
-  MSG,
-  RATE_LIMIT_RESET_DEFAULT_MS,
-  X_GRAPHQL_PATH,
-} from '../constants'
 import {
   contributeLocation,
   flushContributions,
@@ -99,8 +108,10 @@ import {
   HIDDEN_PLACEHOLDER_CLASS,
   KEYWORD_HIGHLIGHT_NAME,
   KEYWORD_MATCH_ATTR,
+  LOCATION_TOAST_ID,
   PEOPLE_MATCH_ATTR,
   QUOTE_HIDDEN_ATTR,
+  RATE_TOAST_ID,
   RATING_ASK_ID,
   TWEET_MARK_ATTR,
 } from '../styles'
@@ -113,6 +124,8 @@ const ABOUT_ACCOUNT_URL = `${API_BASE}/${QUERY_ID}/AboutAccountQuery`
 const SEL_HOVER_CARD = '[data-testid="HoverCard"]'
 const SEL_USER_NAME = '[data-testid="UserName"] a[href]'
 const SEL_USER_NAME_ALT = '[data-testid="User-Name"] a[href]'
+// The handle-and-display-name block, whichever spelling of the testid X used.
+const SEL_NAME_BLOCK = '[data-testid="UserName"], [data-testid="User-Name"]'
 const SEL_TWEET = 'article[data-testid="tweet"]'
 const SEL_PRIMARY_TWEET = `${SEL_TWEET}[tabindex="-1"]`
 const PRIMARY_TWEET_ATTR = 'data-x-loc-primary-done'
@@ -148,6 +161,9 @@ function isBlockedLocation(loc: string): boolean {
 const DEFAULT_FLAGS = defaultSetting(HIGHLIGHT_FLAGS_KEY)
 
 let highlightKeywords = new Set<string>()
+// Asked of the name and of the bio separately — see the keys in constants.ts.
+let keywordNameMatch = defaultSetting(KEYWORD_NAME_MATCH_KEY)
+let keywordBioMatch = defaultSetting(KEYWORD_BIO_MATCH_KEY)
 let highlightFlagsEnabled = DEFAULT_FLAGS.enabled
 let highlightFlagsThreshold = DEFAULT_FLAGS.threshold
 let highlightFlagsUniqueOnly = DEFAULT_FLAGS.uniqueOnly
@@ -191,6 +207,8 @@ chrome.storage.local
     EXTENSION_ENABLED_KEY,
     BLOCKED_COUNTRIES_KEY,
     HIGHLIGHT_KEYWORDS_KEY,
+    KEYWORD_NAME_MATCH_KEY,
+    KEYWORD_BIO_MATCH_KEY,
     HIGHLIGHT_FLAGS_KEY,
     SHOW_LOCATION_IN_FEED_KEY,
     HIGHLIGHT_EXCEPTIONS_KEY,
@@ -212,6 +230,8 @@ chrome.storage.local
     blockedCountries = toBlockedSet(r[BLOCKED_COUNTRIES_KEY])
     highlightKeywords = new Set(readSetting(HIGHLIGHT_KEYWORDS_KEY, r))
     setKeywords([...highlightKeywords])
+    keywordNameMatch = readSetting(KEYWORD_NAME_MATCH_KEY, r)
+    keywordBioMatch = readSetting(KEYWORD_BIO_MATCH_KEY, r)
     updateKeywordEmojiStyle()
     const flags = readSetting(HIGHLIGHT_FLAGS_KEY, r)
     highlightFlagsEnabled = flags.enabled
@@ -278,10 +298,23 @@ function stripAllInjections(): void {
   updateKeywordEmojiStyle()
   dismissLocationToast()
   dismissRatingAsk()
-  document.getElementById('x-loc-rate-toast')?.remove()
+  document.getElementById(RATE_TOAST_ID)?.remove()
 }
 
 type StorageChanges = Record<string, chrome.storage.StorageChange>
+
+/**
+ * The shape every setting change follows: present in the batch, normalized
+ * through the registry, then applied. A removed key arrives as an undefined
+ * `newValue`, which the normalizer answers with the default.
+ */
+function onSettingChange<K extends SettingKey>(
+  changes: StorageChanges,
+  key: K,
+  apply: (value: SettingValue<K>) => void,
+): void {
+  if (changes[key]) apply(settingValue(key, changes[key].newValue))
+}
 
 /** Returns whether the rest of the changes are worth applying at all. */
 function applyMasterSwitch(changes: StorageChanges): boolean {
@@ -329,108 +362,77 @@ function applyFilterChanges(changes: StorageChanges): void {
     rehighlightAll()
     void refreshHiddenTweets()
   }
-  if (changes[ALWAYS_SHOW_KEY]) {
-    alwaysShow = new Set(
-      settingValue(ALWAYS_SHOW_KEY, changes[ALWAYS_SHOW_KEY].newValue),
-    )
+  onSettingChange(changes, ALWAYS_SHOW_KEY, (value) => {
+    alwaysShow = new Set(value)
     rehighlightAll()
     void refreshHiddenTweets()
-  }
-  if (changes[BLOCKED_AFFILIATIONS_KEY]) {
-    blockedAffiliations = new Set(
-      settingValue(
-        BLOCKED_AFFILIATIONS_KEY,
-        changes[BLOCKED_AFFILIATIONS_KEY].newValue,
-      ),
-    )
+  })
+  onSettingChange(changes, BLOCKED_AFFILIATIONS_KEY, (value) => {
+    blockedAffiliations = new Set(value)
     void refreshHiddenTweets()
-  }
-  if (changes[ACCOUNT_AGE_KEY]) {
-    accountAgeFilter = settingValue(
-      ACCOUNT_AGE_KEY,
-      changes[ACCOUNT_AGE_KEY].newValue,
-    )
+  })
+  onSettingChange(changes, ACCOUNT_AGE_KEY, (value) => {
+    accountAgeFilter = value
     void refreshHiddenTweets()
-  }
-  if (changes[HIDE_BLOCKED_LOCATIONS_KEY]) {
-    hideMode = settingValue(
-      HIDE_BLOCKED_LOCATIONS_KEY,
-      changes[HIDE_BLOCKED_LOCATIONS_KEY].newValue,
-    )
+  })
+  onSettingChange(changes, HIDE_BLOCKED_LOCATIONS_KEY, (value) => {
+    hideMode = value
     void refreshHiddenTweets()
     syncPoller()
-  }
+  })
 }
 
 function applyDisplayChanges(changes: StorageChanges): void {
-  if (changes[HIGHLIGHT_KEYWORDS_KEY]) {
-    highlightKeywords = new Set(
-      settingValue(
-        HIGHLIGHT_KEYWORDS_KEY,
-        changes[HIGHLIGHT_KEYWORDS_KEY].newValue,
-      ),
-    )
+  onSettingChange(changes, HIGHLIGHT_KEYWORDS_KEY, (value) => {
+    highlightKeywords = new Set(value)
     setKeywords([...highlightKeywords])
     updateKeywordEmojiStyle()
     rehighlightAll()
-  }
-  if (changes[HIGHLIGHT_FLAGS_KEY]) {
-    const next = settingValue(
-      HIGHLIGHT_FLAGS_KEY,
-      changes[HIGHLIGHT_FLAGS_KEY].newValue,
-    )
-    highlightFlagsEnabled = next.enabled
-    highlightFlagsThreshold = next.threshold
-    highlightFlagsUniqueOnly = next.uniqueOnly
+  })
+  onSettingChange(changes, KEYWORD_NAME_MATCH_KEY, (value) => {
+    keywordNameMatch = value
     rehighlightAll()
-  }
-  if (changes[SHOW_LOCATION_IN_FEED_KEY]) {
-    showLocationInFeed = settingValue(
-      SHOW_LOCATION_IN_FEED_KEY,
-      changes[SHOW_LOCATION_IN_FEED_KEY].newValue,
-    )
+  })
+  onSettingChange(changes, KEYWORD_BIO_MATCH_KEY, (value) => {
+    keywordBioMatch = value
+    rehighlightAll()
+  })
+  onSettingChange(changes, HIGHLIGHT_FLAGS_KEY, (value) => {
+    highlightFlagsEnabled = value.enabled
+    highlightFlagsThreshold = value.threshold
+    highlightFlagsUniqueOnly = value.uniqueOnly
+    rehighlightAll()
+  })
+  onSettingChange(changes, SHOW_LOCATION_IN_FEED_KEY, (value) => {
+    showLocationInFeed = value
     refreshFeedLocations()
     syncPoller()
-  }
-  if (changes[SHOW_EXCEPTION_BUTTON_KEY]) {
-    showExceptionButton = settingValue(
-      SHOW_EXCEPTION_BUTTON_KEY,
-      changes[SHOW_EXCEPTION_BUTTON_KEY].newValue,
-    )
-  }
-  if (changes[SHOW_ACCOUNT_CARD_KEY]) {
-    showAccountCard = settingValue(
-      SHOW_ACCOUNT_CARD_KEY,
-      changes[SHOW_ACCOUNT_CARD_KEY].newValue,
-    )
-  }
-  if (changes[SHOW_SHARE_BUTTON_KEY]) {
-    showShareButton = settingValue(
-      SHOW_SHARE_BUTTON_KEY,
-      changes[SHOW_SHARE_BUTTON_KEY].newValue,
-    )
-  }
+  })
+  onSettingChange(changes, SHOW_EXCEPTION_BUTTON_KEY, (value) => {
+    showExceptionButton = value
+  })
+  onSettingChange(changes, SHOW_ACCOUNT_CARD_KEY, (value) => {
+    showAccountCard = value
+  })
+  onSettingChange(changes, SHOW_SHARE_BUTTON_KEY, (value) => {
+    showShareButton = value
+  })
 }
 
 function applyLookupChanges(changes: StorageChanges): void {
-  if (changes[SHARED_CACHE_KEY]) {
-    setSharedCacheEnabled(
-      settingValue(SHARED_CACHE_KEY, changes[SHARED_CACHE_KEY].newValue),
-    )
+  onSettingChange(changes, SHARED_CACHE_KEY, (value) => {
+    setSharedCacheEnabled(value)
     // Opting out of the community cache also stops background prefetch, which
     // exists to warm it — and opting back in restarts it.
     syncPoller()
-  }
+  })
   if (changes[MIN_CONFIDENCE_KEY]) {
     setMinConfidence(changes[MIN_CONFIDENCE_KEY].newValue)
   }
-  if (changes[BACKGROUND_PREFETCH_KEY]) {
-    prefetchEnabled = settingValue(
-      BACKGROUND_PREFETCH_KEY,
-      changes[BACKGROUND_PREFETCH_KEY].newValue,
-    )
+  onSettingChange(changes, BACKGROUND_PREFETCH_KEY, (value) => {
+    prefetchEnabled = value
     syncPoller()
-  }
+  })
 }
 
 /**
@@ -510,7 +512,7 @@ function effectiveBlockedLocation(data: LocationData): string | null {
 }
 
 /** Why a post is being collapsed or hidden, for the placeholder to explain. */
-export interface FilterMatch {
+interface FilterMatch {
   rule: FilterRule
   label: string
   icon: string
@@ -526,11 +528,10 @@ function ruleMatches(data: LocationData | null | undefined): FilterMatch[] {
 
   const location = effectiveBlockedLocation(data)
   if (location) {
-    const key = canonicalLocation(location)
     matches.push({
       rule: 'location',
       label: location,
-      icon: COUNTRY_FLAGS[key] ?? REGION_FLAGS[key] ?? '🌐',
+      icon: flagEmojiFor(location),
     })
   }
 
@@ -616,38 +617,18 @@ function cellMatchFor(
 // ---------------------------------------------------------------------------
 // Types & state
 // ---------------------------------------------------------------------------
-export let apiHeaders: Record<string, string> | null = null
+let apiHeaders: Record<string, string> | null = null
 export function setApiHeaders(h: Record<string, string> | null) {
   apiHeaders = h
 }
 
-class NormalizedMap<V> {
-  private map = new Map<string, V>()
-  private key(name: string) {
-    return name.toLowerCase()
-  }
-  has(name: string) {
-    return this.map.has(this.key(name))
-  }
-  get(name: string) {
-    return this.map.get(this.key(name))
-  }
-  set(name: string, value: V) {
-    this.map.set(this.key(name), value)
-  }
-  delete(name: string) {
-    return this.map.delete(this.key(name))
-  }
-  clear() {
-    this.map.clear()
-  }
-}
 // Tracks users whose location was already fetched via API this session,
 // so repeat hovers skip the network and read from IDB instead.
 const checkedThisSession = new Set<string>()
-// Shared promises — lets concurrent processCard calls for the same user
-// await the same in-flight fetch instead of getting null immediately.
-const pendingMap = new NormalizedMap<Promise<LocationData | null>>()
+// Shared promises, keyed by lowercased handle — lets concurrent processCard
+// calls for the same user await the same in-flight fetch instead of getting
+// null immediately.
+const pendingMap = new Map<string, Promise<LocationData | null>>()
 let rateLimitResetAt = 0
 let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null
 // Every blocked lookup calls showRateLimitToast, so without this the next hover
@@ -750,6 +731,8 @@ export function __testResetState() {
   blockedCountries = new Set()
   highlightKeywords = new Set()
   setKeywords([])
+  keywordNameMatch = defaultSetting(KEYWORD_NAME_MATCH_KEY)
+  keywordBioMatch = defaultSetting(KEYWORD_BIO_MATCH_KEY)
   highlightFlagsEnabled = DEFAULT_FLAGS.enabled
   highlightFlagsThreshold = DEFAULT_FLAGS.threshold
   highlightFlagsUniqueOnly = DEFAULT_FLAGS.uniqueOnly
@@ -861,7 +844,7 @@ function dismissRateLimitToast(): void {
   rateLimitToastDismissedUntil = rateLimitResetAt
   if (rateLimitToastInterval) clearInterval(rateLimitToastInterval)
   rateLimitToastInterval = null
-  document.getElementById('x-loc-rate-toast')?.remove()
+  document.getElementById(RATE_TOAST_ID)?.remove()
 }
 
 /** `force` un-dismisses: a swipe is the user asking again. Hovers never force. */
@@ -876,10 +859,10 @@ function showRateLimitToast(force = false) {
   // needs beats a request they didn't ask for.
   dismissRatingAsk()
 
-  let toast = document.getElementById('x-loc-rate-toast')
+  let toast = document.getElementById(RATE_TOAST_ID)
   if (!toast) {
     toast = document.createElement('div')
-    toast.id = 'x-loc-rate-toast'
+    toast.id = RATE_TOAST_ID
     // Interactive, so it needs a role, a tab stop and keys doing what a click does.
     toast.title = t('toastDismiss')
     toast.setAttribute('role', 'button')
@@ -898,7 +881,7 @@ function showRateLimitToast(force = false) {
 
   function tick() {
     const remaining = rateLimitResetAt - Date.now()
-    const el = document.getElementById('x-loc-rate-toast')
+    const el = document.getElementById(RATE_TOAST_ID)
     if (remaining <= 0 || !el) {
       if (rateLimitToastInterval) clearInterval(rateLimitToastInterval)
       rateLimitToastInterval = null
@@ -945,7 +928,7 @@ export function locationSummaryText(
 
 /** A `pending` toast has no dismiss timer: a later call must resolve it. */
 function dismissLocationToast() {
-  document.getElementById('x-loc-location-toast')?.remove()
+  document.getElementById(LOCATION_TOAST_ID)?.remove()
   if (locationToastTimer) clearTimeout(locationToastTimer)
   locationToastTimer = null
 }
@@ -956,7 +939,7 @@ function renderLocationToast(text: string, pending = false) {
   dismissRatingAsk()
 
   const toast = document.createElement('div')
-  toast.id = 'x-loc-location-toast'
+  toast.id = LOCATION_TOAST_ID
   toast.textContent = text
   if (pending) toast.dataset.pending = '1'
   document.body.appendChild(toast)
@@ -1073,8 +1056,8 @@ async function considerRatingAsk(): Promise<void> {
     // Both can have changed during the wait, and the other two toasts carry
     // information where this carries a request.
     if (!extensionEnabled) return
-    if (document.getElementById('x-loc-rate-toast')) return
-    if (document.getElementById('x-loc-location-toast')) return
+    if (document.getElementById(RATE_TOAST_ID)) return
+    if (document.getElementById(LOCATION_TOAST_ID)) return
     showRatingAsk()
   }, RATING_ASK_DELAY_MS)
 }
@@ -1118,14 +1101,7 @@ function toLocationData(
 }
 
 /** What a lookup ended up costing the shared window, for the broker's ledger. */
-interface LookupCost {
-  spent: boolean
-  ok?: boolean
-  status?: number
-  limit?: number | null
-  remaining?: number | null
-  reset?: number | null
-}
+type LookupCost = Omit<LookupReport, 'userName'>
 
 const NOTHING_SPENT: LookupCost = { spent: false }
 
@@ -1197,11 +1173,12 @@ export async function fetchLocationData(
   userName: string,
   opts: { granted?: boolean } = {},
 ): Promise<LocationData | null> {
-  if (pendingMap.has(userName)) {
+  const key = userName.toLowerCase()
+  if (pendingMap.has(key)) {
     // The broker is holding this handle for us and no request will follow, so
     // hand the slot straight back rather than let it time out.
     if (opts.granted) await reportLookup({ userName, spent: false })
-    return pendingMap.get(userName)!
+    return pendingMap.get(key)!
   }
 
   // Capture snapshot so the IIFE always uses the headers that were valid at
@@ -1223,8 +1200,8 @@ export async function fetchLocationData(
     return data
   })()
 
-  pendingMap.set(userName, promise)
-  promise.finally(() => pendingMap.delete(userName))
+  pendingMap.set(key, promise)
+  promise.finally(() => pendingMap.delete(key))
   return promise
 }
 
@@ -1331,7 +1308,11 @@ function matchesHighlightRule(
   displayName: string,
   bio: string | null | undefined,
 ): boolean {
-  if (matchesAnyKeyword(`${userName} ${displayName} ${bio ?? ''}`)) return true
+  // The handle rides with the display name: both are the identity line, and a
+  // handle is written the same way a name that dodges a filter is.
+  if (matchesAnyKeyword(`${userName} ${displayName}`, keywordNameMatch))
+    return true
+  if (bio && matchesAnyKeyword(bio, keywordBioMatch)) return true
   if (
     highlightFlagsEnabled &&
     countFlagsInBio(`${userName} ${displayName} ${bio ?? ''}`) >
@@ -1379,7 +1360,11 @@ export function keywordRangesIn(root: Element): Range[] {
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const text = node.nodeValue
     if (!text) continue
-    for (const { start, end } of findKeywordMatches(text)) {
+    // Which rule fired here decides which one the mark may explain.
+    const mode = node.parentElement?.closest(SEL_NAME_BLOCK)
+      ? keywordNameMatch
+      : keywordBioMatch
+    for (const { start, end } of findKeywordMatches(text, mode)) {
       const range = document.createRange()
       range.setStart(node, start)
       range.setEnd(node, end)
@@ -1586,6 +1571,15 @@ function injectFeedRow(article: Element, plan: FeedRowPlan): void {
   placeFeedRow(article, plan)
 }
 
+/** Whether a record carries anything the location row would draw. */
+function hasLocationToShow(
+  data: LocationData | null | undefined,
+): data is LocationData {
+  return Boolean(
+    data && (data.location || !data.locationAccurate || data.source),
+  )
+}
+
 async function tryInjectFeedLocation(article: Element) {
   if (!showLocationInFeed) return
   if (article.getAttribute(FEED_LOCATION_ATTR)) return
@@ -1597,14 +1591,14 @@ async function tryInjectFeedLocation(article: Element) {
   article.setAttribute(FEED_LOCATION_ATTR, '1')
 
   const data = await getCached(userName)
-  if (!data || (!data.location && data.locationAccurate && !data.source)) return
+  if (!hasLocationToShow(data)) return
 
   injectFeedRow(article, { data, userName })
 }
 
 function injectFeedLocationForUser(userName: string, data: LocationData) {
   if (!showLocationInFeed) return
-  if (!data.location && data.locationAccurate && !data.source) return
+  if (!hasLocationToShow(data)) return
   const lc = userName.toLowerCase()
   document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
     if (extractTweetUserInfo(article).userName?.toLowerCase() !== lc) return
@@ -2361,7 +2355,7 @@ function writeRuleExceptions(next: RuleExceptions): void {
  * Exceptions included: a rule already excepted is the one the button must keep
  * offering, or a mistake could only be undone from the options page.
  */
-export function activeRulesFor(
+function activeRulesFor(
   userName: string,
   data: LocationData | null | undefined,
   displayName: string,
@@ -2790,10 +2784,7 @@ async function processCard(card: Element) {
 
   // The location row needs a location; the account card does not, so an account
   // X has no country for can still show its age and badges.
-  const infoRow =
-    data && (data.location || !data.locationAccurate || data.source)
-      ? buildInfoRow(data, userName)
-      : null
+  const infoRow = hasLocationToShow(data) ? buildInfoRow(data, userName) : null
   if (infoRow) wrap.prepend(infoRow)
 
   // The merged view: the timeline's follower count beside the handle history
@@ -2888,7 +2879,7 @@ async function processPrimaryTweet() {
       tweet.removeAttribute(PRIMARY_TWEET_ATTR)
       void processPrimaryTweet()
     })
-  } else if (data && (data.location || !data.locationAccurate || data.source)) {
+  } else if (hasLocationToShow(data)) {
     row = buildInfoRow(data, userName)
   }
 
@@ -2973,8 +2964,7 @@ function tweetText(article: Element): string {
 
 /** Ignores the blocked list: in a shared image a ⚠️ reads as something X said. */
 function flagEmojiFor(location: string): string {
-  const key = canonicalLocation(location)
-  return COUNTRY_FLAGS[key] ?? REGION_FLAGS[key] ?? '🌐'
+  return flagFor(canonicalLocation(location))
 }
 
 /**
@@ -3044,7 +3034,7 @@ function buildSnapshotLocationRow(data: LocationData): HTMLElement {
 /** Buttons aimed at the reader rather than part of the post. */
 const RE_READER_ACTION = /^(subscribe|follow|following|unfollow)$/i
 
-export function decorateSnapshot(clone: Element, data: LocationData): void {
+function decorateSnapshot(clone: Element, data: LocationData): void {
   clone
     .querySelectorAll(
       `.x-loc-share-btn, .x-loc-exc-btn, .x-loc-card, .${HIDDEN_PLACEHOLDER_CLASS}, .x-loc-info`,

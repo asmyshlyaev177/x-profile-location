@@ -103,14 +103,18 @@ function BudgetBar({ t }: { t: Dict }) {
       <div class="mt-5 grid grid-cols-2 gap-6">
         <div>
           <span class="bg-signal/45 me-2 inline-block h-2 w-2 rounded-[1px] align-middle" />
-          <span class="text-text text-[0.8125rem] font-semibold">35</span>
+          <span class="text-text text-[0.8125rem] font-semibold">
+            {BACKGROUND_SHARE}
+          </span>
           <p class="text-faint mt-1 text-[0.8125rem] leading-relaxed">
             {t.rateBudget.bar.backgroundNote}
           </p>
         </div>
         <div>
           <span class="bg-attention/70 me-2 inline-block h-2 w-2 rounded-[1px] align-middle" />
-          <span class="text-text text-[0.8125rem] font-semibold">15</span>
+          <span class="text-text text-[0.8125rem] font-semibold">
+            {TOTAL - BACKGROUND_SHARE}
+          </span>
           <p class="text-faint mt-1 text-[0.8125rem] leading-relaxed">
             {t.rateBudget.bar.reservedNote}
           </p>

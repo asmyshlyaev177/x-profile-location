@@ -206,6 +206,24 @@
   "emptyNoKeywords": {
     "message": "Aucun mot-clé défini — tous les posts sont affichés normalement."
   },
+  "setNameMatch": {
+    "message": "Dans les noms et pseudos"
+  },
+  "setNameMatchDesc": {
+    "message": "Un nom affiché est choisi pour être vu, et souvent écrit précisément pour passer sous un filtre comme celui-ci : « NFTguy », « #freepalestine ». Chercher à l’intérieur d’un mot les rattrape."
+  },
+  "setBioMatch": {
+    "message": "Dans les bios"
+  },
+  "setBioMatchDesc": {
+    "message": "Une bio est de la prose : chercher à l’intérieur d’un mot fait correspondre le mot-clé « or » dans « trésor » et « historien ». Ici, se limiter aux mots entiers est plus sûr."
+  },
+  "matchWord": {
+    "message": "Mots entiers uniquement"
+  },
+  "matchPartial": {
+    "message": "N’importe où dans un mot"
+  },
   "cardLocations": {
     "message": "Lieux"
   },

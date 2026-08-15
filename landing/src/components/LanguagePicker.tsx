@@ -25,7 +25,7 @@ export function LanguagePicker() {
   const target = translated ? routePath : '/'
 
   return (
-    <details class="lang relative">
+    <details class="relative">
       <summary
         aria-label={t.language.label}
         class="text-body hover:text-text hover:border-hair-strong border-hair inline-flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-medium transition-colors duration-150 [&::-webkit-details-marker]:hidden"

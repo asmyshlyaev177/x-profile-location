@@ -151,6 +151,10 @@ export function buildFaqJsonLd(route: RouteDef, locale: LocaleDef, t: Dict) {
   }
 }
 
+function metaEl(props: Record<string, string>) {
+  return { type: 'meta', props }
+}
+
 function jsonLdEl(data: unknown) {
   return {
     type: 'script',
@@ -203,102 +207,57 @@ export function buildHeadElements(
   t: Dict,
 ) {
   const canonical = canonicalFor(route, locale)
-  const { title, description } = metaFor(route, t)
+  const { title, description, faq } = metaFor(route, t)
 
   // Nothing below the fold matters for a page we're asking not to be indexed.
   if (route.noindex) {
     return new Set<unknown>([
-      { type: 'meta', props: { name: 'description', content: description } },
+      metaEl({ name: 'description', content: description }),
       { type: 'link', props: { rel: 'canonical', href: canonical } },
-      { type: 'meta', props: { name: 'robots', content: 'noindex' } },
+      metaEl({ name: 'robots', content: 'noindex' }),
     ])
   }
 
   const elements: unknown[] = [
     jsonLdEl(buildJsonLd(version, locale, t)),
-    {
-      type: 'meta',
-      props: {
-        name: 'google-site-verification',
-        content: 'VGWeNcrEVDQA07xz1L_6VZjcMEip0kTWdxxpIEmmbKc',
-      },
-    },
-    { type: 'meta', props: { name: 'description', content: description } },
-    { type: 'meta', props: { name: 'keywords', content: seo.keywords } },
-    { type: 'meta', props: { name: 'author', content: seo.author } },
-    {
-      type: 'meta',
-      props: {
-        name: 'robots',
-        content: 'index, follow, max-image-preview:large',
-      },
-    },
+    metaEl({
+      name: 'google-site-verification',
+      content: 'VGWeNcrEVDQA07xz1L_6VZjcMEip0kTWdxxpIEmmbKc',
+    }),
+    metaEl({ name: 'description', content: description }),
+    metaEl({ name: 'keywords', content: seo.keywords }),
+    metaEl({ name: 'author', content: seo.author }),
+    metaEl({
+      name: 'robots',
+      content: 'index, follow, max-image-preview:large',
+    }),
 
     // Open Graph
-    { type: 'meta', props: { property: 'og:type', content: seo.og.type } },
-    { type: 'meta', props: { property: 'og:url', content: canonical } },
-    { type: 'meta', props: { property: 'og:title', content: title } },
-    {
-      type: 'meta',
-      props: { property: 'og:description', content: description },
-    },
-    { type: 'meta', props: { property: 'og:image', content: seo.og.image } },
-    {
-      type: 'meta',
-      props: { property: 'og:image:type', content: seo.og.imageType },
-    },
-    {
-      type: 'meta',
-      props: { property: 'og:image:width', content: seo.og.imageWidth },
-    },
-    {
-      type: 'meta',
-      props: { property: 'og:image:height', content: seo.og.imageHeight },
-    },
+    metaEl({ property: 'og:type', content: seo.og.type }),
+    metaEl({ property: 'og:url', content: canonical }),
+    metaEl({ property: 'og:title', content: title }),
+    metaEl({ property: 'og:description', content: description }),
+    metaEl({ property: 'og:image', content: seo.og.image }),
+    metaEl({ property: 'og:image:type', content: seo.og.imageType }),
+    metaEl({ property: 'og:image:width', content: seo.og.imageWidth }),
+    metaEl({ property: 'og:image:height', content: seo.og.imageHeight }),
     // Alt text on the card image: read out by screen readers on X and Slack,
     // and shown when the image itself fails to load.
-    {
-      type: 'meta',
-      props: { property: 'og:image:alt', content: seo.og.imageAlt },
-    },
-    {
-      type: 'meta',
-      props: { property: 'og:site_name', content: seo.og.siteName },
-    },
-    {
-      type: 'meta',
-      props: { property: 'og:locale', content: locale.ogLocale },
-    },
+    metaEl({ property: 'og:image:alt', content: seo.og.imageAlt }),
+    metaEl({ property: 'og:site_name', content: seo.og.siteName }),
+    metaEl({ property: 'og:locale', content: locale.ogLocale }),
 
     // Twitter Card. No `twitter:site` — it takes an @handle, and the old value
     // was a URL, which Twitter's validator drops anyway.
-    {
-      type: 'meta',
-      props: { name: 'twitter:card', content: seo.twitter.card },
-    },
-    { type: 'meta', props: { name: 'twitter:title', content: title } },
-    {
-      type: 'meta',
-      props: { name: 'twitter:description', content: description },
-    },
-    {
-      type: 'meta',
-      props: { name: 'twitter:image', content: seo.twitter.image },
-    },
-    {
-      type: 'meta',
-      props: { name: 'twitter:image:alt', content: seo.og.imageAlt },
-    },
+    metaEl({ name: 'twitter:card', content: seo.twitter.card }),
+    metaEl({ name: 'twitter:title', content: title }),
+    metaEl({ name: 'twitter:description', content: description }),
+    metaEl({ name: 'twitter:image', content: seo.twitter.image }),
+    metaEl({ name: 'twitter:image:alt', content: seo.og.imageAlt }),
 
     // Last modified / updated time
-    {
-      type: 'meta',
-      props: { property: 'og:updated_time', content: buildDate },
-    },
-    {
-      type: 'meta',
-      props: { 'http-equiv': 'last-modified', content: buildDate },
-    },
+    metaEl({ property: 'og:updated_time', content: buildDate }),
+    metaEl({ 'http-equiv': 'last-modified', content: buildDate }),
 
     // Canonical
     { type: 'link', props: { rel: 'canonical', href: canonical } },
@@ -309,16 +268,14 @@ export function buildHeadElements(
   if (route.dictKey) {
     for (const l of locales) {
       if (l.code === locale.code) continue
-      elements.push({
-        type: 'meta',
-        props: { property: 'og:locale:alternate', content: l.ogLocale },
-      })
+      elements.push(
+        metaEl({ property: 'og:locale:alternate', content: l.ogLocale }),
+      )
     }
   }
 
   elements.push(...alternateEls(route))
 
-  const { faq } = metaFor(route, t)
   if (faq.length) elements.push(jsonLdEl(buildFaqJsonLd(route, locale, t)))
 
   return new Set(elements)

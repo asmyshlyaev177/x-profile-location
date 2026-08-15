@@ -12,13 +12,15 @@
  *
  * All x.com traffic is recorded/replayed via HAR (see fixtures.ts).
  */
-import type { BrowserContext } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
+  ANY_LOCATION_ICON,
   hoverCardLocation,
+  HOVER_CARD,
   hoverOwnTweet,
   mockLocationApis,
   PRIMARY_TWEET,
+  setCheckboxOption,
   TWEET_ARTICLE,
   tweetArticles,
 } from './helpers'
@@ -26,10 +28,6 @@ import {
 const NASA_TWEET = 'https://x.com/NASAArtemis/status/2052108727839285751'
 
 const FEED_ROW = '.x-loc-feed-row'
-// Any icon the row can carry — its presence means the author had something to
-// show, as opposed to an author X returns no location for.
-const ANY_LOCATION_ICON =
-  '.x-loc-icon-flag, .x-loc-store-block, .x-loc-icon-vpn'
 
 test('feed rows appear for cached authors when the setting is switched on, and are stripped when switched off', async ({
   page,
@@ -40,7 +38,7 @@ test('feed rows appear for cached authors when the setting is switched on, and a
 
   // The setting ships on, so this test has to switch it off before it can watch
   // it come back on.
-  await setShowLocationInFeed(context, extensionId, false)
+  await setCheckboxOption(context, extensionId, 'Show location in feed', false)
   await expect(page.locator(FEED_ROW)).toHaveCount(0, { timeout: 10_000 })
 
   // Hover once to put this author in IDB. The setting is off, so the timeline
@@ -54,7 +52,7 @@ test('feed rows appear for cached authors when the setting is switched on, and a
   await page.mouse.move(0, 0)
   await page.waitForTimeout(400)
 
-  await setShowLocationInFeed(context, extensionId, true)
+  await setCheckboxOption(context, extensionId, 'Show location in feed', true)
 
   // refreshFeedLocations() reads IDB only — no second API call for a known author.
   const feedRow = page.locator(`${TWEET_ARTICLE} ${FEED_ROW}`).first()
@@ -67,7 +65,7 @@ test('feed rows appear for cached authors when the setting is switched on, and a
   expect(inFeed.appStoreCountry).toBe(fromCard.appStoreCountry)
   expect(inFeed.isVpn).toBe(fromCard.isVpn)
 
-  await setShowLocationInFeed(context, extensionId, false)
+  await setCheckboxOption(context, extensionId, 'Show location in feed', false)
   await expect(page.locator(FEED_ROW)).toHaveCount(0, { timeout: 10_000 })
 })
 
@@ -79,7 +77,7 @@ test('feed row lands on the replying author, not the primary tweet, when a hover
   await mockLocationApis(page, { account_based_in: 'Germany' })
 
   // On before navigating, so the content script picks it up at startup.
-  await setShowLocationInFeed(context, extensionId, true)
+  await setCheckboxOption(context, extensionId, 'Show location in feed', true)
 
   await page.goto(NASA_TWEET)
   // Generous because this is a precondition, not the assertion: the first
@@ -106,7 +104,7 @@ test('feed row lands on the replying author, not the primary tweet, when a hover
     await queryDone
 
     const hasData = await page
-      .locator('[data-testid="HoverCard"]')
+      .locator(HOVER_CARD)
       .locator(ANY_LOCATION_ICON)
       .first()
       .waitFor({ timeout: 10_000 })
@@ -129,27 +127,3 @@ test('feed row lands on the replying author, not the primary tweet, when a hover
   // class), so a feed row there would mean a duplicate.
   await expect(page.locator(`${PRIMARY_TWEET} ${FEED_ROW}`)).toHaveCount(0)
 })
-
-// ---------------------------------------------------------------------------
-// Options-page helper
-// ---------------------------------------------------------------------------
-
-async function setShowLocationInFeed(
-  context: BrowserContext,
-  extensionId: string,
-  enabled: boolean,
-): Promise<void> {
-  const optPage = await context.newPage()
-  await optPage.goto(`chrome-extension://${extensionId}/pages/options.html`)
-
-  const toggle = optPage
-    .locator('label:has-text("Show location in feed") input[type="checkbox"]')
-    .first()
-  await toggle.waitFor({ timeout: 5_000 })
-  await toggle.setChecked(enabled)
-
-  // The checkbox is controlled by the same state the onChange writes to storage,
-  // so it only settles once chrome.storage.local.set has been called.
-  await expect(toggle).toBeChecked({ checked: enabled, timeout: 3_000 })
-  await optPage.close()
-}

@@ -1,9 +1,4 @@
-import {
-  buildSourceGlyph,
-  classifySource,
-  platformLabel,
-  sourceCountry,
-} from './source'
+import { buildSourceGlyph, classifySource, platformLabel } from './source'
 
 describe('classifySource', () => {
   it('splits the two mobile stores rather than collapsing them', () => {
@@ -61,12 +56,6 @@ describe('classifySource', () => {
       country: null,
       raw: 'App Store',
     })
-  })
-
-  it('exposes the country directly for the filtering path', () => {
-    expect(sourceCountry('India App Store')).toBe('India')
-    expect(sourceCountry('web')).toBeNull()
-    expect(sourceCountry(null)).toBeNull()
   })
 })
 
