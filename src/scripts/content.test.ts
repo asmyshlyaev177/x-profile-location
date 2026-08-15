@@ -3260,6 +3260,8 @@ describe('swipe-right gesture', () => {
     disableFeedLocation()
   })
 
+  afterEach(() => history.pushState({}, '', '/'))
+
   function touch(type: string, target: Element, x: number, y: number) {
     const point = { clientX: x, clientY: y } as Touch
     target.dispatchEvent(
@@ -3297,6 +3299,30 @@ describe('swipe-right gesture', () => {
 
     expect(toast()?.textContent).toBe('🇯🇵 Japan')
     expect(article.querySelector('.x-loc-feed-row')).not.toBeNull()
+  })
+
+  // processPrimaryTweet puts its row *inside* the name line and the swipe puts
+  // one *after* it, so each was blind to the other's and a swipe on an opened
+  // tweet drew the location twice.
+  it('adds no second row where the primary tweet already has one', async () => {
+    history.pushState({}, '', '/detail/status/123')
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+    const article = makeTweetArticle('detail', 'Test User', true)
+    document.body.appendChild(article)
+    await flushAsync()
+    expect(article.querySelectorAll('.x-loc-info')).toHaveLength(1)
+
+    touch('touchstart', article, 10, 100)
+    touch('touchmove', article, 90, 100)
+    await flushAsync()
+
+    expect(article.querySelectorAll('.x-loc-info')).toHaveLength(1)
+    expect(toast()?.textContent).toBe('🇯🇵 Japan')
   })
 
   it('acknowledges the swipe before the lookup resolves', async () => {
