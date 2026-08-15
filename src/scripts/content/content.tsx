@@ -1,54 +1,59 @@
-// content.tsx — plain DOM, no React/Preact
-import { cleanupCache, clearAllCache, getCached, mergeCached } from './cache'
-import {
-  emojiKeywords,
-  findKeywordMatches,
-  matchesAnyKeyword,
-  setKeywords,
-} from './keywords'
-import type { LocationData } from './cache'
+import { FILTER_RULES, normalizeRuleExceptions, ruleHides } from '../settings'
 import {
   ACCOUNT_AGE_KEY,
-  type AccountAgeFilter,
   ALWAYS_SHOW_KEY,
   BACKGROUND_PREFETCH_KEY,
   BLOCKED_AFFILIATIONS_KEY,
   BLOCKED_COUNTRIES_KEY,
-  canonicalLocation,
-  COUNTRY_FLAGS,
-  expandLocations,
   EXTENSION_ENABLED_KEY,
-  FILTER_RULES,
-  type FilterRule,
   HIDE_BLOCKED_LOCATIONS_KEY,
-  type HideBlockedMode,
-  normalizeRuleExceptions,
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
   MIN_CONFIDENCE_KEY,
   RATE_PROMPT_KEY,
-  REGION_ABBR,
-  REGION_FLAGS,
-  ruleHides,
   RULE_EXCEPTIONS_KEY,
-  type RuleExceptions,
   SHARED_CACHE_KEY,
   SHOW_ACCOUNT_CARD_KEY,
   SHOW_EXCEPTION_BUTTON_KEY,
-  SHOW_SHARE_BUTTON_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
+  SHOW_SHARE_BUTTON_KEY,
   USAGE_STATS_KEY,
-} from './countries'
-import { defaultSetting, readSetting, settingValue } from './settings'
-import { initI18n, t, UI_LANGUAGE_KEY } from './i18n'
-import { localizedLocation } from './location-names'
+} from '../constants'
+// content.tsx — plain DOM, no React/Preact
+import {
+  cleanupCache,
+  clearAllCache,
+  getCached,
+  mergeCached,
+} from '../cache/cache'
+import {
+  emojiKeywords,
+  findKeywordMatches,
+  matchesAnyKeyword,
+  setKeywords,
+} from '../keywords'
+import type { LocationData } from '../cache/cache'
+import {
+  type AccountAgeFilter,
+  canonicalLocation,
+  COUNTRY_FLAGS,
+  expandLocations,
+  type FilterRule,
+  type HideBlockedMode,
+  REGION_ABBR,
+  REGION_FLAGS,
+  type RuleExceptions,
+} from '../countries/countries'
+import { defaultSetting, readSetting, settingValue } from '../settings'
+import { initI18n, t, UI_LANGUAGE_KEY } from '../i18n'
+import { localizedLocation } from '../countries/location-names'
 import {
   EVENTS,
   MSG,
   RATE_LIMIT_RESET_DEFAULT_MS,
   X_GRAPHQL_PATH,
-} from './constants'
+} from '../constants'
 import {
   contributeLocation,
   flushContributions,
@@ -57,29 +62,36 @@ import {
   setMinConfidence,
   setSharedCacheEnabled,
   sharedBatchLookup,
-} from './shared-cache'
-import { PrefetchPoller } from './prefetch-poller'
-import type { PrefetchCandidate, PrefetchPriority } from './prefetch-queue'
-import type { LookupReport, NextInstruction, TabState } from './lookup-broker'
+} from '../cache/shared-cache'
+import { PrefetchPoller } from '../prefetch/prefetch-poller'
+import type {
+  PrefetchCandidate,
+  PrefetchPriority,
+} from '../prefetch/prefetch-queue'
+import type {
+  LookupReport,
+  NextInstruction,
+  TabState,
+} from '../prefetch/lookup-broker'
 import {
   accountAgeDays,
   definedFacts,
   formatAccountAge,
   parseAccountFacts,
-} from './profile'
-import type { AccountFacts } from './profile'
-import { buildSourceGlyph, classifySource, platformLabel } from './source'
+} from '../profile'
+import type { AccountFacts } from '../profile'
+import { buildSourceGlyph, classifySource, platformLabel } from '../source'
 import {
   noteActiveDay,
   noteRatingAskShown,
   ratingAskDue,
   REVIEW_URL,
   setRatePromptState,
-} from './usage'
-import toolbarIconUrl from '../assets/icons/icon-32x32.png?inline'
-import { deliverShareCard, renderShareCard } from './share-card'
-import { allowGrowth, snapshotElement } from './snapshot'
-import { drawWatermark, WATERMARK_BAND } from './watermark'
+} from '../usage'
+import toolbarIconUrl from '../../assets/icons/icon-32x32.png?inline'
+import { deliverShareCard, renderShareCard } from '../share-card'
+import { allowGrowth, snapshotElement } from '../snapshot'
+import { drawWatermark, WATERMARK_BAND } from '../watermark'
 import {
   CONTENT_CSS,
   emojiKeywordCss,
@@ -91,7 +103,7 @@ import {
   QUOTE_HIDDEN_ATTR,
   RATING_ASK_ID,
   TWEET_MARK_ATTR,
-} from './styles'
+} from '../styles'
 
 const QUERY_ID = 'XRqGa7EeokUU5kppkh13EA'
 const API_BASE = `https://${X_GRAPHQL_PATH}`
@@ -1699,8 +1711,14 @@ let resizeObserverIO: IntersectionObserver | null = null
 // edge climbs, so coarse steps leave it parked long past being safe.
 const RESIZE_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20)
 
+// X's sticky header is 54px, and a row resized under it is compensated for too.
+const FOLD_MARGIN_PX = 56
+
 function resizeAboveFold(target: Element): boolean {
-  return target.getBoundingClientRect().top < 0
+  const rect = target.getBoundingClientRect()
+  // No box: nothing to judge, and an observer would never report one.
+  if (rect.width === 0 && rect.height === 0) return false
+  return rect.top < FOLD_MARGIN_PX
 }
 
 function getResizeObserver(): IntersectionObserver {

@@ -2,7 +2,7 @@
 // hand. Display only — see "Location names & aliases" in CLAUDE.md.
 
 import { COUNTRY_FLAGS } from './countries'
-import { t, uiLocale } from './i18n'
+import { t, uiLocale } from '../i18n'
 
 const REGIONAL_INDICATOR_A = 0x1f1e6
 

@@ -1,3 +1,46 @@
+import {
+  ACCOUNT_AGE_CHOICES,
+  DEFAULT_MIN_CONFIDENCE,
+  FILTER_RULES,
+  LOOKUP_LIMIT_PER_WINDOW,
+  LOOKUP_WINDOW_MINUTES,
+  MIN_CONFIDENCE_CHOICES,
+  OPTIONS_TABS,
+  PREFETCH_SHARE_CHOICES,
+  formatAgeChoice,
+  normalizeAccountAge,
+  normalizeHandle,
+  normalizeHideBlockedMode,
+  normalizeMinConfidence,
+  normalizeOptionsTab,
+  normalizePrefetchShare,
+  normalizeRuleExceptions,
+  normalizeTheme,
+} from '../scripts/settings'
+import {
+  ACCOUNT_AGE_KEY,
+  ALWAYS_SHOW_KEY,
+  BACKGROUND_PREFETCH_KEY,
+  BLOCKED_AFFILIATIONS_KEY,
+  BLOCKED_COUNTRIES_KEY,
+  EXTENSION_ENABLED_KEY,
+  HIDE_BLOCKED_LOCATIONS_KEY,
+  HIGHLIGHT_EXCEPTIONS_KEY,
+  HIGHLIGHT_FLAGS_KEY,
+  HIGHLIGHT_KEYWORDS_KEY,
+  MIN_CONFIDENCE_KEY,
+  OPTIONS_TAB_KEY,
+  PREFETCH_PACING_KEY,
+  PREFETCH_SHARE_KEY,
+  RULE_EXCEPTIONS_KEY,
+  SHARED_CACHE_KEY,
+  SHOW_ACCOUNT_CARD_KEY,
+  SHOW_ADVANCED_KEY,
+  SHOW_EXCEPTION_BUTTON_KEY,
+  SHOW_LOCATION_IN_FEED_KEY,
+  SHOW_SHARE_BUTTON_KEY,
+  THEME_KEY,
+} from '../scripts/constants'
 // The full settings page: five tabs, flat cards. Only the tab you were on is
 // remembered (OPTIONS_TAB_KEY) — the accordions went with the popup split.
 
@@ -6,61 +49,22 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import {
-  ACCOUNT_AGE_CHOICES,
-  ACCOUNT_AGE_KEY,
-  formatAgeChoice,
   type AccountAgeFilter,
-  ALWAYS_SHOW_KEY,
-  BACKGROUND_PREFETCH_KEY,
-  BLOCKED_AFFILIATIONS_KEY,
-  BLOCKED_COUNTRIES_KEY,
   CANONICAL_LOCATIONS,
   COUNTRY_FLAGS,
-  EXTENSION_ENABLED_KEY,
-  FILTER_RULES,
   type FilterRule,
-  HIDE_BLOCKED_LOCATIONS_KEY,
   type HideBlockedMode,
-  normalizeAccountAge,
-  normalizeHandle,
-  normalizeHideBlockedMode,
-  normalizeOptionsTab,
-  normalizePrefetchShare,
-  normalizeRuleExceptions,
-  HIGHLIGHT_EXCEPTIONS_KEY,
-  HIGHLIGHT_FLAGS_KEY,
-  HIGHLIGHT_KEYWORDS_KEY,
   LOCATION_ALIASES,
-  LOOKUP_LIMIT_PER_WINDOW,
-  LOOKUP_WINDOW_MINUTES,
-  DEFAULT_MIN_CONFIDENCE,
-  MIN_CONFIDENCE_CHOICES,
-  MIN_CONFIDENCE_KEY,
-  normalizeMinConfidence,
-  normalizeTheme,
-  THEME_KEY,
   type ThemePreference,
-  SHOW_ADVANCED_KEY,
-  OPTIONS_TAB_KEY,
-  OPTIONS_TABS,
   type OptionsTabId,
-  PREFETCH_PACING_KEY,
-  PREFETCH_SHARE_CHOICES,
-  PREFETCH_SHARE_KEY,
   type PrefetchPacing,
   REGION_FLAGS,
   REGION_MEMBERS,
-  RULE_EXCEPTIONS_KEY,
   type RuleExceptions,
-  SHARED_CACHE_KEY,
-  SHOW_ACCOUNT_CARD_KEY,
-  SHOW_EXCEPTION_BUTTON_KEY,
-  SHOW_SHARE_BUTTON_KEY,
-  SHOW_LOCATION_IN_FEED_KEY,
-} from '../scripts/countries'
+} from '../scripts/countries/countries'
 import { isMobile } from '../scripts/device'
 import { MSG } from '../scripts/constants'
-import { isSharedCacheConfigured } from '../scripts/shared-cache'
+import { isSharedCacheConfigured } from '../scripts/cache/shared-cache'
 import {
   defaultSetting,
   exportSettings,
@@ -86,7 +90,7 @@ import {
   localizedLocation,
   sortByLocalizedName,
   withLocalizedAliases,
-} from '../scripts/location-names'
+} from '../scripts/countries/location-names'
 import css from './options.module.css'
 import { applyTheme, startThemeSync } from './theme'
 

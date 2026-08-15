@@ -83,11 +83,10 @@ test('feed row lands on the replying author, not the primary tweet, when a hover
 
   await page.goto(NASA_TWEET)
   // Generous because this is a precondition, not the assertion: the first
-  // lookup is the prefetcher's, and it usually lands inside a second but is
-  // entitled to sit behind the community cache's batching window
-  // (FLUSH_DELAY_MS, 30s) instead. Measured over ten runs it was ~0.9s nine
-  // times and ~26s once, in both headless and headed — so the 15s this used to
-  // allow failed roughly one run in five, whatever the mode.
+  // lookup is the prefetcher's, and it usually lands inside a second. It once
+  // took ~26s in ten runs — a wake() lost mid-poll, see "Waking a poll in
+  // flight" in src/scripts/CLAUDE.md. Fixed there; still generous here until a
+  // few hundred runs say it can come down.
   await page.waitForResponse(/AboutAccountQuery/, { timeout: 45_000 })
 
   // Replies vary between recordings, so take the first one X actually returns

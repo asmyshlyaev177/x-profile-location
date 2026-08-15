@@ -167,9 +167,21 @@ export const test = base.extend<Fixtures>({
   page: async ({ context }, use, testInfo) => {
     const page = await context.newPage()
     await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL })
+    stopWaitingForLoad(page)
     await use(page)
   },
 })
+
+/**
+ * Every `goto` settles on DOMContentLoaded. A replayed x.com holds requests the
+ * HAR cannot answer, and one kept `load` from ever firing — a goto ate the whole
+ * 60s budget on a page that had rendered. Every test waits on a real signal after.
+ */
+function stopWaitingForLoad(page: Page): void {
+  const goto = page.goto.bind(page)
+  page.goto = (url, options) =>
+    goto(url, { waitUntil: 'domcontentloaded', ...options })
+}
 
 export { expect }
 

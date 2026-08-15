@@ -274,6 +274,18 @@ test('a filter change with posts hidden above the fold does not move the page', 
     'nothing collapsed above the viewport — the case this test is about',
   ).toBeGreaterThanOrEqual(2)
 
+  // …and one collapsed post under X's sticky header, the row the extension used
+  // to judge as in view. Left to chance this test caught the jump half the time.
+  const parkedTop = await parkRowUnderHeader(page)
+  expect(
+    parkedTop,
+    'no collapsed post could be placed under the header',
+  ).toBeGreaterThan(0)
+  expect(parkedTop).toBeLessThan(X_HEADER_PX)
+  // X re-anchors on scroll, and a resize in the same breath as one is not
+  // compensated for at all: without this the test proves nothing (0px vs 83px).
+  await page.waitForTimeout(2_000)
+
   for (const mode of ['off', 'collapse'] as const) {
     const before = await page.evaluate(() => Math.round(window.scrollY))
     await setHideMode(context, extensionId, mode)
@@ -286,6 +298,27 @@ test('a filter change with posts hidden above the fold does not move the page', 
     ).toBeLessThanOrEqual(JUMP_TOLERANCE_PX)
   }
 })
+
+/** X's sticky header, desktop and mobile alike. See FOLD_MARGIN_PX. */
+const X_HEADER_PX = 54
+
+/** Scrolls a collapsed post half under the header; answers with its top edge. */
+function parkRowUnderHeader(page: Page): Promise<number> {
+  return page.evaluate((headerPx) => {
+    const rows = [
+      ...document.querySelectorAll(
+        'article[data-testid="tweet"][data-x-loc-hidden="collapse"]',
+      ),
+    ]
+    // Well clear of the header, so the scroll is downwards.
+    const target = rows.find(
+      (r) => r.getBoundingClientRect().top > headerPx * 3,
+    )
+    if (!target) return -1
+    window.scrollBy(0, Math.round(target.getBoundingClientRect().top) - 30)
+    return Math.round(target.getBoundingClientRect().top)
+  }, X_HEADER_PX)
+}
 
 /** Collapsed or hidden posts whose whole box is above the viewport top. */
 function countHiddenAboveFold(page: Page): Promise<number> {

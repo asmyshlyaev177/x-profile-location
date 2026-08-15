@@ -1,3 +1,4 @@
+import { HIGHLIGHT_KEYWORDS_KEY } from '../src/scripts/constants'
 /**
  * Marketing screenshots — the landing page's images and the store listing's,
  * retaken from the same recorded X pages the e2e suite replays.
@@ -39,7 +40,7 @@ import {
   TWEET_ARTICLE,
   tweetArticles,
 } from './helpers'
-import { HIGHLIGHT_KEYWORDS_KEY } from '../src/scripts/countries'
+
 import { CACHE_API_BASE } from '../src/scripts/constants'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))

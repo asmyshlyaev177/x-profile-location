@@ -1,5 +1,6 @@
+import { THEME_KEY } from '../scripts/constants'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { THEME_KEY } from '../scripts/countries'
+
 import { applyTheme, startThemeSync } from './theme'
 
 type ChangeListener = (

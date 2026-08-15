@@ -144,6 +144,43 @@ describe('the polling loop', () => {
     h.poller.stop()
   })
 
+  // The window a flaky e2e test lived in: the startup poll asks an empty queue,
+  // the timeline's users land while it is still out, and wake() therefore
+  // arrives *before* the answer it should override. Scheduling on wake() alone
+  // was not enough — the in-flight "nothing to do, wait 30s" replaced the
+  // immediate re-poll a moment later, and the first feed flag came half a minute
+  // after the page.
+  it('does not let an in-flight poll bury a wake() that arrived during it', async () => {
+    let answer!: (instruction: NextInstruction) => void
+    const timers: Array<() => void> = []
+    const delays: number[] = []
+
+    const poller = new PrefetchPoller({
+      next: () =>
+        new Promise<NextInstruction>((resolve) => {
+          answer = resolve
+        }),
+      fetch: async () => {},
+      setTimer: (fn, ms) => {
+        timers.push(fn)
+        delays.push(ms)
+        return timers.length - 1
+      },
+      clearTimer: () => {},
+    })
+
+    poller.start()
+    timers.shift()!() // the poll goes out and hangs
+    await Promise.resolve()
+
+    poller.wake() // the timeline's users arrive
+    answer({ waitMs: 30_000 }) // …and the broker answers the question from before
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(delays.at(-1)).toBe(0)
+    poller.stop()
+  })
+
   it('ignores wake() while stopped', () => {
     const h = harness([])
     h.poller.wake()

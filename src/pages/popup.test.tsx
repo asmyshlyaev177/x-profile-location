@@ -1,5 +1,3 @@
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   BLOCKED_COUNTRIES_KEY,
   EXTENSION_ENABLED_KEY,
@@ -9,9 +7,12 @@ import {
   SHARED_CACHE_COUNT_KEY,
   SHARED_CACHE_KEY,
   USAGE_STATS_KEY,
-} from '../scripts/countries'
+} from '../scripts/constants'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { RATE_PROMPT_MIN_DAYS, RATE_PROMPT_SNOOZE_MS } from '../scripts/usage'
-import { COUNT_POLL_MS } from '../scripts/shared-cache'
+import { COUNT_POLL_MS } from '../scripts/cache/shared-cache'
 
 // Mutable backing store for the chrome.storage.local mock. It has to be in
 // place before popup.tsx is imported below — the module renders itself into

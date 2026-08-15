@@ -1,13 +1,8 @@
+import { normalizeRatePrompt, normalizeUsageStats } from './settings'
+import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from './constants'
 // Days of use, and whether they have earned one ask for a store rating.
 
-import {
-  normalizeRatePrompt,
-  normalizeUsageStats,
-  RATE_PROMPT_KEY,
-  type RatePromptState,
-  USAGE_STATS_KEY,
-  type UsageStats,
-} from './countries'
+import type { RatePromptState, UsageStats } from './settings'
 
 export const RATE_PROMPT_MIN_DAYS = 3
 

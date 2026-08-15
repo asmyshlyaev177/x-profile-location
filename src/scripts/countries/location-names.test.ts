@@ -1,5 +1,5 @@
-import enMessages from '../../public/_locales/en/messages.json'
-import { __setMessages } from './i18n'
+import enMessages from '../../../public/_locales/en/messages.json'
+import { __setMessages } from '../i18n'
 import {
   CANONICAL_LOCATIONS,
   COUNTRY_FLAGS,

@@ -27,6 +27,8 @@ export class PrefetchPoller {
 
   private running = false
   private timer: unknown = null
+  private polling = false
+  private woken = false
 
   constructor(deps: PollerDeps) {
     this.deps = deps
@@ -69,12 +71,13 @@ export class PrefetchPoller {
   }
 
   /**
-   * Poll now rather than at the end of the current wait. Safe to call on every
-   * batch of candidates: the broker still answers with the paced gap, so this
-   * can bring a lookup forward only as far as the pace already allowed.
+   * Poll now rather than at the end of the current wait. Mid-poll it is
+   * remembered, not scheduled — see "Waking a poll in flight" in CLAUDE.md.
    */
   wake(): void {
-    if (this.running) this.schedule(0)
+    if (!this.running) return
+    this.woken = true
+    if (!this.polling) this.schedule(0)
   }
 
   private schedule(ms: number): void {
@@ -88,8 +91,14 @@ export class PrefetchPoller {
 
   private async tick(): Promise<void> {
     if (!this.running) return
-    const waitMs = await this.runOnce()
-    if (!this.running) return
-    this.schedule(waitMs)
+    this.woken = false
+    this.polling = true
+    try {
+      const waitMs = await this.runOnce()
+      if (!this.running) return
+      this.schedule(this.woken ? 0 : waitMs)
+    } finally {
+      this.polling = false
+    }
   }
 }

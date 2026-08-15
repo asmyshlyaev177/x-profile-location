@@ -1,11 +1,9 @@
+import { normalizeTheme } from '../scripts/settings'
+import { THEME_KEY } from '../scripts/constants'
 // One attribute on <html>; the palettes are `light-dark()` pairs in the page's
 // own stylesheet. 'system' is the attribute's absence, so CSS follows the OS.
 
-import {
-  normalizeTheme,
-  THEME_KEY,
-  type ThemePreference,
-} from '../scripts/countries'
+import { type ThemePreference } from '../scripts/countries/countries'
 
 export function applyTheme(theme: ThemePreference): void {
   if (theme === 'system') {

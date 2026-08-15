@@ -1,0 +1,104 @@
+# `src/scripts/prefetch` — background lookups
+
+Six files, one feature: what to look up next, how fast, and who across the browser
+gets to do it. Nothing here fetches — `content.tsx` does, and reports back.
+
+| File                 | Purpose                                                                   |
+| -------------------- | ------------------------------------------------------------------------- |
+| `prefetch-queue.ts`  | `CandidateQueue` + the pacing arithmetic. No timers, no state of its own. |
+| `lookup-broker.ts`   | The one queue, ledger and pace, in the service worker.                    |
+| `prefetch-poller.ts` | The tab's loop: ask, look up, ask again. Holds the clock.                 |
+
+The budget it spends is the 50 / 15 min in [`../CLAUDE.md`](../CLAUDE.md).
+
+## The queue and the pace
+
+- Uses at most **80%** of the window (`reserveFraction`, user-settable), stopping once
+  `remaining` reaches the reserved share.
+- **Paced**: `nextDelayMs()` recomputes `msLeftInWindow / budget` before every lookup
+  (≈22 s), clamped to `[1.5 s, 2 min]` — self-correcting, since hovers stretch the gap
+  and a rolled-over window shrinks it. `pacing: 'instant'` opts out (same share, spent at
+  `minSpacingMs`).
+- **The first `sprintShare` goes out at `sprintSpacingMs`, and only for `high`** — a
+  quarter at 3 s, so 10 of the 40 land in the first half-minute rather than over four.
+  The rest still covers the window and `msLeftInWindow / budget` absorbs the sprint
+  (≈29 s after, not a hole). Measured against the **share**, so it holds at any
+  `reserveFraction`; the budget spent is unchanged. Sits after the `'instant'` branch,
+  never below `minSpacingMs`. The tier gate is the broker's: `sprintable` defaults
+  **off** and `feedIsWaiting()` turns it on only while a tab holds a `high` candidate not
+  in flight or `asked` — so threads alone pace the whole window, and a feed queue of names
+  X has answered cannot buy the gap with them.
+- **Two queues** (`PrefetchPriority`): `high` (`HomeTimeline`) drains completely before
+  `low` (`TweetDetail`) gets a lookup. Within a batch it is **page order**; each new batch
+  goes **in front** of the ones waiting, because an opened tweet is what the reader is
+  looking at. Dedup keeps the slot a name already holds, in the queue and in page-script's
+  replay buffer alike; `low → high` promotes, never the reverse.
+- Overflow sheds the **oldest batch of whichever queue is longer**, `low` on a tie.
+  Emptying `low` first wiped out every reply author behind a scrolled feed: `high`
+  outproduces it by far and the pair drains at one per ~22 s.
+- **`MAX_QUEUE` is 1000 per tab: a backstop, not a pace.** Drain is 40 per 15 min, so
+  1000 is ~6 h of backlog and more only stores names whose turn never comes. The ceiling
+  is that the **whole broker snapshot is re-serialized into `chrome.storage.session` on
+  every message**, awaited. Measured 2026-08-15 on a loaded `dist/chrome`: 1000 per tab is
+  157 KB and a 2.5 ms `set`; ten tabs of that is 1.6 MB, 31 ms, and 15% of the 10 MB
+  `QUOTA_BYTES` (per extension, all keys). Chrome's accounting runs ~3.5×
+  `JSON.stringify` length, so budget against `getBytesInUse()`. Going over is an **atomic
+  reject** (`'Session storage quota bytes exceeded. Values were not stored.'`, old value
+  intact), which here means `sendResponse(null)` and a snapshot frozen before the failure:
+  one idle teardown later `asked` and `inflight` roll back and accounts are looked up
+  twice, silently. Past ~1000, `saveBroker` needs to shed and retry first. ⚠ `QUOTA_BYTES`
+  and `getBytesInUse` are **Firefox 131+**; the manifest floor is 128.
+- The tweet the reader **opened** skips the queue — `processPrimaryTweet()` fetches it.
+- The **community cache is the master switch**: `prefetchAllowedBySettings()` requires
+  `SHARED_CACHE_KEY`, since prefetch exists to warm it. The gate applies only when a
+  server is configured (`!isSharedCacheConfigured() || isSharedCacheEnabled()`), so an
+  empty `CACHE_API_BASE` build still prefetches. The options page mirrors it.
+
+## The broker (`lookup-broker.ts`)
+
+Everything above describes **one** budget. Per-tab copies of the queue, pace and ledger
+gave three symptoms: two tabs each spent a request on the same account; a 429 in one tab
+was something every other tab had to earn; and an account X had no location for was
+re-asked by every new tab, because "already checked" lived in a `Set` that died with the
+tab. All three now live in the **service worker**, one instance for the browser —
+`lookup-broker.ts` is the state and its rules, `service-worker.ts` only the plumbing.
+
+**Tabs pull; the worker never pushes work.** An MV3 worker is torn down after ~30 s idle
+and **a pending `setTimeout` dies with it, silently**, while the paced gap runs from
+≈26 s to 15 minutes. So `prefetch-poller.ts` keeps the clock and loops `LOOKUP_NEXT →
+fetch → repeat`; the worker only runs inside a message handler, where it cannot be
+evicted. (`chrome.alarms` would work too, at a permission and a 30 s floor.)
+
+| Message           | Direction | Carries                                                      |
+| ----------------- | --------- | ------------------------------------------------------------ |
+| `LOOKUP_ENQUEUE`  | tab → SW  | candidates, already filtered against **that tab's** IDB      |
+| `LOOKUP_NEXT`     | tab → SW  | → `{ userName }` or `{ waitMs }`                             |
+| `LOOKUP_REPORT`   | tab → SW  | whether a request went out, and X's headers if one did       |
+| `LOOKUP_RATE`     | SW → tabs | the ledger, so a 429 anywhere shows the countdown everywhere |
+| `LOOKUP_RESOLVED` | SW → tabs | a handle to re-read from IDB and redraw                      |
+
+- **The worker cannot read the cache.** A content script's IndexedDB is x.com's storage,
+  not the extension's, so `LOOKUP_ENQUEUE` arrives pre-filtered.
+- **State is mirrored to `chrome.storage.session` on every mutation and read back at the
+  top of every handler** — eviction is constant, not rare. Memory-only, so nothing touches
+  disk and a restart starts clean. The write is **awaited before the handler answers**:
+  left floating it is exactly the write that gets cut off.
+- **Grant order is global** — focused tab's feed, other visible tabs' feed, hidden tabs'
+  feed, then the same three for replies. Whoever polls gets the best entry anywhere; the
+  fetching tab need not be the one that queued it (`LOOKUP_RESOLVED`), which is why no
+  hold-back rule is needed against background tabs. Hidden tabs still prefetch — they warm
+  the community cache from the same budget.
+- **`asked` replaces `checkedThisSession`**: a handle X has answered for is not asked
+  about again **until the window rolls**. Never persisted — a location X does not have
+  today it may have next week, so a negative answer must not outlive the window that paid
+  for it.
+- **Hovers never go through the broker.** They fetch immediately and report after, so a
+  wedged worker cannot delay the row the reader is waiting on. `prefetch-poller.ts` is the
+  only caller that awaits its report.
+- **Everything fails open.** A rejected `sendMessage` costs background lookups until the
+  worker returns (`UNREACHABLE_RETRY_MS`), nothing else.
+- **A `wake()` arriving during a poll is remembered, not scheduled.** The answer on its
+  way was decided before those candidates existed, so scheduling on top only lets it
+  overwrite the immediate re-poll — which it did: the first poll of a page asks an empty
+  queue, is told to idle for `IDLE_POLL_MS`, and that 30 s landed after `wake()` had asked
+  for another, so the first feed flag arrived half a minute late once in five loads.

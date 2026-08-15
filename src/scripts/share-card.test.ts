@@ -1,4 +1,4 @@
-import type { LocationData } from './cache'
+import type { LocationData } from './cache/cache'
 import { buildShareLayout, shareChips, wrapText } from './share-card'
 
 // A predictable stand-in for canvas text measurement: every character is 10px

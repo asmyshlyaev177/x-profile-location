@@ -1,3 +1,4 @@
+import { LOOKUP_LIMIT_PER_WINDOW } from '../settings'
 // The one place that decides which account is looked up next, across every open
 // x.com tab. Lives in the service worker; tabs pull from it rather than pacing
 // themselves. See "Cross-tab lookup broker" in CLAUDE.md.
@@ -5,8 +6,7 @@
 // Every effect is injected, so the whole thing is testable without a browser,
 // a clock or a message port.
 
-import { LOOKUP_LIMIT_PER_WINDOW } from './countries'
-import { RATE_LIMIT_RESET_DEFAULT_MS } from './constants'
+import { RATE_LIMIT_RESET_DEFAULT_MS } from '../constants'
 import {
   CandidateQueue,
   MAX_QUEUE,
@@ -209,9 +209,8 @@ export class LookupBroker {
   }
 
   /**
-   * Whether any tab holds a feed account still worth asking about. The opening
-   * sprint is the feed's alone, so a browser showing only threads paces the
-   * whole window rather than spending a quarter of it on replies.
+   * Whether any tab holds a feed account still worth asking about — which is
+   * the whole of what earns the opening sprint.
    */
   private feedIsWaiting(now: number): boolean {
     for (const tab of this.tabs.values()) {
