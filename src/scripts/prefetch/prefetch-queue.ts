@@ -1,3 +1,4 @@
+import type { PrefetchPacing } from '../settings'
 // The candidate queue and the pacing arithmetic behind background lookups.
 //
 // No timers, no fetching and no rate-limit state of its own: `lookup-broker.ts`
@@ -5,7 +6,6 @@
 // still trickle at one shared rate. See "Cross-tab lookup broker" in CLAUDE.md.
 
 // Type-only, so this module keeps its runtime independence from everything else.
-import type { PrefetchPacing } from './countries'
 
 /**
  * Which queue a candidate lands in. 'high' — the feed being scrolled — drains to
@@ -55,11 +55,7 @@ export interface PacingOptions {
   minSpacingMs?: number
   /** Ceiling on the paced gap, so a stale reset can't park a queue with work in it. */
   maxSpacingMs?: number
-  /**
-   * Share of the window's budget spent at `sprintSpacingMs` before the trickle
-   * takes over. The reader is looking at the feed now; the spread is what keeps
-   * the rest of the window alive, not what fills the first screen.
-   */
+  /** Share of the budget spent at `sprintSpacingMs` before the trickle takes over. */
   sprintShare?: number
   /** Gap while sprinting, floored by `minSpacingMs` like any other. */
   sprintSpacingMs?: number
@@ -77,10 +73,8 @@ export const PACING_DEFAULTS: Required<PacingOptions> = {
   sprintSpacingMs: 3000,
 }
 
-// Measured 2026-08-15 in a loaded dist/chrome: at 1000 per tab the broker
-// snapshot is 157KB and its storage.session round trip 2.5ms, 1.6MB and 31ms
-// across ten tabs — 15% of the 10MB quota, which rejects the whole write.
-/** Max queued in one tab; a backstop, not a pace. Overflow sheds the oldest. */
+// A backstop, not a pace: past this the storage.session write starts to cost.
+/** Max queued in one tab; overflow sheds the oldest. */
 export const MAX_QUEUE = 1000
 
 export interface QueueSnapshot {
@@ -145,9 +139,8 @@ export class CandidateQueue {
   }
 
   /**
-   * Drop overflow from the back — the oldest batch — of whichever queue is
-   * longer, `low` on a tie. A scrolled feed outproduces a thread by far, so
-   * emptying `low` first threw away every reply author the moment `high` grew.
+   * Drop the oldest batch from whichever queue is longer, `low` on a tie —
+   * emptying `low` first threw away every reply author a busy feed outgrew.
    */
   private trimToMaxQueue(): void {
     let overflow = this.high.length + this.low.length - this.maxQueue
@@ -278,10 +271,7 @@ export function nextDelayMs(
   // 'instant': spend the share as fast as the floor allows.
   if (opts.pacing === 'instant') return opts.minSpacingMs
 
-  // The first quarter of the share goes out at a sprint: spread evenly, the
-  // screen the reader is on now fills at one flag per 22s. The trickle keeps
-  // the rest of the window alive and still gets three quarters of it. Only the
-  // feed earns it — a thread's replies are the tier that waits, by definition.
+  // The feed's opening sprint — see "Prefetch" in CLAUDE.md.
   const sprintFloor =
     usableShare(rate, opts.reserveFraction) * (1 - opts.sprintShare)
   if (sprintable && budget > sprintFloor) {

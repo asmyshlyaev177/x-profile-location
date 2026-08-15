@@ -5,9 +5,13 @@ Project-specific context. Read before editing any source file.
 **Detail lives next to the code it describes.** Claude loads these when you open a
 file in that folder; read one directly when you need it first.
 
-- **`src/scripts/CLAUDE.md`** — runtime: the API and its rate limit, prefetch and
-  the cross-tab broker, shared cache, data types, storage keys, filters, i18n,
-  snapshots, and the unit-test patterns. The full file inventory is here too.
+- **`src/scripts/CLAUDE.md`** — runtime: the API and its rate limit, data types,
+  filters and hiding, resizing without moving the scroll, i18n, snapshots, the
+  unit-test patterns. The full file inventory is here too.
+- **`src/scripts/prefetch/CLAUDE.md`** — the queue, the pace, the cross-tab broker.
+- **`src/scripts/cache/CLAUDE.md`** — the local IDB cache and the community one.
+- **`src/scripts/countries/CLAUDE.md`** — country names, regions and aliases.
+- **`src/scripts/content/CLAUDE.md`** — the rows, filters, gestures and scroll rules.
 - **`src/manifests/CLAUDE.md`** — the store listing title and its 50-char cap.
 - **`integration/CLAUDE.md`** — two tabs against the built extension.
 - **`visual/CLAUDE.md`** — the layout suite.
@@ -123,10 +127,10 @@ reasoning behind each — is in `src/scripts/CLAUDE.md`.
 | File                           | Purpose                                                                                |
 | ------------------------------ | -------------------------------------------------------------------------------------- |
 | `src/scripts/page-script.ts`   | `world: MAIN`. Wraps `fetch` + `XHR`; captures auth headers, extracts bios.            |
-| `src/scripts/content.tsx`      | Content script. Calls `AboutAccountQuery`, injects rows, runs the MutationObserver.    |
-| `src/scripts/lookup-broker.ts` | Service worker. The one queue, ledger and pace shared by every open tab.               |
-| `src/scripts/cache.ts`         | IndexedDB wrapper (idb-keyval). 30-day TTL, keys are lowercased usernames.             |
-| `src/scripts/countries.ts`     | Flag and region maps + every storage key.                                              |
+| `src/scripts/content/`         | Content script. Calls `AboutAccountQuery`, injects rows, runs the MutationObserver.    |
+| `src/scripts/prefetch/`        | Service worker broker + queue + poller: one pace for every open tab.                   |
+| `src/scripts/cache/`           | Local IndexedDB cache (30-day TTL) and the community cache client.                     |
+| `src/scripts/countries/`       | Flag and region maps, aliases, canonical names.                                        |
 | `src/scripts/settings.ts`      | Every setting, its normalizer and its default. The only way to read one.               |
 | `src/scripts/styles.ts`        | The injected stylesheet **and** the class/attribute names it is written against.       |
 | `src/pages/popup.tsx`          | Toolbar popup — master switch, feed flags, account card, filtered-post mode.           |

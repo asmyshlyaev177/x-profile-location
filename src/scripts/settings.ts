@@ -1,28 +1,15 @@
-// Every user-facing setting, with the function that makes a stored value safe
-// and — because it answers for `undefined` too — its default. Never read by hand.
-
 import {
   ACCOUNT_AGE_KEY,
   ALWAYS_SHOW_KEY,
   BACKGROUND_PREFETCH_KEY,
   BLOCKED_AFFILIATIONS_KEY,
   BLOCKED_COUNTRIES_KEY,
-  canonicalLocation,
   EXTENSION_ENABLED_KEY,
   HIDE_BLOCKED_LOCATIONS_KEY,
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
   MIN_CONFIDENCE_KEY,
-  normalizeAccountAge,
-  normalizeHandleList,
-  normalizeHideBlockedMode,
-  normalizeHighlightFlags,
-  normalizeMinConfidence,
-  normalizePrefetchPacing,
-  normalizePrefetchShare,
-  normalizeRuleExceptions,
-  normalizeTheme,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
   RULE_EXCEPTIONS_KEY,
@@ -32,7 +19,321 @@ import {
   SHOW_LOCATION_IN_FEED_KEY,
   SHOW_SHARE_BUTTON_KEY,
   THEME_KEY,
-} from './countries'
+} from './constants'
+// The vocabulary of every setting — its choices, its type and the normalizer
+// that answers for `undefined`, which is what makes that answer the default.
+
+export interface HighlightFlagsSetting {
+  enabled: boolean
+  threshold: number
+  uniqueOnly: boolean
+}
+
+export const DEFAULT_HIGHLIGHT_FLAGS: HighlightFlagsSetting = {
+  enabled: false,
+  threshold: 2,
+  uniqueOnly: false,
+}
+
+/** A negative threshold would highlight every bio, which nobody chose. */
+export function normalizeHighlightFlags(value: unknown): HighlightFlagsSetting {
+  const v = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+  const threshold = finiteNumber(v.threshold)
+  return {
+    enabled: Boolean(v.enabled),
+    threshold:
+      threshold === null
+        ? DEFAULT_HIGHLIGHT_FLAGS.threshold
+        : Math.min(Math.max(Math.round(threshold), 0), 50),
+    uniqueOnly: Boolean(v.uniqueOnly),
+  }
+}
+
+export type HideBlockedMode = 'off' | 'collapse' | 'hide'
+
+// Defaults to 'collapse' when nothing is stored. An explicitly-chosen 'off' is
+// preserved (recognized here), so the user can still fully disable hiding.
+export function normalizeHideBlockedMode(value: unknown): HideBlockedMode {
+  return value === 'off' || value === 'collapse' || value === 'hide'
+    ? value
+    : 'collapse'
+}
+
+export interface SharedCacheCount {
+  /** Accounts the server said it can answer for. */
+  n: number
+  /** Epoch ms it said so. */
+  at: number
+}
+
+export function normalizeSharedCacheCount(
+  value: unknown,
+): SharedCacheCount | null {
+  const v = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+  const n = finiteNumber(v.n)
+  const at = finiteNumber(v.at)
+  if (n === null || n < 0 || at === null || at <= 0) return null
+  return { n: Math.floor(n), at }
+}
+
+// Measured live. A starting assumption and the figures the UI quotes — the real
+// budget comes from the x-rate-limit-* response headers.
+export const LOOKUP_LIMIT_PER_WINDOW = 50
+export const LOOKUP_WINDOW_MINUTES = 15
+
+export const DEFAULT_PREFETCH_SHARE = 0.8
+
+/** The shares the options page offers, as fractions. */
+export const PREFETCH_SHARE_CHOICES = [0.3, 0.5, 0.7, 0.8, 0.9] as const
+
+// Hand-rolled because bare Number() turns null, '' and objects alike into 0.
+export function finiteNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value !== 'string' || value.trim() === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+// Snapped to the nearest offered choice, ties to the smaller share, so storage,
+// the options page and the content script can never disagree.
+export function normalizePrefetchShare(value: unknown): number {
+  const n = finiteNumber(value)
+  if (n === null) return DEFAULT_PREFETCH_SHARE
+  // Compared in whole percent: in fractions |0.3 - 0.4| > |0.5 - 0.4| by a float
+  // hair, which would silently hand exact ties to the *larger* share.
+  const pct = Math.round(n * 100)
+  const distance = (choice: number) => Math.abs(Math.round(choice * 100) - pct)
+  return PREFETCH_SHARE_CHOICES.reduce((best, choice) =>
+    distance(choice) < distance(best) ? choice : best,
+  )
+}
+
+export type PrefetchPacing = 'spread' | 'instant'
+
+// Defaults to 'spread'; an explicitly-chosen 'instant' is preserved.
+export function normalizePrefetchPacing(value: unknown): PrefetchPacing {
+  return value === 'instant' ? 'instant' : 'spread'
+}
+
+export const DEFAULT_MIN_CONFIDENCE = 1
+
+/** The thresholds the advanced options offer. */
+export const MIN_CONFIDENCE_CHOICES = [1, 2, 3] as const
+
+// Clamped rather than rejected: 0 or negative would trust anything, and an
+// unreachable value would silently serve nothing forever.
+export function normalizeMinConfidence(value: unknown): number {
+  const n = finiteNumber(value)
+  if (n === null) return DEFAULT_MIN_CONFIDENCE
+  const rounded = Math.round(n)
+  const lowest = MIN_CONFIDENCE_CHOICES[0]
+  const highest = MIN_CONFIDENCE_CHOICES[MIN_CONFIDENCE_CHOICES.length - 1]
+  return Math.min(Math.max(rounded, lowest), highest)
+}
+
+export const OPTIONS_TABS = [
+  'display',
+  'filters',
+  'exceptions',
+  'data',
+  'advanced',
+] as const
+
+export type OptionsTabId = (typeof OPTIONS_TABS)[number]
+
+export function normalizeOptionsTab(value: unknown): OptionsTabId {
+  return OPTIONS_TABS.includes(value as OptionsTabId)
+    ? (value as OptionsTabId)
+    : 'display'
+}
+
+export const THEMES = ['system', 'light', 'dark'] as const
+
+export type ThemePreference = (typeof THEMES)[number]
+
+export function normalizeTheme(value: unknown): ThemePreference {
+  return THEMES.includes(value as ThemePreference)
+    ? (value as ThemePreference)
+    : 'system'
+}
+
+export const POPUP_SECTIONS = ['locations', 'keywords'] as const
+
+export type PopupSection = (typeof POPUP_SECTIONS)[number]
+
+/** The section to open, or null for all collapsed — which is also the default. */
+export function normalizePopupSection(value: unknown): PopupSection | null {
+  return POPUP_SECTIONS.includes(value as PopupSection)
+    ? (value as PopupSection)
+    : null
+}
+
+// ---------------------------------------------------------------------------
+// Use, and the one thing the popup asks for
+// ---------------------------------------------------------------------------
+// Neither key is a setting: not exported, not importable, not editable. They
+// count days of use, because an install that never resolved a profile has no
+// opinion to give.
+
+export interface UsageStats {
+  /** Local calendar days on which the content script did visible work. */
+  activeDays: number
+  /** The most recent of them, `YYYY-MM-DD`, so a day is counted once. */
+  lastDay: string
+}
+
+export function normalizeUsageStats(value: unknown): UsageStats {
+  const v = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+  const days = finiteNumber(v.activeDays)
+  return {
+    activeDays: days === null || days < 0 ? 0 : Math.floor(days),
+    lastDay: typeof v.lastDay === 'string' ? v.lastDay : '',
+  }
+}
+
+/** 'done' covers rating and refusing alike: a second ask loses the install. */
+export interface RatePromptState {
+  status: 'idle' | 'later' | 'done'
+  /** Epoch ms the snooze expires. Meaningless unless status is 'later'. */
+  snoozeUntil: number
+}
+
+export function normalizeRatePrompt(value: unknown): RatePromptState {
+  const v = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+  const until = finiteNumber(v.snoozeUntil)
+  return {
+    status:
+      v.status === 'later' || v.status === 'done'
+        ? (v.status as 'later' | 'done')
+        : 'idle',
+    snoozeUntil: until === null || until < 0 ? 0 : until,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Filters, exceptions, and the allowlist
+// ---------------------------------------------------------------------------
+
+export interface AccountAgeFilter {
+  enabled: boolean
+  days: number
+}
+
+export const DEFAULT_ACCOUNT_AGE_DAYS = 180
+
+/**
+ * Months and years, not weeks: farmed accounts are registered in batches and
+ * left to age, and a week-old account is visibly new without a filter.
+ */
+export const ACCOUNT_AGE_CHOICES = [90, 180, 365, 1095] as const
+
+/** How a threshold is written in the UI: months up to a year, then years. */
+export function formatAgeChoice(days: number): string {
+  if (days < 60) return t('ageDays', days)
+  if (days < 365) return t('ageMonths', Math.round(days / 30))
+  const years = Math.round((days / 365) * 10) / 10
+  return years === 1 ? t('ageYear') : t('ageYears', years)
+}
+
+export function normalizeAccountAge(value: unknown): AccountAgeFilter {
+  const v = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+  const days = finiteNumber(v.days)
+  return {
+    enabled: Boolean(v.enabled),
+    // Clamped, not snapped: the <select> choices are convenience, not the
+    // domain, and snapping would quietly widen somebody's filter.
+    days:
+      days === null || days < 1
+        ? DEFAULT_ACCOUNT_AGE_DAYS
+        : Math.min(Math.round(days), 3650),
+  }
+}
+
+// Every rule an account can be exempted from, individually.
+export const FILTER_RULES = [
+  'highlight',
+  'location',
+  'affiliation',
+  'age',
+] as const
+
+export type FilterRule = (typeof FILTER_RULES)[number]
+
+/**
+ * Account age is deliberately absent: location and affiliation catch what the
+ * user named on purpose, where "joined recently" catches whoever falls under it.
+ */
+export const HIDING_RULES: readonly FilterRule[] = ['location', 'affiliation']
+
+/** Whether a rule may hide a post, as opposed to only marking it. */
+export function ruleHides(rule: FilterRule): boolean {
+  return HIDING_RULES.includes(rule)
+}
+
+export type RuleExceptions = Record<FilterRule, string[]>
+
+/** A handle as it is stored and compared: lowercased, no leading @. */
+export function normalizeHandle(value: string): string {
+  return value.trim().replace(/^@+/, '').toLowerCase()
+}
+
+/** A stored handle list, cleaned of blanks and duplicates, order preserved. */
+export function normalizeHandleList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of value) {
+    if (typeof raw !== 'string') continue
+    const handle = normalizeHandle(raw)
+    if (!handle || seen.has(handle)) continue
+    seen.add(handle)
+    out.push(handle)
+  }
+  return out
+}
+
+/**
+ * Per-rule exceptions, with `HIGHLIGHT_EXCEPTIONS_KEY` folded into the
+ * `highlight` bucket. Read forever rather than migrated once: a storage rewrite
+ * on load is a data-loss bug waiting for the install where it half-completes,
+ * and leaving the old key also lets a downgrade find its exceptions.
+ */
+export function normalizeRuleExceptions(
+  value: unknown,
+  legacyHighlight?: unknown,
+): RuleExceptions {
+  const stored = (
+    typeof value === 'object' && value !== null ? value : {}
+  ) as Record<string, unknown>
+
+  const out = {} as RuleExceptions
+  for (const rule of FILTER_RULES) {
+    out[rule] = normalizeHandleList(stored[rule])
+  }
+
+  if (legacyHighlight !== undefined) {
+    const legacy = normalizeHandleList(legacyHighlight)
+    if (legacy.length > 0) {
+      out.highlight = normalizeHandleList([...out.highlight, ...legacy])
+    }
+  }
+  return out
+}
+
+// Every user-facing setting, with the function that makes a stored value safe
+// and — because it answers for `undefined` too — its default. Never read by hand.
+
+import { canonicalLocation } from './countries/countries'
 import { normalizeUiLanguage, t, UI_LANGUAGE_KEY } from './i18n'
 
 /** A stored value, cleaned. Returning undefined drops the key entirely. */

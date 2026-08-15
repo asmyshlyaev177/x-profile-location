@@ -1,3 +1,22 @@
+import {
+  normalizeHideBlockedMode,
+  normalizePopupSection,
+  normalizeRatePrompt,
+  normalizeUsageStats,
+} from '../scripts/settings'
+import {
+  BLOCKED_COUNTRIES_KEY,
+  EXTENSION_ENABLED_KEY,
+  HIDE_BLOCKED_LOCATIONS_KEY,
+  HIGHLIGHT_KEYWORDS_KEY,
+  POPUP_SECTION_KEY,
+  RATE_PROMPT_KEY,
+  SHARED_CACHE_COUNT_KEY,
+  SHARED_CACHE_KEY,
+  SHOW_ACCOUNT_CARD_KEY,
+  SHOW_LOCATION_IN_FEED_KEY,
+  USAGE_STATS_KEY,
+} from '../scripts/constants'
 // The toolbar popup. What lives here: things you change while reading X and want
 // to see take effect at once. Everything set up once lives in the options tab.
 
@@ -6,35 +25,20 @@ import { render } from 'preact'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import {
-  BLOCKED_COUNTRIES_KEY,
   CANONICAL_LOCATIONS,
   COUNTRY_FLAGS,
-  EXTENSION_ENABLED_KEY,
-  HIDE_BLOCKED_LOCATIONS_KEY,
-  HIGHLIGHT_KEYWORDS_KEY,
   type HideBlockedMode,
   LOCATION_ALIASES,
-  normalizeHideBlockedMode,
-  normalizePopupSection,
-  normalizeRatePrompt,
-  normalizeUsageStats,
-  POPUP_SECTION_KEY,
   type PopupSection,
-  RATE_PROMPT_KEY,
   REGION_FLAGS,
   REGION_MEMBERS,
-  SHARED_CACHE_COUNT_KEY,
-  SHARED_CACHE_KEY,
-  SHOW_ACCOUNT_CARD_KEY,
-  SHOW_LOCATION_IN_FEED_KEY,
-  USAGE_STATS_KEY,
-} from '../scripts/countries'
+} from '../scripts/countries/countries'
 import {
   COUNT_POLL_MS,
   isSharedCacheConfigured,
   refreshCacheCount,
   rememberedCount,
-} from '../scripts/shared-cache'
+} from '../scripts/cache/shared-cache'
 import {
   REVIEW_URL,
   setRatePromptState,
@@ -54,7 +58,7 @@ import {
   localizedLocation,
   sortByLocalizedName,
   withLocalizedAliases,
-} from '../scripts/location-names'
+} from '../scripts/countries/location-names'
 import css from './popup.module.css'
 import { startThemeSync } from './theme'
 

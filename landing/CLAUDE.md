@@ -17,8 +17,7 @@ six times over.
 (head, canonical, prerender list, sitemap), so a new page is audited the moment it
 exists.
 
-**Desktop config, four categories, 100 on each** — all six pages, measured August
-2026. Mobile is not what runs (`/` reproduces at 99). Lighthouse 13's fifth
+**Desktop config, four categories, 100 on each** — all six pages, measured August 2026. Mobile is not what runs (`/` reproduces at 99). Lighthouse 13's fifth
 category `agentic-browsing` scores 100 everywhere but is deliberately not gated:
 Google is still moving its weights.
 

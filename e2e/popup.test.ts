@@ -1,3 +1,4 @@
+import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from '../src/scripts/constants'
 /**
  * Toolbar popup tests.
  *
@@ -24,7 +25,7 @@ import {
   PRIMARY_TWEET,
   readCachedBio,
 } from './helpers'
-import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from '../src/scripts/countries'
+
 import {
   RATE_PROMPT_MIN_DAYS,
   RATE_PROMPT_SNOOZE_MS,
@@ -320,6 +321,13 @@ test('a paused popup asks the cache nothing', async ({
   extensionId,
 }) => {
   const popup = await openPopupPage(context, extensionId)
+  // The panel's one ask on load is not what this test is about, and
+  // openPopupPage only waits on a storage read — so wait for the count itself,
+  // which is proof the request has been and gone. Caught it 1 run in 4.
+  await expect(popup.getByText(/accounts in the community cache/)).toBeVisible({
+    timeout: 5_000,
+  })
+
   const asked: string[] = []
   popup.on('request', (r) => {
     if (r.url().includes('/v1/stats')) asked.push(r.url())

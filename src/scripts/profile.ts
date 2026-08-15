@@ -1,7 +1,7 @@
+import { finiteNumber } from './settings'
 // Account facts riding along with responses the extension already receives, so
 // none of it costs an API call. Never reads `legacy` — X hollowed it out.
 
-import { finiteNumber } from './countries'
 import { t } from './i18n'
 
 /** X's affiliate badge. `handle` is the filtering key — a `name` is renameable. */

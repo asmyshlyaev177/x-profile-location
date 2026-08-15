@@ -1,3 +1,4 @@
+import { DEFAULT_MIN_CONFIDENCE, MIN_CONFIDENCE_CHOICES } from '../settings'
 import {
   afterEach,
   beforeEach,
@@ -8,11 +9,11 @@ import {
   vi,
 } from 'vitest'
 
-// Provide a non-empty server URL so the feature is active under test.
-vi.mock('./constants', () => ({
+// Only the server URL is faked — the storage keys beside it are real, and a
+// hand-written copy of one would pass while the extension read another.
+vi.mock('../constants', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../constants')>()),
   CACHE_API_BASE: 'https://cache.test',
-  X_GRAPHQL_PATH: 'x.com/i/api/graphql',
-  EVENTS: {},
 }))
 
 // chrome.storage is used for the anonymous client id; return an existing id so
@@ -40,7 +41,7 @@ import {
   setSharedCacheEnabled,
   sharedBatchLookup,
 } from './shared-cache'
-import { DEFAULT_MIN_CONFIDENCE, MIN_CONFIDENCE_CHOICES } from './countries'
+
 import type { LocationData } from './cache'
 
 function mockFetchJson(payload: unknown) {

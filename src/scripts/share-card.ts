@@ -1,11 +1,15 @@
 // The card states what X returned and stops: no claim of evidence, no drafted
 // reply. Layout is computed apart from the drawing, which happy-dom cannot run.
 
-import type { LocationData } from './cache'
-import { canonicalLocation, COUNTRY_FLAGS, REGION_FLAGS } from './countries'
+import type { LocationData } from './cache/cache'
+import {
+  canonicalLocation,
+  COUNTRY_FLAGS,
+  REGION_FLAGS,
+} from './countries/countries'
 import { classifySource, platformLabel } from './source'
 import { t } from './i18n'
-import { localizedLocation } from './location-names'
+import { localizedLocation } from './countries/location-names'
 import { drawWatermark } from './watermark'
 
 export interface ShareInput {

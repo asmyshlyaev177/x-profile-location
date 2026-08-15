@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MSG } from './constants'
-import { LookupBroker } from './lookup-broker'
+import { LookupBroker } from './prefetch/lookup-broker'
 
 // ---------------------------------------------------------------------------
 // The broker's own rules are lookup-broker.test.ts. This file is about the

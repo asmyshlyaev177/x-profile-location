@@ -1,30 +1,34 @@
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  BACKGROUND_PREFETCH_KEY,
-  OPTIONS_TAB_KEY,
-  type OptionsTabId,
-  PREFETCH_PACING_KEY,
-  PREFETCH_SHARE_KEY,
-  SHARED_CACHE_KEY,
-  SHOW_ADVANCED_KEY,
-  MIN_CONFIDENCE_KEY,
-  MIN_CONFIDENCE_CHOICES,
   DEFAULT_MIN_CONFIDENCE,
+  MIN_CONFIDENCE_CHOICES,
+} from '../scripts/settings'
+import {
   ACCOUNT_AGE_KEY,
   ALWAYS_SHOW_KEY,
+  BACKGROUND_PREFETCH_KEY,
   BLOCKED_COUNTRIES_KEY,
   EXTENSION_ENABLED_KEY,
   HIGHLIGHT_EXCEPTIONS_KEY,
-  REGION_MEMBERS,
+  MIN_CONFIDENCE_KEY,
+  OPTIONS_TAB_KEY,
+  PREFETCH_PACING_KEY,
+  PREFETCH_SHARE_KEY,
   RULE_EXCEPTIONS_KEY,
+  SHARED_CACHE_KEY,
+  SHOW_ADVANCED_KEY,
   THEME_KEY,
-} from '../scripts/countries'
-import { isSharedCacheConfigured } from '../scripts/shared-cache'
+} from '../scripts/constants'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  type OptionsTabId,
+  REGION_MEMBERS,
+} from '../scripts/countries/countries'
+import { isSharedCacheConfigured } from '../scripts/cache/shared-cache'
 
 // The real module reads CACHE_API_BASE at import time; the options page only
 // asks it whether a server is configured at all.
-vi.mock('../scripts/shared-cache', () => ({
+vi.mock('../scripts/cache/shared-cache', () => ({
   isSharedCacheConfigured: vi.fn(() => true),
 }))
 

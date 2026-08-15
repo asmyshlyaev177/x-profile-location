@@ -1,6 +1,6 @@
 import { extractUsers } from './extract-users'
 import type { UserBio } from './extract-users'
-import type { PrefetchPriority } from './prefetch-queue'
+import type { PrefetchPriority } from './prefetch/prefetch-queue'
 import { EVENTS, X_GRAPHQL_PATH } from './constants'
 
 ;(function () {

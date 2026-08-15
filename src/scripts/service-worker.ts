@@ -1,20 +1,23 @@
 import {
   BLOCKED_COUNTRIES_KEY,
-  DEFAULT_BLOCKED_COUNTRIES,
   EXTENSION_ENABLED_KEY,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
   RATE_PROMPT_KEY,
   USAGE_STATS_KEY,
-} from './countries'
+} from './constants'
+import { DEFAULT_BLOCKED_COUNTRIES } from './countries/countries'
 import { MSG, X_TAB_PATTERNS } from './constants'
 import {
   type BrokerSnapshot,
   LookupBroker,
   type LookupReport,
   type TabState,
-} from './lookup-broker'
-import type { PacingOptions, PrefetchCandidate } from './prefetch-queue'
+} from './prefetch/lookup-broker'
+import type {
+  PacingOptions,
+  PrefetchCandidate,
+} from './prefetch/prefetch-queue'
 import { readSetting } from './settings'
 import { ratingAskDue } from './usage'
 import { initI18n, readCatalogue, t, UI_LANGUAGE_KEY } from './i18n'

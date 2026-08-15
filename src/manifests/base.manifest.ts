@@ -75,7 +75,7 @@ export const baseManifest = {
       world: 'MAIN',
     },
     {
-      js: ['scripts/content.tsx'],
+      js: ['scripts/content/content.tsx'],
       matches: [
         '*://*.x.com/*',
         '*://*.twitter.com/*',

@@ -1,10 +1,7 @@
+import { normalizeRatePrompt, normalizeUsageStats } from './settings'
+import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from './constants'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  normalizeRatePrompt,
-  normalizeUsageStats,
-  RATE_PROMPT_KEY,
-  USAGE_STATS_KEY,
-} from './countries'
+
 import {
   __resetUsageMemo,
   dayKey,

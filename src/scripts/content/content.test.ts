@@ -1,3 +1,4 @@
+import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from '../constants'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ---------------------------------------------------------------------------
@@ -21,7 +22,7 @@ vi.hoisted(() => {
   }
 })
 
-vi.mock('./cache', () => ({
+vi.mock('../cache/cache', () => ({
   getCached: vi.fn().mockResolvedValue(undefined),
   setCached: vi.fn().mockResolvedValue(undefined),
   mergeCached: vi.fn().mockResolvedValue(undefined),
@@ -33,7 +34,7 @@ vi.mock('./cache', () => ({
 // covered by shared-cache.test.ts) — no network, no cross-test async bleed.
 // Configured + opted in by default, which is what ships — so background
 // prefetch is allowed unless a test says otherwise.
-vi.mock('./shared-cache', () => ({
+vi.mock('../cache/shared-cache', () => ({
   sharedBatchLookup: vi.fn().mockResolvedValue([]),
   contributeLocation: vi.fn(),
   setSharedCacheEnabled: vi.fn(),
@@ -51,7 +52,7 @@ vi.mock('./shared-cache', () => ({
 const snapshot = vi.hoisted(() => ({
   snapshotElement: vi.fn().mockRejectedValue(new Error('no canvas in tests')),
 }))
-vi.mock('./snapshot', async (importOriginal) => ({
+vi.mock('../snapshot', async (importOriginal) => ({
   // allowGrowth is real DOM work with no canvas in it, and decorateSnapshot
   // calls it — only the rendering needs stubbing.
   ...(await importOriginal<typeof import('./snapshot')>()),
@@ -61,7 +62,7 @@ vi.mock('./snapshot', async (importOriginal) => ({
 // Stub the card renderer: it needs a real 2D canvas context (happy-dom has
 // none) and its layout is covered by share-card.test.ts. What content.tsx owns
 // is *what it passes in* — which post text, for which account.
-vi.mock('./share-card', () => ({
+vi.mock('../share-card', () => ({
   renderShareCard: vi.fn().mockResolvedValue(new Blob()),
   deliverShareCard: vi.fn().mockResolvedValue('clipboard'),
 }))
@@ -75,7 +76,7 @@ const poller = vi.hoisted(() => ({
   stop: vi.fn(),
   wake: vi.fn(),
 }))
-vi.mock('./prefetch-poller', () => ({
+vi.mock('../prefetch/prefetch-poller', () => ({
   PrefetchPoller: class {
     start = poller.start
     stop = poller.stop
@@ -93,15 +94,15 @@ import {
   setApiHeaders,
   __testResetState,
 } from './content'
-import { getCached, mergeCached, clearAllCache } from './cache'
-import { type FilterRule, RATE_PROMPT_KEY, USAGE_STATS_KEY } from './countries'
-import { dayKey, __resetUsageMemo } from './usage'
-import { renderShareCard } from './share-card'
+import { getCached, mergeCached, clearAllCache } from '../cache/cache'
+import { type FilterRule } from '../countries/countries'
+import { dayKey, __resetUsageMemo } from '../usage'
+import { renderShareCard } from '../share-card'
 import {
   isSharedCacheConfigured,
   isSharedCacheEnabled,
   sharedBatchLookup,
-} from './shared-cache'
+} from '../cache/shared-cache'
 
 // Capture listeners registered at module load time before any vi.clearAllMocks() runs.
 const chromeGlobal = (globalThis as any).chrome

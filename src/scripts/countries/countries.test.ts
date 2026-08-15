@@ -1,31 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
-  canonicalLocation,
   CANONICAL_LOCATIONS,
   COUNTRY_FLAGS,
-  DEFAULT_PREFETCH_SHARE,
-  expandLocations,
   LOCATION_ALIASES,
-  normalizePrefetchPacing,
-  normalizePrefetchShare,
-  PREFETCH_SHARE_CHOICES,
   REGION_FLAGS,
   REGION_MEMBERS,
+  canonicalLocation,
+  expandLocations,
   regionsContaining,
-  FILTER_RULES,
-  ACCOUNT_AGE_CHOICES,
-  DEFAULT_ACCOUNT_AGE_DAYS,
-  formatAgeChoice,
-  normalizeAccountAge,
-  normalizeHandle,
-  normalizeHandleList,
-  normalizeOptionsTab,
-  normalizeRuleExceptions,
-  normalizeTheme,
 } from './countries'
 
-const ALL_FLAGS: Record<string, string> = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
-
+const ALL_FLAGS = { ...COUNTRY_FLAGS, ...REGION_FLAGS }
 describe('canonicalLocation', () => {
   it('folds abbreviations and alternate names onto one name', () => {
     expect(canonicalLocation('USA')).toBe('United States')
@@ -113,65 +98,6 @@ describe('CANONICAL_LOCATIONS', () => {
   it('covers countries and regions alike', () => {
     expect(CANONICAL_LOCATIONS).toContain('Ivory Coast')
     expect(CANONICAL_LOCATIONS).toContain('South Asia')
-  })
-})
-
-describe('normalizePrefetchShare', () => {
-  it('defaults to 80% when nothing usable is stored', () => {
-    expect(DEFAULT_PREFETCH_SHARE).toBe(0.8)
-    for (const stored of [undefined, null, '', 'nonsense', NaN, {}, []]) {
-      expect(normalizePrefetchShare(stored)).toBe(DEFAULT_PREFETCH_SHARE)
-    }
-  })
-
-  it('keeps every offered choice as-is', () => {
-    for (const choice of PREFETCH_SHARE_CHOICES) {
-      expect(normalizePrefetchShare(choice)).toBe(choice)
-    }
-  })
-
-  it('accepts the numeric string a <select> hands back', () => {
-    expect(normalizePrefetchShare('0.3')).toBe(0.3)
-  })
-
-  it('snaps anything else to the nearest choice', () => {
-    expect(normalizePrefetchShare(0.72)).toBe(0.7)
-    expect(normalizePrefetchShare(0.44)).toBe(0.5)
-    expect(normalizePrefetchShare(0.83)).toBe(0.8)
-    // Ties go to the smaller share — leaving more room for the user's hovers.
-    expect(normalizePrefetchShare(0.4)).toBe(0.3)
-    expect(normalizePrefetchShare(0.75)).toBe(0.7)
-  })
-
-  it('never lets an out-of-range value take the whole window', () => {
-    expect(normalizePrefetchShare(0)).toBe(0.3)
-    expect(normalizePrefetchShare(-5)).toBe(0.3)
-    expect(normalizePrefetchShare(1)).toBe(0.9)
-    expect(normalizePrefetchShare(1000)).toBe(0.9)
-  })
-})
-
-describe('normalizePrefetchPacing', () => {
-  it('spreads lookups out unless instant was explicitly chosen', () => {
-    expect(normalizePrefetchPacing('instant')).toBe('instant')
-    for (const stored of [undefined, null, '', 'spread', 'nonsense', 0, true]) {
-      expect(normalizePrefetchPacing(stored)).toBe('spread')
-    }
-  })
-})
-
-describe('normalizeTheme', () => {
-  it('keeps an explicit choice', () => {
-    expect(normalizeTheme('light')).toBe('light')
-    expect(normalizeTheme('dark')).toBe('dark')
-  })
-
-  it('falls back to following the system for anything else', () => {
-    // Including 'auto' and 'os', which are what an imported file written by
-    // some other extension's export would plausibly carry.
-    for (const stored of [undefined, null, '', 'auto', 'os', 0, true, {}]) {
-      expect(normalizeTheme(stored)).toBe('system')
-    }
   })
 })
 
@@ -276,106 +202,3 @@ describe('regionsContaining', () => {
 // ---------------------------------------------------------------------------
 // Handles, exceptions and the allowlist
 // ---------------------------------------------------------------------------
-describe('normalizeHandle', () => {
-  it('strips the @ and lowercases, so one account is one entry', () => {
-    expect(normalizeHandle('@Jack')).toBe('jack')
-    expect(normalizeHandle('  JACK  ')).toBe('jack')
-    expect(normalizeHandle('@@jack')).toBe('jack')
-  })
-})
-
-describe('normalizeHandleList', () => {
-  it('drops blanks, duplicates and non-strings, keeping the original order', () => {
-    expect(
-      normalizeHandleList([
-        '@Bob',
-        'alice',
-        'bob',
-        '',
-        '  ',
-        42,
-        null,
-        'Carol',
-      ]),
-    ).toEqual(['bob', 'alice', 'carol'])
-  })
-
-  it('is empty for anything that is not a list', () => {
-    for (const junk of [null, undefined, 'bob', {}, 7]) {
-      expect(normalizeHandleList(junk)).toEqual([])
-    }
-  })
-})
-
-describe('normalizeRuleExceptions', () => {
-  it('gives every rule a list, even when storage holds none', () => {
-    const ex = normalizeRuleExceptions(undefined)
-    for (const rule of FILTER_RULES) expect(ex[rule]).toEqual([])
-  })
-
-  it('folds the old single-purpose highlight list into the highlight rule', () => {
-    const ex = normalizeRuleExceptions({ location: ['zoe'] }, ['@Bob', 'alice'])
-    expect(ex.highlight).toEqual(['bob', 'alice'])
-    expect(ex.location).toEqual(['zoe'])
-  })
-
-  it('does not double up a handle present in both the old and new stores', () => {
-    const ex = normalizeRuleExceptions({ highlight: ['bob'] }, ['@Bob'])
-    expect(ex.highlight).toEqual(['bob'])
-  })
-
-  it('ignores rules it does not know', () => {
-    const ex = normalizeRuleExceptions({ nonsense: ['bob'] })
-    expect(ex).not.toHaveProperty('nonsense')
-  })
-})
-
-describe('normalizeAccountAge', () => {
-  it('defaults to off, at six months', () => {
-    expect(normalizeAccountAge(undefined)).toEqual({
-      enabled: false,
-      days: DEFAULT_ACCOUNT_AGE_DAYS,
-    })
-    expect(DEFAULT_ACCOUNT_AGE_DAYS).toBe(180)
-  })
-
-  it('keeps a stored threshold and clamps nonsense to something usable', () => {
-    expect(normalizeAccountAge({ enabled: true, days: 90 }).days).toBe(90)
-    expect(normalizeAccountAge({ enabled: true, days: 1095 }).days).toBe(1095)
-    expect(normalizeAccountAge({ enabled: true, days: 0 }).days).toBe(180)
-    expect(normalizeAccountAge({ enabled: true, days: -5 }).days).toBe(180)
-    expect(normalizeAccountAge({ enabled: true, days: 99999 }).days).toBe(3650)
-  })
-
-  it('keeps a threshold the dropdown no longer offers, rather than snapping it', () => {
-    // Saved before the choices changed, or hand-edited. Snapping would quietly
-    // widen or narrow a filter somebody set on purpose; the options page adds
-    // the odd value to the dropdown instead.
-    expect(normalizeAccountAge({ enabled: true, days: 30 }).days).toBe(30)
-    expect(normalizeAccountAge({ enabled: true, days: '45' }).days).toBe(45)
-  })
-})
-
-describe('formatAgeChoice', () => {
-  it('writes every offered threshold the way a person would say it', () => {
-    expect(ACCOUNT_AGE_CHOICES.map(formatAgeChoice)).toEqual([
-      '3 months',
-      '6 months',
-      '1 year',
-      '3 years',
-    ])
-  })
-
-  it('falls back to days for a short odd value', () => {
-    expect(formatAgeChoice(30)).toBe('30 days')
-    expect(formatAgeChoice(45)).toBe('45 days')
-  })
-})
-
-describe('normalizeOptionsTab', () => {
-  it('falls back to display for anything unrecognised', () => {
-    expect(normalizeOptionsTab('filters')).toBe('filters')
-    expect(normalizeOptionsTab('nope')).toBe('display')
-    expect(normalizeOptionsTab(undefined)).toBe('display')
-  })
-})

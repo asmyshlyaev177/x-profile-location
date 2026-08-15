@@ -171,13 +171,13 @@ Full text: [Privacy Policy](https://x-pat.pages.dev/privacy-policy).
 
 > Generated from `landing/src/data/comparison.ts` by the landing build. Edit that file, not this block.
 
-| | X-Pat | X-Posed | Flags & Time | Region Blocker |
-| --- | :---: | :---: | :---: | :---: |
-| Warning when X cannot verify the location | ✅ | ✅ | ✅ | – |
-| Shared cache, so flags survive the rate limit | ✅ | ✅ | ✅ | ❌ |
-| Cache server source published | ✅ | ❌ | ❌ | – |
-| Cached entries cross-checked between installs | ✅ | ❌ | – | – |
-| Automated test suite in the repo | 609 tests | none | – | – |
+|                                               |   X-Pat   | X-Posed | Flags & Time | Region Blocker |
+| --------------------------------------------- | :-------: | :-----: | :----------: | :------------: |
+| Warning when X cannot verify the location     |    ✅     |   ✅    |      ✅      |       –        |
+| Shared cache, so flags survive the rate limit |    ✅     |   ✅    |      ✅      |       ❌       |
+| Cache server source published                 |    ✅     |   ❌    |      ❌      |       –        |
+| Cached entries cross-checked between installs |    ✅     |   ❌    |      –       |       –        |
+| Automated test suite in the repo              | 609 tests |  none   |      –       |       –        |
 
 **Where [X-Posed](https://chromewebstore.google.com/detail/x-posed-account-location/oodhljjldjdhcdopjpmfgbaoibpancfk) is ahead of X-Pat:**
 
@@ -186,6 +186,7 @@ Full text: [Privacy Policy](https://x-pat.pages.dev/privacy-policy).
 - **It has a language filter.** We do not, on purpose. X’s per-post language field is wrong often enough that filtering on it produces posts vanishing for no visible reason. That is a defensible call rather than a missing feature — but if filtering by language is what you came for, X-Posed has it and we do not.
 
 Full fifteen-row table, with sources: [https://x-pat.pages.dev/x-posed-alternative](https://x-pat.pages.dev/x-posed-alternative). Store listings read 2026-08-02.
+
 <!-- comparison:end -->
 
 ## Install
