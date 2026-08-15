@@ -339,7 +339,7 @@ describe('pacing settings', () => {
 
   it('normalizes junk in storage instead of pacing on it', async () => {
     await loadWorker({}, { prefetchShare: 'nonsense', prefetchPacing: 42 })
-    aboutGap(await gapAfterOneLookup(), WINDOW / 34) // the 0.7 default
+    aboutGap(await gapAfterOneLookup(), WINDOW / 39) // the 0.8 default
   })
 
   it('ignores a change from another storage area', async () => {

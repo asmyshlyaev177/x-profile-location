@@ -117,8 +117,8 @@ describe('CANONICAL_LOCATIONS', () => {
 })
 
 describe('normalizePrefetchShare', () => {
-  it('defaults to 70% when nothing usable is stored', () => {
-    expect(DEFAULT_PREFETCH_SHARE).toBe(0.7)
+  it('defaults to 80% when nothing usable is stored', () => {
+    expect(DEFAULT_PREFETCH_SHARE).toBe(0.8)
     for (const stored of [undefined, null, '', 'nonsense', NaN, {}, []]) {
       expect(normalizePrefetchShare(stored)).toBe(DEFAULT_PREFETCH_SHARE)
     }
@@ -137,8 +137,10 @@ describe('normalizePrefetchShare', () => {
   it('snaps anything else to the nearest choice', () => {
     expect(normalizePrefetchShare(0.72)).toBe(0.7)
     expect(normalizePrefetchShare(0.44)).toBe(0.5)
+    expect(normalizePrefetchShare(0.83)).toBe(0.8)
     // Ties go to the smaller share — leaving more room for the user's hovers.
     expect(normalizePrefetchShare(0.4)).toBe(0.3)
+    expect(normalizePrefetchShare(0.75)).toBe(0.7)
   })
 
   it('never lets an out-of-range value take the whole window', () => {

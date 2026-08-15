@@ -923,14 +923,14 @@ export const BACKGROUND_PREFETCH_KEY = 'backgroundPrefetch'
 export const LOOKUP_LIMIT_PER_WINDOW = 50
 export const LOOKUP_WINDOW_MINUTES = 15
 
-// Fraction of the rate-limit window background prefetch may spend; 0.7 leaves 15
+// Fraction of the rate-limit window background prefetch may spend; 0.8 leaves 10
 // of 50 for the user's own hovers. Feeds BackgroundPrefetcher.reserveFraction.
 export const PREFETCH_SHARE_KEY = 'prefetchShare'
 
-export const DEFAULT_PREFETCH_SHARE = 0.7
+export const DEFAULT_PREFETCH_SHARE = 0.8
 
 /** The shares the options page offers, as fractions. */
-export const PREFETCH_SHARE_CHOICES = [0.3, 0.5, 0.7, 0.9] as const
+export const PREFETCH_SHARE_CHOICES = [0.3, 0.5, 0.7, 0.8, 0.9] as const
 
 // Hand-rolled because bare Number() turns null, '' and objects alike into 0.
 export function finiteNumber(value: unknown): number | null {

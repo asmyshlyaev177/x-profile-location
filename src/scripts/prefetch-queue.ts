@@ -40,7 +40,7 @@ export interface RateState {
 export interface PacingOptions {
   /**
    * Fraction of the window prefetch may spend; the rest is reserved for hovers.
-   * 0.7 leaves the last 15 of 50. Options page, live via the broker.
+   * 0.8 leaves the last 10 of 50. Options page, live via the broker.
    */
   reserveFraction?: number
   /**
@@ -60,7 +60,7 @@ export interface PacingOptions {
 }
 
 export const PACING_DEFAULTS: Required<PacingOptions> = {
-  reserveFraction: 0.7,
+  reserveFraction: 0.8,
   pacing: 'spread',
   minSpacingMs: 1500,
   maxSpacingMs: 2 * 60 * 1000,
