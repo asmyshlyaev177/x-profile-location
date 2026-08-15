@@ -78,8 +78,8 @@ export interface QueueSnapshot {
 const names = (queue: PrefetchCandidate[]) => queue.map((c) => c.userName)
 
 /**
- * Two FIFOs in page order, deduped by lowercased handle. Reads and writes only —
- * whoever owns one decides when to drain it.
+ * Two queues, deduped by lowercased handle: page order within a batch, newest
+ * batch first. Reads and writes only — whoever owns one decides when to drain it.
  */
 export class CandidateQueue {
   // `high` is offered completely before `low`, so a thread full of replies can't
@@ -98,12 +98,16 @@ export class CandidateQueue {
   }
 
   /**
-   * Append candidates to the queue their priority names, in the order given.
-   * Dedup keeps the slot a name first earned; a 'low' name seen as 'high' is
-   * promoted, never the reverse.
+   * Put candidates in front of everything queued before them, in the order
+   * given: the tweet just opened is what the user is looking at, and the feed
+   * they scrolled past can wait. Dedup keeps the slot a name already holds; a
+   * 'low' name seen as 'high' is promoted, never the reverse.
    */
   enqueue(candidates: PrefetchCandidate[]): boolean {
-    let added = false
+    const fresh: Record<PrefetchPriority, PrefetchCandidate[]> = {
+      high: [],
+      low: [],
+    }
 
     for (const c of candidates) {
       const key = c.userName.toLowerCase()
@@ -112,23 +116,24 @@ export class CandidateQueue {
       // Already queued at this priority, or already ahead of it — leave it be.
       if (existing === priority || existing === 'high') continue
       if (existing === 'low') {
-        // Promoting: drop the low copy; it is re-added at the back of `high`.
+        // Promoting: drop the low copy; it is re-added at the front of `high`.
         this.low = this.low.filter((q) => q.userName.toLowerCase() !== key)
       }
 
       this.queued.set(key, priority)
-      const entry: PrefetchCandidate = { userName: c.userName, priority }
-      if (priority === 'high') this.high.push(entry)
-      else this.low.push(entry)
-      added = true
+      fresh[priority].push({ userName: c.userName, priority })
     }
+
+    this.high.unshift(...fresh.high)
+    this.low.unshift(...fresh.low)
+    const added = fresh.high.length + fresh.low.length > 0
     if (added) this.trimToMaxQueue()
     return added
   }
 
   /**
-   * Drop overflow from the back of each queue, emptying `low` first. Shedding the
-   * tail rather than the head keeps the survivors in appearance order.
+   * Drop overflow from the back of each queue, emptying `low` first. The back is
+   * the oldest batch, so what the user has moved on from is shed first.
    */
   private trimToMaxQueue(): void {
     let overflow = this.high.length + this.low.length - this.maxQueue
