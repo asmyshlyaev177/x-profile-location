@@ -293,7 +293,9 @@ describe('tabs coming and going', () => {
 describe('pacing settings', () => {
   const WINDOW = 15 * 60 * 1000
 
-  async function gapAfterOneLookup(): Promise<number> {
+  // `remaining` puts the window past the opening sprint, whose gap is a flat
+  // 3s and would say nothing about the share the worker read.
+  async function gapAfterOneLookup(remaining: number): Promise<number> {
     await send({
       type: MSG.ENQUEUE,
       candidates: [{ userName: 'a' }, { userName: 'b' }],
@@ -307,7 +309,7 @@ describe('pacing settings', () => {
         spent: true,
         ok: true,
         limit: 50,
-        remaining: 49,
+        remaining,
       },
       tab: FOCUSED,
     })
@@ -320,34 +322,35 @@ describe('pacing settings', () => {
     expect(waitMs).toBeCloseTo(expected, -2)
 
   it('reads the stored share rather than assuming the default', async () => {
-    await loadWorker({}, { prefetchShare: 0.3 })
-    // 0.3 of 50 is 15 lookups, so 35 are reserved and 14 of the 49 are ours.
-    aboutGap(await gapAfterOneLookup(), WINDOW / 14)
+    await loadWorker({}, { prefetchShare: 0.5 })
+    // 0.5 of 50 is 25 lookups, so 25 are reserved and 12 of the 37 are ours.
+    aboutGap(await gapAfterOneLookup(37), WINDOW / 12)
   })
 
   it('picks up a share changed on the options page', async () => {
-    await loadWorker({}, { prefetchShare: 0.3 })
+    await loadWorker({}, { prefetchShare: 0.5 })
     env.local.prefetchShare = 0.9
 
     for (const listener of env.listeners['storage.onChanged'] ?? []) {
       listener({ prefetchShare: { newValue: 0.9 } }, 'local')
     }
+    // 0.9 reserves 5, leaving 22 of the 27 — a gap the old share cannot produce.
     await vi.waitFor(async () =>
-      aboutGap(await gapAfterOneLookup(), WINDOW / 44),
+      aboutGap(await gapAfterOneLookup(27), WINDOW / 22),
     )
   })
 
   it('normalizes junk in storage instead of pacing on it', async () => {
     await loadWorker({}, { prefetchShare: 'nonsense', prefetchPacing: 42 })
-    aboutGap(await gapAfterOneLookup(), WINDOW / 39) // the 0.8 default
+    aboutGap(await gapAfterOneLookup(30), WINDOW / 20) // the 0.8 default
   })
 
   it('ignores a change from another storage area', async () => {
-    await loadWorker({}, { prefetchShare: 0.3 })
+    await loadWorker({}, { prefetchShare: 0.5 })
     for (const listener of env.listeners['storage.onChanged'] ?? []) {
       listener({ prefetchShare: { newValue: 0.9 } }, 'sync')
     }
-    aboutGap(await gapAfterOneLookup(), WINDOW / 14)
+    aboutGap(await gapAfterOneLookup(37), WINDOW / 12)
   })
 })
 

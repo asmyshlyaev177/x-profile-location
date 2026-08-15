@@ -208,6 +208,22 @@ export class LookupBroker {
     return null
   }
 
+  /**
+   * Whether any tab holds a feed account still worth asking about. The opening
+   * sprint is the feed's alone, so a browser showing only threads paces the
+   * whole window rather than spending a quarter of it on replies.
+   */
+  private feedIsWaiting(now: number): boolean {
+    for (const tab of this.tabs.values()) {
+      const waiting = tab.queue.some(
+        'high',
+        (candidate) => !this.isSpokenFor(candidate.userName, now),
+      )
+      if (waiting) return true
+    }
+    return false
+  }
+
   /** Names another tab has since claimed or resolved are dropped, not returned. */
   private takeUnclaimed(
     queue: CandidateQueue,
@@ -227,7 +243,7 @@ export class LookupBroker {
     this.rollWindow(now)
     this.expireInflight(now)
 
-    const gap = nextDelayMs(this.rate, this.opts, now)
+    const gap = nextDelayMs(this.rate, this.opts, now, this.feedIsWaiting(now))
     // Spent, or paused by a 429: `gap` is already the wait for the refill.
     if (prefetchBudget(this.rate, this.opts.reserveFraction, now) <= 0) {
       return { waitMs: gap }

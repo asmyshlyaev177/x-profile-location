@@ -389,8 +389,70 @@ describe('the rate-limit ledger', () => {
 // Pacing — one clock for every tab, which is the whole point of moving it here
 // ---------------------------------------------------------------------------
 describe('pacing', () => {
-  it('makes the second tab wait out the first tab’s gap', () => {
+  // The opening sprint is prefetch-queue's, and tested there. These are about
+  // the broker sharing one gap between tabs, so they run past it.
+  const spread = (over: BrokerOptions = {}) =>
+    makeBroker({ sprintShare: 0, ...over })
+
+  it('sprints out of a fresh window before settling into the spread', () => {
     const h = makeBroker()
+    h.broker.enqueue(1, [{ userName: 'a' }, { userName: 'b' }], FOCUSED)
+    h.broker.next(1, FOCUSED)
+    h.broker.report({ userName: 'a', spent: true, ok: true, remaining: 49 })
+    expect(h.broker.next(1, FOCUSED).waitMs).toBe(
+      PACING_DEFAULTS.sprintSpacingMs,
+    )
+
+    // Past the sprint: 30 of 50 left is 20 of the 40 prefetch may have.
+    h.broker.report({ userName: 'b', spent: true, ok: true, remaining: 30 })
+    h.broker.enqueue(1, [{ userName: 'c' }], FOCUSED)
+    expect(h.broker.next(1, FOCUSED).waitMs).toBe(PACING_DEFAULTS.windowMs / 20)
+  })
+
+  it('never sprints a thread’s replies, however fresh the window', () => {
+    const h = makeBroker()
+    h.broker.enqueue(1, [{ userName: 'r1', priority: 'low' }], FOCUSED)
+    h.broker.next(1, FOCUSED)
+    h.broker.report({ userName: 'r1', spent: true, ok: true, remaining: 49 })
+    h.broker.enqueue(1, [{ userName: 'r2', priority: 'low' }], FOCUSED)
+
+    expect(h.broker.next(1, FOCUSED).waitMs).toBe(PACING_DEFAULTS.windowMs / 39)
+  })
+
+  it('sprints as soon as a feed account is queued behind the replies', () => {
+    const h = makeBroker()
+    h.broker.enqueue(1, [{ userName: 'r1', priority: 'low' }], FOCUSED)
+    h.broker.next(1, FOCUSED)
+    h.broker.report({ userName: 'r1', spent: true, ok: true, remaining: 49 })
+
+    h.broker.enqueue(1, [{ userName: 'feed' }], FOCUSED)
+    expect(h.broker.next(1, FOCUSED).waitMs).toBe(
+      PACING_DEFAULTS.sprintSpacingMs,
+    )
+  })
+
+  // A tab whose feed queue holds nothing but names already answered this window
+  // is not a feed waiting on anything, and must not buy the gap with them.
+  it('ignores feed candidates already asked about this window', () => {
+    const h = makeBroker()
+    h.broker.enqueue(1, [{ userName: 'first' }], FOCUSED)
+    h.broker.next(1, FOCUSED)
+    h.broker.report({ userName: 'first', spent: true, ok: true, remaining: 49 })
+
+    h.broker.enqueue(
+      1,
+      [{ userName: 'seen' }, { userName: 'r1', priority: 'low' }],
+      FOCUSED,
+    )
+    // A hover answered 'seen' after it was queued, so the feed queue still holds
+    // it — and the reply is what the next grant will actually be.
+    h.broker.report({ userName: 'seen', spent: true, ok: true, remaining: 48 })
+
+    expect(h.broker.next(1, FOCUSED).waitMs).toBe(PACING_DEFAULTS.windowMs / 38)
+  })
+
+  it('makes the second tab wait out the first tab’s gap', () => {
+    const h = spread()
     h.broker.enqueue(1, [{ userName: 'a' }], FOCUSED)
     h.broker.enqueue(2, [{ userName: 'b' }], VISIBLE)
 
@@ -409,7 +471,7 @@ describe('pacing', () => {
   })
 
   it('credits time that passed while the queue was empty', () => {
-    const h = makeBroker()
+    const h = spread()
     h.broker.enqueue(1, [{ userName: 'a' }], FOCUSED)
     h.broker.next(1, FOCUSED)
     h.broker.report({ userName: 'a', spent: true, ok: true, remaining: 49 })
@@ -422,7 +484,7 @@ describe('pacing', () => {
   })
 
   it('applies a share changed on the options page', () => {
-    const h = makeBroker()
+    const h = spread()
     h.broker.enqueue(1, [{ userName: 'a' }, { userName: 'b' }], FOCUSED)
     h.broker.next(1, FOCUSED)
     h.broker.report({ userName: 'a', spent: true, ok: true, remaining: 49 })
@@ -526,10 +588,11 @@ describe('toJSON / from', () => {
     const h = makeBroker()
     h.broker.enqueue(1, [{ userName: 'a' }, { userName: 'b' }], FOCUSED)
     h.broker.next(1, FOCUSED)
-    h.broker.report({ userName: 'a', spent: true, ok: true, remaining: 49 })
+    // Past the opening sprint, so the gap under test is the paced one.
+    h.broker.report({ userName: 'a', spent: true, ok: true, remaining: 29 })
 
     expect(roundTrip(h.broker, h.now).next(1, FOCUSED).waitMs).toBe(
-      PACING_DEFAULTS.windowMs / 39,
+      PACING_DEFAULTS.windowMs / 19,
     )
   })
 

@@ -85,6 +85,21 @@ covering hovers + swipes + prefetch across every tab.
   lookup (≈22 s), clamped to `[1.5 s, 2 min]`. Self-correcting — hovers stretch
   the gap, a rolled-over window shrinks it. `pacing: 'instant'` opts out of
   spreading (same share, spent at `minSpacingMs`).
+- **The first `sprintShare` of the budget goes out at `sprintSpacingMs`, and only
+  for `high`** — a quarter of it at 3 s, so 10 of the 40 land in the first
+  half-minute instead of trickling in over four. An even spread is right for the
+  window and wrong for the screen the reader is on _now_; the remaining three
+  quarters still cover the rest of the window, and `msLeftInWindow / budget`
+  absorbs the sprint by itself (≈29 s afterwards, not a hole). The threshold is
+  measured against the **share**, not the window, so it holds at any
+  `reserveFraction`, and the budget spent is unchanged — this moves lookups
+  earlier, it does not buy more of them. Sits after the `'instant'` branch, which
+  is already faster, and never below `minSpacingMs`.
+  The tier gate is the broker's: `nextDelayMs` takes `sprintable` and defaults it
+  to **off**, and `feedIsWaiting()` turns it on only while some tab holds a `high`
+  candidate that isn't already in flight or `asked`. A browser showing nothing but
+  threads therefore paces the whole window, and a feed queue full of names X has
+  already answered doesn't buy the gap with them.
 - **Two queues** (`PrefetchPriority`): `high` (`HomeTimeline`) drains completely
   before `low` (`TweetDetail`) gets a single lookup. Within a batch it is **page
   order**, so locations fill in down the feed as the user reads — but each new
