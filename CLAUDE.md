@@ -148,6 +148,7 @@ pnpm dev             # watch build for Chrome (default)
 pnpm build           # production build all browsers → dist/<browser>/
 pnpm test            # vitest run --coverage  (happy-dom, Istanbul)
 pnpm test:visual     # playwright layout tests — headless, no session, no HARs
+pnpm test:popup-window # the real action popup's width, under Xvfb (needs pnpm build)
 pnpm test:lighthouse # playwright + lighthouse over the built landing site
 pnpm fix             # oxlint --fix, then oxfmt (that order)
 pnpm lint:dup        # jscpd over src/ and server/src/
@@ -183,6 +184,15 @@ callback alive.
 | `pnpm test:integration` | Do the content script and worker agree? | a headless browser + `pnpm build` | yes               |
 | `pnpm test:e2e`         | Does any of it survive contact with X?  | a session and the HARs            | no                |
 | `pnpm test:lighthouse`  | Does the landing site still score 100?  | a headless browser                | `landing/**` only |
+
+`pnpm test:popup-window` is the odd one out, and not a suite: it opens the **real
+browser-action popup** and checks the window keeps its width as the panel grows.
+Chrome sizes that window to the document, so a scrollbar appearing moves the
+whole popup — and nothing else here can see it. Playwright cannot open a popup
+(this drives `chrome.action.openPopup()` over raw CDP), an unfocused window
+refuses to show one (hence Xvfb and `wmctrl`), and headless Chromium has overlay
+scrollbars, which take no width at all. Run it after touching `popup.module.css`,
+against a current `dist/chrome`.
 
 **What a new extension feature owes the first four.** They are not tiers of
 thoroughness — a feature owes a test to each surface it touches:
