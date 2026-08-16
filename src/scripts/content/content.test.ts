@@ -3005,7 +3005,10 @@ describe('hide tweets by blocked location', () => {
     vi.mocked(sharedBatchLookup).mockResolvedValue([
       { userName: 'fromcache', data, revalidate: false },
     ])
-    vi.mocked(getCached).mockResolvedValue(data)
+    // Only once the hit has been merged does IDB know about it.
+    vi.mocked(mergeCached).mockImplementation(async () => {
+      vi.mocked(getCached).mockResolvedValue(data)
+    })
     window.dispatchEvent(
       new CustomEvent('x-loc-users-data', {
         detail: {
@@ -3018,6 +3021,36 @@ describe('hide tweets by blocked location', () => {
     await flushAsync()
 
     expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+  })
+
+  it('never asks the community cache about an account IDB can answer for', async () => {
+    // A reload empties the client's in-memory "asked recently" set, so nothing
+    // downstream stops a whole timeline of already-known accounts going back
+    // over the wire — this end has to do the filtering.
+    vi.mocked(getCached).mockImplementation(async (userName: string) =>
+      userName === 'known'
+        ? {
+            location: 'India',
+            locationAccurate: true,
+            source: 'web',
+            bio: null,
+          }
+        : undefined,
+    )
+
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', {
+        detail: {
+          users: [
+            { userName: 'known', displayName: 'Known', bio: null },
+            { userName: 'stranger', displayName: 'Stranger', bio: null },
+          ],
+        },
+      }),
+    )
+    await flushAsync()
+
+    expect(sharedBatchLookup).toHaveBeenCalledWith(['stranger'])
   })
 
   it('forgets a remembered verdict when the rules change under it', async () => {
@@ -3166,11 +3199,11 @@ describe('broker wiring', () => {
   // The broker cannot read this tab's IndexedDB — it is x.com's storage, not
   // the extension's — so anything already answered is filtered out here.
   it('leaves out accounts this tab already has a location for', async () => {
-    vi.mocked(getCached).mockResolvedValueOnce({
-      location: 'Germany',
-      locationAccurate: true,
-      source: 'web',
-    })
+    vi.mocked(getCached).mockImplementation(async (userName: string) =>
+      userName === 'known'
+        ? { location: 'Germany', locationAccurate: true, source: 'web' }
+        : undefined,
+    )
     usersData([
       { userName: 'known', displayName: null, bio: null },
       { userName: 'unknown', displayName: null, bio: null },

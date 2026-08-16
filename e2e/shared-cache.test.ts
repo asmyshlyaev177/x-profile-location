@@ -19,10 +19,16 @@ import {
   mockSharedCache,
   mostLikedReply,
   setCheckboxOption,
+  waitForReplies,
 } from './helpers'
 import { CACHE_API_BASE } from '../src/scripts/constants'
 
 const NASA_TWEET = 'https://x.com/NASAArtemis/status/2052108727839285751'
+const BUSY_THREAD = 'https://x.com/Did__Pihto/status/2083594910318412039'
+
+/** The handle a status URL belongs to, as the community cache spells it. */
+const threadAuthor = (url: string) =>
+  new URL(url).pathname.split('/')[1].toLowerCase()
 
 test.beforeEach(() => {
   test.skip(
@@ -82,6 +88,53 @@ test('a community-cache hit shows the location without asking X for it', async (
   const { basedIn } = await hoverCardLocation(card)
   expect(basedIn).toBe('Germany')
   expect(await askedX).toBe(false)
+})
+
+test('accounts answered once are never asked about again, not even after a reload', async ({
+  page,
+  context,
+  extensionId,
+}) => {
+  // Prefetch would fill IDB from X in parallel and decide the second half of
+  // this test for reasons that have nothing to do with the community cache.
+  await setCheckboxOption(
+    context,
+    extensionId,
+    'Prefetch locations in the background',
+    false,
+  )
+
+  const worker = await mockSharedCache(page, {
+    loc: 'Germany',
+    src: 'web',
+    acc: true,
+    conf: 1,
+  })
+  await mockAboutAccount(page, { account_based_in: 'Japan' })
+
+  await page.goto(BUSY_THREAD)
+  await waitForReplies(page)
+  await expect
+    .poll(() => worker.served.length, { timeout: 15_000 })
+    .toBeGreaterThan(0)
+  expect(worker.served).toContain(threadAuthor(BUSY_THREAD))
+
+  // The timeline arrives in several payloads; let the batches they trigger land.
+  await page.waitForTimeout(3_000)
+  const answered = new Set(worker.served)
+  const before = worker.lookups.length
+
+  // The client's "asked recently" map is per page load, so only the IDB check
+  // stands between a reload and a second round of lookups for the same names.
+  await page.reload()
+  await waitForReplies(page)
+  await page.waitForTimeout(3_000)
+
+  const reAsked = worker.lookups
+    .slice(before)
+    .flatMap((l) => l.usernames)
+    .filter((u) => answered.has(u))
+  expect(reAsked).toEqual([])
 })
 
 test('a first-hand lookup is contributed back to the community cache', async ({
