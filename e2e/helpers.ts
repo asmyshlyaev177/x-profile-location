@@ -658,6 +658,9 @@ type Contribution = {
   acc: boolean
 }
 
+/** One `POST /v1/loc/batch`, as the extension sent it. */
+export type BatchLookup = { usernames: string[] }
+
 // Mirrors the Worker's CORS headers (server/src/index.ts): the content script
 // calls this cross-origin, and application/json makes it a preflighted request.
 export const CORS_HEADERS = {
@@ -737,9 +740,15 @@ export async function mockCacheCount(page: Page, profiles: number) {
 export async function mockSharedCache(
   page: Page,
   profile: SharedCacheProfile | null,
-): Promise<{ served: string[]; contributions: Contribution[] }> {
+): Promise<{
+  served: string[]
+  /** Every batch, hit or miss — `served` only sees the names it answered for. */
+  lookups: BatchLookup[]
+  contributions: Contribution[]
+}> {
   const base = new URL(CACHE_API_BASE)
   const served: string[] = []
+  const lookups: BatchLookup[] = []
   const contributions: Contribution[] = []
 
   await page.route(
@@ -750,6 +759,7 @@ export async function mockSharedCache(
 
       const body = route.request().postDataJSON() as { usernames?: string[] }
       const names = body?.usernames ?? []
+      lookups.push({ usernames: names })
       const profiles = profile ? names.map((u) => ({ u, ...profile })) : []
       served.push(...profiles.map((p) => p.u))
 
@@ -780,7 +790,7 @@ export async function mockSharedCache(
     },
   )
 
-  return { served, contributions }
+  return { served, lookups, contributions }
 }
 
 /**

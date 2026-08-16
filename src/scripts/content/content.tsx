@@ -3422,7 +3422,7 @@ window.addEventListener(EVENTS.HEADERS_CAPTURED, (e: Event) => {
 // ---------------------------------------------------------------------------
 // Confirmed hits only, so a flag can show without a per-profile X call.
 async function applySharedHits(userNames: string[]) {
-  const hits = await sharedBatchLookup(userNames)
+  const hits = await sharedBatchLookup(await unknownNames(userNames))
   for (const hit of hits) {
     await mergeCached(hit.userName, hit.data)
     const full = await getCached(hit.userName)
@@ -3447,21 +3447,29 @@ const poller = new PrefetchPoller({
   },
 })
 
+/** Whether this tab can already answer for the account without asking anyone. */
+async function locallyAnswered(userName: string): Promise<boolean> {
+  if (checkedThisSession.has(userName.toLowerCase())) return true
+  const cached = await getCached(userName)
+  return Boolean(cached && (cached.location || cached.source))
+}
+
 /**
- * Names this tab already has an answer for never reach the broker's queue — it
- * cannot check for itself, since the cache is x.com's IndexedDB rather than the
- * extension's. A whole timeline response arrives at once, so the reads go out
- * together rather than one await at a time.
+ * Names this tab already has an answer for never reach the broker's queue or
+ * the community cache — neither can check for itself, since the cache is
+ * x.com's IndexedDB rather than the extension's. A whole timeline response
+ * arrives at once, so the reads go out together rather than one await at a time.
  */
+async function unknownNames(userNames: string[]): Promise<string[]> {
+  const known = await Promise.all(userNames.map(locallyAnswered))
+  return userNames.filter((_, i) => !known[i])
+}
+
 async function unknownOnly(
   candidates: PrefetchCandidate[],
 ): Promise<PrefetchCandidate[]> {
   const known = await Promise.all(
-    candidates.map(async (candidate) => {
-      if (checkedThisSession.has(candidate.userName.toLowerCase())) return true
-      const cached = await getCached(candidate.userName)
-      return Boolean(cached && (cached.location || cached.source))
-    }),
+    candidates.map((c) => locallyAnswered(c.userName)),
   )
   return candidates.filter((_, i) => !known[i])
 }
