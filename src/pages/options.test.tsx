@@ -20,10 +20,8 @@ import {
 } from '../scripts/constants'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  type OptionsTabId,
-  REGION_MEMBERS,
-} from '../scripts/countries/countries'
+import { REGION_MEMBERS } from '../scripts/countries/countries'
+import type { OptionsTabId } from '../scripts/settings'
 import { isSharedCacheConfigured } from '../scripts/cache/shared-cache'
 
 // The real module reads CACHE_API_BASE at import time; the options page only

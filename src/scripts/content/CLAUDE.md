@@ -12,8 +12,9 @@ Module state: `apiHeaders` (captured auth headers, settable via `setApiHeaders()
 `asked`), `pendingMap` (in-flight fetches, so concurrent hovers share one promise),
 `rateLimitResetAt` (ms until the limit lifts, 0 when clear — set by a 429 here or by
 `LOOKUP_RATE` from another tab), `blockedCountries` and `highlightKeywords` (from
-`chrome.storage.local`, reloaded on change, keywords lowercased). `__testResetState()` is
-exported for tests: it clears `checkedThisSession` and resets `rateLimitResetAt`.
+`chrome.storage.local`, reloaded on change, keywords lowercased and each carrying its own
+match mode). `__testResetState()` is exported for tests: it clears `checkedThisSession`
+and resets `rateLimitResetAt`.
 
 ## The bio X declined to render
 
@@ -92,11 +93,16 @@ user input reaching a selector.** `CSS.highlights` is absent before Firefox 140,
 text half simply doesn't paint. `findKeywordMatches()` runs the same two matchers as
 `matchesAnyKeyword()`, so a mark can never point at a word the rule didn't fire on.
 
-That last guarantee is why the walker picks a **match mode per text node**. The name block
-and the bio are judged under separate settings (`KEYWORD_NAME_MATCH_KEY`,
-`KEYWORD_BIO_MATCH_KEY` — names match inside a word by default, bios don't), so marking the
-whole card under one of them would either miss a name the rule fired on or mark a bio
-substring it never read.
+**Each keyword carries its own mode**, `word` or `partial`, chosen from its badge in either
+editor and stored with it (`{text, mode}[]` under `HIGHLIGHT_KEYWORDS_KEY`). One compiled
+pattern holds the whole list, each keyword contributing an alternative with its own
+boundaries — so name and bio need no setting between them, and "nft" can be found inside
+"NFTguy" in the same list where "art" is not found inside "partido". A keyword stored
+before 1.7.4 is a bare string and reads as `word`, which is what it meant.
+
+The boundary is `\p{L}\p{N}`, deliberately not `\w`: an underscore is a separator, so
+"nft_lover" and "nft.eth" are caught by a whole-word "nft" without anyone turning
+anything on.
 
 **One exception button, whatever the rule.** `buildExceptionButton(userName, rules)` covers
 every rule acting on the account and names them only in its tooltip; the exceptions stay

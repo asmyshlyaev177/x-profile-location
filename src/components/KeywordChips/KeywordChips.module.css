@@ -1,0 +1,65 @@
+.addRow {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+/* The input takes the rest; the dropdown it opens is positioned against it. */
+.addRow > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Unlike the badge's, this one says its value: it answers "what will the next
+   keyword be added as", and there is no list yet to read it off. */
+.newMode {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong, #d1d5db);
+  background: var(--surface, #fff);
+  color: var(--text-dim, #6b7280);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.chip {
+  position: relative;
+}
+
+/* Laid over the whole chip and painted by nobody: the native list it opens is
+   already the list of modes with the current one marked, so the chip itself has
+   no reason to spend width saying it again. */
+.mode {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+}
+
+/* The only thing that says the chip can be opened at all. */
+.caret {
+  margin-left: 1px;
+  font-size: 0.7em;
+  opacity: 0.6;
+}
+
+/* Above the select covering the chip, or the × opens the list instead. */
+.remove {
+  position: relative;
+  z-index: 1;
+}
+
+/* The select's own ring is invisible with it, so the chip wears it. */
+.chip:has(.mode:focus-visible) {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}

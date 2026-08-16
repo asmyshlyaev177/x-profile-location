@@ -18,6 +18,7 @@
     "lint-staged": "lint-staged",
     "prepare": "git config core.hooksPath .githooks || exit 0",
     "test": "vitest run --coverage",
+    "typecheck": "tsc -b",
     "locales": "node scripts/sync-locales.mjs",
     "test:shuffle": "vitest run --sequence.shuffle",
     "test:visual": "playwright test -c playwright.visual.config.ts",

@@ -206,23 +206,17 @@
   "emptyNoKeywords": {
     "message": "Слова не заданы — все посты показываются обычным образом."
   },
-  "setNameMatch": {
-    "message": "В именах и никнеймах"
+  "kwMatchWhole": {
+    "message": "целиком"
   },
-  "setNameMatchDesc": {
-    "message": "Отображаемое имя выбирают, чтобы его видели, и часто пишут именно так, чтобы проскочить мимо такого фильтра — «NFTguy», «#freepalestine». Совпадение внутри слова их ловит."
+  "kwMatchPartial": {
+    "message": "частично"
   },
-  "setBioMatch": {
-    "message": "В описании профиля"
+  "kwMatchNewLabel": {
+    "message": "Как искать следующее ключевое слово"
   },
-  "setBioMatchDesc": {
-    "message": "Описание — связный текст: поиск внутри слова превращает ключевое «раб» в совпадение на «работа» и «корабль». Здесь безопаснее только целые слова."
-  },
-  "matchWord": {
-    "message": "Только целые слова"
-  },
-  "matchPartial": {
-    "message": "В любом месте слова"
+  "kwMatchLabel": {
+    "message": "Как искать «$1»"
   },
   "cardLocations": {
     "message": "Страны"

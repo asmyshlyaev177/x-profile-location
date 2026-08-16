@@ -10,8 +10,6 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
-  KEYWORD_BIO_MATCH_KEY,
-  KEYWORD_NAME_MATCH_KEY,
   MIN_CONFIDENCE_KEY,
   MSG,
   RATE_LIMIT_RESET_DEFAULT_MS,
@@ -35,27 +33,28 @@ import {
 import {
   emojiKeywords,
   findKeywordMatches,
+  type Keyword,
   matchesAnyKeyword,
   setKeywords,
 } from '../keywords'
 import type { LocationData } from '../cache/cache'
 import {
-  type AccountAgeFilter,
   canonicalLocation,
   COUNTRY_FLAGS,
   expandLocations,
-  type FilterRule,
   flagFor,
-  type HideBlockedMode,
   REGION_ABBR,
   REGION_FLAGS,
-  type RuleExceptions,
 } from '../countries/countries'
 import {
+  type AccountAgeFilter,
   defaultSetting,
   FILTER_RULES,
+  type FilterRule,
+  type HideBlockedMode,
   normalizeRuleExceptions,
   readSetting,
+  type RuleExceptions,
   ruleHides,
   type SettingKey,
   type SettingValue,
@@ -124,8 +123,6 @@ const ABOUT_ACCOUNT_URL = `${API_BASE}/${QUERY_ID}/AboutAccountQuery`
 const SEL_HOVER_CARD = '[data-testid="HoverCard"]'
 const SEL_USER_NAME = '[data-testid="UserName"] a[href]'
 const SEL_USER_NAME_ALT = '[data-testid="User-Name"] a[href]'
-// The handle-and-display-name block, whichever spelling of the testid X used.
-const SEL_NAME_BLOCK = '[data-testid="UserName"], [data-testid="User-Name"]'
 const SEL_TWEET = 'article[data-testid="tweet"]'
 const SEL_PRIMARY_TWEET = `${SEL_TWEET}[tabindex="-1"]`
 const PRIMARY_TWEET_ATTR = 'data-x-loc-primary-done'
@@ -160,10 +157,7 @@ function isBlockedLocation(loc: string): boolean {
 // place rather than here, in the popup and in the options page.
 const DEFAULT_FLAGS = defaultSetting(HIGHLIGHT_FLAGS_KEY)
 
-let highlightKeywords = new Set<string>()
-// Asked of the name and of the bio separately — see the keys in constants.ts.
-let keywordNameMatch = defaultSetting(KEYWORD_NAME_MATCH_KEY)
-let keywordBioMatch = defaultSetting(KEYWORD_BIO_MATCH_KEY)
+let highlightKeywords: Keyword[] = []
 let highlightFlagsEnabled = DEFAULT_FLAGS.enabled
 let highlightFlagsThreshold = DEFAULT_FLAGS.threshold
 let highlightFlagsUniqueOnly = DEFAULT_FLAGS.uniqueOnly
@@ -207,8 +201,6 @@ chrome.storage.local
     EXTENSION_ENABLED_KEY,
     BLOCKED_COUNTRIES_KEY,
     HIGHLIGHT_KEYWORDS_KEY,
-    KEYWORD_NAME_MATCH_KEY,
-    KEYWORD_BIO_MATCH_KEY,
     HIGHLIGHT_FLAGS_KEY,
     SHOW_LOCATION_IN_FEED_KEY,
     HIGHLIGHT_EXCEPTIONS_KEY,
@@ -228,10 +220,8 @@ chrome.storage.local
     const r = result as Record<string, unknown>
     extensionEnabled = readSetting(EXTENSION_ENABLED_KEY, r)
     blockedCountries = toBlockedSet(r[BLOCKED_COUNTRIES_KEY])
-    highlightKeywords = new Set(readSetting(HIGHLIGHT_KEYWORDS_KEY, r))
-    setKeywords([...highlightKeywords])
-    keywordNameMatch = readSetting(KEYWORD_NAME_MATCH_KEY, r)
-    keywordBioMatch = readSetting(KEYWORD_BIO_MATCH_KEY, r)
+    highlightKeywords = readSetting(HIGHLIGHT_KEYWORDS_KEY, r)
+    setKeywords(highlightKeywords)
     updateKeywordEmojiStyle()
     const flags = readSetting(HIGHLIGHT_FLAGS_KEY, r)
     highlightFlagsEnabled = flags.enabled
@@ -384,17 +374,9 @@ function applyFilterChanges(changes: StorageChanges): void {
 
 function applyDisplayChanges(changes: StorageChanges): void {
   onSettingChange(changes, HIGHLIGHT_KEYWORDS_KEY, (value) => {
-    highlightKeywords = new Set(value)
-    setKeywords([...highlightKeywords])
+    highlightKeywords = value
+    setKeywords(highlightKeywords)
     updateKeywordEmojiStyle()
-    rehighlightAll()
-  })
-  onSettingChange(changes, KEYWORD_NAME_MATCH_KEY, (value) => {
-    keywordNameMatch = value
-    rehighlightAll()
-  })
-  onSettingChange(changes, KEYWORD_BIO_MATCH_KEY, (value) => {
-    keywordBioMatch = value
     rehighlightAll()
   })
   onSettingChange(changes, HIGHLIGHT_FLAGS_KEY, (value) => {
@@ -729,10 +711,8 @@ async function getBioInfo(userName: string): Promise<ProfileInfo> {
 export function __testResetState() {
   // settings, back to what the declarations above start them at
   blockedCountries = new Set()
-  highlightKeywords = new Set()
+  highlightKeywords = []
   setKeywords([])
-  keywordNameMatch = defaultSetting(KEYWORD_NAME_MATCH_KEY)
-  keywordBioMatch = defaultSetting(KEYWORD_BIO_MATCH_KEY)
   highlightFlagsEnabled = DEFAULT_FLAGS.enabled
   highlightFlagsThreshold = DEFAULT_FLAGS.threshold
   highlightFlagsUniqueOnly = DEFAULT_FLAGS.uniqueOnly
@@ -1308,11 +1288,9 @@ function matchesHighlightRule(
   displayName: string,
   bio: string | null | undefined,
 ): boolean {
-  // The handle rides with the display name: both are the identity line, and a
-  // handle is written the same way a name that dodges a filter is.
-  if (matchesAnyKeyword(`${userName} ${displayName}`, keywordNameMatch))
-    return true
-  if (bio && matchesAnyKeyword(bio, keywordBioMatch)) return true
+  // Joined, not concatenated: a keyword may not span the gap between a handle
+  // and the name beside it.
+  if (matchesAnyKeyword(`${userName} ${displayName} ${bio ?? ''}`)) return true
   if (
     highlightFlagsEnabled &&
     countFlagsInBio(`${userName} ${displayName} ${bio ?? ''}`) >
@@ -1360,11 +1338,7 @@ export function keywordRangesIn(root: Element): Range[] {
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const text = node.nodeValue
     if (!text) continue
-    // Which rule fired here decides which one the mark may explain.
-    const mode = node.parentElement?.closest(SEL_NAME_BLOCK)
-      ? keywordNameMatch
-      : keywordBioMatch
-    for (const { start, end } of findKeywordMatches(text, mode)) {
+    for (const { start, end } of findKeywordMatches(text)) {
       const range = document.createRange()
       range.setStart(node, start)
       range.setEnd(node, end)
@@ -1424,7 +1398,7 @@ function updateKeywordEmojiStyle(): void {
 }
 
 async function tryHighlightArticle(article: Element) {
-  if (highlightKeywords.size === 0 && !highlightFlagsEnabled) return
+  if (highlightKeywords.length === 0 && !highlightFlagsEnabled) return
   // The tweet's own author and the author of anything it quotes are judged
   // independently — either, both, or neither can match.
   await tryHighlightTweet(article)
@@ -1464,7 +1438,7 @@ function rehighlightAll() {
   void syncPrimaryExceptionButton()
 
   const articles = Array.from(document.querySelectorAll<Element>(SEL_TWEET))
-  if (highlightKeywords.size === 0 && !highlightFlagsEnabled) {
+  if (highlightKeywords.length === 0 && !highlightFlagsEnabled) {
     articles.forEach((a) => {
       a.removeAttribute('data-x-loc-highlighted')
       getQuotedTweetEl(a)?.removeAttribute(QUOTE_HIGHLIGHT_ATTR)

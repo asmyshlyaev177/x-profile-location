@@ -206,23 +206,17 @@
   "emptyNoKeywords": {
     "message": "ยังไม่ได้ตั้งคำสำคัญ — แสดงโพสต์ทั้งหมดตามปกติ"
   },
-  "setNameMatch": {
-    "message": "ในชื่อและชื่อผู้ใช้"
+  "kwMatchWhole": {
+    "message": "ทั้งคำ"
   },
-  "setNameMatchDesc": {
-    "message": "ชื่อที่แสดงถูกเลือกมาให้คนเห็น และมักเขียนขึ้นเพื่อเลี่ยงตัวกรองแบบนี้โดยเฉพาะ — “NFTguy”, “#freepalestine” การจับคู่กลางคำจะจับกรณีเหล่านี้ได้"
+  "kwMatchPartial": {
+    "message": "บางส่วน"
   },
-  "setBioMatch": {
-    "message": "ในคำแนะนำตัว"
+  "kwMatchNewLabel": {
+    "message": "วิธีจับคู่คำสำคัญถัดไป"
   },
-  "setBioMatchDesc": {
-    "message": "คำแนะนำตัวเป็นข้อความยาว การจับคู่กลางคำจะทำให้คำว่า “ลงทุน” ไปตรงกับ “นักลงทุน” ด้วย แต่ภาษาไทยไม่เว้นวรรคระหว่างคำ ตัวเลือก “เฉพาะทั้งคำ” จึงแทบไม่เคยตรงเลย"
-  },
-  "matchWord": {
-    "message": "เฉพาะทั้งคำ"
-  },
-  "matchPartial": {
-    "message": "ที่ใดก็ได้ในคำ"
+  "kwMatchLabel": {
+    "message": "วิธีจับคู่ “$1”"
   },
   "cardLocations": {
     "message": "ตำแหน่งที่ตั้ง"

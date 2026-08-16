@@ -20,7 +20,7 @@ duplicates it.
 | `prefetch/queue`     | `CandidateQueue` plus the pacing arithmetic. No timers, no state of its own.        |
 | `prefetch/broker`    | Service worker. One queue per tab, one ledger, one pace. No browser needed to test. |
 | `prefetch/poller`    | Asks the broker, looks up, asks again. Holds the clock the worker cannot.           |
-| `countries/*.ts`     | Country and region data only: flags, abbreviations, members, aliases.              |
+| `countries/*.ts`     | Country and region data only: flags, abbreviations, members, aliases.               |
 | `countries/names`    | Country/region names per locale, from flag emoji via `Intl.DisplayNames`.           |
 | `profile.ts`         | Parses `AccountFacts` off a User node — timeline or AboutAccountQuery alike.        |
 | `source.ts`          | The one place X's `source` is read: platform + store country, plus the SVG glyphs.  |
@@ -169,9 +169,7 @@ the worker (`GET_MESSAGES`), and nothing under `_locales/` is reachable from the
 
 ```typescript
 BLOCKED_COUNTRIES_KEY = 'blockedCountries'
-HIGHLIGHT_KEYWORDS_KEY = 'highlightKeywords'
-KEYWORD_NAME_MATCH_KEY = 'keywordNameMatch' // 'word' | 'partial'; default 'partial'
-KEYWORD_BIO_MATCH_KEY = 'keywordBioMatch' // 'word' | 'partial'; default 'word'
+HIGHLIGHT_KEYWORDS_KEY = 'highlightKeywords' // {text, mode}[]; mode default 'word'
 HIGHLIGHT_FLAGS_KEY = 'highlightFlags'
 SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed' // default ON
 HIDE_BLOCKED_LOCATIONS_KEY = 'hideBlockedLocations' // 'off' | 'collapse' | 'hide'; default 'collapse'

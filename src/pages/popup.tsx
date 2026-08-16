@@ -1,13 +1,14 @@
 import {
   defaultSetting,
+  type HideBlockedMode,
   normalizeHideBlockedMode,
   normalizePopupSection,
   normalizeRatePrompt,
   normalizeUsageStats,
+  type PopupSection,
   readSetting,
   withKeyword,
   withLocation,
-  withoutKeyword,
   withoutLocation,
 } from '../scripts/settings'
 import {
@@ -30,12 +31,11 @@ import type { ComponentChildren } from 'preact'
 import { render } from 'preact'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
+import { KeywordAddRow, KeywordChips } from '../components/KeywordChips'
 import {
   CANONICAL_LOCATIONS,
   flagFor,
-  type HideBlockedMode,
   LOCATION_ALIASES,
-  type PopupSection,
   REGION_MEMBERS,
 } from '../scripts/countries/countries'
 import {
@@ -44,6 +44,7 @@ import {
   refreshCacheCount,
   rememberedCount,
 } from '../scripts/cache/shared-cache'
+import type { Keyword, MatchMode } from '../scripts/keywords'
 import {
   REVIEW_URL,
   setRatePromptState,
@@ -185,7 +186,8 @@ export function Popup() {
     defaultSetting(HIDE_BLOCKED_LOCATIONS_KEY),
   )
   const [blocked, setBlocked] = useState<string[]>([])
-  const [keywords, setKeywords] = useState<string[]>([])
+  const [keywords, setKeywords] = useState<Keyword[]>([])
+  const [newKeywordMode, setNewKeywordMode] = useState<MatchMode>('word')
   const [section, setSection] = useState<PopupSection | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [askRating, setAskRating] = useState(false)
@@ -281,7 +283,7 @@ export function Popup() {
     write(BLOCKED_COUNTRIES_KEY, next)
   }
 
-  function editKeywords(next: string[]) {
+  function editKeywords(next: Keyword[]) {
     if (next === keywords) return
     setKeywords(next)
     write(HIGHLIGHT_KEYWORDS_KEY, next)
@@ -432,32 +434,29 @@ export function Popup() {
           open={section === 'keywords'}
           onOpen={openSection}
         >
-          {keywords.length > 0 && (
-            <div class={css.chips}>
-              {keywords.map((kw) => (
-                <span key={kw} class={`${css.chip} ${css.chipKeyword}`}>
-                  {kw}
-                  <button
-                    class={css.chipRemove}
-                    onClick={() => editKeywords(withoutKeyword(keywords, kw))}
-                    title={t('removeItem', kw)}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          <Autocomplete
-            id="popup-keyword"
-            selected={keywords}
-            allOptions={[]}
-            onSelect={(kw) => editKeywords(withKeyword(keywords, kw))}
-            placeholder={t('popupKeywordPlaceholder')}
-            allowFreeInput
-            closeOnSelect={false}
+          <KeywordChips
+            keywords={keywords}
+            classes={{
+              chips: css.chips,
+              chip: `${css.chip} ${css.chipKeyword}`,
+              remove: css.chipRemove,
+            }}
+            onChange={editKeywords}
           />
+
+          <KeywordAddRow mode={newKeywordMode} onMode={setNewKeywordMode}>
+            <Autocomplete
+              id="popup-keyword"
+              selected={keywords.map((kw) => kw.text)}
+              allOptions={[]}
+              onSelect={(kw) =>
+                editKeywords(withKeyword(keywords, kw, newKeywordMode))
+              }
+              placeholder={t('popupKeywordPlaceholder')}
+              allowFreeInput
+              closeOnSelect={false}
+            />
+          </KeywordAddRow>
 
           {keywords.length === 0 && (
             <p class={css.empty}>{t('popupNoKeywords')}</p>
