@@ -3,6 +3,14 @@
    on <html> and 'system' needs no JavaScript at all. */
 :root {
   color-scheme: light dark;
+  /* The document never scrolls; the panel does. Chrome sizes the popup window
+     to the document, so anything that changes the document's width when the
+     content grows moves the whole popup — and a document scrollbar is exactly
+     that: `overflow-y: scroll` is not honoured while the content still fits,
+     `scrollbar-gutter: stable` is not measured, and neither survived opening a
+     region's country list. Nothing here can scroll, so none of it can happen;
+     the scroll and its scrollbar live inside .popup, where a gutter behaves. */
+  overflow: hidden;
 }
 
 :root[data-theme='light'] {
@@ -13,15 +21,36 @@
   color-scheme: dark;
 }
 
+/* The panel is the window: no 8px of canvas around it to widen the document. */
+body {
+  margin: 0;
+}
+
 .popup {
   font-family:
     system-ui,
     -apple-system,
     sans-serif;
-  /* Wider than the 268px this started at, because the filter lists brought an
-     autocomplete with them and "Country or region…" plus a dropdown row needs
-     the room. Still a panel, not a page. */
-  width: 300px;
+  /* This is what fixes the popup's width — 324px including the padding, which
+     is the 300px panel this had before plus what it always sat in. Wider than
+     the 268px it started at, because the filter lists brought an autocomplete
+     with them and "Country or region…" plus a dropdown row needs the room.
+     Still a panel, not a page.
+
+     This is also the scroller. Its gutter is reserved whether or not there is
+     anything to scroll, so the 15px comes off the content once and for all
+     rather than when a section opens — and `max-width: 100%` keeps the panel
+     inside the window whatever width Chrome settles on. */
+  width: 324px;
+  max-width: 100%;
+  box-sizing: border-box;
+  /* Chrome's own ceiling for a popup, in px because `100vh` is not usable
+     here: the popup starts life in a viewport a few pixels tall and Chrome
+     measures the document before it grows, so a vh cap collapsed the panel —
+     and with it the window — to nothing. */
+  max-height: 600px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   padding: 10px 12px 12px;
   color: var(--text);
   background: light-dark(#ffffff, #15181c);

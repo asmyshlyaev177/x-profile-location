@@ -119,6 +119,25 @@ test('the settings card gets more than one column', async ({ page }) => {
   expect(second.x).toBeGreaterThan(right(first) - 1)
 })
 
+test("nothing hangs over the edge when the panel has to give up the scrollbar's width", async ({
+  page,
+}) => {
+  // Chrome may or may not count the popup's scrollbar when it sizes the window;
+  // where it does not, the panel loses those 15px. `max-width: 100%` is what
+  // makes that a narrower panel rather than a clipped one, and a 57-country
+  // region is the widest thing it has to hold.
+  await page.setViewportSize({ width: 309 + 48, height: 900 })
+  const panel = await box(page.locator('.popup'))
+  const picker = await box(page.locator('#narrow-picker'))
+  const rows = await page.locator('#narrow-members label').all()
+
+  expect(panel.width).toBeLessThanOrEqual(309)
+  expect(right(picker)).toBeLessThanOrEqual(right(panel))
+  for (const row of rows) {
+    expect(right(await box(row))).toBeLessThanOrEqual(right(picker))
+  }
+})
+
 test('both themes render the picker, and differently', async ({ page }) => {
   const readColours = async () => ({
     picker: await styleOf(page.locator('#narrow-picker'), 'background-color'),

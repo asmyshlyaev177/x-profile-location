@@ -18,7 +18,7 @@ test('the fixture is wearing the real stylesheet', async ({ page }) => {
   // Guard against a vacuous suite: if the class names in the fixture and in
   // popup.module.css ever part company, every box below is measured on unstyled
   // markup and several of the assertions would still pass.
-  expect(await styleOf(page.locator('.popup'), 'width')).toBe('300px')
+  expect(await styleOf(page.locator('.popup'), 'width')).toBe('324px')
   expect(await styleOf(page.locator('#rate'), 'border-radius')).toBe('8px')
 })
 
@@ -139,6 +139,35 @@ test('it does not collide with the footer rule above it', async ({ page }) => {
 
   expect(gap).toBeGreaterThan(0)
   expect(gap).toBeLessThanOrEqual(12)
+})
+
+test('the panel scrolls, the document never does', async ({ page }) => {
+  // Chrome sizes the popup window to the document, so a document that can
+  // scroll is a window that changes width: the scrollbar appears when a filter
+  // section opens and the whole popup moves. Neither `overflow-y: scroll` nor
+  // `scrollbar-gutter: stable` on :root fixed that — the first is not honoured
+  // while the content still fits, the second is not measured. So the document
+  // cannot scroll at all, and the scroll lives in the panel, whose gutter is
+  // reserved whether or not there is anything to scroll.
+  expect(await styleOf(page.locator(':root'), 'overflow-y')).toBe('hidden')
+  expect(await styleOf(page.locator('.popup'), 'overflow-y')).toBe('auto')
+  expect(await styleOf(page.locator('.popup'), 'scrollbar-gutter')).toBe(
+    'stable',
+  )
+
+  // Overflowing content lands in the panel's own scroll. `hidden` rather than
+  // `clip` on the document: it draws no scrollbar either way, and it leaves the
+  // content programmatically reachable if a panel ever fails to cap its height.
+  const panelScrolled = await page.evaluate(() => {
+    const panel = document.querySelector('.popup')!
+    const filler = document.createElement('div')
+    filler.style.height = '4000px'
+    panel.append(filler)
+    panel.scrollTop = 500
+    return panel.scrollTop
+  })
+
+  expect(panelScrolled).toBeGreaterThan(0)
 })
 
 test('both themes render it, and differently', async ({ page }) => {
