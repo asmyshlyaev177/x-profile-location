@@ -230,6 +230,15 @@
   "regionCountries": {
     "message": "wilayah · $1 negara"
   },
+  "regionPickTitle": {
+    "message": "Pilih negara mana yang difilter wilayah ini. Tanpa satu pun dipilih, hanya profil yang menyebut wilayahnya sendiri yang difilter."
+  },
+  "regionAll": {
+    "message": "Semua"
+  },
+  "regionNone": {
+    "message": "Tidak ada"
+  },
   "emptyNoLocations": {
     "message": "Tidak ada lokasi dipilih — semua bendera ditampilkan apa adanya."
   },

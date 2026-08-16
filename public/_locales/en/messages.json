@@ -287,6 +287,18 @@
     "message": "region · $1 countries",
     "description": "Note beside a region in the location picker. $1 is how many countries the region covers."
   },
+  "regionPickTitle": {
+    "message": "Choose which countries this region filters. With none picked it filters only profiles that say the region itself.",
+    "description": "Explains the checkbox list of a blocked region's countries."
+  },
+  "regionAll": {
+    "message": "All",
+    "description": "Button that re-checks every country of a blocked region."
+  },
+  "regionNone": {
+    "message": "None",
+    "description": "Button that unchecks every country of a blocked region."
+  },
   "emptyNoLocations": {
     "message": "No locations selected — all flags shown as-is.",
     "description": "Empty state under the location list."

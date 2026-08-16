@@ -33,15 +33,19 @@ export async function openFixture(page: Page, name: string): Promise<void> {
 export async function openPopupFixture(
   page: Page,
   theme: 'system' | 'light' | 'dark' = 'light',
+  fixture = 'popup',
+  extraModules: string[] = [],
 ): Promise<void> {
-  const url = new URL('./fixtures/popup.html', import.meta.url)
+  const url = new URL(`./fixtures/${fixture}.html`, import.meta.url)
   await page.goto(`file://${fileURLToPath(url)}`)
-  await page.addStyleTag({
-    content: readFileSync(
-      fileURLToPath(new URL('../src/pages/popup.module.css', import.meta.url)),
-      'utf-8',
-    ),
-  })
+  for (const module of ['../src/pages/popup.module.css', ...extraModules]) {
+    await page.addStyleTag({
+      content: readFileSync(
+        fileURLToPath(new URL(module, import.meta.url)),
+        'utf-8',
+      ),
+    })
+  }
   if (theme !== 'system') {
     await page.evaluate(
       (t) => document.documentElement.setAttribute('data-theme', t),

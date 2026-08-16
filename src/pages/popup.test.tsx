@@ -4,6 +4,7 @@ import {
   HIGHLIGHT_KEYWORDS_KEY,
   POPUP_SECTION_KEY,
   RATE_PROMPT_KEY,
+  REGION_EXCLUSIONS_KEY,
   SHARED_CACHE_COUNT_KEY,
   SHARED_CACHE_KEY,
   USAGE_STATS_KEY,
@@ -13,6 +14,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RATE_PROMPT_MIN_DAYS, RATE_PROMPT_SNOOZE_MS } from '../scripts/usage'
 import { COUNT_POLL_MS } from '../scripts/cache/shared-cache'
+import { REGION_MEMBERS } from '../scripts/countries/countries'
+
+const SOUTH_ASIA = REGION_MEMBERS['South Asia']
 
 // Mutable backing store for the chrome.storage.local mock. It has to be in
 // place before popup.tsx is imported below — the module renders itself into
@@ -263,6 +267,27 @@ describe('editing the filters from the popup', () => {
 
     await waitFor(() =>
       expect(lastWrite(BLOCKED_COUNTRIES_KEY)).toEqual(['India']),
+    )
+  })
+
+  it('picks which countries a blocked region covers', async () => {
+    const { getByTitle } = mountStored({
+      [POPUP_SECTION_KEY]: 'locations',
+      [BLOCKED_COUNTRIES_KEY]: ['South Asia'],
+    })
+
+    const chip = await waitFor(() => getByTitle(/Choose which countries/))
+    expect(chip.textContent).toContain(`${SOUTH_ASIA.length}/`)
+    fireEvent.click(chip)
+
+    const nepal = [...document.querySelectorAll('label')].find((el) =>
+      el.textContent?.includes('Nepal'),
+    )
+    fireEvent.click(nepal?.querySelector('input') as HTMLInputElement)
+    await waitFor(() =>
+      expect(lastWrite(REGION_EXCLUSIONS_KEY)).toEqual({
+        'South Asia': ['Nepal'],
+      }),
     )
   })
 

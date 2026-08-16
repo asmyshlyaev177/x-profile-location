@@ -230,6 +230,15 @@
   "regionCountries": {
     "message": "地区 · $1 个国家"
   },
+  "regionPickTitle": {
+    "message": "选择该地区要过滤哪些国家。一个都不选时，只过滤位置写着该地区本身的账号。"
+  },
+  "regionAll": {
+    "message": "全部"
+  },
+  "regionNone": {
+    "message": "无"
+  },
   "emptyNoLocations": {
     "message": "未选择地区 — 所有旗标照常显示。"
   },

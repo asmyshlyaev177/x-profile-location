@@ -230,6 +230,15 @@
   "regionCountries": {
     "message": "bölge · $1 ülke"
   },
+  "regionPickTitle": {
+    "message": "Bu bölgenin hangi ülkeleri filtreleyeceğini seçin. Hiçbiri seçili değilse yalnızca bölgenin kendisini yazan profiller filtrelenir."
+  },
+  "regionAll": {
+    "message": "Tümü"
+  },
+  "regionNone": {
+    "message": "Hiçbiri"
+  },
   "emptyNoLocations": {
     "message": "Konum seçilmedi — tüm bayraklar olduğu gibi gösteriliyor."
   },

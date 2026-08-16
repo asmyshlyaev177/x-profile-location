@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Region member picker</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <h4>A blocked region's chip and the picker it opens, in the popup</h4>
+
+    <!--
+      Two stylesheets over this one: popup.module.css owns the chip, and
+      LocationChips.module.css owns the chip's own button, the count and the
+      picker. The spec injects both as written, so a class renamed in either
+      source without being renamed here leaves the element unstyled.
+
+      The chip and the picker are copies of what LocationChips renders. Their
+      behaviour is unit-tested; only the cascade needs a browser — and the
+      constraint that matters is 300px with a region name, a count and a ×.
+    -->
+    <div class="popup">
+      <div class="chips" id="chips">
+        <span class="chip" id="region-chip">
+          <button class="open" id="region-open" aria-expanded="true">
+            <span class="chipFlag" id="region-flag">🌏</span>
+            South Asia
+            <span class="count" id="region-count">18/20</span>
+          </button>
+          <button class="chipRemove" id="region-remove">×</button>
+        </span>
+        <span class="chip" id="country-chip">
+          <span class="chipFlag">🇫🇷</span>
+          France
+          <button class="chipRemove" id="country-remove">×</button>
+        </span>
+      </div>
+
+      <div class="picker" id="narrow-picker">
+        <div class="pickerHead">
+          <span class="pickerTitle">South Asia</span>
+          <button class="bulk" id="narrow-all">All</button>
+          <button class="bulk" id="narrow-none">None</button>
+        </div>
+        <p class="pickerNote">
+          Choose which countries this region filters. With none picked it
+          filters only profiles that say the region itself.
+        </p>
+        <div class="members" id="narrow-members">
+          <label class="member" id="narrow-0">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇦🇫</span>
+            <span>Afghanistan</span>
+          </label>
+          <label class="member" id="narrow-1">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇧🇩</span>
+            <span>Bangladesh</span>
+          </label>
+          <label class="member" id="narrow-2">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇧🇹</span>
+            <span>Bhutan</span>
+          </label>
+          <label class="member" id="narrow-3">
+            <input type="checkbox" />
+            <span class="chipFlag">🇮🇳</span>
+            <span>India</span>
+          </label>
+          <label class="member" id="narrow-4">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇮🇷</span>
+            <span>Iran</span>
+          </label>
+          <label class="member" id="narrow-5">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇲🇻</span>
+            <span>Maldives</span>
+          </label>
+          <label class="member" id="narrow-6">
+            <input type="checkbox" />
+            <span class="chipFlag">🇳🇵</span>
+            <span>Nepal</span>
+          </label>
+          <label class="member" id="narrow-7">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇵🇰</span>
+            <span>Pakistan</span>
+          </label>
+          <label class="member" id="narrow-8">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇱🇰</span>
+            <span>Sri Lanka</span>
+          </label>
+          <label class="member" id="narrow-9">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇰🇿</span>
+            <span>Kazakhstan</span>
+          </label>
+          <label class="member" id="narrow-10">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇰🇬</span>
+            <span>Kyrgyzstan</span>
+          </label>
+          <label class="member" id="narrow-11">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇹🇯</span>
+            <span>Tajikistan</span>
+          </label>
+          <label class="member" id="narrow-12">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇹🇲</span>
+            <span>Turkmenistan</span>
+          </label>
+          <label class="member" id="narrow-13">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇺🇿</span>
+            <span>Uzbekistan</span>
+          </label>
+          <label class="member" id="narrow-14">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇲🇳</span>
+            <span>Mongolia</span>
+          </label>
+          <label class="member" id="narrow-15">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇦🇲</span>
+            <span>Armenia</span>
+          </label>
+          <label class="member" id="narrow-16">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇦🇿</span>
+            <span>Azerbaijan</span>
+          </label>
+          <label class="member" id="narrow-17">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇬🇪</span>
+            <span>Georgia</span>
+          </label>
+          <label class="member" id="narrow-18">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇹🇷</span>
+            <span>Türkiye</span>
+          </label>
+          <label class="member" id="narrow-19">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇷🇺</span>
+            <span>Russia</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <h4>The same picker with a settings card's width to work with</h4>
+
+    <div class="wide">
+      <div class="picker" id="wide-picker">
+        <div class="pickerHead">
+          <span class="pickerTitle">South Asia</span>
+          <button class="bulk" id="wide-all">All</button>
+          <button class="bulk" id="wide-none">None</button>
+        </div>
+        <p class="pickerNote">
+          Choose which countries this region filters. With none picked it
+          filters only profiles that say the region itself.
+        </p>
+        <div class="members" id="wide-members">
+          <label class="member" id="wide-0">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇦🇫</span>
+            <span>Afghanistan</span>
+          </label>
+          <label class="member" id="wide-1">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇧🇩</span>
+            <span>Bangladesh</span>
+          </label>
+          <label class="member" id="wide-2">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇧🇹</span>
+            <span>Bhutan</span>
+          </label>
+          <label class="member" id="wide-3">
+            <input type="checkbox" />
+            <span class="chipFlag">🇮🇳</span>
+            <span>India</span>
+          </label>
+          <label class="member" id="wide-4">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇮🇷</span>
+            <span>Iran</span>
+          </label>
+          <label class="member" id="wide-5">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇲🇻</span>
+            <span>Maldives</span>
+          </label>
+          <label class="member" id="wide-6">
+            <input type="checkbox" />
+            <span class="chipFlag">🇳🇵</span>
+            <span>Nepal</span>
+          </label>
+          <label class="member" id="wide-7">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇵🇰</span>
+            <span>Pakistan</span>
+          </label>
+          <label class="member" id="wide-8">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇱🇰</span>
+            <span>Sri Lanka</span>
+          </label>
+          <label class="member" id="wide-9">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇰🇿</span>
+            <span>Kazakhstan</span>
+          </label>
+          <label class="member" id="wide-10">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇰🇬</span>
+            <span>Kyrgyzstan</span>
+          </label>
+          <label class="member" id="wide-11">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇹🇯</span>
+            <span>Tajikistan</span>
+          </label>
+          <label class="member" id="wide-12">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇹🇲</span>
+            <span>Turkmenistan</span>
+          </label>
+          <label class="member" id="wide-13">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇺🇿</span>
+            <span>Uzbekistan</span>
+          </label>
+          <label class="member" id="wide-14">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇲🇳</span>
+            <span>Mongolia</span>
+          </label>
+          <label class="member" id="wide-15">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇦🇲</span>
+            <span>Armenia</span>
+          </label>
+          <label class="member" id="wide-16">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇦🇿</span>
+            <span>Azerbaijan</span>
+          </label>
+          <label class="member" id="wide-17">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇬🇪</span>
+            <span>Georgia</span>
+          </label>
+          <label class="member" id="wide-18">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇹🇷</span>
+            <span>Türkiye</span>
+          </label>
+          <label class="member" id="wide-19">
+            <input type="checkbox" checked />
+            <span class="chipFlag">🇷🇺</span>
+            <span>Russia</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

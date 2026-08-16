@@ -7,6 +7,7 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
   PREFETCH_SHARE_KEY,
+  REGION_EXCLUSIONS_KEY,
   RULE_EXCEPTIONS_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
 } from './constants'
@@ -38,6 +39,7 @@ import {
   withKeyword,
   withKeywordMode,
   withLocation,
+  withRegionExclusions,
   withoutKeyword,
   withoutLocation,
 } from './settings'
@@ -254,6 +256,34 @@ describe('a keyword carries its own match mode', () => {
     // Nothing to write when it already reads that way, or is not on the list.
     expect(withKeywordMode(keywords, 'nft', 'word')).toBe(keywords)
     expect(withKeywordMode(keywords, 'crypto', 'partial')).toBe(keywords)
+  })
+})
+
+describe('region exclusions', () => {
+  it('drops anything that is not a real member of a real region', () => {
+    expect(
+      settingValue(REGION_EXCLUSIONS_KEY, {
+        'South Asia': ['Nepal', 'France', 7],
+        Atlantis: ['Nepal'],
+        Europe: 'not a list',
+      }),
+    ).toEqual({ 'South Asia': ['Nepal'] })
+  })
+
+  it('folds a member onto the name the region lists it under', () => {
+    expect(
+      settingValue(REGION_EXCLUSIONS_KEY, { Europe: ['Czech Republic'] }),
+    ).toEqual({ Europe: ['Czechia'] })
+  })
+
+  it('defaults to nothing excluded', () => {
+    expect(defaultSetting(REGION_EXCLUSIONS_KEY)).toEqual({})
+  })
+
+  it('forgets a region again once it covers everything', () => {
+    const one = withRegionExclusions({}, 'South Asia', ['Nepal'])
+    expect(one).toEqual({ 'South Asia': ['Nepal'] })
+    expect(withRegionExclusions(one, 'South Asia', [])).toEqual({})
   })
 })
 

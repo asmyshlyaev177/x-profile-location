@@ -230,6 +230,15 @@
   "regionCountries": {
     "message": "khu vực · $1 quốc gia"
   },
+  "regionPickTitle": {
+    "message": "Chọn những quốc gia mà khu vực này lọc. Nếu không chọn quốc gia nào, chỉ những hồ sơ ghi chính tên khu vực mới bị lọc."
+  },
+  "regionAll": {
+    "message": "Tất cả"
+  },
+  "regionNone": {
+    "message": "Không có"
+  },
   "emptyNoLocations": {
     "message": "Chưa chọn vị trí — tất cả cờ hiển thị nguyên trạng."
   },

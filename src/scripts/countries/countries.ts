@@ -801,15 +801,37 @@ REGION_MEMBERS['East Asia & Pacific'] = [
 ]
 
 /**
- * Each region replaced by itself plus its members — X reports both. Only the
- * content script expands; storage keeps the user's picks as they made them.
+ * Members the user has unchecked under a blocked region, keyed by region: a
+ * country dropped from one region is still blocked through another that keeps
+ * it, and through its own chip.
  */
-export function expandLocations(list: Iterable<string>): Set<string> {
+export type RegionExclusions = Record<string, string[]>
+
+/** The members of `region` still covered by it. */
+export function includedMembers(
+  region: string,
+  exclusions: RegionExclusions = {},
+): string[] {
+  const members = REGION_MEMBERS[region]
+  if (!members) return []
+  const dropped = new Set((exclusions[region] ?? []).map(canonicalLocation))
+  return members.filter((m) => !dropped.has(canonicalLocation(m)))
+}
+
+/**
+ * Each region replaced by itself plus the members it still covers — X reports
+ * both shapes. Only the content script expands; storage keeps the user's picks
+ * as they made them.
+ */
+export function expandLocations(
+  list: Iterable<string>,
+  exclusions: RegionExclusions = {},
+): Set<string> {
   const out = new Set<string>()
   for (const raw of list) {
     const name = canonicalLocation(raw)
     out.add(name)
-    for (const member of REGION_MEMBERS[name] ?? []) {
+    for (const member of includedMembers(name, exclusions)) {
       out.add(canonicalLocation(member))
     }
   }

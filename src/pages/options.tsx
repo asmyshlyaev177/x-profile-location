@@ -32,7 +32,6 @@ import {
   type ThemePreference,
   withKeyword,
   withLocation,
-  withoutLocation,
 } from '../scripts/settings'
 import {
   ACCOUNT_AGE_KEY,
@@ -50,6 +49,7 @@ import {
   OPTIONS_TAB_KEY,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
+  REGION_EXCLUSIONS_KEY,
   RULE_EXCEPTIONS_KEY,
   SHARED_CACHE_KEY,
   SHOW_ACCOUNT_CARD_KEY,
@@ -70,9 +70,11 @@ import {
   CANONICAL_LOCATIONS,
   flagFor,
   LOCATION_ALIASES,
+  type RegionExclusions,
   REGION_MEMBERS,
 } from '../scripts/countries/countries'
 import { KeywordAddRow, KeywordChips } from '../components/KeywordChips'
+import { LocationChips } from '../components/LocationChips'
 import { isMobile } from '../scripts/device'
 import type { Keyword, MatchMode } from '../scripts/keywords'
 import { isSharedCacheConfigured } from '../scripts/cache/shared-cache'
@@ -214,6 +216,7 @@ export function Options() {
   const [tab, setTab] = useState<OptionsTabId>('display')
   const [enabled, setEnabled] = useState(defaultSetting(EXTENSION_ENABLED_KEY))
   const [blocked, setBlocked] = useState<string[]>([])
+  const [exclusions, setExclusions] = useState<RegionExclusions>({})
   const [affiliations, setAffiliations] = useState<string[]>([])
   const [accountAge, setAccountAge] = useState<AccountAgeFilter>(
     defaultSetting(ACCOUNT_AGE_KEY),
@@ -292,6 +295,7 @@ export function Options() {
       .then((result) => {
         setEnabled(readSetting(EXTENSION_ENABLED_KEY, result))
         setBlocked(readSetting(BLOCKED_COUNTRIES_KEY, result))
+        setExclusions(readSetting(REGION_EXCLUSIONS_KEY, result))
         setAffiliations(readSetting(BLOCKED_AFFILIATIONS_KEY, result))
         setAccountAge(readSetting(ACCOUNT_AGE_KEY, result))
         setKeywords(readSetting(HIGHLIGHT_KEYWORDS_KEY, result))
@@ -364,6 +368,11 @@ export function Options() {
     if (next === blocked) return
     setBlocked(next)
     chrome.storage.local.set({ [BLOCKED_COUNTRIES_KEY]: next })
+  }
+
+  function editExclusions(next: RegionExclusions) {
+    setExclusions(next)
+    chrome.storage.local.set({ [REGION_EXCLUSIONS_KEY]: next })
   }
 
   function addAffiliation(handle: string) {
@@ -768,33 +777,18 @@ export function Options() {
 
           <Card title={t('cardLocations')} description={t('cardLocationsDesc')}>
             <Stack>
-              {blocked.length > 0 && (
-                <div class={css.chips}>
-                  {blocked.map((country) => {
-                    const members = REGION_MEMBERS[country]
-                    return (
-                      <span key={country} class={css.chip}>
-                        <span class={css.chipFlag}>{flagFor(country)}</span>
-                        {localizedLocation(country)}
-                        {members && (
-                          <span class={css.chipNote} title={members.join(', ')}>
-                            +{members.length}
-                          </span>
-                        )}
-                        <button
-                          class={css.chipRemove}
-                          onClick={() =>
-                            editBlocked(withoutLocation(blocked, country))
-                          }
-                          title={t('removeItem', localizedLocation(country))}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    )
-                  })}
-                </div>
-              )}
+              <LocationChips
+                blocked={blocked}
+                exclusions={exclusions}
+                classes={{
+                  chips: css.chips,
+                  chip: css.chip,
+                  flag: css.chipFlag,
+                  remove: css.chipRemove,
+                }}
+                onBlocked={editBlocked}
+                onExclusions={editExclusions}
+              />
 
               <Autocomplete
                 id="country"

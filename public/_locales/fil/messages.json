@@ -230,6 +230,15 @@
   "regionCountries": {
     "message": "rehiyon · $1 bansa"
   },
+  "regionPickTitle": {
+    "message": "Piliin kung aling mga bansa ang sinasala ng rehiyong ito. Kapag wala kang pinili, ang mga profile lang na nakasaad ang mismong rehiyon ang sinasala."
+  },
+  "regionAll": {
+    "message": "Lahat"
+  },
+  "regionNone": {
+    "message": "Wala"
+  },
   "emptyNoLocations": {
     "message": "Walang napiling lokasyon — lahat ng bandila ipinapakita."
   },

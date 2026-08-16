@@ -13,6 +13,7 @@ import {
   OPTIONS_TAB_KEY,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
+  REGION_EXCLUSIONS_KEY,
   RULE_EXCEPTIONS_KEY,
   SHARED_CACHE_KEY,
   SHOW_ADVANCED_KEY,
@@ -346,22 +347,114 @@ describe('tabs', () => {
 // Filters tab
 // ---------------------------------------------------------------------------
 describe('blocked locations', () => {
-  it('shows how many countries a region stands for', async () => {
+  const SOUTH_ASIA = REGION_MEMBERS['South Asia']
+  const COVERAGE = /(\d+)\/(\d+)/
+
+  /** The chip body of the one blocked region, which is what opens the picker. */
+  function regionChip(root: ParentNode) {
+    return [...section(root, BLOCKED_LABEL).querySelectorAll('button')].find(
+      (el) => COVERAGE.test(el.textContent ?? ''),
+    )
+  }
+
+  const coverage = (root: ParentNode) =>
+    regionChip(root)?.textContent?.match(COVERAGE)?.[0]
+
+  it('shows how many countries of a region it covers', async () => {
     const { container } = mountStored(
       { [BLOCKED_COUNTRIES_KEY]: ['South Asia', 'France'] },
       'filters',
     )
-    await waitFor(() => expect(section(container, BLOCKED_LABEL)).toBeDefined())
+    await waitFor(() => expect(regionChip(container)).toBeDefined())
 
-    const chips = [
-      ...section(container, BLOCKED_LABEL).querySelectorAll('span'),
-    ]
-    const regionNote = chips.find((el) =>
-      el.textContent?.startsWith(`+${REGION_MEMBERS['South Asia'].length}`),
+    // A plain country stands for itself, so it gets no count and no picker.
+    expect(
+      [...section(container, BLOCKED_LABEL).querySelectorAll('button')].filter(
+        (el) => COVERAGE.test(el.textContent ?? ''),
+      ),
+    ).toHaveLength(1)
+    expect(coverage(container)).toBe(
+      `${SOUTH_ASIA.length}/${SOUTH_ASIA.length}`,
     )
-    expect(regionNote).toBeDefined()
-    // A plain country stands for itself, so it gets no count.
-    expect(chips.filter((el) => el.textContent?.startsWith('+')).length).toBe(1)
+  })
+
+  it('counts only the members still checked', async () => {
+    const { container } = mountStored(
+      {
+        [BLOCKED_COUNTRIES_KEY]: ['South Asia'],
+        [REGION_EXCLUSIONS_KEY]: { 'South Asia': ['Nepal'] },
+      },
+      'filters',
+    )
+    await waitFor(() => expect(regionChip(container)).toBeDefined())
+    expect(coverage(container)).toBe(
+      `${SOUTH_ASIA.length - 1}/${SOUTH_ASIA.length}`,
+    )
+  })
+
+  it('unchecking a country excludes it from the region', async () => {
+    const { container } = mountStored(
+      { [BLOCKED_COUNTRIES_KEY]: ['South Asia'] },
+      'filters',
+    )
+    await waitFor(() => expect(regionChip(container)).toBeDefined())
+    fireEvent.click(regionChip(container) as HTMLElement)
+
+    const nepal = [
+      ...section(container, BLOCKED_LABEL).querySelectorAll('label'),
+    ].find((el) => el.textContent?.includes('Nepal'))
+    fireEvent.click(nepal?.querySelector('input') as HTMLInputElement)
+
+    expect(setMock).toHaveBeenCalledWith({
+      [REGION_EXCLUSIONS_KEY]: { 'South Asia': ['Nepal'] },
+    })
+    await waitFor(() =>
+      expect(coverage(container)).toBe(
+        `${SOUTH_ASIA.length - 1}/${SOUTH_ASIA.length}`,
+      ),
+    )
+  })
+
+  it('"None" leaves the region matching only its own label', async () => {
+    const { container } = mountStored(
+      { [BLOCKED_COUNTRIES_KEY]: ['South Asia'] },
+      'filters',
+    )
+    await waitFor(() => expect(regionChip(container)).toBeDefined())
+    fireEvent.click(regionChip(container) as HTMLElement)
+
+    const none = [
+      ...section(container, BLOCKED_LABEL).querySelectorAll('button'),
+    ].find((el) => el.textContent === 'None')
+    fireEvent.click(none as HTMLElement)
+
+    expect(setMock).toHaveBeenCalledWith({
+      [REGION_EXCLUSIONS_KEY]: { 'South Asia': [...SOUTH_ASIA] },
+    })
+    await waitFor(() =>
+      expect(coverage(container)).toBe(`0/${SOUTH_ASIA.length}`),
+    )
+  })
+
+  it('closes the picker with the region it belongs to', async () => {
+    const { container } = mountStored(
+      { [BLOCKED_COUNTRIES_KEY]: ['South Asia'] },
+      'filters',
+    )
+    await waitFor(() => expect(regionChip(container)).toBeDefined())
+    fireEvent.click(regionChip(container) as HTMLElement)
+
+    const card = section(container, BLOCKED_LABEL)
+    expect(card.textContent).toContain('Nepal')
+    fireEvent.click(
+      card.querySelector('button[title^="Remove"]') as HTMLElement,
+    )
+
+    await waitFor(() =>
+      expect(section(container, BLOCKED_LABEL).textContent).not.toContain(
+        'Nepal',
+      ),
+    )
   })
 
   it('folds an alias onto one chip, matching what is actually blocked', async () => {

@@ -1,4 +1,5 @@
 import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from '../constants'
+import { REGION_MEMBERS } from '../countries/countries'
 import type { Keyword } from '../keywords'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -3762,6 +3763,86 @@ describe('region filtering', () => {
     await flushAsync()
 
     expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+  })
+
+  it('leaves a member the user unchecked alone', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({
+      blockedCountries: ['East Asia'],
+      regionExclusions: { 'East Asia': ['Japan'] },
+      hideBlockedLocations: 'collapse',
+    })
+
+    const article = makeTweetArticle('someone')
+    document.body.appendChild(article)
+    await flushAsync()
+    await flushAsync()
+
+    expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+  })
+
+  // A region with nothing checked is the label and nothing else: an account X
+  // reports as the region is caught, and every country under it is not.
+  describe('with no member countries checked', () => {
+    const NOTHING_CHECKED = {
+      blockedCountries: ['East Asia'],
+      regionExclusions: { 'East Asia': [...REGION_MEMBERS['East Asia']] },
+      hideBlockedLocations: 'collapse',
+    }
+
+    it('catches an account reported as the region itself', async () => {
+      vi.mocked(getCached).mockResolvedValue({
+        location: 'East Asia',
+        locationAccurate: true,
+        source: null,
+      })
+      pushSettings(NOTHING_CHECKED)
+
+      const article = makeTweetArticle('someone')
+      document.body.appendChild(article)
+      await flushAsync()
+      await flushAsync()
+
+      expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+    })
+
+    it('catches nothing else the region covers', async () => {
+      vi.mocked(getCached).mockResolvedValue(JAPAN)
+      pushSettings(NOTHING_CHECKED)
+
+      const article = makeTweetArticle('someone')
+      document.body.appendChild(article)
+      await flushAsync()
+      await flushAsync()
+
+      expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+    })
+
+    it('unchecks the store country too, not only the stated location', async () => {
+      // The App Store country is the stronger signal and takes its own path
+      // through effectiveBlockedLocation — it reads the same set or it lies.
+      vi.mocked(getCached).mockResolvedValue({
+        location: null,
+        locationAccurate: true,
+        source: 'Japan App Store',
+      })
+      pushSettings({
+        blockedCountries: ['East Asia'],
+        hideBlockedLocations: 'collapse',
+      })
+
+      const article = makeTweetArticle('someone')
+      document.body.appendChild(article)
+      await flushAsync()
+      await flushAsync()
+      expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+
+      pushSettings(NOTHING_CHECKED)
+      await flushAsync()
+      await flushAsync()
+
+      expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
+    })
   })
 })
 
