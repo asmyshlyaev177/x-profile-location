@@ -60,15 +60,21 @@ export function graphemeIndicesOf(
 /** Whether a keyword has to stand alone, or may sit inside a longer word. */
 export type MatchMode = 'word' | 'partial'
 
+/** One keyword and how it is read. Every stored keyword carries its own. */
+export interface Keyword {
+  text: string
+  mode: MatchMode
+}
+
 interface Compiled {
   /** Non-global, so `.test` never carries a lastIndex between calls. */
   test: RegExp
   all: RegExp
 }
 
-// Both modes compiled from one keyword list, so they can never describe
-// different keywords.
-let patterns: Record<MatchMode, Compiled | null> = { word: null, partial: null }
+// One pattern for the whole list: each keyword contributes an alternative
+// carrying its own boundaries, so the two modes cost one pass, not two.
+let pattern: Compiled | null = null
 // Grapheme search, or 🇵🇸 matches inside 🇰🇵🇸🇴.
 let emojiKeywordGraphemes: string[][] = []
 
@@ -76,33 +82,38 @@ let emojiKeywordGraphemes: string[][] = []
 // a keyword from matching half an emoji — see the cases in keywords.test.ts.
 // Word boundaries for any script, without grapheme segmentation, are the letters
 // and digits on top of that, and only 'word' asks for them.
+//
+// Deliberately not \w: underscore is a separator here, not a letter. Handles and
+// display names are written with the punctuation a space would be — "nft_lover",
+// "nft.eth", "nft|dev" — and treating one of them as a letter would spare it.
 const CLUSTER_CHARS = '\\p{M}\\u200d'
-const WORD_CHARS = '\\p{L}\\p{N}_'
+const WORD_CHARS = '\\p{L}\\p{N}'
 
-function compile(keywords: string[], mode: MatchMode): Compiled | null {
+function alternative(keyword: Keyword): string {
+  const escaped = keyword.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const word = keyword.mode === 'word' ? WORD_CHARS : ''
+  return `(?<![${word}\\u200d])${escaped}(?![${word}${CLUSTER_CHARS}])`
+}
+
+function compile(keywords: Keyword[]): Compiled | null {
   if (keywords.length === 0) return null
-  const parts = keywords.map((kw) => kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  const word = mode === 'word' ? WORD_CHARS : ''
-  const source = `(?<![${word}\\u200d])(${parts.join('|')})(?![${word}${CLUSTER_CHARS}])`
+  const source = keywords.map(alternative).join('|')
   return { test: new RegExp(source, 'iu'), all: new RegExp(source, 'giu') }
 }
 
-export function setKeywords(keywords: string[]): void {
-  const textKws: string[] = []
+export function setKeywords(keywords: Keyword[]): void {
+  const textKws: Keyword[] = []
   emojiKeywordGraphemes = []
   for (const kw of keywords) {
     // An empty alternative matches almost everywhere, and blanks do reach here.
-    if (kw.trim() === '') continue
-    if ([...kw].length !== kw.length) {
-      emojiKeywordGraphemes.push(toGraphemes(kw))
+    if (kw.text.trim() === '') continue
+    if ([...kw.text].length !== kw.text.length) {
+      emojiKeywordGraphemes.push(toGraphemes(kw.text))
     } else {
       textKws.push(kw)
     }
   }
-  patterns = {
-    word: compile(textKws, 'word'),
-    partial: compile(textKws, 'partial'),
-  }
+  pattern = compile(textKws)
 }
 
 export function emojiKeywords(): string[] {
@@ -135,16 +146,12 @@ function emojiMatchesIn(text: string): KeywordMatch[] {
   return matches
 }
 
-export function findKeywordMatches(
-  text: string,
-  mode: MatchMode = 'word',
-): KeywordMatch[] {
+export function findKeywordMatches(text: string): KeywordMatch[] {
   const matches: KeywordMatch[] = []
-  const compiled = patterns[mode]
 
-  if (compiled !== null) {
+  if (pattern !== null) {
     // matchAll clones the regex, so the stored one's lastIndex is never left set.
-    for (const m of text.matchAll(compiled.all)) {
+    for (const m of text.matchAll(pattern.all)) {
       if (m.index === undefined) continue
       matches.push({ start: m.index, end: m.index + m[0].length })
     }
@@ -155,11 +162,8 @@ export function findKeywordMatches(
   return matches.sort((a, b) => a.start - b.start)
 }
 
-export function matchesAnyKeyword(
-  text: string,
-  mode: MatchMode = 'word',
-): boolean {
-  if (patterns[mode]?.test.test(text)) return true
+export function matchesAnyKeyword(text: string): boolean {
+  if (pattern?.test.test(text)) return true
   if (emojiKeywordGraphemes.length > 0) {
     const haystack = toGraphemes(text)
     for (const needle of emojiKeywordGraphemes) {

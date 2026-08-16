@@ -1,9 +1,5 @@
-import {
-  KEYWORD_BIO_MATCH_KEY,
-  KEYWORD_NAME_MATCH_KEY,
-  RATE_PROMPT_KEY,
-  USAGE_STATS_KEY,
-} from '../constants'
+import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from '../constants'
+import type { Keyword } from '../keywords'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ---------------------------------------------------------------------------
@@ -60,7 +56,7 @@ const snapshot = vi.hoisted(() => ({
 vi.mock('../snapshot', async (importOriginal) => ({
   // allowGrowth is real DOM work with no canvas in it, and decorateSnapshot
   // calls it — only the rendering needs stubbing.
-  ...(await importOriginal<typeof import('./snapshot')>()),
+  ...(await importOriginal<typeof import('../snapshot')>()),
   snapshotElement: snapshot.snapshotElement,
 }))
 
@@ -100,7 +96,7 @@ import {
   __testResetState,
 } from './content'
 import { getCached, mergeCached, clearAllCache } from '../cache/cache'
-import { type FilterRule } from '../countries/countries'
+import type { FilterRule } from '../settings'
 import { dayKey, __resetUsageMemo } from '../usage'
 import { renderShareCard } from '../share-card'
 import {
@@ -1431,13 +1427,13 @@ describe('x-loc-users-data event', () => {
 // ---------------------------------------------------------------------------
 // A name and a bio are asked separately, and the defaults are opposites — see
 // the two keys in constants.ts for why.
-describe('keyword match modes', () => {
+describe('per-keyword match modes', () => {
   afterEach(() => {
     onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
   })
 
-  function trackNft(): void {
-    onChangedCallback({ highlightKeywords: { newValue: ['nft'] } }, 'local')
+  function track(...keywords: Array<string | Keyword>): void {
+    onChangedCallback({ highlightKeywords: { newValue: keywords } }, 'local')
   }
 
   /** Renders a post, hands the extension its author, and answers: marked? */
@@ -1456,57 +1452,49 @@ describe('keyword match modes', () => {
     return article.getAttribute('data-x-loc-highlighted') === '1'
   }
 
-  it('catches a keyword inside a display name, and inside a handle', () => {
-    trackNft()
-    expect(highlighted('someone', 'NFTguy', 'nothing here')).toBe(true)
-    expect(highlighted('nftguy', 'Plain Name', 'nothing here')).toBe(true)
-  })
-
-  it('leaves the same keyword inside a bio word alone', () => {
-    trackNft()
+  // A keyword stored before 1.7.4 is a bare string, and meant whole words.
+  it('holds a plain stored keyword to whole words, in a name and in a bio', () => {
+    track('nft')
+    expect(highlighted('someone', 'NFTguy', 'nothing here')).toBe(false)
+    expect(highlighted('another', 'NFT guy', 'nothing here')).toBe(true)
     expect(highlighted('reader', 'Plain Name', 'minting nfts today')).toBe(
       false,
     )
     expect(highlighted('writer', 'Plain Name', 'minting nft today')).toBe(true)
   })
 
-  it('catches it in a bio once bios are set to match anywhere', () => {
-    trackNft()
-    onChangedCallback(
-      { [KEYWORD_BIO_MATCH_KEY]: { newValue: 'partial' } },
-      'local',
-    )
-
-    expect(highlighted('reader', 'Plain Name', 'minting nfts today')).toBe(true)
+  // The separator a handle is actually written with, and the reason whole words
+  // are a usable default at all.
+  it('reads the punctuation in a handle as a space', () => {
+    track('nft')
+    expect(highlighted('nft_lover', 'Plain Name', 'nothing here')).toBe(true)
+    expect(highlighted('collector', 'nft.eth', 'nothing here')).toBe(true)
+    expect(highlighted('minter', 'nftlover', 'nothing here')).toBe(false)
   })
 
-  it('holds names to whole words once told to', () => {
-    trackNft()
-    onChangedCallback(
-      { [KEYWORD_NAME_MATCH_KEY]: { newValue: 'word' } },
-      'local',
-    )
-
-    expect(highlighted('someone', 'NFTguy', 'nothing here')).toBe(false)
-    expect(highlighted('another', 'NFT guy', 'nothing here')).toBe(true)
+  it('catches a name written to dodge a keyword turned partial', () => {
+    track({ text: 'nft', mode: 'partial' })
+    expect(highlighted('someone', 'NFTguy', 'nothing here')).toBe(true)
   })
 
-  // The mark answers "why is this highlighted?", so each half of the card is
-  // marked under the rule that actually read it.
-  it('marks under the mode belonging to the text it is marking', () => {
-    trackNft()
+  // The point of asking per keyword: one list, two answers, at the same time.
+  it('reads each keyword in the list by its own mode', () => {
+    track({ text: 'nft', mode: 'partial' }, { text: 'art', mode: 'word' })
+    expect(highlighted('someone', 'NFTguy', 'nothing here')).toBe(true)
+    expect(highlighted('reader', 'Plain Name', 'partido politics')).toBe(false)
+    expect(highlighted('writer', 'Plain Name', 'art and things')).toBe(true)
+  })
+
+  // The mark answers "why is this highlighted?", so it may only point at what
+  // the rule fired on — under the same mode, wherever on the card it sits.
+  it('marks only what the rule read, name and bio alike', () => {
+    track({ text: 'nft', mode: 'partial' }, { text: 'art', mode: 'word' })
     const host = document.createElement('div')
     host.innerHTML =
-      '<div data-testid="User-Name"><span>NFTguy</span></div><p>minting nfts today</p>'
+      '<div data-testid="User-Name"><span>NFTguy</span></div><p>minting nfts, partido art</p>'
     document.body.appendChild(host)
 
-    expect(keywordRangesIn(host).map(String)).toEqual(['NFT'])
-
-    onChangedCallback(
-      { [KEYWORD_BIO_MATCH_KEY]: { newValue: 'partial' } },
-      'local',
-    )
-    expect(keywordRangesIn(host).map(String)).toEqual(['NFT', 'nft'])
+    expect(keywordRangesIn(host).map(String)).toEqual(['NFT', 'nft', 'art'])
   })
 })
 

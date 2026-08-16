@@ -3,10 +3,21 @@ import {
   emojiKeywords,
   findKeywordMatches,
   graphemeIncludes,
+  type Keyword,
+  type MatchMode,
   matchesAnyKeyword,
   setKeywords,
   toGraphemes,
 } from './keywords'
+
+const as =
+  (mode: MatchMode) =>
+  (texts: string[]): Keyword[] =>
+    texts.map((text) => ({ text, mode }))
+
+/** The mode a keyword added from either editor gets. */
+const whole = as('word')
+const partial = as('partial')
 
 describe('graphemeIncludes', () => {
   it('finds a plain text substring', () => {
@@ -72,29 +83,29 @@ describe('setKeywords: which matcher a keyword compiles into', () => {
   afterEach(() => setKeywords([]))
 
   it('sends anything past the BMP to the grapheme matcher', () => {
-    setKeywords(['🇺🇦', '👍🏽', TRANS_FLAG, 'nafo'])
+    setKeywords(whole(['🇺🇦', '👍🏽', TRANS_FLAG, 'nafo']))
     expect(emojiKeywords()).toEqual(['🇺🇦', '👍🏽', TRANS_FLAG])
   })
 
   // Emoji to a reader, but no surrogate pair for the routing test to see —
   // which is why the text pattern needs grapheme awareness of its own.
   it('leaves BMP-only symbol sequences on the text pattern', () => {
-    setKeywords([HAMMER_SICKLE, ANTI_COMMUNIST, `1${VS16}${KEYCAP}`])
+    setKeywords(whole([HAMMER_SICKLE, ANTI_COMMUNIST, `1${VS16}${KEYCAP}`]))
     expect(emojiKeywords()).toEqual([])
   })
 
   it('ignores a blank keyword rather than matching every account', () => {
     // An empty alternative matches between any two non-word characters — so
     // any bio with punctuation or an emoji, which is nearly all of them.
-    setKeywords(['', '   '])
+    setKeywords(whole(['', '   ']))
     expect(matchesAnyKeyword('crypto trader 🚀')).toBe(false)
     expect(matchesAnyKeyword('he/him | dad')).toBe(false)
     expect(matchesAnyKeyword('hello!')).toBe(false)
   })
 
   it('replaces the previous keywords rather than adding to them', () => {
-    setKeywords(['nafo'])
-    setKeywords(['crypto'])
+    setKeywords(whole(['nafo']))
+    setKeywords(whole(['crypto']))
     expect(matchesAnyKeyword('nafo fella')).toBe(false)
     expect(matchesAnyKeyword('crypto guy')).toBe(true)
   })
@@ -104,37 +115,37 @@ describe('matchesAnyKeyword: grapheme cluster boundaries', () => {
   afterEach(() => setKeywords([]))
 
   it('matches a symbol standing on its own', () => {
-    setKeywords([HAMMER_SICKLE])
+    setKeywords(whole([HAMMER_SICKLE]))
     expect(matchesAnyKeyword(`comrade ${HAMMER_SICKLE} forever`)).toBe(true)
   })
 
   // Regression, found live 2026-08-03: @HoppeanGhoul and @Bl00dOld display
   // "☭⃠" and were highlighted by a keyword of "☭" — the symbol they crossed out.
   it('does not match a symbol a combining mark crosses out', () => {
-    setKeywords([HAMMER_SICKLE])
+    setKeywords(whole([HAMMER_SICKLE]))
     expect(matchesAnyKeyword(`HoppeanJuuzou ${ANTI_COMMUNIST}`)).toBe(false)
   })
 
   it('does match the crossed-out symbol when that is the keyword', () => {
-    setKeywords([ANTI_COMMUNIST])
+    setKeywords(whole([ANTI_COMMUNIST]))
     expect(matchesAnyKeyword(`HoppeanJuuzou ${ANTI_COMMUNIST}`)).toBe(true)
     expect(matchesAnyKeyword(`comrade ${HAMMER_SICKLE} forever`)).toBe(false)
   })
 
   // Two clusters, not one: the guard is about a mark binding to the match.
   it('matches a symbol repeated back to back', () => {
-    setKeywords([HAMMER_SICKLE])
+    setKeywords(whole([HAMMER_SICKLE]))
     expect(matchesAnyKeyword(HAMMER_SICKLE + HAMMER_SICKLE)).toBe(true)
   })
 
   it('does not match a digit wearing a keycap', () => {
-    setKeywords(['1'])
+    setKeywords(whole(['1']))
     expect(matchesAnyKeyword(`pick 1${VS16}${KEYCAP} of them`)).toBe(false)
     expect(matchesAnyKeyword('pick 1 of them')).toBe(true)
   })
 
   it('does not match a word whose last letter carries a combining accent', () => {
-    setKeywords(['cafe'])
+    setKeywords(whole(['cafe']))
     expect(matchesAnyKeyword(`at the cafe${ACUTE}`)).toBe(false)
     expect(matchesAnyKeyword('at the cafe')).toBe(true)
   })
@@ -142,26 +153,26 @@ describe('matchesAnyKeyword: grapheme cluster boundaries', () => {
   // ⚧ is one code point, so it compiles into the text pattern — and it sits
   // inside the trans flag, joined on by a ZWJ.
   it('does not match a symbol joined into an emoji sequence', () => {
-    setKeywords([TRANS_SYMBOL])
+    setKeywords(whole([TRANS_SYMBOL]))
     expect(matchesAnyKeyword(`name ${TRANS_FLAG} here`)).toBe(false)
     expect(matchesAnyKeyword(`name ${TRANS_SYMBOL} here`)).toBe(true)
   })
 
   // A mark before the match belongs to the previous cluster.
   it('matches a keyword that follows a combining mark', () => {
-    setKeywords(['nafo'])
+    setKeywords(whole(['nafo']))
     expect(matchesAnyKeyword(`${ANTI_COMMUNIST}nafo`)).toBe(true)
   })
 
   it('matches a keyword that follows an emoji', () => {
-    setKeywords(['nafo'])
+    setKeywords(whole(['nafo']))
     expect(matchesAnyKeyword(`${TRANS_FLAG}nafo`)).toBe(true)
   })
 
   // भारतीय ("Indian") extends भारत ("India") by a vowel sign, which is a
   // mark rather than a letter — so it used to read as a word boundary.
   it('treats a Devanagari vowel sign as part of the word', () => {
-    setKeywords(['भारत'])
+    setKeywords(whole(['भारत']))
     expect(matchesAnyKeyword('भारतीय लोग')).toBe(false)
     expect(matchesAnyKeyword('भारत देश')).toBe(true)
   })
@@ -169,7 +180,7 @@ describe('matchesAnyKeyword: grapheme cluster boundaries', () => {
   // The accepted cost of the same rule. Nikkud is rare enough in X bios that
   // missing it is the cheaper error — but it is an error.
   it('does not match a Hebrew word written with nikkud', () => {
-    setKeywords(['שלום'])
+    setKeywords(whole(['שלום']))
     expect(matchesAnyKeyword('שָׁלוֹם עולם')).toBe(false)
     expect(matchesAnyKeyword('שלום עולם')).toBe(true)
   })
@@ -179,13 +190,13 @@ describe('matchesAnyKeyword: word boundaries', () => {
   afterEach(() => setKeywords([]))
 
   it('does not match a keyword inside a longer word', () => {
-    setKeywords(['trans'])
+    setKeywords(whole(['trans']))
     expect(matchesAnyKeyword('transgender rights')).toBe(false)
     expect(matchesAnyKeyword('trans rights')).toBe(true)
   })
 
   it('matches next to ordinary punctuation', () => {
-    setKeywords(['nft'])
+    setKeywords(whole(['nft']))
     expect(matchesAnyKeyword('loves #nft trading')).toBe(true)
     expect(matchesAnyKeyword('nft. that is all')).toBe(true)
     expect(matchesAnyKeyword('minting nfts today')).toBe(false)
@@ -193,56 +204,68 @@ describe('matchesAnyKeyword: word boundaries', () => {
 
   // A hashtag is a word with a # in front, so the boundary rules are the word's.
   it('takes a hashtag that is the keyword, and not one that merely starts with it', () => {
-    setKeywords(['nft'])
+    setKeywords(whole(['nft']))
     expect(matchesAnyKeyword('#nft')).toBe(true)
     expect(matchesAnyKeyword('#NFT')).toBe(true)
     expect(matchesAnyKeyword('#nftlover')).toBe(false)
     expect(matchesAnyKeyword('#web3nft')).toBe(false)
   })
 
-  it('reads a digit and an underscore as part of the word, not as a boundary', () => {
-    setKeywords(['nft'])
-    expect(matchesAnyKeyword('nft_lover')).toBe(false)
-    expect(matchesAnyKeyword('lover_nft')).toBe(false)
+  it('reads a digit as part of the word, but not an underscore', () => {
+    // A handle is written with the punctuation a space would be, and the
+    // underscore is the one that carries that job most often.
+    setKeywords(whole(['nft']))
     expect(matchesAnyKeyword('nft2')).toBe(false)
+    expect(matchesAnyKeyword('2nft')).toBe(false)
+    expect(matchesAnyKeyword('nft_lover')).toBe(true)
+    expect(matchesAnyKeyword('lover_nft')).toBe(true)
     expect(matchesAnyKeyword('@nft')).toBe(true)
   })
 
+  it('takes every other separator a name is written with', () => {
+    setKeywords(whole(['nft']))
+    expect(matchesAnyKeyword('nft.eth')).toBe(true)
+    expect(matchesAnyKeyword('nft-dev')).toBe(true)
+    expect(matchesAnyKeyword('dev|nft|art')).toBe(true)
+    expect(matchesAnyKeyword('nft·collector')).toBe(true)
+    expect(matchesAnyKeyword('🚀nft🚀')).toBe(true)
+  })
+
   it('matches a keyword alone, at the start and at the end', () => {
-    setKeywords(['nft'])
+    setKeywords(whole(['nft']))
     expect(matchesAnyKeyword('nft')).toBe(true)
     expect(matchesAnyKeyword('nft is here')).toBe(true)
     expect(matchesAnyKeyword('here is nft')).toBe(true)
   })
 
   it('holds the boundary on both sides of a keyword containing a slash', () => {
-    setKeywords(['he/him'])
+    setKeywords(whole(['he/him']))
     expect(matchesAnyKeyword('bio: he/him.')).toBe(true)
     expect(matchesAnyKeyword('she/him')).toBe(false)
     expect(matchesAnyKeyword('he/himself')).toBe(false)
   })
 
   it('is case-insensitive, in Cyrillic as well as Latin', () => {
-    setKeywords(['ukraine', 'страна'])
+    setKeywords(whole(['ukraine', 'страна']))
     expect(matchesAnyKeyword('UKRAINE forever')).toBe(true)
     expect(matchesAnyKeyword('СТРАНА моя')).toBe(true)
   })
 
   it('does not match a Cyrillic keyword inside a longer word', () => {
-    setKeywords(['крипто'])
+    setKeywords(whole(['крипто']))
     expect(matchesAnyKeyword('крипторынок')).toBe(false)
     expect(matchesAnyKeyword('#крипто')).toBe(true)
   })
 
   it('wants a multi-word keyword spaced exactly as typed', () => {
-    setKeywords(['free palestine'])
+    setKeywords(whole(['free palestine']))
     expect(matchesAnyKeyword('a free palestine now')).toBe(true)
     expect(matchesAnyKeyword('free  palestine')).toBe(false)
   })
 
   // Keywords are user input on their way into a regex.
   it('treats regex metacharacters in a keyword as literal', () => {
-    setKeywords(['c++', 'a.b'])
+    setKeywords(whole(['c++', 'a.b']))
     expect(matchesAnyKeyword('i code c++ daily')).toBe(true)
     expect(matchesAnyKeyword('axb')).toBe(false)
     expect(matchesAnyKeyword('a.b')).toBe(true)
@@ -251,9 +274,9 @@ describe('matchesAnyKeyword: word boundaries', () => {
   // The alternation fails "nafo" on the boundary, then backtracks into the
   // longer one — so neither order loses a match.
   it('matches the longer keyword that starts with a shorter one', () => {
-    setKeywords(['nafo', 'nafofella'])
+    setKeywords(whole(['nafo', 'nafofella']))
     expect(matchesAnyKeyword('nafofella')).toBe(true)
-    setKeywords(['nafofella', 'nafo'])
+    setKeywords(whole(['nafofella', 'nafo']))
     expect(matchesAnyKeyword('nafo')).toBe(true)
   })
 })
@@ -265,62 +288,64 @@ describe("matchesAnyKeyword: 'partial'", () => {
   afterEach(() => setKeywords([]))
 
   it('matches a keyword inside a longer word', () => {
-    setKeywords(['nft'])
-    expect(matchesAnyKeyword('minting nfts today', 'partial')).toBe(true)
-    expect(matchesAnyKeyword('web3nft', 'partial')).toBe(true)
-    expect(matchesAnyKeyword('nft_lover', 'partial')).toBe(true)
+    setKeywords(partial(['nft']))
+    expect(matchesAnyKeyword('minting nfts today')).toBe(true)
+    expect(matchesAnyKeyword('web3nft')).toBe(true)
+    expect(matchesAnyKeyword('nft_lover')).toBe(true)
   })
 
   it('matches a keyword inside a longer hashtag', () => {
-    setKeywords(['nft'])
-    expect(matchesAnyKeyword('#nftlover', 'partial')).toBe(true)
-    expect(matchesAnyKeyword('#NFTLover', 'partial')).toBe(true)
+    setKeywords(partial(['nft']))
+    expect(matchesAnyKeyword('#nftlover')).toBe(true)
+    expect(matchesAnyKeyword('#NFTLover')).toBe(true)
   })
 
   it('still matches everything the whole-word mode does', () => {
-    setKeywords(['nft'])
-    expect(matchesAnyKeyword('#nft', 'partial')).toBe(true)
-    expect(matchesAnyKeyword('nft. that is all', 'partial')).toBe(true)
-    expect(matchesAnyKeyword('minting bread', 'partial')).toBe(false)
+    setKeywords(partial(['nft']))
+    expect(matchesAnyKeyword('#nft')).toBe(true)
+    expect(matchesAnyKeyword('nft. that is all')).toBe(true)
+    expect(matchesAnyKeyword('minting bread')).toBe(false)
   })
 
   it('is case-insensitive, in Cyrillic as well as Latin', () => {
-    setKeywords(['крипто'])
-    expect(matchesAnyKeyword('КРИПТОрынок', 'partial')).toBe(true)
-    expect(matchesAnyKeyword('крипторынок')).toBe(false)
+    setKeywords(partial(['крипто']))
+    expect(matchesAnyKeyword('КРИПТОрынок')).toBe(true)
+    // The same word, the same text, and only the mode between them.
+    setKeywords(whole(['крипто']))
+    expect(matchesAnyKeyword('КРИПТОрынок')).toBe(false)
   })
 
   // The cluster guards are what stop a "partial" match from being half a
   // character rather than half a word.
   it('does not match a symbol a combining mark crosses out', () => {
-    setKeywords([HAMMER_SICKLE])
-    expect(matchesAnyKeyword(`X ${ANTI_COMMUNIST}`, 'partial')).toBe(false)
-    expect(matchesAnyKeyword(`X ${HAMMER_SICKLE}`, 'partial')).toBe(true)
+    setKeywords(partial([HAMMER_SICKLE]))
+    expect(matchesAnyKeyword(`X ${ANTI_COMMUNIST}`)).toBe(false)
+    expect(matchesAnyKeyword(`X ${HAMMER_SICKLE}`)).toBe(true)
   })
 
   it('does not match a symbol joined into an emoji sequence', () => {
-    setKeywords([TRANS_SYMBOL])
-    expect(matchesAnyKeyword(`name ${TRANS_FLAG} here`, 'partial')).toBe(false)
+    setKeywords(partial([TRANS_SYMBOL]))
+    expect(matchesAnyKeyword(`name ${TRANS_FLAG} here`)).toBe(false)
   })
 
   it('does not match a word whose last letter carries a combining accent', () => {
-    setKeywords(['cafe'])
-    expect(matchesAnyKeyword(`at the cafe${ACUTE}`, 'partial')).toBe(false)
+    setKeywords(partial(['cafe']))
+    expect(matchesAnyKeyword(`at the cafe${ACUTE}`)).toBe(false)
   })
 
   // The grapheme matcher never had word boundaries to drop, so the mode is inert
   // for it — an emoji that is genuinely present matches either way.
   it('leaves the emoji matcher alone', () => {
-    setKeywords(['🇺🇦', '🇵🇸'])
-    expect(matchesAnyKeyword('slava 🇺🇦', 'partial')).toBe(true)
-    expect(matchesAnyKeyword('🇰🇵🇸🇴', 'partial')).toBe(false)
+    setKeywords(partial(['🇺🇦', '🇵🇸']))
+    expect(matchesAnyKeyword('slava 🇺🇦')).toBe(true)
+    expect(matchesAnyKeyword('🇰🇵🇸🇴')).toBe(false)
   })
 
   it('is the same keyword list either mode reads', () => {
-    setKeywords(['nft'])
-    expect(matchesAnyKeyword('nfts', 'partial')).toBe(true)
+    setKeywords(partial(['nft']))
+    expect(matchesAnyKeyword('nfts')).toBe(true)
     setKeywords([])
-    expect(matchesAnyKeyword('nfts', 'partial')).toBe(false)
+    expect(matchesAnyKeyword('nfts')).toBe(false)
   })
 })
 
@@ -328,41 +353,41 @@ describe('matchesAnyKeyword: the grapheme matcher', () => {
   afterEach(() => setKeywords([]))
 
   it('matches a flag that is genuinely present', () => {
-    setKeywords(['🇺🇦'])
+    setKeywords(whole(['🇺🇦']))
     expect(matchesAnyKeyword('slava 🇺🇦')).toBe(true)
   })
 
   it('does not match a flag spelled across two others', () => {
-    setKeywords(['🇵🇸'])
+    setKeywords(whole(['🇵🇸']))
     expect(matchesAnyKeyword('🇰🇵🇸🇴')).toBe(false)
   })
 
   // A skin tone modifier joins the cluster the way a combining mark does.
   it('keeps a skin tone modifier out of a plain emoji keyword', () => {
-    setKeywords(['👍'])
+    setKeywords(whole(['👍']))
     expect(matchesAnyKeyword('nice 👍🏽 job')).toBe(false)
     expect(matchesAnyKeyword('nice 👍 job')).toBe(true)
   })
 
   it('does not match a toned emoji keyword against the plain one', () => {
-    setKeywords(['👍🏽'])
+    setKeywords(whole(['👍🏽']))
     expect(matchesAnyKeyword('nice 👍 job')).toBe(false)
     expect(matchesAnyKeyword('nice 👍🏽 job')).toBe(true)
   })
 
   it('does not match a flag that is only the start of a ZWJ sequence', () => {
-    setKeywords([WHITE_FLAG])
+    setKeywords(whole([WHITE_FLAG]))
     expect(matchesAnyKeyword(`flag ${RAINBOW_FLAG} here`)).toBe(false)
     expect(matchesAnyKeyword(`flag ${WHITE_FLAG} here`)).toBe(true)
   })
 
   it('does not match a ZWJ sequence against its own first half', () => {
-    setKeywords([RAINBOW_FLAG])
+    setKeywords(whole([RAINBOW_FLAG]))
     expect(matchesAnyKeyword(`flag ${WHITE_FLAG} only`)).toBe(false)
   })
 
   it('tells apart two flags built on the same base', () => {
-    setKeywords([TRANS_FLAG])
+    setKeywords(whole([TRANS_FLAG]))
     expect(matchesAnyKeyword(`bio ${RAINBOW_FLAG}`)).toBe(false)
     expect(matchesAnyKeyword(`bio ${TRANS_FLAG}`)).toBe(true)
   })
@@ -374,7 +399,7 @@ describe('findKeywordMatches', () => {
   it('gives offsets that cut the keyword out of the text exactly', () => {
     // These offsets become Range boundaries, so an off-by-one paints half a
     // word — or half a flag.
-    setKeywords(['nft'])
+    setKeywords(whole(['nft']))
     const text = 'we love NFT, all the nft'
 
     const matches = findKeywordMatches(text)
@@ -386,10 +411,10 @@ describe('findKeywordMatches', () => {
   })
 
   it('cuts the keyword out of the longer word it sits in', () => {
-    setKeywords(['nft'])
+    setKeywords(partial(['nft']))
     const text = 'minting nfts today'
 
-    const [match, ...rest] = findKeywordMatches(text, 'partial')
+    const [match, ...rest] = findKeywordMatches(text)
 
     expect(rest).toEqual([])
     expect(text.slice(match.start, match.end)).toBe('nft')
@@ -399,7 +424,7 @@ describe('findKeywordMatches', () => {
   it('finds nothing where the highlight rule would find nothing', () => {
     // The mark exists to explain the highlight; marking a word inside a longer
     // one would explain a highlight that never happened.
-    setKeywords(['nft'])
+    setKeywords(whole(['nft']))
     expect(findKeywordMatches('minting nfts today')).toEqual([])
   })
 
@@ -411,7 +436,7 @@ describe('findKeywordMatches', () => {
   it('counts an emoji keyword in code units, not characters', () => {
     // A flag is two surrogate pairs — four code units. Offsets measured in
     // characters would land mid-surrogate and split the flag in half.
-    setKeywords(['🇺🇦'])
+    setKeywords(whole(['🇺🇦']))
     const text = 'slava 🇺🇦 ukraini'
 
     const [match] = findKeywordMatches(text)
@@ -420,17 +445,17 @@ describe('findKeywordMatches', () => {
   })
 
   it('does not mark 🇵🇸 inside 🇰🇵🇸🇴, same as the rule that fires on it', () => {
-    setKeywords(['🇵🇸'])
+    setKeywords(whole(['🇵🇸']))
     expect(findKeywordMatches('🇰🇵🇸🇴🇵🇾')).toEqual([])
   })
 
   it('does not mark a symbol a combining mark crosses out, same as the rule', () => {
-    setKeywords([HAMMER_SICKLE])
+    setKeywords(whole([HAMMER_SICKLE]))
     expect(findKeywordMatches(`HoppeanJuuzou ${ANTI_COMMUNIST}`)).toEqual([])
   })
 
   it('marks each of two symbols standing side by side', () => {
-    setKeywords([HAMMER_SICKLE])
+    setKeywords(whole([HAMMER_SICKLE]))
     const text = HAMMER_SICKLE + HAMMER_SICKLE
 
     const matches = findKeywordMatches(text)
@@ -443,7 +468,7 @@ describe('findKeywordMatches', () => {
 
   it('marks a symbol next to a crossed-out one without taking the mark', () => {
     // One character late and the Range paints the neighbour's circle-backslash.
-    setKeywords([HAMMER_SICKLE])
+    setKeywords(whole([HAMMER_SICKLE]))
     const text = `${ANTI_COMMUNIST} vs ${HAMMER_SICKLE}`
 
     const [match, ...rest] = findKeywordMatches(text)
@@ -454,7 +479,7 @@ describe('findKeywordMatches', () => {
   })
 
   it('marks the whole keyword when it is a symbol plus its mark', () => {
-    setKeywords([ANTI_COMMUNIST])
+    setKeywords(whole([ANTI_COMMUNIST]))
     const text = `HoppeanJuuzou ${ANTI_COMMUNIST}`
 
     const [match] = findKeywordMatches(text)
@@ -463,7 +488,7 @@ describe('findKeywordMatches', () => {
   })
 
   it('finds both a word and an emoji in one pass, in reading order', () => {
-    setKeywords(['crypto', '🇷🇺'])
+    setKeywords(whole(['crypto', '🇷🇺']))
     const text = 'crypto and 🇷🇺 stuff'
 
     const matches = findKeywordMatches(text)
@@ -477,7 +502,7 @@ describe('findKeywordMatches', () => {
   it('sorts a trailing word behind a leading emoji', () => {
     // Emoji are collected after the text pass, so the sort is what restores
     // reading order.
-    setKeywords(['crypto', '🇷🇺'])
+    setKeywords(whole(['crypto', '🇷🇺']))
     const text = '🇷🇺 and crypto'
 
     const matches = findKeywordMatches(text)
@@ -544,11 +569,9 @@ describe('the rule and the mark agree', () => {
   ]
 
   it.each(cases)('on $name', ({ keywords, text }) => {
-    setKeywords(keywords)
-    for (const mode of ['word', 'partial'] as const) {
-      expect(findKeywordMatches(text, mode).length > 0).toBe(
-        matchesAnyKeyword(text, mode),
-      )
+    for (const build of [whole, partial]) {
+      setKeywords(build(keywords))
+      expect(findKeywordMatches(text).length > 0).toBe(matchesAnyKeyword(text))
     }
   })
 })
@@ -559,7 +582,7 @@ describe('emojiKeywords', () => {
   it('returns the emoji ones, in the form they were typed', () => {
     // They are stored split into graphemes; the CSS rule that marks them needs
     // the original string back to match an <img alt>.
-    setKeywords(['nft', '🏳️‍🌈', 'crypto', '🇺🇦'])
+    setKeywords(whole(['nft', '🏳️‍🌈', 'crypto', '🇺🇦']))
     expect(emojiKeywords()).toEqual(['🏳️‍🌈', '🇺🇦'])
   })
 })

@@ -257,27 +257,21 @@
     "message": "No keywords set — all posts shown normally.",
     "description": "Empty state under the keyword list."
   },
-  "setNameMatch": {
-    "message": "In names and handles",
-    "description": "Label for the keyword match mode used on the display name and @handle."
+  "kwMatchWhole": {
+    "message": "whole",
+    "description": "Keyword match mode, shown inside the keyword badge: the keyword must stand on its own. Any punctuation around it, an underscore included, counts as a separator."
   },
-  "setNameMatchDesc": {
-    "message": "A display name is chosen to be seen, and is often written to slip past exactly this — “NFTguy”, “#freepalestine”. Matching anywhere inside a word catches those."
+  "kwMatchPartial": {
+    "message": "partial",
+    "description": "Keyword match mode, shown inside the keyword badge: the keyword also matches inside a longer word or hashtag."
   },
-  "setBioMatch": {
-    "message": "In bios",
-    "description": "Label for the keyword match mode used on the profile bio."
+  "kwMatchNewLabel": {
+    "message": "How the next keyword is matched",
+    "description": "Accessible label for the match-mode select beside the \"add a keyword\" input. The choice applies to keywords added from now on; an existing one is changed from its own badge."
   },
-  "setBioMatchDesc": {
-    "message": "A bio is prose, where matching anywhere inside a word reads “therapist” as a keyword “the rapist”. Whole words only is the safer setting here."
-  },
-  "matchWord": {
-    "message": "Whole word only",
-    "description": "Keyword match mode: the keyword must stand on its own, or follow a # or @."
-  },
-  "matchPartial": {
-    "message": "Anywhere in a word",
-    "description": "Keyword match mode: the keyword also matches inside a longer word or hashtag."
+  "kwMatchLabel": {
+    "message": "How “$1” is matched",
+    "description": "Accessible label for the match-mode select on a keyword badge. $1 is the keyword."
   },
   "cardLocations": {
     "message": "Locations"

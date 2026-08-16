@@ -6,8 +6,6 @@ import {
   HIDE_BLOCKED_LOCATIONS_KEY,
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
-  KEYWORD_BIO_MATCH_KEY,
-  KEYWORD_NAME_MATCH_KEY,
   PREFETCH_SHARE_KEY,
   RULE_EXCEPTIONS_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
@@ -38,6 +36,7 @@ import {
   settingValue,
   settingsFileName,
   withKeyword,
+  withKeywordMode,
   withLocation,
   withoutKeyword,
   withoutLocation,
@@ -103,7 +102,10 @@ describe('importSettings', () => {
 
     await importSettings(JSON.stringify(file))
     expect(store[BLOCKED_COUNTRIES_KEY]).toEqual(['France', 'Japan'])
-    expect(store[HIGHLIGHT_KEYWORDS_KEY]).toEqual(['crypto'])
+    // Exported from a 1.7.3 store, so it comes back in the shape it is read in.
+    expect(store[HIGHLIGHT_KEYWORDS_KEY]).toEqual([
+      { text: 'crypto', mode: 'word' },
+    ])
   })
 
   it('merges, so a partial file leaves untouched settings alone', async () => {
@@ -208,31 +210,62 @@ describe('reading a setting', () => {
   })
 })
 
-describe('the two keyword match modes', () => {
-  // The defaults are opposites on purpose, so a name written to dodge the filter
-  // is still caught while a bio is not read a syllable at a time.
-  it('defaults names to partial and bios to whole-word', () => {
-    expect(defaultSetting(KEYWORD_NAME_MATCH_KEY)).toBe('partial')
-    expect(defaultSetting(KEYWORD_BIO_MATCH_KEY)).toBe('word')
+describe('a keyword carries its own match mode', () => {
+  const stored = (v: unknown) => settingValue(HIGHLIGHT_KEYWORDS_KEY, v)
+
+  // Every keyword stored before 1.7.4 was a bare string, and meant whole-word.
+  it('reads a plain string as the whole-word keyword it used to be', () => {
+    expect(stored(['nft', ' CRYPTO '])).toEqual([
+      { text: 'nft', mode: 'word' },
+      { text: 'crypto', mode: 'word' },
+    ])
   })
 
-  it('keeps either explicit choice on either key', () => {
-    expect(settingValue(KEYWORD_NAME_MATCH_KEY, 'word')).toBe('word')
-    expect(settingValue(KEYWORD_BIO_MATCH_KEY, 'partial')).toBe('partial')
+  it('keeps the mode a keyword was saved with', () => {
+    expect(stored([{ text: 'nft', mode: 'partial' }])).toEqual([
+      { text: 'nft', mode: 'partial' },
+    ])
   })
 
-  it('falls back to its own default, not a shared one', () => {
-    for (const stored of [undefined, null, '', 'nonsense', 0, true]) {
-      expect(settingValue(KEYWORD_NAME_MATCH_KEY, stored)).toBe('partial')
-      expect(settingValue(KEYWORD_BIO_MATCH_KEY, stored)).toBe('word')
+  it('falls back to whole-word rather than dropping the keyword', () => {
+    for (const mode of [undefined, null, '', 'nonsense', 0, true]) {
+      expect(stored([{ text: 'nft', mode }])).toEqual([
+        { text: 'nft', mode: 'word' },
+      ])
     }
+  })
+
+  it('drops what is not a keyword at all, and the second copy of one', () => {
+    expect(
+      stored([null, 42, {}, { text: '  ' }, 'nft', { text: 'NFT' }]),
+    ).toEqual([{ text: 'nft', mode: 'word' }])
+    expect(stored('nft')).toEqual([])
+  })
+
+  it('changes one keyword’s mode and leaves the rest alone', () => {
+    const keywords = [
+      { text: 'art', mode: 'word' as const },
+      { text: 'nft', mode: 'word' as const },
+    ]
+    expect(withKeywordMode(keywords, 'NFT ', 'partial')).toEqual([
+      { text: 'art', mode: 'word' },
+      { text: 'nft', mode: 'partial' },
+    ])
+    // Nothing to write when it already reads that way, or is not on the list.
+    expect(withKeywordMode(keywords, 'nft', 'word')).toBe(keywords)
+    expect(withKeywordMode(keywords, 'crypto', 'partial')).toBe(keywords)
   })
 })
 
 describe('the list edits both editors make', () => {
   it('stores a keyword the way the content script matches on it', () => {
-    expect(withKeyword([], '  CRYPTO ')).toEqual(['crypto'])
-    expect(withKeyword(['nft'], 'crypto')).toEqual(['crypto', 'nft'])
+    expect(withKeyword([], '  CRYPTO ')).toEqual([
+      { text: 'crypto', mode: 'word' },
+    ])
+    expect(withKeyword([{ text: 'nft', mode: 'word' }], 'crypto')).toEqual([
+      { text: 'crypto', mode: 'word' },
+      { text: 'nft', mode: 'word' },
+    ])
   })
 
   it('folds a location onto the name X reports', () => {
@@ -246,7 +279,7 @@ describe('the list edits both editors make', () => {
   // Identity is the caller's signal that there is nothing to write — a popup
   // that stored on every keystroke would wake the content script for nothing.
   it('hands back the same list when the edit changes nothing', () => {
-    const keywords = ['crypto']
+    const keywords = [{ text: 'crypto', mode: 'word' as const }]
     expect(withKeyword(keywords, 'CRYPTO')).toBe(keywords)
     expect(withKeyword(keywords, '   ')).toBe(keywords)
 
@@ -255,7 +288,15 @@ describe('the list edits both editors make', () => {
   })
 
   it('removes by the stored form, whatever form was clicked', () => {
-    expect(withoutKeyword(['crypto', 'nft'], ' Crypto ')).toEqual(['nft'])
+    expect(
+      withoutKeyword(
+        [
+          { text: 'crypto', mode: 'word' },
+          { text: 'nft', mode: 'word' },
+        ],
+        ' Crypto ',
+      ),
+    ).toEqual([{ text: 'nft', mode: 'word' }])
     expect(withoutLocation(['United States', 'Japan'], 'USA')).toEqual([
       'Japan',
     ])

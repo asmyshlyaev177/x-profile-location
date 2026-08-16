@@ -206,23 +206,17 @@
   "emptyNoKeywords": {
     "message": "Sin palabras clave — todas las publicaciones se muestran normales."
   },
-  "setNameMatch": {
-    "message": "En nombres y usuarios"
+  "kwMatchWhole": {
+    "message": "entera"
   },
-  "setNameMatchDesc": {
-    "message": "Un nombre visible se elige para que se vea, y muchas veces se escribe justo para esquivar un filtro así: «NFTguy», «#freepalestine». Buscar dentro de la palabra los atrapa."
+  "kwMatchPartial": {
+    "message": "parcial"
   },
-  "setBioMatch": {
-    "message": "En biografías"
+  "kwMatchNewLabel": {
+    "message": "Cómo se buscará la siguiente palabra clave"
   },
-  "setBioMatchDesc": {
-    "message": "Una biografía es prosa: buscar dentro de la palabra hace que la clave «oro» aparezca en «tesoro» y «doloroso». Aquí lo seguro es limitarse a palabras completas."
-  },
-  "matchWord": {
-    "message": "Solo palabras completas"
-  },
-  "matchPartial": {
-    "message": "En cualquier parte de la palabra"
+  "kwMatchLabel": {
+    "message": "Cómo se busca «$1»"
   },
   "cardLocations": {
     "message": "Ubicaciones"

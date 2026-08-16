@@ -162,8 +162,12 @@ describe('editing the filters from the popup', () => {
     fireEvent.input(input, { target: { value: 'NFT' } })
     fireEvent.keyDown(input, { key: 'Enter' })
 
+    // Added whole-word, which is what a keyword stored before 1.7.4 meant.
     await waitFor(() =>
-      expect(lastWrite(HIGHLIGHT_KEYWORDS_KEY)).toEqual(['crypto', 'nft']),
+      expect(lastWrite(HIGHLIGHT_KEYWORDS_KEY)).toEqual([
+        { text: 'crypto', mode: 'word' },
+        { text: 'nft', mode: 'word' },
+      ]),
     )
   })
 
@@ -176,7 +180,58 @@ describe('editing the filters from the popup', () => {
     fireEvent.click(await waitFor(() => getByTitle('Remove nft')))
 
     await waitFor(() =>
-      expect(lastWrite(HIGHLIGHT_KEYWORDS_KEY)).toEqual(['crypto']),
+      expect(lastWrite(HIGHLIGHT_KEYWORDS_KEY)).toEqual([
+        { text: 'crypto', mode: 'word' },
+      ]),
+    )
+  })
+
+  it('adds the next keyword under the mode chosen beside the input', async () => {
+    const { getByPlaceholderText, getByTitle } = mountStored({
+      [POPUP_SECTION_KEY]: 'keywords',
+      [HIGHLIGHT_KEYWORDS_KEY]: [],
+    })
+
+    const mode = await waitFor(() =>
+      getByTitle('How the next keyword is matched'),
+    )
+    fireEvent.change(mode, { target: { value: 'partial' } })
+
+    const input = getByPlaceholderText('Add a keyword…')
+    fireEvent.input(input, { target: { value: 'NFT' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() =>
+      expect(lastWrite(HIGHLIGHT_KEYWORDS_KEY)).toEqual([
+        { text: 'nft', mode: 'partial' },
+      ]),
+    )
+  })
+
+  it('turns one keyword partial from its badge, leaving the other whole', async () => {
+    const { getByTitle } = mountStored({
+      [POPUP_SECTION_KEY]: 'keywords',
+      [HIGHLIGHT_KEYWORDS_KEY]: ['art', 'nft'],
+    })
+
+    const select = await waitFor(() => getByTitle('How “nft” is matched'))
+    // The badge spends no width on the mode — the list it opens says it, so
+    // the only text the chip prints itself is the keyword.
+    const chip = select.closest('[data-mode]')
+    expect(chip?.getAttribute('data-mode')).toBe('word')
+    const printed = Array.from(chip?.childNodes ?? [])
+      .filter((node) => node.nodeType === Node.TEXT_NODE)
+      .map((node) => node.textContent)
+      .join('')
+    expect(printed.trim()).toBe('nft')
+
+    fireEvent.change(select, { target: { value: 'partial' } })
+
+    await waitFor(() =>
+      expect(lastWrite(HIGHLIGHT_KEYWORDS_KEY)).toEqual([
+        { text: 'art', mode: 'word' },
+        { text: 'nft', mode: 'partial' },
+      ]),
     )
   })
 

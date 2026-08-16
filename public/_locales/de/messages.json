@@ -206,23 +206,17 @@
   "emptyNoKeywords": {
     "message": "Keine Stichwörter gesetzt — alle Posts werden normal angezeigt."
   },
-  "setNameMatch": {
-    "message": "In Namen und Handles"
+  "kwMatchWhole": {
+    "message": "ganz"
   },
-  "setNameMatchDesc": {
-    "message": "Ein Anzeigename ist zum Gesehenwerden gewählt und oft genau so geschrieben, dass er an einem solchen Filter vorbeikommt — „NFTguy“, „#freepalestine“. Eine Übereinstimmung mitten im Wort erwischt sie."
+  "kwMatchPartial": {
+    "message": "teilweise"
   },
-  "setBioMatch": {
-    "message": "In Bios"
+  "kwMatchNewLabel": {
+    "message": "Wie das nächste Stichwort gefunden wird"
   },
-  "setBioMatchDesc": {
-    "message": "Eine Bio ist Fließtext: mitten im Wort zu suchen macht aus dem Stichwort „Gen“ einen Treffer in „Gender“ und „Legende“. Nur ganze Wörter ist hier die sichere Einstellung."
-  },
-  "matchWord": {
-    "message": "Nur ganze Wörter"
-  },
-  "matchPartial": {
-    "message": "Auch mitten im Wort"
+  "kwMatchLabel": {
+    "message": "Wie „$1“ gefunden wird"
   },
   "cardLocations": {
     "message": "Standorte"

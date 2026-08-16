@@ -9,8 +9,6 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
-  KEYWORD_BIO_MATCH_KEY,
-  KEYWORD_NAME_MATCH_KEY,
   MIN_CONFIDENCE_KEY,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
@@ -333,7 +331,7 @@ export function normalizeRuleExceptions(
 import { canonicalLocation } from './countries/countries'
 import { normalizeUiLanguage, t, UI_LANGUAGE_KEY } from './i18n'
 // Type-only, so the keyword matcher stays out of the popup and options bundles.
-import type { MatchMode } from './keywords'
+import type { Keyword, MatchMode } from './keywords'
 
 /** A stored value, cleaned. Returning undefined drops the key entirely. */
 type Normalizer = (value: unknown) => unknown
@@ -359,23 +357,27 @@ const asLocationList = (v: unknown): string[] =>
       ]
     : []
 
-// Each side keeps its own default — see the two keys in constants.ts.
-const asMatchMode =
-  (fallback: MatchMode) =>
-  (value: unknown): MatchMode =>
-    value === 'word' || value === 'partial' ? value : fallback
+const asMatchMode = (value: unknown): MatchMode =>
+  value === 'partial' ? 'partial' : 'word'
 
-const asKeywordList = (v: unknown): string[] =>
-  Array.isArray(v)
-    ? [
-        ...new Set(
-          v
-            .filter((x): x is string => typeof x === 'string')
-            .map((k) => k.trim().toLowerCase())
-            .filter(Boolean),
-        ),
-      ]
-    : []
+// Versions up to 1.7.3 stored a bare string per keyword, and a string still
+// arrives from an export of one — it reads as the whole-word mode it had.
+function asKeyword(value: unknown): Keyword | null {
+  const v = typeof value === 'string' ? { text: value } : asRecord(value)
+  if (typeof v.text !== 'string') return null
+  const text = v.text.trim().toLowerCase()
+  return text ? { text, mode: asMatchMode(v.mode) } : null
+}
+
+const asKeywordList = (v: unknown): Keyword[] => {
+  if (!Array.isArray(v)) return []
+  const seen = new Set<string>()
+  return v.map(asKeyword).filter((kw): kw is Keyword => {
+    if (!kw || seen.has(kw.text)) return false
+    seen.add(kw.text)
+    return true
+  })
+}
 
 /** The one place a default is written down: every normalizer is total. */
 export const SETTINGS_REGISTRY = {
@@ -385,8 +387,6 @@ export const SETTINGS_REGISTRY = {
   [ACCOUNT_AGE_KEY]: normalizeAccountAge,
   [HIDE_BLOCKED_LOCATIONS_KEY]: normalizeHideBlockedMode,
   [HIGHLIGHT_KEYWORDS_KEY]: asKeywordList,
-  [KEYWORD_NAME_MATCH_KEY]: asMatchMode('partial'),
-  [KEYWORD_BIO_MATCH_KEY]: asMatchMode('word'),
   [HIGHLIGHT_FLAGS_KEY]: normalizeHighlightFlags,
   [RULE_EXCEPTIONS_KEY]: (v: unknown) => normalizeRuleExceptions(v),
   [HIGHLIGHT_EXCEPTIONS_KEY]: normalizeHandleList,
@@ -436,15 +436,36 @@ export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
 // key. Each returns the list it was given when nothing changed, so a caller
 // comparing by identity knows whether it has anything to write.
 
-export function withKeyword(keywords: string[], keyword: string): string[] {
-  const kw = keyword.trim().toLowerCase()
-  if (!kw || keywords.includes(kw)) return keywords
-  return [...keywords, kw].sort()
+// Whole-word unless the editor says otherwise, which is what every keyword
+// stored before 1.7.4 meant. Changed afterwards from the chip — withKeywordMode.
+export function withKeyword(
+  keywords: Keyword[],
+  keyword: string,
+  mode: MatchMode = 'word',
+): Keyword[] {
+  const text = keyword.trim().toLowerCase()
+  if (!text || keywords.some((k) => k.text === text)) return keywords
+  return [...keywords, { text, mode }].sort((a, b) =>
+    a.text < b.text ? -1 : 1,
+  )
 }
 
-export function withoutKeyword(keywords: string[], keyword: string): string[] {
-  const kw = keyword.trim().toLowerCase()
-  return keywords.filter((k) => k !== kw)
+export function withoutKeyword(
+  keywords: Keyword[],
+  keyword: string,
+): Keyword[] {
+  const text = keyword.trim().toLowerCase()
+  return keywords.filter((k) => k.text !== text)
+}
+
+export function withKeywordMode(
+  keywords: Keyword[],
+  keyword: string,
+  mode: MatchMode,
+): Keyword[] {
+  const text = keyword.trim().toLowerCase()
+  if (!keywords.some((k) => k.text === text && k.mode !== mode)) return keywords
+  return keywords.map((k) => (k.text === text ? { text, mode } : k))
 }
 
 export function withLocation(blocked: string[], name: string): string[] {

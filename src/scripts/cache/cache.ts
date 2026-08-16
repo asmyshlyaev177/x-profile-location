@@ -1,5 +1,5 @@
 import { clear, createStore, del, entries, get, set } from 'idb-keyval'
-import type { AccountFacts } from './profile'
+import type { AccountFacts } from '../profile'
 
 export interface LocationData {
   location: string | null

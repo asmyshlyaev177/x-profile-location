@@ -206,23 +206,17 @@
   "emptyNoKeywords": {
     "message": "Chưa đặt từ khóa — tất cả bài đăng hiển thị bình thường."
   },
-  "setNameMatch": {
-    "message": "Trong tên và tên người dùng"
+  "kwMatchWhole": {
+    "message": "trọn từ"
   },
-  "setNameMatchDesc": {
-    "message": "Tên hiển thị được chọn để người khác nhìn thấy, và thường được viết đúng theo kiểu né một bộ lọc như thế này — “NFTguy”, “#freepalestine”. Khớp cả bên trong một từ sẽ bắt được chúng."
+  "kwMatchPartial": {
+    "message": "một phần"
   },
-  "setBioMatch": {
-    "message": "Trong tiểu sử"
+  "kwMatchNewLabel": {
+    "message": "Cách khớp từ khóa tiếp theo"
   },
-  "setBioMatchDesc": {
-    "message": "Tiểu sử là văn xuôi: khớp bên trong một từ khiến từ khóa “an” trùng cả trong “ban” và “than”. Ở đây, chỉ khớp trọn từ là lựa chọn an toàn hơn."
-  },
-  "matchWord": {
-    "message": "Chỉ trọn từ"
-  },
-  "matchPartial": {
-    "message": "Bất kỳ đâu trong từ"
+  "kwMatchLabel": {
+    "message": "Cách khớp “$1”"
   },
   "cardLocations": {
     "message": "Vị trí"

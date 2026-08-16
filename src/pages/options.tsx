@@ -1,10 +1,13 @@
 import {
   ACCOUNT_AGE_CHOICES,
+  type AccountAgeFilter,
   DEFAULT_MIN_CONFIDENCE,
   defaultSetting,
   exportSettings,
   FILTER_RULES,
+  type FilterRule,
   formatAgeChoice,
+  type HideBlockedMode,
   importSettings,
   LOOKUP_LIMIT_PER_WINDOW,
   LOOKUP_WINDOW_MINUTES,
@@ -18,14 +21,17 @@ import {
   normalizeRuleExceptions,
   normalizeTheme,
   OPTIONS_TABS,
+  type OptionsTabId,
   PREFETCH_SHARE_CHOICES,
+  type PrefetchPacing,
   readSetting,
+  type RuleExceptions,
   SETTINGS_KEYS,
-  SettingsImportError,
   settingsFileName,
+  SettingsImportError,
+  type ThemePreference,
   withKeyword,
   withLocation,
-  withoutKeyword,
   withoutLocation,
 } from '../scripts/settings'
 import {
@@ -39,8 +45,6 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
-  KEYWORD_BIO_MATCH_KEY,
-  KEYWORD_NAME_MATCH_KEY,
   MIN_CONFIDENCE_KEY,
   MSG,
   OPTIONS_TAB_KEY,
@@ -63,20 +67,14 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import {
-  type AccountAgeFilter,
   CANONICAL_LOCATIONS,
-  type FilterRule,
   flagFor,
-  type HideBlockedMode,
   LOCATION_ALIASES,
-  type ThemePreference,
-  type OptionsTabId,
-  type PrefetchPacing,
   REGION_MEMBERS,
-  type RuleExceptions,
 } from '../scripts/countries/countries'
+import { KeywordAddRow, KeywordChips } from '../components/KeywordChips'
 import { isMobile } from '../scripts/device'
-import type { MatchMode } from '../scripts/keywords'
+import type { Keyword, MatchMode } from '../scripts/keywords'
 import { isSharedCacheConfigured } from '../scripts/cache/shared-cache'
 import {
   initI18n,
@@ -209,32 +207,6 @@ function Stack({ children }: { children: ComponentChildren }) {
   return <div class={css.stack}>{children}</div>
 }
 
-/** Whole word, or anywhere inside one. Asked of names and of bios separately. */
-function MatchModeSelect({
-  value,
-  onChange,
-}: {
-  value: MatchMode
-  onChange: (mode: MatchMode) => void
-}) {
-  return (
-    <select
-      class={css.modeSelect}
-      value={value}
-      onChange={(e) =>
-        onChange(
-          (e.target as HTMLSelectElement).value === 'partial'
-            ? 'partial'
-            : 'word',
-        )
-      }
-    >
-      <option value="word">{t('matchWord')}</option>
-      <option value="partial">{t('matchPartial')}</option>
-    </select>
-  )
-}
-
 // A settings page's branches are its settings. Getting under the threshold means
 // five tab components, which a linter should not be the one to drive.
 // oxlint-disable-next-line complexity
@@ -246,13 +218,8 @@ export function Options() {
   const [accountAge, setAccountAge] = useState<AccountAgeFilter>(
     defaultSetting(ACCOUNT_AGE_KEY),
   )
-  const [keywords, setKeywords] = useState<string[]>([])
-  const [nameMatch, setNameMatch] = useState(
-    defaultSetting(KEYWORD_NAME_MATCH_KEY),
-  )
-  const [bioMatch, setBioMatch] = useState(
-    defaultSetting(KEYWORD_BIO_MATCH_KEY),
-  )
+  const [keywords, setKeywords] = useState<Keyword[]>([])
+  const [newKeywordMode, setNewKeywordMode] = useState<MatchMode>('word')
   const [flagsEnabled, setFlagsEnabled] = useState(DEFAULT_FLAGS.enabled)
   const [flagsThreshold, setFlagsThreshold] = useState(DEFAULT_FLAGS.threshold)
   const [flagsUniqueOnly, setFlagsUniqueOnly] = useState(
@@ -328,8 +295,6 @@ export function Options() {
         setAffiliations(readSetting(BLOCKED_AFFILIATIONS_KEY, result))
         setAccountAge(readSetting(ACCOUNT_AGE_KEY, result))
         setKeywords(readSetting(HIGHLIGHT_KEYWORDS_KEY, result))
-        setNameMatch(readSetting(KEYWORD_NAME_MATCH_KEY, result))
-        setBioMatch(readSetting(KEYWORD_BIO_MATCH_KEY, result))
         const flags = readSetting(HIGHLIGHT_FLAGS_KEY, result)
         setFlagsEnabled(flags.enabled)
         setFlagsThreshold(flags.threshold)
@@ -421,7 +386,7 @@ export function Options() {
     chrome.storage.local.set({ [ACCOUNT_AGE_KEY]: next })
   }
 
-  function editKeywords(next: string[]) {
+  function editKeywords(next: Keyword[]) {
     if (next === keywords) return
     setKeywords(next)
     chrome.storage.local.set({ [HIGHLIGHT_KEYWORDS_KEY]: next })
@@ -771,71 +736,34 @@ export function Options() {
         <>
           <Card title={t('cardKeyword')} description={t('cardKeywordDesc')}>
             <Stack>
-              {keywords.length > 0 && (
-                <div class={css.chips}>
-                  {keywords.map((kw) => (
-                    <span key={kw} class={`${css.chip} ${css.chipKeyword}`}>
-                      {kw}
-                      <button
-                        class={css.chipRemove}
-                        onClick={() =>
-                          editKeywords(withoutKeyword(keywords, kw))
-                        }
-                        title={t('removeItem', kw)}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <Autocomplete
-                id="keyword"
-                selected={keywords}
-                allOptions={KEYWORD_SUGGESTIONS}
-                onSelect={(kw) => editKeywords(withKeyword(keywords, kw))}
-                placeholder={t('keywordPlaceholder')}
-                allowFreeInput
-                closeOnSelect={false}
+              <KeywordChips
+                keywords={keywords}
+                classes={{
+                  chips: css.chips,
+                  chip: `${css.chip} ${css.chipKeyword}`,
+                  remove: css.chipRemove,
+                }}
+                onChange={editKeywords}
               />
+
+              <KeywordAddRow mode={newKeywordMode} onMode={setNewKeywordMode}>
+                <Autocomplete
+                  id="keyword"
+                  selected={keywords.map((kw) => kw.text)}
+                  allOptions={KEYWORD_SUGGESTIONS}
+                  onSelect={(kw) =>
+                    editKeywords(withKeyword(keywords, kw, newKeywordMode))
+                  }
+                  placeholder={t('keywordPlaceholder')}
+                  allowFreeInput
+                  closeOnSelect={false}
+                />
+              </KeywordAddRow>
 
               {keywords.length === 0 && (
                 <p class={css.empty}>{t('emptyNoKeywords')}</p>
               )}
             </Stack>
-
-            <Setting
-              label={t('setNameMatch')}
-              description={t('setNameMatchDesc')}
-              clickable={false}
-              control={
-                <MatchModeSelect
-                  value={nameMatch}
-                  onChange={(mode) => {
-                    setNameMatch(mode)
-                    chrome.storage.local.set({
-                      [KEYWORD_NAME_MATCH_KEY]: mode,
-                    })
-                  }}
-                />
-              }
-            />
-
-            <Setting
-              label={t('setBioMatch')}
-              description={t('setBioMatchDesc')}
-              clickable={false}
-              control={
-                <MatchModeSelect
-                  value={bioMatch}
-                  onChange={(mode) => {
-                    setBioMatch(mode)
-                    chrome.storage.local.set({ [KEYWORD_BIO_MATCH_KEY]: mode })
-                  }}
-                />
-              }
-            />
           </Card>
 
           <Card title={t('cardLocations')} description={t('cardLocationsDesc')}>

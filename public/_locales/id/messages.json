@@ -206,23 +206,17 @@
   "emptyNoKeywords": {
     "message": "Tidak ada kata kunci — semua postingan ditampilkan normal."
   },
-  "setNameMatch": {
-    "message": "Di nama dan handle"
+  "kwMatchWhole": {
+    "message": "utuh"
   },
-  "setNameMatchDesc": {
-    "message": "Nama tampilan dipilih untuk dilihat, dan sering ditulis justru agar lolos dari filter seperti ini — “NFTguy”, “#freepalestine”. Pencocokan di dalam kata menangkapnya."
+  "kwMatchPartial": {
+    "message": "sebagian"
   },
-  "setBioMatch": {
-    "message": "Di bio"
+  "kwMatchNewLabel": {
+    "message": "Cara kata kunci berikutnya dicocokkan"
   },
-  "setBioMatchDesc": {
-    "message": "Bio adalah prosa: mencocokkan di dalam kata membuat kata kunci “api” ikut cocok dengan “sapi” dan “rapi”. Di sini, hanya kata utuh lebih aman."
-  },
-  "matchWord": {
-    "message": "Hanya kata utuh"
-  },
-  "matchPartial": {
-    "message": "Di mana saja dalam kata"
+  "kwMatchLabel": {
+    "message": "Cara “$1” dicocokkan"
   },
   "cardLocations": {
     "message": "Lokasi"

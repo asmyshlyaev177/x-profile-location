@@ -206,23 +206,17 @@
   "emptyNoKeywords": {
     "message": "لم تُضبط كلمات مفتاحية — كل المنشورات تظهر طبيعيًا."
   },
-  "setNameMatch": {
-    "message": "في الأسماء والمعرّفات"
+  "kwMatchWhole": {
+    "message": "كلمة كاملة"
   },
-  "setNameMatchDesc": {
-    "message": "الاسم المعروض يُختار ليُرى، وكثيرًا ما يُكتب تحديدًا للإفلات من فلتر كهذا — «NFTguy»، «#freepalestine». المطابقة داخل الكلمة تلتقط هذه الحالات."
+  "kwMatchPartial": {
+    "message": "جزئي"
   },
-  "setBioMatch": {
-    "message": "في النبذة التعريفية"
+  "kwMatchNewLabel": {
+    "message": "كيفية مطابقة الكلمة المفتاحية التالية"
   },
-  "setBioMatchDesc": {
-    "message": "النبذة نصٌّ متصل، والمطابقة داخل الكلمة تجعل كلمة مفتاحية مثل «علم» تتطابق مع «معلم» و«أعلم». الاقتصار على الكلمات الكاملة أأمن هنا."
-  },
-  "matchWord": {
-    "message": "الكلمة الكاملة فقط"
-  },
-  "matchPartial": {
-    "message": "في أي موضع داخل الكلمة"
+  "kwMatchLabel": {
+    "message": "كيفية مطابقة «$1»"
   },
   "cardLocations": {
     "message": "المواقع"

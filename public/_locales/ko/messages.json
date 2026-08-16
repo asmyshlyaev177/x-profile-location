@@ -206,23 +206,17 @@
   "emptyNoKeywords": {
     "message": "설정된 키워드 없음 — 모든 게시물이 일반적으로 표시됩니다."
   },
-  "setNameMatch": {
-    "message": "이름과 아이디에서"
+  "kwMatchWhole": {
+    "message": "완전한 단어"
   },
-  "setNameMatchDesc": {
-    "message": "표시 이름은 보이기 위해 정하는 것이라, 이런 필터를 피하려고 쓰는 경우도 많습니다 — “NFTguy”, “#freepalestine”. 단어 안까지 찾으면 그런 이름도 걸립니다."
+  "kwMatchPartial": {
+    "message": "부분 일치"
   },
-  "setBioMatch": {
-    "message": "소개글에서"
+  "kwMatchNewLabel": {
+    "message": "다음에 추가할 키워드의 일치 방식"
   },
-  "setBioMatchDesc": {
-    "message": "소개글은 문장입니다. 단어 안까지 찾으면 키워드 “투자”가 “투자자”에도 걸립니다. 다만 한국어는 조사가 붙기 때문에 “완전한 단어만”으로는 “투자를” 같은 형태를 놓칩니다."
-  },
-  "matchWord": {
-    "message": "완전한 단어만"
-  },
-  "matchPartial": {
-    "message": "단어 안 어디든"
+  "kwMatchLabel": {
+    "message": "“$1” 일치 방식"
   },
   "cardLocations": {
     "message": "위치"
