@@ -14,6 +14,7 @@ import {
   MSG,
   RATE_LIMIT_RESET_DEFAULT_MS,
   RATE_PROMPT_KEY,
+  REGION_EXCLUSIONS_KEY,
   RULE_EXCEPTIONS_KEY,
   SHARED_CACHE_KEY,
   SHOW_ACCOUNT_CARD_KEY,
@@ -44,6 +45,7 @@ import {
   expandLocations,
   flagFor,
   REGION_ABBR,
+  type RegionExclusions,
   REGION_FLAGS,
 } from '../countries/countries'
 import {
@@ -142,11 +144,15 @@ const RE_AT_MENTION = /^@[A-Za-z0-9_]{1,50}$/
 // Blocked countries (loaded from chrome.storage.local, set via options page)
 // ---------------------------------------------------------------------------
 let blockedCountries = new Set<string>()
+// The picks as the user made them, kept because either half of the expansion
+// can change on its own and the other one is not in the storage event.
+let blockedPicks: string[] = []
+let regionExclusions: RegionExclusions = {}
 
 // Expansion lives here, not in storage: what the user picked and what it picks
 // out are different things, and only the second belongs in a comparison.
-function toBlockedSet(stored: unknown): Set<string> {
-  return expandLocations(settingValue(BLOCKED_COUNTRIES_KEY, stored))
+function rebuildBlockedSet(): void {
+  blockedCountries = expandLocations(blockedPicks, regionExclusions)
 }
 
 function isBlockedLocation(loc: string): boolean {
@@ -200,6 +206,7 @@ chrome.storage.local
   .get([
     EXTENSION_ENABLED_KEY,
     BLOCKED_COUNTRIES_KEY,
+    REGION_EXCLUSIONS_KEY,
     HIGHLIGHT_KEYWORDS_KEY,
     HIGHLIGHT_FLAGS_KEY,
     SHOW_LOCATION_IN_FEED_KEY,
@@ -219,7 +226,9 @@ chrome.storage.local
   .then((result) => {
     const r = result as Record<string, unknown>
     extensionEnabled = readSetting(EXTENSION_ENABLED_KEY, r)
-    blockedCountries = toBlockedSet(r[BLOCKED_COUNTRIES_KEY])
+    blockedPicks = readSetting(BLOCKED_COUNTRIES_KEY, r)
+    regionExclusions = readSetting(REGION_EXCLUSIONS_KEY, r)
+    rebuildBlockedSet()
     highlightKeywords = readSetting(HIGHLIGHT_KEYWORDS_KEY, r)
     setKeywords(highlightKeywords)
     updateKeywordEmojiStyle()
@@ -327,11 +336,17 @@ function applyMasterSwitch(changes: StorageChanges): boolean {
 }
 
 function applyFilterChanges(changes: StorageChanges): void {
-  if (changes[BLOCKED_COUNTRIES_KEY]) {
-    blockedCountries = toBlockedSet(changes[BLOCKED_COUNTRIES_KEY].newValue)
+  onSettingChange(changes, BLOCKED_COUNTRIES_KEY, (value) => {
+    blockedPicks = value
+    rebuildBlockedSet()
     // Editing the list can newly block (or unblock) locations already on screen.
     void refreshHiddenTweets()
-  }
+  })
+  onSettingChange(changes, REGION_EXCLUSIONS_KEY, (value) => {
+    regionExclusions = value
+    rebuildBlockedSet()
+    void refreshHiddenTweets()
+  })
   // Both keys arrive together, so the general one wins and the legacy one is a
   // fallback — that is what makes a removal stick.
   if (changes[RULE_EXCEPTIONS_KEY]) {
@@ -711,6 +726,8 @@ async function getBioInfo(userName: string): Promise<ProfileInfo> {
 export function __testResetState() {
   // settings, back to what the declarations above start them at
   blockedCountries = new Set()
+  blockedPicks = []
+  regionExclusions = {}
   highlightKeywords = []
   setKeywords([])
   highlightFlagsEnabled = DEFAULT_FLAGS.enabled

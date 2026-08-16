@@ -22,6 +22,21 @@ to an extension. `intent.skills` in `package.json` is the allowlist.)
 Secret redaction has been on by default since 1.0.2 — Authorization / Cookie /
 Set-Cookie are stripped when _recording_. Replaying existing HARs is unaffected.
 
+## Recording, end to end
+
+`pnpm test:e2e:record` is the interactive route: headed, `--ui`, and it runs
+`pnpm scrub` for you afterwards. Without a UI, flip `MODE` in `fixtures.ts` to
+`'record'`, run the one test (`pnpm exec playwright test <file> -g "<title>"`),
+then **`pnpm run scrub`**, then flip `MODE` back and re-run under replay to prove
+the capture is usable. A recorded-but-unscrubbed HAR must never be committed.
+
+Scrubbing is a pass over **every** recording, not only the new one: it
+pseudonymises handles, names, bios and avatars across the corpus, so it routinely
+rewrites HARs the current change never touched. Those diffs are the process
+working — commit them, don't revert them, and don't report them as churn.
+`pnpm scrub:check` is the gate ("no unscrubbed identities"); handles named in a
+test file are kept, which is why it scans the specs too.
+
 ## Headless
 
 The suite runs headless and shows nothing on screen. It used to be `headless:
@@ -71,6 +86,11 @@ binary via `executablePath`; absent → bundled Chromium + `state.json`.
   override, so a test with no capture fails at the fixture with `ENOENT … .har`.
   Record with `pnpm test:e2e:record`, then `pnpm scrub`. **Renaming a test orphans
   its recording.**
+- **Record it; don't borrow one.** A test that visits the same page as an existing
+  one still gets its own capture. Copying a HAR under a second name, or faking
+  `titlePath` so two tests share a session id, is not the shortcut it looks like:
+  the recording stops describing what the test does, and the next re-record has
+  two owners writing one file. 15MB of HAR is the price of the suite.
 - Tests that never load x.com (popup, options page) need no recording — the fast
   ones to iterate on.
 - The **popup** opens as an ordinary tab (`openPopupPage`) — Playwright can't open

@@ -230,6 +230,15 @@
   "regionCountries": {
     "message": "地域 · $1カ国"
   },
+  "regionPickTitle": {
+    "message": "この地域が絞り込む国を選びます。何も選ばない場合、地域名そのものを記載しているプロフィールだけが対象になります。"
+  },
+  "regionAll": {
+    "message": "すべて"
+  },
+  "regionNone": {
+    "message": "なし"
+  },
   "emptyNoLocations": {
     "message": "地域未選択 — すべての国旗がそのまま表示されます。"
   },

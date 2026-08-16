@@ -437,6 +437,91 @@ export async function removeKeyword(
   await optPage.close()
 }
 
+// ---------------------------------------------------------------------------
+// The blocked-locations list
+// ---------------------------------------------------------------------------
+// Each of these opens the options page, makes one edit and closes it again —
+// the chip (or the count on it) settling is the confirmation that
+// `chrome.storage.local.set` resolved, which is what the content script is
+// listening on.
+
+/** Removes a location chip by the name it is showing. */
+export async function removeBlockedLocation(
+  context: BrowserContext,
+  extensionId: string,
+  location: string,
+): Promise<void> {
+  const optPage = await openOptionsPage(context, extensionId)
+  const card = await optionsSection(optPage, 'blocked')
+  const remove = card.locator(`button[title="Remove ${location}"]`)
+
+  await remove.click()
+  await expect(remove).toHaveCount(0, { timeout: 3_000 })
+  await optPage.close()
+}
+
+/** Adds a location through the picker, the way a user would. */
+export async function addBlockedLocation(
+  context: BrowserContext,
+  extensionId: string,
+  location: string,
+): Promise<void> {
+  const optPage = await openOptionsPage(context, extensionId)
+  const card = await optionsSection(optPage, 'blocked')
+
+  const input = card.locator('input[role="combobox"]').first()
+  await input.click()
+  await input.fill(location)
+  await input.press('Enter')
+
+  await expect(card.locator(`button[title="Remove ${location}"]`)).toBeVisible({
+    timeout: 3_000,
+  })
+  await optPage.close()
+}
+
+/** The chip of a blocked region, which is also what opens its member list. */
+function regionChip(card: Locator, region: string): Locator {
+  return card.locator('button[aria-expanded]').filter({ hasText: region })
+}
+
+/**
+ * Checks or unchecks one country under a blocked region. `member: null` is the
+ * "None" button — every country at once, which leaves the region matching only
+ * an account that says the region itself.
+ */
+export async function setRegionMember(
+  context: BrowserContext,
+  extensionId: string,
+  region: string,
+  member: string | null,
+  covered: boolean,
+): Promise<void> {
+  const optPage = await openOptionsPage(context, extensionId)
+  const card = await optionsSection(optPage, 'blocked')
+  const chip = regionChip(card, region)
+  const before = await coverageOf(chip)
+
+  await chip.click()
+  if (member === null) {
+    await card.getByRole('button', { name: covered ? 'All' : 'None' }).click()
+  } else {
+    await card
+      .locator('label')
+      .filter({ hasText: member })
+      .locator('input[type="checkbox"]')
+      .setChecked(covered)
+  }
+
+  await expect.poll(() => coverageOf(chip), { timeout: 3_000 }).not.toBe(before)
+  await optPage.close()
+}
+
+/** How many of a region's countries its chip says it still covers. */
+async function coverageOf(chip: Locator): Promise<string> {
+  return (await chip.textContent())?.match(/\d+\/\d+/)?.[0] ?? ''
+}
+
 // Each section, its heading, and the tab it lives behind. Sections are only in
 // the DOM while their tab is selected, so every locator here selects the tab
 // first — see openOptionsTab.

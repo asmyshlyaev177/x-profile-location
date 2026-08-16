@@ -14,6 +14,7 @@
 import type { BrowserContext, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
+  addBlockedLocation,
   hoverCardLocation,
   hoverForLocationRow,
   mockAboutAccount,
@@ -22,7 +23,9 @@ import {
   mostLikedReply,
   openOptionsPage,
   optionsSection,
+  removeBlockedLocation,
   setCheckboxOption,
+  setRegionMember,
   TWEET_ARTICLE,
   waitForReplies,
 } from './helpers'
@@ -215,6 +218,71 @@ test('hide mode drops the tweet silently, and switching off brings it back', asy
   await setHideMode(context, extensionId, 'off')
   await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 10_000 })
   await expect(article).toBeVisible()
+})
+
+// ---------------------------------------------------------------------------
+// Which locations a region stands for
+// ---------------------------------------------------------------------------
+// A region on the list catches the countries under it, and each of those can be
+// unchecked. The unit suite has the set arithmetic; what only a browser can say
+// is that an edit made in the options page's picker reaches a timeline that is
+// already rendered — three hops (picker → chrome.storage → the content script's
+// listener) that each pass their own tests and have to agree here.
+
+test('a country is caught by the region holding it, and released when unchecked', async ({
+  page,
+  context,
+  extensionId,
+}) => {
+  await mockSharedCache(page, FROM_INDIA)
+  await mockAboutAccount(page, { account_based_in: 'India' })
+
+  await page.goto(NASA_TWEET)
+
+  const { article } = await mostLikedReply(page)
+  await expect(article).toHaveAttribute(HIDDEN, 'collapse', {
+    timeout: 15_000,
+  })
+
+  // India and South Asia are both on the default list, so the country's own
+  // chip has to go before the region is the only thing catching it.
+  await removeBlockedLocation(context, extensionId, 'India')
+  await expect(article).toHaveAttribute(HIDDEN, 'collapse')
+
+  await setRegionMember(context, extensionId, 'South Asia', 'India', false)
+  await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 10_000 })
+
+  // Picked by name, the country is caught whatever its region covers.
+  await addBlockedLocation(context, extensionId, 'India')
+  await expect(article).toHaveAttribute(HIDDEN, 'collapse', {
+    timeout: 10_000,
+  })
+})
+
+test('a region with no countries checked still catches an account that says the region', async ({
+  page,
+  context,
+  extensionId,
+}) => {
+  // The label is a location X reports in its own right, so unchecking every
+  // country under a region narrows it to that — not to nothing.
+  await mockSharedCache(page, { ...FROM_INDIA, loc: 'South Asia' })
+  await mockAboutAccount(page, { account_based_in: 'South Asia' })
+
+  await page.goto(NASA_TWEET)
+
+  const { article } = await mostLikedReply(page)
+  await expect(article).toHaveAttribute(HIDDEN, 'collapse', {
+    timeout: 15_000,
+  })
+  await expect(article.locator('.x-loc-hidden-label')).toHaveText(/South Asia/)
+
+  await setRegionMember(context, extensionId, 'South Asia', null, false)
+  await expect(article).toHaveAttribute(HIDDEN, 'collapse')
+
+  // …and nothing but the label: the chip going takes the post back.
+  await removeBlockedLocation(context, extensionId, 'South Asia')
+  await expect(article).not.toHaveAttribute(HIDDEN, /.*/, { timeout: 10_000 })
 })
 
 // ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import {
   REGION_MEMBERS,
   canonicalLocation,
   expandLocations,
+  includedMembers,
   regionsContaining,
 } from './countries'
 
@@ -183,6 +184,52 @@ describe('expandLocations', () => {
 
   it('is empty for an empty list', () => {
     expect(expandLocations([]).size).toBe(0)
+  })
+
+  it('skips the members the user unchecked, and only those', () => {
+    const expanded = expandLocations(['South Asia'], {
+      'South Asia': ['Nepal'],
+    })
+    expect(expanded.has('South Asia')).toBe(true)
+    expect(expanded.has('India')).toBe(true)
+    expect(expanded.has('Nepal')).toBe(false)
+  })
+
+  it('matches the label alone when every member is unchecked', () => {
+    const expanded = expandLocations(['South Asia'], {
+      'South Asia': [...REGION_MEMBERS['South Asia']],
+    })
+    expect([...expanded]).toEqual(['South Asia'])
+  })
+
+  it('keeps a member blocked through a region that still covers it', () => {
+    const expanded = expandLocations(['East Asia', 'East Asia & Pacific'], {
+      'East Asia': ['Japan'],
+    })
+    expect(expanded.has('Japan')).toBe(true)
+  })
+
+  it('keeps a member blocked when it is also picked by name', () => {
+    const expanded = expandLocations(['South Asia', 'Nepal'], {
+      'South Asia': ['Nepal'],
+    })
+    expect(expanded.has('Nepal')).toBe(true)
+  })
+})
+
+describe('includedMembers', () => {
+  it('is every member when nothing is excluded', () => {
+    expect(includedMembers('South Asia')).toEqual(REGION_MEMBERS['South Asia'])
+  })
+
+  it('is empty for something that is not a region', () => {
+    expect(includedMembers('France')).toEqual([])
+  })
+
+  it('compares by canonical name, not by the spelling stored', () => {
+    expect(
+      includedMembers('Europe', { Europe: ['Czech Republic'] }),
+    ).not.toContain('Czechia')
   })
 })
 

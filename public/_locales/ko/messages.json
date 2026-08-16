@@ -230,6 +230,15 @@
   "regionCountries": {
     "message": "지역 · 국가 $1개"
   },
+  "regionPickTitle": {
+    "message": "이 지역이 필터링할 국가를 선택하세요. 아무것도 선택하지 않으면 지역 이름 자체를 표시한 프로필만 필터링됩니다."
+  },
+  "regionAll": {
+    "message": "전체"
+  },
+  "regionNone": {
+    "message": "없음"
+  },
   "emptyNoLocations": {
     "message": "선택된 위치 없음 — 모든 플래그가 그대로 표시됩니다."
   },

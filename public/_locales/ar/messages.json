@@ -230,6 +230,15 @@
   "regionCountries": {
     "message": "منطقة · $1 دولة"
   },
+  "regionPickTitle": {
+    "message": "اختر الدول التي تُصفّيها هذه المنطقة. إن لم تختر أيًّا منها، فلن تُصفّى إلا الحسابات التي تذكر المنطقة نفسها."
+  },
+  "regionAll": {
+    "message": "الكل"
+  },
+  "regionNone": {
+    "message": "لا شيء"
+  },
   "emptyNoLocations": {
     "message": "لم تُحدد مواقع — كل الأعلام تظهر كما هي."
   },

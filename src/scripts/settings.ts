@@ -12,6 +12,7 @@ import {
   MIN_CONFIDENCE_KEY,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
+  REGION_EXCLUSIONS_KEY,
   RULE_EXCEPTIONS_KEY,
   SHARED_CACHE_KEY,
   SHOW_ACCOUNT_CARD_KEY,
@@ -328,7 +329,11 @@ export function normalizeRuleExceptions(
 // Every user-facing setting, with the function that makes a stored value safe
 // and — because it answers for `undefined` too — its default. Never read by hand.
 
-import { canonicalLocation } from './countries/countries'
+import {
+  canonicalLocation,
+  REGION_MEMBERS,
+  type RegionExclusions,
+} from './countries/countries'
 import { normalizeUiLanguage, t, UI_LANGUAGE_KEY } from './i18n'
 // Type-only, so the keyword matcher stays out of the popup and options bundles.
 import type { Keyword, MatchMode } from './keywords'
@@ -357,6 +362,37 @@ const asLocationList = (v: unknown): string[] =>
       ]
     : []
 
+// Only real members of real regions survive, so a stale export can't leave a
+// country excluded from a region that no longer lists it.
+const asRegionExclusions = (value: unknown): RegionExclusions => {
+  const out: RegionExclusions = {}
+  for (const [region, dropped] of Object.entries(asRecord(value))) {
+    if (!REGION_MEMBERS[region] || !Array.isArray(dropped)) continue
+    const members = new Set(REGION_MEMBERS[region].map(canonicalLocation))
+    const kept = [
+      ...new Set(
+        dropped
+          .filter((m): m is string => typeof m === 'string')
+          .map(canonicalLocation)
+          .filter((m) => members.has(m)),
+      ),
+    ]
+    if (kept.length) out[region] = kept
+  }
+  return out
+}
+
+/** Empty means the region covers everything again, so the key goes away. */
+export function withRegionExclusions(
+  exclusions: RegionExclusions,
+  region: string,
+  dropped: string[],
+): RegionExclusions {
+  const next = { ...exclusions, [region]: dropped }
+  if (!dropped.length) delete next[region]
+  return next
+}
+
 const asMatchMode = (value: unknown): MatchMode =>
   value === 'partial' ? 'partial' : 'word'
 
@@ -383,6 +419,7 @@ const asKeywordList = (v: unknown): Keyword[] => {
 export const SETTINGS_REGISTRY = {
   [EXTENSION_ENABLED_KEY]: asBoolean(true),
   [BLOCKED_COUNTRIES_KEY]: asLocationList,
+  [REGION_EXCLUSIONS_KEY]: asRegionExclusions,
   [BLOCKED_AFFILIATIONS_KEY]: normalizeHandleList,
   [ACCOUNT_AGE_KEY]: normalizeAccountAge,
   [HIDE_BLOCKED_LOCATIONS_KEY]: normalizeHideBlockedMode,

@@ -9,7 +9,6 @@ import {
   readSetting,
   withKeyword,
   withLocation,
-  withoutLocation,
 } from '../scripts/settings'
 import {
   BLOCKED_COUNTRIES_KEY,
@@ -18,6 +17,7 @@ import {
   HIGHLIGHT_KEYWORDS_KEY,
   POPUP_SECTION_KEY,
   RATE_PROMPT_KEY,
+  REGION_EXCLUSIONS_KEY,
   SHARED_CACHE_COUNT_KEY,
   SHARED_CACHE_KEY,
   SHOW_ACCOUNT_CARD_KEY,
@@ -32,10 +32,12 @@ import { render } from 'preact'
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import { KeywordAddRow, KeywordChips } from '../components/KeywordChips'
+import { LocationChips } from '../components/LocationChips'
 import {
   CANONICAL_LOCATIONS,
   flagFor,
   LOCATION_ALIASES,
+  type RegionExclusions,
   REGION_MEMBERS,
 } from '../scripts/countries/countries'
 import {
@@ -186,6 +188,8 @@ export function Popup() {
     defaultSetting(HIDE_BLOCKED_LOCATIONS_KEY),
   )
   const [blocked, setBlocked] = useState<string[]>([])
+  // Read-only here: the member picker is the options page's.
+  const [exclusions, setExclusions] = useState<RegionExclusions>({})
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [newKeywordMode, setNewKeywordMode] = useState<MatchMode>('word')
   const [section, setSection] = useState<PopupSection | null>(null)
@@ -219,6 +223,7 @@ export function Popup() {
         SHOW_ACCOUNT_CARD_KEY,
         HIDE_BLOCKED_LOCATIONS_KEY,
         BLOCKED_COUNTRIES_KEY,
+        REGION_EXCLUSIONS_KEY,
         HIGHLIGHT_KEYWORDS_KEY,
         POPUP_SECTION_KEY,
         USAGE_STATS_KEY,
@@ -232,6 +237,7 @@ export function Popup() {
         setAccountCard(readSetting(SHOW_ACCOUNT_CARD_KEY, r))
         setHideMode(readSetting(HIDE_BLOCKED_LOCATIONS_KEY, r))
         setBlocked(readSetting(BLOCKED_COUNTRIES_KEY, r))
+        setExclusions(readSetting(REGION_EXCLUSIONS_KEY, r))
         setKeywords(readSetting(HIGHLIGHT_KEYWORDS_KEY, r))
         setSection(normalizePopupSection(r[POPUP_SECTION_KEY]))
         setSharedCache(readSetting(SHARED_CACHE_KEY, r))
@@ -281,6 +287,11 @@ export function Popup() {
     if (next === blocked) return
     setBlocked(next)
     write(BLOCKED_COUNTRIES_KEY, next)
+  }
+
+  function editExclusions(next: RegionExclusions) {
+    setExclusions(next)
+    write(REGION_EXCLUSIONS_KEY, next)
   }
 
   function editKeywords(next: Keyword[]) {
@@ -370,33 +381,18 @@ export function Popup() {
           open={section === 'locations'}
           onOpen={openSection}
         >
-          {blocked.length > 0 && (
-            <div class={css.chips}>
-              {blocked.map((country) => {
-                const members = REGION_MEMBERS[country]
-                return (
-                  <span key={country} class={css.chip}>
-                    <span class={css.chipFlag}>{flagFor(country)}</span>
-                    {localizedLocation(country)}
-                    {members && (
-                      <span class={css.chipNote} title={members.join(', ')}>
-                        +{members.length}
-                      </span>
-                    )}
-                    <button
-                      class={css.chipRemove}
-                      onClick={() =>
-                        editBlocked(withoutLocation(blocked, country))
-                      }
-                      title={t('removeItem', localizedLocation(country))}
-                    >
-                      ×
-                    </button>
-                  </span>
-                )
-              })}
-            </div>
-          )}
+          <LocationChips
+            blocked={blocked}
+            exclusions={exclusions}
+            classes={{
+              chips: css.chips,
+              chip: css.chip,
+              flag: css.chipFlag,
+              remove: css.chipRemove,
+            }}
+            onBlocked={editBlocked}
+            onExclusions={editExclusions}
+          />
 
           <Autocomplete
             id="popup-country"

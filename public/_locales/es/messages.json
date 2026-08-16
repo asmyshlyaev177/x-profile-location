@@ -230,6 +230,15 @@
   "regionCountries": {
     "message": "región · $1 países"
   },
+  "regionPickTitle": {
+    "message": "Elige qué países filtra esta región. Sin ninguno marcado, solo filtra perfiles que indican la región en sí."
+  },
+  "regionAll": {
+    "message": "Todos"
+  },
+  "regionNone": {
+    "message": "Ninguno"
+  },
   "emptyNoLocations": {
     "message": "Sin ubicaciones seleccionadas — todas las banderas se muestran tal cual."
   },

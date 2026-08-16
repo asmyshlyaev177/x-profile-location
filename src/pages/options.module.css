@@ -455,17 +455,6 @@ label.setting {
   opacity: 1;
 }
 
-/* A region chip's "+57 countries" note */
-.chipNote {
-  margin-left: 2px;
-  padding: 0 5px;
-  border-radius: 5px;
-  background: rgba(127, 127, 127, 0.18);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: help;
-}
-
 /* Used by renderOption in the country autocomplete */
 .dropdownFlag {
   font-size: 18px;

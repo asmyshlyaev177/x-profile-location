@@ -90,6 +90,8 @@ export const CACHE_API_BASE =
 // Off means X renders exactly as it would with the extension uninstalled.
 export const EXTENSION_ENABLED_KEY = 'extensionEnabled'
 export const BLOCKED_COUNTRIES_KEY = 'blockedCountries'
+// Members unchecked under a blocked region — see RegionExclusions.
+export const REGION_EXCLUSIONS_KEY = 'regionExclusions'
 export const HIGHLIGHT_KEYWORDS_KEY = 'highlightKeywords'
 export const HIGHLIGHT_FLAGS_KEY = 'highlightFlags'
 export const SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed'

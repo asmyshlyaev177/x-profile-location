@@ -63,3 +63,10 @@ article,
 .tweetbody {
   padding: 0 16px;
 }
+
+/* The options page's card, as a width for the member grid to lay out in. Only
+   the width matters here — the picker brings its own rules. */
+.wide {
+  width: 700px;
+  padding: 16px;
+}
