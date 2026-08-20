@@ -11,7 +11,7 @@ Description=x-loc-cache — verified SQLite backup with rotation
 Documentation=https://github.com/asmyshlyaev177/x-profile-location
 # No Requires= on the main service: VACUUM INTO snapshots a live WAL database
 # consistently, and a stopped one just as well.
-# Email on any failure — including the ones backup.sh cannot report about
+# Email on any failure — including the ones backup.ts cannot report about
 # itself, like an OOM kill. Inert until /etc/x-loc-alert.env exists.
 OnFailure=x-loc-alert@%n.service
 
@@ -19,7 +19,7 @@ OnFailure=x-loc-alert@%n.service
 Type=oneshot
 User=xloc
 Group=xloc
-ExecStart=/opt/x-loc-cache/server/deploy/backup.sh
+ExecStart=/opt/x-loc-cache/server/deploy/backup.ts
 # The server's env file, so XLOC_DB points both units at the same file.
 EnvironmentFile=/etc/x-loc-cache.env
 # Backups default under the server's StateDirectory; this guarantees it exists

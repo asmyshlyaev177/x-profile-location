@@ -41,9 +41,9 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-# The sqlite3 CLI is for deploy/backup.sh — VACUUM INTO plus the integrity
-# checks. flock and gzip, which it also needs, are already in the base; sqlite3
-# is the only thing missing. Without this the image runs fine and backups are
+# The sqlite3 CLI is for deploy/backup.ts — VACUUM INTO plus the integrity
+# checks. flock, which it also needs, and gzip, which restore.ts does, are
+# already in the base; sqlite3 is the only thing missing. Without this the image runs fine and backups are
 # simply impossible, which is a worse failure than a bigger layer.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends sqlite3 \
@@ -56,7 +56,7 @@ COPY package.json schema.sql ./
 COPY src ./src
 # The same files the systemd units run — not container-specific copies, so the
 # two deploy shapes cannot drift in how they back up or how they alert.
-COPY deploy/backup.sh ./deploy/backup.sh
+COPY deploy/backup.ts deploy/lib.ts ./deploy/
 COPY deploy/alert.ts ./deploy/alert.ts
 
 # Three defaults differ from the bare-metal ones, all forced by the container:

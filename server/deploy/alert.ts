@@ -4,7 +4,7 @@
 //
 //   alert.ts <unit>     a unit failed — sent from OnFailure= (see
 //                       x-loc-alert@.service). Catches everything, including
-//                       what backup.sh cannot report about itself: an OOM kill,
+//                       what backup.ts cannot report about itself: an OOM kill,
 //                       a missing interpreter, a timeout.
 //   alert.ts --report   the weekly heartbeat (x-loc-heartbeat.timer). Its
 //                       *absence* is the signal — a failure alert can only fire
@@ -39,8 +39,8 @@ export interface AlertConfig {
 }
 
 /**
- * Strings backup.sh prints when the *data* is at fault rather than the run.
- * `alert.test.ts` asserts each one still appears in backup.sh — renaming a
+ * Strings backup.ts prints when the *data* is at fault rather than the run.
+ * `alert.test.ts` asserts each one still appears in backup.ts — renaming a
  * message there without this would silently downgrade a corruption alert to a
  * generic failure, which is the difference between "look now" and "look later".
  */
@@ -129,7 +129,7 @@ export function buildFailureMessage(
         '',
         'Restore the newest verified backup:',
         '  ls -lh /var/lib/x-loc-cache/backups/',
-        '  sudo /opt/x-loc-cache/server/deploy/restore.sh <newest>.db.gz',
+        '  sudo /opt/x-loc-cache/server/deploy/restore.ts <newest>.db.gz',
         '',
         'Backups were NOT pruned on this run, so the full history is intact.',
       ]
@@ -168,7 +168,7 @@ export interface BackupStats {
 }
 
 /**
- * The archives backup.sh keeps, by their exact stamped name. Matching a looser
+ * The archives backup.ts keeps, by their exact stamped name. Matching a looser
  * `.db.gz` would also pick up `corrupt-evidence.db.gz`, which is the one file
  * whose presence means backups are *failing* — counting it as a healthy
  * archive is precisely backwards.
@@ -222,7 +222,7 @@ export interface VacuumStatus {
   stamp: string | null
 }
 
-/** Written by backup.sh beside the archives. */
+/** Written by backup.ts beside the archives. */
 export const VACUUM_STATUS_FILE = '.vacuum-status'
 
 /**
@@ -356,7 +356,7 @@ export function buildReportMessage(
             `A VACUUM would return ${mb(vacuum!.liveBytes - vacuum!.vacuumedBytes)} MB. That is measured, not`,
             'estimated: the nightly backup rebuilds the database to snapshot it,',
             'so the snapshot is what a compacted file weighs. To reclaim it:',
-            '  sudo /opt/x-loc-cache/server/deploy/vacuum.sh',
+            '  sudo /opt/x-loc-cache/server/deploy/vacuum.ts',
             'It stops the service for the rebuild, verifies the result before',
             'swapping it in, and keeps the old file beside the new one.',
           ]
