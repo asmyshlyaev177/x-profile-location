@@ -103,14 +103,11 @@ interface ServedProfile {
   src: string | null
   acc: boolean
   conf: number
-  rev?: boolean
 }
 
 export interface SharedHit {
   userName: string
   data: LocationData
-  /** Server asked us to re-verify this value against X (stochastic freshness). */
-  revalidate: boolean
 }
 
 /** Skips names asked about recently or known-missing, so scrolls stay cheap. */
@@ -165,7 +162,6 @@ export async function sharedBatchLookup(
           locationAccurate: p.acc,
           source: p.src as LocationData['source'],
         },
-        revalidate: p.rev === true,
       })
     }
     // Confirmed-missing: don't re-ask for NEG_TTL_MS.

@@ -35,7 +35,7 @@ services:
       XLOC_RATE_LIMIT: '600'
       # Caddy sets X-Forwarded-For. Set to false if nothing fronts this.
       XLOC_TRUST_PROXY: 'true'
-      # How many verified snapshots deploy/backup.sh keeps in /data/backups.
+      # How many verified snapshots deploy/backup.ts keeps in /data/backups.
       # There is no timer in here — the host schedules it; see "Backups
       # (container)" in README.md. XLOC_BACKUP_DIR is set in the image and
       # should stay inside /data, the only path that outlives the container.

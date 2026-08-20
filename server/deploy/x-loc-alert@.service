@@ -4,7 +4,7 @@
 #  `OnFailure=x-loc-alert@%n.service` on the units that matter, which passes the
 #  failing unit's name as the instance (%i).
 #
-#  This shape rather than emailing from inside backup.sh: systemd decides what
+#  This shape rather than emailing from inside backup.ts: systemd decides what
 #  "failed" means, so this also catches what a script cannot report about its
 #  own death — an OOM kill, a missing interpreter, a timeout, a bad ExecStart.
 #

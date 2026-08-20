@@ -79,13 +79,13 @@ describe('readConfig', () => {
 })
 
 describe('classifying a failure', () => {
-  // The alert reads backup.sh's own words. If those are reworded and these are
+  // The alert reads backup.ts's own words. If those are reworded and these are
   // not, a corruption alert quietly degrades into a generic failure alert —
   // which is the difference between "look now" and "look tomorrow".
-  it('matches strings backup.sh actually prints', () => {
-    const script = readFileSync(join(import.meta.dirname, 'backup.sh'), 'utf8')
+  it('matches strings backup.ts actually prints', () => {
+    const script = readFileSync(join(import.meta.dirname, 'backup.ts'), 'utf8')
     for (const marker of CORRUPTION_MARKERS) {
-      expect(script, `backup.sh no longer prints "${marker}"`).toContain(marker)
+      expect(script, `backup.ts no longer prints "${marker}"`).toContain(marker)
     }
   })
 
@@ -133,7 +133,7 @@ describe('buildFailureMessage', () => {
     expect(m.text).toMatch(
       /^The integrity check failed\. Do NOT repair in place\./,
     )
-    expect(m.text).toContain('restore.sh')
+    expect(m.text).toContain('restore.ts')
     expect(m.text).toContain('were NOT pruned')
   })
 
@@ -264,7 +264,7 @@ describe('the vacuum measurement', () => {
     return dir
   }
 
-  it('derives the reclaimable share from the two sizes backup.sh writes', () => {
+  it('derives the reclaimable share from the two sizes backup.ts writes', () => {
     const v = readVacuumStatus(
       status('stamp=20260806-233000\nlive_bytes=400\nvacuumed_bytes=300\n'),
     )
@@ -347,7 +347,7 @@ describe('reporting the vacuum measurement', () => {
     // lead line stay exactly as they are on any other quiet week.
     expect(m.subject).toBe('[x] backups healthy on vps-1')
     expect(m.text).toContain('Nothing to do')
-    expect(m.text).not.toContain('vacuum.sh')
+    expect(m.text).not.toContain('vacuum.ts')
   })
 
   it('says so in the subject once it is worth the stop', () => {
@@ -358,7 +358,7 @@ describe('reporting the vacuum measurement', () => {
     expect(m.text).toContain('DB reclaimable:  40%')
     // Leads with the finding, and the body says exactly what to run.
     expect(m.text).toMatch(/^Backups are current\. The database has 40%/)
-    expect(m.text).toContain('deploy/vacuum.sh')
+    expect(m.text).toContain('deploy/vacuum.ts')
     expect(m.text).toContain('keeps the old file')
   })
 
@@ -385,7 +385,7 @@ describe('reporting the vacuum measurement', () => {
     expect(m.subject).toBe('[x] backups are STALE on vps-1')
     expect(m.subject).not.toContain('reclaimable')
     expect(m.text).toContain('DB reclaimable:  40%')
-    expect(m.text).not.toContain('vacuum.sh')
+    expect(m.text).not.toContain('vacuum.ts')
   })
 
   it('distinguishes "not measured yet" from "nothing to reclaim"', () => {

@@ -89,7 +89,7 @@ one `clientId` may contribute per 15-minute window (200 — four times what X
 allows an honest client). Over-budget entries are dropped silently and the
 response is still `{ ok: true }`, so a poisoner gets no signal telling it when to
 rotate. Re-reporting a handle the client already paid for is free, since that is
-what revalidation and genuine relocations do.
+what an expired entry read again and a genuine relocation both look like.
 
 This is a guardrail, not a security boundary, and it is worth being explicit
 about the gap: **it does not stop an attacker who mints a fresh `clientId` per
@@ -119,13 +119,29 @@ All endpoints are CORS-open and take/return JSON; no credentials.
 
 ```ts
 // Vote (contribution) — sent only after a real AboutAccountQuery
-{ u: string; loc: string | null; src: string | null; acc: boolean }
+{
+  u: string
+  loc: string | null
+  src: string | null
+  acc: boolean
+}
 // Served — compact so batches stay small
-{ u: string; loc: string | null; src: string | null; acc: boolean; conf: number; rev?: boolean }
+{
+  u: string
+  loc: string | null
+  src: string | null
+  acc: boolean
+  conf: number
+}
 ```
 
-`rev: true` is a stochastic (~5%) hint asking the client to re-verify against X,
-so relocations propagate without every client hammering the API.
+A handle stays answerable only while somebody keeps looking at it: retention
+deletes votes older than `VOTE_RETENTION_MS` (60 days), and the same pass deletes
+any profile left with none. The next client to want that handle misses, reads it
+from X on hover or in the background, and contributes it back, which rebuilds the
+row. Values are cached for 60 days and then re-earned, so a relocation propagates
+without the server ever asking anyone to re-verify, and an account nobody opens
+any more leaves the database instead of sitting in it forever.
 
 `GET /v1/stats` is how many accounts the cache can answer for — the extension's
 toolbar popup shows it, and asks again every 30s for as long as that popup is
@@ -594,13 +610,26 @@ ls -lh /var/lib/x-loc-cache/backups/               # → one .db.gz
 systemctl list-timers x-loc-backup --no-pager      # → a NEXT / LEFT time
 ```
 
-Only the two unit files are copied. `backup.sh` runs in place from the checkout
-(`ExecStart=/opt/x-loc-cache/server/deploy/backup.sh`), so `git pull` updates it
-along with the rest of the server and there is nothing to re-copy. Beyond
-`sqlite3` it needs `flock` and `gzip`, both already on any Ubuntu; it checks for
-`flock` and refuses to run unserialised rather than skipping the lock.
+Only the two unit files are copied. `backup.ts` runs in place from the checkout
+(`ExecStart=/opt/x-loc-cache/server/deploy/backup.ts`, through its `node`
+shebang), so `git pull` updates it along with the rest of the server and there is
+nothing to re-copy. Beyond `sqlite3` it needs `flock`, already on any Ubuntu; it
+checks for it and refuses to run unserialised rather than skipping the lock.
 
-Each run ([`deploy/backup.sh`](deploy/backup.sh)) takes a snapshot with
+It is a Node script rather than shell so it can `import { VOTE_RETENTION_MS }`
+from the server instead of restating the retention window — the verification
+baseline below depends on the two agreeing. `restore.ts` and `vacuum.ts` are Node
+for the same reason and share [`deploy/lib.ts`](deploy/lib.ts) with it, so the
+three agree on what verifying a database means rather than each spelling it out.
+
+Two things stay external on purpose. SQLite is reached through the `sqlite3` CLI,
+not `better-sqlite3`: a Node major upgrade without a rebuild takes the native
+module down, and that is exactly the outage where backups still have to run. And
+every privileged step — `systemctl`, `sudo`, `chown`, `mv`, `curl` — is a spawned
+command rather than a Node API, which is what lets the tests put a stub in front
+of each one.
+
+Each run ([`deploy/backup.ts`](deploy/backup.ts)) takes a snapshot with
 `VACUUM INTO`, verifies it, gzips it, checks the live database, and only then
 prunes to the newest `XLOC_BACKUP_KEEP` (default 7). Nothing here needs the
 server stopped, and none of it runs on the server's event loop.
@@ -636,8 +665,11 @@ arrives in that window.
 calls an _empty_ database "ok"; a `COUNT(*)` probe proves the tables actually
 arrived, since a failed `VACUUM INTO` leaves a valid file with no tables in it;
 and comparing that count against the source's own from before the run catches a
-short copy (profiles are only ever inserted or updated — retention deletes
-votes, never profiles — so a snapshot can never legitimately hold fewer). A
+short copy. That last comparison is not against the profile count: retention
+deletes profiles whose votes have aged out and can run inside the copy, so the
+table legitimately shrinks. The baseline counts only the rows that pass cannot
+touch — a profile with at least one vote still inside the window — which a
+snapshot can never legitimately come in under. A
 failure prunes nothing, fails the unit, and keeps the rejected snapshot as
 evidence — **one** copy, gzipped, at `backups/corrupt-evidence.db.gz`.
 
@@ -647,7 +679,7 @@ again every night; a stamped, uncompressed file per run added a
 database-sized file nightly to the disk the live database writes to. A full
 disk turns "corrupt but still serving reads" into "cannot accept a single
 contribution" — with `/healthz` still green, since it never touches the
-database — and leaves no room for `restore.sh` to unpack into. The first copy
+database — and leaves no room for `restore.ts` to unpack into. The first copy
 is kept rather than the newest, being closest to the onset; delete it by hand
 and the next failure captures a fresh one.
 
@@ -668,7 +700,7 @@ prunes nothing.
 The unit runs as `xloc`, never root — and so must anything else that touches
 the database. The sqlite3 CLI creates `-wal`/`-shm` beside a WAL database when
 they are absent, and root-owned ones stop the service writing its own database.
-`backup.sh` refuses to run as root rather than trusting that. Runs are
+`backup.ts` refuses to run as root rather than trusting that. Runs are
 serialised with `flock`, so a hand-run alongside the timer cannot collide.
 
 Two things the rotation does not cover, both cheap:
@@ -686,11 +718,11 @@ Two things the rotation does not cover, both cheap:
 
 ```bash
 ls -lh /var/lib/x-loc-cache/backups/
-sudo /opt/x-loc-cache/server/deploy/restore.sh \
+sudo /opt/x-loc-cache/server/deploy/restore.ts \
   /var/lib/x-loc-cache/backups/x-loc-cache-<newest>.db.gz
 ```
 
-[`deploy/restore.sh`](deploy/restore.sh) verifies the archive and its
+[`deploy/restore.ts`](deploy/restore.ts) verifies the archive and its
 `integrity_check` **before** stopping the service — a bad backup costs no
 downtime — then swaps the database in atomically, restarts, and confirms
 `/healthz` plus the row counts. Whatever was in place is kept beside it as
@@ -709,12 +741,12 @@ Set up [Alerting](#alerting) and neither of those has to be noticed by hand.
 
 There is no scheduled `VACUUM`, and adding one would be a mistake. What there
 is instead: the nightly backup measures what a `VACUUM` would reclaim, and
-[`deploy/vacuum.sh`](deploy/vacuum.sh) reclaims it on the rare occasion the
+[`deploy/vacuum.ts`](deploy/vacuum.ts) reclaims it on the rare occasion the
 number says to.
 
 ```bash
-sudo /opt/x-loc-cache/server/deploy/vacuum.sh        # prompts first
-sudo /opt/x-loc-cache/server/deploy/vacuum.sh -y     # or don't
+sudo /opt/x-loc-cache/server/deploy/vacuum.ts        # prompts first
+sudo /opt/x-loc-cache/server/deploy/vacuum.ts -y     # or don't
 ```
 
 **Why nothing is scheduled.** `location_votes` is keyed
@@ -732,7 +764,7 @@ What actually leaves free pages behind is a one-off: shortening
 not come back. Those are events. So this is triggered by a measurement, not a
 calendar.
 
-**The measurement is free.** `backup.sh` already rebuilds the whole database
+**The measurement is free.** `backup.ts` already rebuilds the whole database
 every night — that is what `VACUUM INTO` does to produce the snapshot. So the
 snapshot's size _is_ what a compacted database would weigh, and the gap
 between it and the live file is what a `VACUUM` would hand back. Not an
@@ -749,7 +781,7 @@ digits is what nothing-to-do looks like. The weekly heartbeat reads that file
 [Alerting](#alerting) — and puts the share in every email, in the subject too
 once it reaches `XLOC_VACUUM_ALERT_PCT` (default 25). That threshold lives in
 exactly one place, `DEFAULT_VACUUM_ALERT_PCT` in
-[`deploy/alert.ts`](deploy/alert.ts); `backup.sh` records the two numbers and
+[`deploy/alert.ts`](deploy/alert.ts); `backup.ts` records the two numbers and
 draws no conclusion from them.
 
 It is also strictly better than `PRAGMA freelist_count`, which counts only
@@ -765,7 +797,7 @@ running `VACUUM` in place:
 2. Checks there is room beside the database for a second copy of it. This is
    the one script that can fill the disk the server writes to.
 3. Stops the service, rebuilds with `VACUUM INTO`, and verifies the result
-   with the same three checks `backup.sh` runs on a snapshot — `integrity_check`,
+   with the same three checks `backup.ts` runs on a snapshot — `integrity_check`,
    the row counts, and a profile count that cannot have shrunk. A failure at
    any point restarts the service and leaves the original in place.
 4. Swaps it in, moving `-wal`/`-shm` aside with the file they belong to, and
@@ -774,7 +806,7 @@ running `VACUUM` in place:
 
 The service is stopped for the whole rebuild, on purpose. Snapshotting a
 _live_ database would be faster — 0.6 s flat under write load, which is why
-`backup.sh` does it that way — but every contribution arriving between the
+`backup.ts` does it that way — but every contribution arriving between the
 snapshot and the swap would be silently dropped. Stopping first drops none,
 and a client that cannot reach the server keeps its votes in IndexedDB and
 re-contributes them.
@@ -824,7 +856,7 @@ sudo systemctl start x-loc-heartbeat.service   # after the heartbeat step below
 
 `OnFailure=x-loc-alert@%n.service` is already on `x-loc-backup.service` and
 `x-loc-cache.service`, so installing the template above is all the wiring
-needed. Doing it through systemd rather than emailing from inside `backup.sh`
+needed. Doing it through systemd rather than emailing from inside `backup.ts`
 is what makes it cover the failures a script cannot report about its own death
 — an OOM kill, a missing interpreter, a timeout, a bad `ExecStart`. The main
 service only reaches a failed state once systemd gives up restarting it, so an
@@ -837,9 +869,9 @@ The subject distinguishes the two things worth knowing apart:
 [x-pat-cache] DATABASE CORRUPTION on vps-1             ← the data is suspect
 ```
 
-The second is chosen by matching what `backup.sh` prints when verification
+The second is chosen by matching what `backup.ts` prints when verification
 fails, and a corruption email leads with the restore command and the fact that
-nothing was pruned. A test asserts those strings still exist in `backup.sh`, so
+nothing was pruned. A test asserts those strings still exist in `backup.ts`, so
 rewording a message there cannot silently downgrade the alert.
 
 Credentials use the ordinary nodemailer variable names
@@ -1111,14 +1143,14 @@ database.
 
 ### Backups (container)
 
-The image ships the **same** [`deploy/backup.sh`](deploy/backup.sh) the systemd
+The image ships the **same** [`deploy/backup.ts`](deploy/backup.ts) the systemd
 timer runs, plus the `sqlite3` CLI it needs (`flock` and `gzip` are already in
 the base). It is the same script on purpose — the two deploy shapes cannot
 drift in how they take a backup. No stop, no flags: `XLOC_DB` and
 `XLOC_BACKUP_DIR` are set in the image and `docker exec` inherits them.
 
 ```bash
-docker compose exec x-loc-cache /app/deploy/backup.sh
+docker compose exec x-loc-cache /app/deploy/backup.ts
 # backup ok: /data/backups/x-loc-cache-20260806-182459.db.gz (4.0K, 3 profiles / 3 votes), 1 kept
 docker compose exec x-loc-cache ls -lh /data/backups
 ```
@@ -1134,14 +1166,14 @@ also where the exit status is visible:
 
 ```bash
 # /etc/cron.d/x-loc-backup
-17 4 * * * root docker compose -f /opt/x-loc-cache/server/compose.yaml exec -T x-loc-cache /app/deploy/backup.sh
+17 4 * * * root docker compose -f /opt/x-loc-cache/server/compose.yaml exec -T x-loc-cache /app/deploy/backup.ts
 ```
 
 `-T` is required: without it `exec` wants a TTY and fails under cron.
 
 ### Restore (container)
 
-`restore.sh` is deliberately **not** in the image — it drives `systemctl`. The
+`restore.ts` is deliberately **not** in the image — it drives `systemctl`. The
 container equivalent is the same shape: verify first, then stop, swap, start.
 
 ```bash
@@ -1161,7 +1193,7 @@ curl -s localhost:8787/healthz
 database.** They describe the file being replaced, and SQLite will happily
 recover those frames over the one you just restored. Measured: a restored
 database with a foreign WAL beside it does not open at all, failing with
-`database disk image is malformed`. This is why `restore.sh` moves them aside
+`database disk image is malformed`. This is why `restore.ts` moves them aside
 on the bare-metal path.
 
 Running it through the `x-loc-cache` image rather than `alpine` is what
@@ -1170,9 +1202,9 @@ it. Keep `x-loc-cache.db.replaced` until the restore has proven out.
 
 ### Compacting (container)
 
-`vacuum.sh` is **not** in the image either, for the same reason as
-`restore.sh` — it drives `systemctl`. The measurement that decides whether to
-run it needs nothing extra: `backup.sh` is the same script here, so
+`vacuum.ts` is **not** in the image either, for the same reason as
+`restore.ts` — it drives `systemctl`. The measurement that decides whether to
+run it needs nothing extra: `backup.ts` is the same script here, so
 `/data/backups/.vacuum-status` and the `vacuum check:` line are there as
 described under [Compacting the database](#compacting-the-database).
 
@@ -1212,7 +1244,7 @@ Failure alerting has no `OnFailure=` here, because there is no systemd in the
 container. Chain it off the backup's exit status in the same host cron entry:
 
 ```bash
-17 4 * * * root cd /opt/x-loc-cache/server && docker compose exec -T x-loc-cache /app/deploy/backup.sh \
+17 4 * * * root cd /opt/x-loc-cache/server && docker compose exec -T x-loc-cache /app/deploy/backup.ts \
   || docker compose exec -T x-loc-cache node --experimental-strip-types deploy/alert.ts x-loc-backup
 ```
 
@@ -1237,9 +1269,10 @@ pnpm start       # local Node+SQLite server, db in ./data (XLOC_* env vars apply
 in-memory SQLite database, so it covers the handlers and the D1 adapter together
 — that is what keeps the two backends honest about behaving identically.
 
-[`deploy/backup.test.ts`](deploy/backup.test.ts) runs the shipped shell scripts
-against real databases on disk — sqlite3, gzip, flock and dash included, since
-the thing under test _is_ the script. It has its own config
+[`deploy/backup.test.ts`](deploy/backup.test.ts) runs the shipped scripts against
+real databases on disk — sqlite3, gzip and flock included, and stub shims on
+PATH for systemctl, sudo, chown and curl, since the thing under test _is_ the
+script. It has its own config
 (`vitest.deploy.config.ts`) and is **not** part of `pnpm test` or CI: it takes
 tens of seconds and needs those binaries present. It skips itself where they
 are not.

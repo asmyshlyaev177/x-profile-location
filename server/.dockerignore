@@ -22,9 +22,10 @@ README.md
 Dockerfile
 compose.yaml
 
-# deploy/ is systemd wiring the container has no use for — except backup.sh and
+# deploy/ is systemd wiring the container has no use for — except backup.ts and
 # alert.ts, deliberately the *same* files both deploy shapes run. The negations
 # must follow the exclusion; last match wins.
 deploy
-!deploy/backup.sh
+!deploy/backup.ts
+!deploy/lib.ts
 !deploy/alert.ts

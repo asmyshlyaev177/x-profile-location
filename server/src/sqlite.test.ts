@@ -4,7 +4,7 @@
 // test is not mocked at any layer.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import worker, { type Env } from './index.ts'
+import worker, { VOTE_RETENTION_MS, type Env } from './index.ts'
 import { openDatabase, type SqliteDb } from './sqlite.ts'
 
 let db: SqliteDb
@@ -62,6 +62,14 @@ function voteCount(username: string): number {
   return (
     db.raw
       .prepare('SELECT COUNT(*) AS n FROM location_votes WHERE username = ?')
+      .get(username) as { n: number }
+  ).n
+}
+
+function profileCount(username: string): number {
+  return (
+    db.raw
+      .prepare('SELECT COUNT(*) AS n FROM profiles WHERE username = ?')
       .get(username) as { n: number }
   ).n
 }
@@ -212,9 +220,72 @@ describe('sqlite backend — retention', () => {
 
     expect(voteCount('stale')).toBe(0)
     expect(voteCount('fresh')).toBe(1)
-    // The consensus row survives its votes — that is deliberate: a profile whose
-    // votes aged out keeps serving its last known value until someone re-votes.
+    // A profile left with no votes goes with them — that is what sends the next
+    // reader to X for a fresh value.
+    expect(profileCount('stale')).toBe(0)
+    expect(await lookup(['stale'])).toEqual([])
+    expect((await lookup(['fresh']))[0].loc).toBe('Chile')
+
+    // ...and the next contribution rebuilds the row.
+    await contribute('new-client', [{ u: 'stale', loc: 'Peru', src: 'web' }])
     expect((await lookup(['stale']))[0].loc).toBe('Peru')
+  })
+
+  it('keeps a profile whose other vote is still inside the window', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+    await contribute('client-a', [{ u: 'mixed', loc: 'Peru', src: 'web' }])
+    vi.setSystemTime(new Date('2026-02-01T00:00:00Z'))
+    await contribute('client-b', [{ u: 'mixed', loc: 'Peru', src: 'web' }])
+    expect((await lookup(['mixed']))[0].conf).toBe(2)
+
+    // Past the window for the January vote, inside it for the February one.
+    vi.setSystemTime(new Date('2026-03-15T00:00:00Z'))
+    expect(await worker.scheduled(null, env)).toBe(1)
+
+    expect(voteCount('mixed')).toBe(1)
+    expect(profileCount('mixed')).toBe(1)
+    // Votes expire one at a time and retention does not recompute consensus,
+    // so the served confidence overstates until something writes the row again.
+    expect((await lookup(['mixed']))[0].conf).toBe(2)
+
+    await contribute('client-b', [{ u: 'mixed', loc: 'Peru', src: 'web' }])
+    expect((await lookup(['mixed']))[0].conf).toBe(1)
+  })
+
+  it('expires a vote on the far side of the boundary, not on it', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+    const contributedAt = Date.now()
+    await contribute('client-a', [{ u: 'edge', loc: 'Peru', src: 'web' }])
+
+    // seen_at < now - VOTE_RETENTION_MS: at exactly the window it is not less.
+    vi.setSystemTime(contributedAt + VOTE_RETENTION_MS)
+    expect(await worker.scheduled(null, env)).toBe(0)
+    expect(profileCount('edge')).toBe(1)
+
+    vi.setSystemTime(contributedAt + VOTE_RETENTION_MS + 1)
+    expect(await worker.scheduled(null, env)).toBe(1)
+    expect(profileCount('edge')).toBe(0)
+  })
+
+  it('sweeps a profile that never had a vote', async () => {
+    // Nothing writes one today, but a row from before location_votes existed
+    // would otherwise be served forever: the vote DELETE cannot orphan what was
+    // already orphaned, so the profile DELETE must not be conditional on it.
+    db.raw
+      .prepare('INSERT INTO profiles (username, location) VALUES (?, ?)')
+      .run('voteless', 'Peru')
+
+    expect(await worker.scheduled(null, env)).toBe(0)
+    expect(profileCount('voteless')).toBe(0)
+  })
+
+  it('touches nothing when every vote is fresh', async () => {
+    await contribute('client-a', [{ u: 'recent', loc: 'Peru', src: 'web' }])
+    expect(await worker.scheduled(null, env)).toBe(0)
+    expect(voteCount('recent')).toBe(1)
+    expect(profileCount('recent')).toBe(1)
   })
 })
 
