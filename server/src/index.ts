@@ -24,8 +24,8 @@ export interface Env {
 }
 
 const MAX_BATCH = 100
-const VOTE_RETENTION_MS = 60 * 24 * 60 * 60 * 1000 // 60 days
-const REVALIDATE_RATE = 0.05 // ~5% of served rows ask the client to re-verify
+/** Exported because deploy/backup.ts derives its verification baseline from it. */
+export const VOTE_RETENTION_MS = 60 * 24 * 60 * 60 * 1000 // 60 days
 const USERNAME_RE = /^[a-z0-9_]{1,50}$/
 const MAX_FIELD_LEN = 60
 
@@ -67,7 +67,6 @@ interface Served {
   src: string | null
   acc: boolean
   conf: number
-  rev?: boolean
 }
 
 interface ProfileRow {
@@ -146,15 +145,13 @@ function rowsChanged(result: unknown): number {
 }
 
 function toServed(r: ProfileRow): Served {
-  const served: Served = {
+  return {
     u: r.username,
     loc: r.location,
     src: r.source,
     acc: r.location_accurate !== 0,
     conf: r.location_confidence,
   }
-  if (Math.random() < REVALIDATE_RATE) served.rev = true
-  return served
 }
 
 // ---------------------------------------------------------------------------
@@ -198,11 +195,12 @@ export function __resetStats(): void {
  * Unfiltered, though handleBatch only serves `location_confidence > 0`: the two
  * counts are the same number, because `pickConsensus` counts the votes backing
  * the value it picks and never returns fewer than one, so no row is ever written
- * below 1 (consensus.test.ts pins that). The difference is what they cost —
- * `WHERE location_confidence > 0` cannot use the username index and drops to a
- * table scan: 5.3ms against 0.05ms over 200k rows, and better-sqlite3 is
- * synchronous, so that gap is an event-loop stall. Adding an index for it is
- * ruled out for the same reasons as every other index here (schema.sql).
+ * below 1 (consensus.test.ts pins that) and scheduled() removes a profile rather
+ * than zeroing it. The difference is what they cost — `WHERE
+ * location_confidence > 0` cannot use the username index and drops to a table
+ * scan: 5.3ms against 0.05ms over 200k rows, and better-sqlite3 is synchronous,
+ * so that gap is an event-loop stall. Adding an index for it is ruled out for
+ * the same reasons as every other index here (schema.sql).
  */
 async function handleStats(env: Env, now: number): Promise<Response> {
   if (counted === null || now - counted.at >= STATS_TTL_MS) {
@@ -452,9 +450,9 @@ export default {
   // grow without bound. This physically deletes votes older than
   // VOTE_RETENTION_MS and is now the *only* thing that ages votes out — the
   // consensus recompute above reads whatever remains. Runs on the cron schedule
-  // in wrangler.toml. One DELETE is issued; the table has no seen_at index, so
-  // it's a full scan that spends the abundant read budget — deliberately traded
-  // against not taxing every insert's ~50x scarcer write budget with an index.
+  // in wrangler.toml. The DELETE has no seen_at index to ride, so it's a full
+  // scan that spends the abundant read budget — deliberately traded against not
+  // taxing every insert's ~50x scarcer write budget with an index.
   // `_controller` / `_ctx` are typed loosely rather than as Cloudflare's
   // ScheduledController / ExecutionContext so this file needs no workers-types;
   // both are unused, and node-server.ts calls it with nothing.
@@ -471,6 +469,21 @@ export default {
     )
       .bind(Date.now() - VOTE_RETENTION_MS)
       .run()
+
+    // Then the profiles those votes were the last evidence for. The next
+    // client to want that handle misses, re-reads it from X and contributes it
+    // back, rebuilding the row — so a value is cached for VOTE_RETENTION_MS and
+    // then re-earned, but only while somebody still looks at it.
+    //
+    // `profiles` can therefore shrink, which deploy/backup.ts's snapshot
+    // verification allows for; see the baseline it counts there.
+    await env.DB.prepare(
+      `DELETE FROM profiles
+        WHERE NOT EXISTS (
+                SELECT 1 FROM location_votes v WHERE v.username = profiles.username
+              )`,
+    ).run()
+
     return rowsChanged(result)
   },
 }

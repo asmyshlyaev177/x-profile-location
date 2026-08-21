@@ -3003,7 +3003,7 @@ describe('hide tweets by blocked location', () => {
       bio: null,
     }
     vi.mocked(sharedBatchLookup).mockResolvedValue([
-      { userName: 'fromcache', data, revalidate: false },
+      { userName: 'fromcache', data },
     ])
     // Only once the hit has been merged does IDB know about it.
     vi.mocked(mergeCached).mockImplementation(async () => {

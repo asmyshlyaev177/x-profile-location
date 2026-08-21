@@ -1,4 +1,4 @@
-// deploy/vacuum.sh against the real server, with real traffic hitting it.
+// deploy/vacuum.ts against the real server, with real traffic hitting it.
 //
 // The rest of the deploy suite drives the scripts against databases on disk and
 // stubs systemctl. That leaves two questions it cannot answer, and they are the
@@ -38,13 +38,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 const DEPLOY = import.meta.dirname
 const SERVER = join(DEPLOY, '..')
-const VACUUM = join(DEPLOY, 'vacuum.sh')
+const VACUUM = join(DEPLOY, 'vacuum.ts')
 
 function available(cmd: string): boolean {
   return spawnSync('sh', ['-c', `command -v ${cmd}`]).status === 0
 }
 
-// curl is not stubbed here — vacuum.sh's healthz loop is one of the things
+// curl is not stubbed here — vacuum.ts's healthz loop is one of the things
 // under test — so unlike backup.test.ts it is a genuine requirement.
 const MISSING = ['sqlite3', 'curl'].filter((c) => !available(c))
 
@@ -208,22 +208,26 @@ function startLoad(clientId: string): {
   }
 }
 
-/** vacuum.sh, spawned async — spawnSync would freeze the load loop with it. */
+/** vacuum.ts, spawned async — spawnSync would freeze the load loop with it. */
 function runVacuum(): Promise<{
   code: number | null
   out: string
   err: string
 }> {
   return new Promise((resolve) => {
-    const child = spawn('sh', [VACUUM, '-y'], {
-      env: {
-        ...process.env,
-        PATH: `${binDir}:${process.env.PATH}`,
-        XLOC_ENV_FILE: join(dir, 'absent.env'),
-        XLOC_DB: dbPath,
-        XLOC_PORT: String(port),
+    const child = spawn(
+      process.execPath,
+      ['--experimental-strip-types', VACUUM, '-y'],
+      {
+        env: {
+          ...process.env,
+          PATH: `${binDir}:${process.env.PATH}`,
+          XLOC_ENV_FILE: join(dir, 'absent.env'),
+          XLOC_DB: dbPath,
+          XLOC_PORT: String(port),
+        },
       },
-    })
+    )
     let out = ''
     let err = ''
     child.stdout.on('data', (c) => (out += String(c)))
@@ -293,7 +297,7 @@ afterEach(() => {
 })
 
 describe.skipIf(MISSING.length > 0)(
-  `vacuum.sh — live server${MISSING.length ? ` (skipped: missing ${MISSING.join(', ')})` : ''}`,
+  `vacuum.ts — live server${MISSING.length ? ` (skipped: missing ${MISSING.join(', ')})` : ''}`,
   () => {
     it('serves from the compacted database, and loses nothing it acknowledged', async () => {
       systemctl('start')
@@ -416,7 +420,7 @@ describe.skipIf(MISSING.length > 0)(
 
       // "How long is the stop" is the whole question this design answers, so
       // print it rather than only asserting a bound. Client-visible downtime
-      // is shorter than the script's own runtime: vacuum.sh polls /healthz on
+      // is shorter than the script's own runtime: vacuum.ts polls /healthz on
       // a 1 s tick, so it keeps waiting after the server is already serving.
       const last = refused[refused.length - 1]!
       const outageMs = last.at + last.ms - refused[0]!.at
