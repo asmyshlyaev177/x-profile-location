@@ -13,7 +13,17 @@ duplicates it.
 | File                 | Purpose                                                                             |
 | -------------------- | ----------------------------------------------------------------------------------- |
 | `page-script.ts`     | `world: MAIN`. Wraps `fetch` + `XHR`; captures auth headers, extracts bios.         |
-| `content.tsx`        | `AboutAccountQuery`, injected rows, MutationObserver, keyword/flag highlighting.    |
+| `content.tsx`        | The MutationObserver, everything drawn into a post or card, and the redraw cycle.   |
+| `content/tweet-dom`  | X's selectors and the readers over them — the one file a renamed testid breaks.     |
+| `content/filters`    | The filter settings and the verdict: does a rule act on this account, and which.    |
+| `content/highlight`  | The keyword/flag rule, its settings, and the marks it paints on a hover card.       |
+| `content/lookup`     | One `AboutAccountQuery`, deduped and reported to the broker.                        |
+| `content/overlays`   | The bottom-centre slot: rate-limit countdown, swipe answer, rating ask.             |
+| `content/enabled`    | The master switch. One boolean, asked from everywhere.                              |
+| `content/bio-cache`  | In-memory bio/facts LRU, so the highlight rule reads without awaiting IDB.          |
+| `content/chips`      | `accountChips` — the account card's vocabulary, one builder per fact X returned.    |
+| `content/resize`     | `whenSafeToResize` — collapse a post without X scrolling the window under it.       |
+| `content/snapshot`   | `decorateSnapshot` — the post as it goes into a shared image.                       |
 | `extract-users.ts`   | Recursive GraphQL walker. Finds `__typename: 'User'` nodes to depth 20.             |
 | `cache/cache.ts`     | IndexedDB wrapper (idb-keyval). 30-day TTL, keys are lowercased usernames.          |
 | `cache/shared-cache` | Client for the optional community cache; batch lookup + contribute, opt-in.         |

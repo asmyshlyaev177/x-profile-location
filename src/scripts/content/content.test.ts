@@ -24,7 +24,21 @@ vi.hoisted(() => {
   }
 })
 
-vi.mock('../cache/cache', () => ({
+// cache.ts calls createStore at module level, so this has to stand in before
+// importOriginal evaluates it.
+vi.mock('idb-keyval', () => ({
+  createStore: vi.fn(() => 'mock-store'),
+  get: vi.fn(),
+  set: vi.fn(),
+  del: vi.fn(),
+  clear: vi.fn(),
+  entries: vi.fn(),
+}))
+
+// Only the IDB-backed half is stubbed: answerSignature decides what counts as
+// the same answer, and a copy of that rule here is a copy that can disagree.
+vi.mock('../cache/cache', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../cache/cache')>()),
   getCached: vi.fn().mockResolvedValue(undefined),
   setCached: vi.fn().mockResolvedValue(undefined),
   mergeCached: vi.fn().mockResolvedValue(undefined),
@@ -86,21 +100,17 @@ vi.mock('../prefetch/prefetch-poller', () => ({
   },
 }))
 
-import {
-  accountChips,
-  bioProbe,
-  fetchLocationData,
-  isCommittedSwipe,
-  keywordRangesIn,
-  locationSummaryText,
-  setApiHeaders,
-  __testResetState,
-} from './content'
+import { bioProbe, isCommittedSwipe, __testResetState } from './content'
+import { fetchLocationData, setApiHeaders } from './lookup'
+import { accountChips } from './account-chips'
+import { keywordRangesIn } from './highlight'
+import { locationSummaryText } from './overlays'
 import { getCached, mergeCached, clearAllCache } from '../cache/cache'
 import type { FilterRule } from '../settings'
 import { dayKey, __resetUsageMemo } from '../usage'
 import { renderShareCard } from '../share-card'
 import {
+  contributeLocation,
   isSharedCacheConfigured,
   isSharedCacheEnabled,
   sharedBatchLookup,
@@ -347,6 +357,164 @@ describe('fetchLocationData — cache hit', () => {
 
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(data).toMatchObject({ location: 'Japan' })
+  })
+
+  // The broker grants a revalidation *because* this tab has the account cached:
+  // stopping at the cache would make the reserved slice of the window a no-op.
+  it('asks X anyway for a lookup the broker granted as a revalidation', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: 'web' as const,
+      bio: null,
+    })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            user_result_by_screen_name: {
+              result: {
+                about_profile: {
+                  account_based_in: 'Germany',
+                  location_accurate: true,
+                  source: 'web',
+                },
+              },
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    )
+
+    const data = await fetchLocationData('movedaway', {
+      granted: true,
+      revalidate: true,
+    })
+
+    expect(fetchSpy).toHaveBeenCalledOnce()
+    expect(data).toMatchObject({ location: 'Germany' })
+    // The point of spending the request: a fresh, first-hand vote.
+    expect(contributeLocation).toHaveBeenCalledWith(
+      'movedaway',
+      expect.objectContaining({ location: 'Germany' }),
+    )
+    // X says something the entry did not, so the old count backed a location
+    // this account no longer has. Only ours backs the new one.
+    expect(mergeCached).toHaveBeenCalledWith(
+      'movedaway',
+      expect.objectContaining({ location: 'Germany', votes: 1 }),
+    )
+  })
+
+  it('starts the count over when only the source moved', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: 'web' as const,
+      votes: 5,
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            user_result_by_screen_name: {
+              result: {
+                about_profile: {
+                  account_based_in: 'Japan',
+                  location_accurate: true,
+                  source: 'Japan Android App',
+                },
+              },
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    )
+
+    await fetchLocationData('switched', { granted: true, revalidate: true })
+
+    expect(mergeCached).toHaveBeenCalledWith(
+      'switched',
+      expect.objectContaining({ source: 'Japan Android App', votes: 1 }),
+    )
+  })
+
+  // The vote count and the community cache have to mean the same thing by
+  // "the same answer". They did not: `votesFor` agreed on location + source
+  // while `contributeLocation` deduped on location + source + accuracy, so an
+  // account that picked up a VPN flag kept climbing here and arrived at the
+  // server as a brand-new value with one client behind it.
+  it('starts the count over when only the VPN flag moved', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: 'web' as const,
+      votes: 4,
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            user_result_by_screen_name: {
+              result: {
+                about_profile: {
+                  account_based_in: 'Japan',
+                  location_accurate: false,
+                  source: 'web',
+                },
+              },
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    )
+
+    await fetchLocationData('vpnnow', { granted: true, revalidate: true })
+
+    expect(mergeCached).toHaveBeenCalledWith(
+      'vpnnow',
+      expect.objectContaining({ locationAccurate: false, votes: 1 }),
+    )
+  })
+
+  // Which is what a revalidation is for: the community cache counts distinct
+  // clients, and this tab was not one of them until now.
+  it('counts its own answer as one more vote for a location that held', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Japan',
+      locationAccurate: true,
+      source: 'web' as const,
+      bio: null,
+      votes: 1,
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            user_result_by_screen_name: {
+              result: {
+                about_profile: {
+                  account_based_in: 'Japan',
+                  location_accurate: true,
+                  source: 'web',
+                },
+              },
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    )
+
+    await fetchLocationData('stillthere', { granted: true, revalidate: true })
+
+    expect(mergeCached).toHaveBeenCalledWith(
+      'stillthere',
+      expect.objectContaining({ location: 'Japan', votes: 2 }),
+    )
   })
 
   it('returns cached data without a network request when source is present', async () => {
@@ -3023,6 +3191,36 @@ describe('hide tweets by blocked location', () => {
     expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
   })
 
+  // The batch response is the only place a client hears how many others agree,
+  // and it is asked once per account — so the count has to be kept, not read.
+  it('stores the vote count that came with a community-cache hit', async () => {
+    vi.mocked(sharedBatchLookup).mockResolvedValue([
+      {
+        userName: 'fromcache',
+        data: {
+          location: 'India',
+          locationAccurate: true,
+          source: 'web' as const,
+          votes: 3,
+        },
+      },
+    ])
+
+    window.dispatchEvent(
+      new CustomEvent('x-loc-users-data', {
+        detail: {
+          users: [{ userName: 'fromcache', displayName: null, bio: null }],
+        },
+      }),
+    )
+    await flushAsync()
+
+    expect(mergeCached).toHaveBeenCalledWith(
+      'fromcache',
+      expect.objectContaining({ location: 'India', votes: 3 }),
+    )
+  })
+
   it('never asks the community cache about an account IDB can answer for', async () => {
     // A reload empties the client's in-memory "asked recently" set, so nothing
     // downstream stops a whole timeline of already-known accounts going back
@@ -3164,18 +3362,32 @@ describe('broker wiring', () => {
     )
   }
 
-  /** The candidate list from the one ENQUEUE this tab sent, if it sent one. */
-  async function enqueued(): Promise<unknown[] | undefined> {
-    let sent: unknown[] | undefined
+  /** The one ENQUEUE this tab sent, if it sent one. */
+  async function enqueueMessage(): Promise<any> {
+    let sent: any
     await vi.waitFor(() => {
       const call = vi
         .mocked(chrome.runtime.sendMessage)
         .mock.calls.find(([m]) => (m as any)?.type === 'LOOKUP_ENQUEUE')
-      sent = (call?.[0] as any)?.candidates
+      sent = call?.[0]
       expect(sent).toBeDefined()
     })
     return sent
   }
+
+  /** The candidate list from the one ENQUEUE this tab sent, if it sent one. */
+  async function enqueued(): Promise<unknown[] | undefined> {
+    return (await enqueueMessage()).candidates
+  }
+
+  const cachedExcept = (unknown: string) =>
+    vi
+      .mocked(getCached)
+      .mockImplementation(async (userName: string) =>
+        userName === unknown
+          ? undefined
+          : { location: 'Germany', locationAccurate: true, source: 'web' },
+      )
 
   it('sends feed users high and reply users low, in the order received', async () => {
     usersData([
@@ -3214,7 +3426,25 @@ describe('broker wiring', () => {
     ])
   })
 
-  it('sends nothing at all when every account is already known', async () => {
+  // A location is fetched once and then believed for the 30-day cache TTL, so
+  // the broker is offered a sample of what this tab knows to ask X about again.
+  // How many of those actually go out is the window's reserve — see
+  // "Revalidation" in prefetch/CLAUDE.md.
+  it('offers accounts it already knows for a first-hand re-ask', async () => {
+    cachedExcept('unknown')
+    usersData([
+      { userName: 'known', displayName: null, bio: null },
+      { userName: 'unknown', displayName: null, bio: null },
+    ])
+
+    const message = await enqueueMessage()
+    expect(message.candidates).toEqual([
+      { userName: 'unknown', priority: 'high' },
+    ])
+    expect(message.revalidate).toEqual(['known'])
+  })
+
+  it('still reaches the broker when every account on screen is known', async () => {
     vi.mocked(getCached).mockResolvedValue({
       location: 'Germany',
       locationAccurate: true,
@@ -3222,13 +3452,133 @@ describe('broker wiring', () => {
     })
     usersData([{ userName: 'known', displayName: null, bio: null }])
 
-    await vi.waitFor(() => expect(mergeCached).toHaveBeenCalled())
-    expect(vi.mocked(chrome.runtime.sendMessage).mock.calls).not.toContainEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ type: 'LOOKUP_ENQUEUE' }),
-      ]),
+    const message = await enqueueMessage()
+    expect(message.candidates).toEqual([])
+    expect(message.revalidate).toEqual(['known'])
+  })
+
+  // One client's word is what a second first-hand answer is worth most against,
+  // and the window only pays for the first couple of the list.
+  it('offers the least-corroborated accounts first', async () => {
+    const votes: Record<string, number> = { ann: 3, bob: 1, cal: 2 }
+    vi.mocked(getCached).mockImplementation(async (userName: string) => ({
+      location: 'Germany',
+      locationAccurate: true,
+      source: 'web',
+      votes: votes[userName],
+    }))
+    usersData(
+      Object.keys(votes).map((userName) => ({
+        userName,
+        displayName: null,
+        bio: null,
+      })),
     )
-    vi.mocked(getCached).mockResolvedValue(undefined)
+
+    expect((await enqueueMessage()).revalidate).toEqual(['bob', 'cal', 'ann'])
+  })
+
+  // An account nothing has said anything about is the least corroborated there
+  // is: no count means no vote has ever been counted for it, ours included.
+  it('puts an account with no known votes at the head of the offer', async () => {
+    vi.mocked(getCached).mockImplementation(async (userName: string) => ({
+      location: 'Germany',
+      locationAccurate: true,
+      source: 'web',
+      votes: userName === 'unheard' ? undefined : 2,
+    }))
+    usersData([
+      { userName: 'counted', displayName: null, bio: null },
+      { userName: 'unheard', displayName: null, bio: null },
+    ])
+
+    expect((await enqueueMessage()).revalidate).toEqual(['unheard', 'counted'])
+  })
+
+  it('breaks a tie between equal counts at random', async () => {
+    const users = ['ann', 'bob', 'cal'].map((userName) => ({
+      userName,
+      displayName: null,
+      bio: null,
+    }))
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Germany',
+      locationAccurate: true,
+      source: 'web',
+      votes: 1,
+    })
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0)
+
+    usersData(users)
+    const first = (await enqueueMessage()).revalidate
+    vi.mocked(chrome.runtime.sendMessage).mockClear()
+    random.mockReturnValue(0.999)
+    usersData(users)
+    const second = (await enqueueMessage()).revalidate
+
+    expect(second).not.toEqual(first)
+    expect([...second].sort()).toEqual([...first].sort())
+    random.mockRestore()
+  })
+
+  // A bio is not an answer: the entry exists, but nobody knows where they are.
+  it('queues a bio-only entry rather than offering it', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'hello',
+    })
+    usersData([{ userName: 'bioonly', displayName: null, bio: 'hello' }])
+
+    const message = await enqueueMessage()
+    expect(message.candidates).toEqual([
+      { userName: 'bioonly', priority: 'high' },
+    ])
+    expect(message.revalidate).toEqual([])
+  })
+
+  // It would be a second request for an answer this session already paid for.
+  it('never offers an account this session already looked up', async () => {
+    setApiHeaders({ authorization: 'Bearer t', 'x-csrf-token': 'c' })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            user_result_by_screen_name: {
+              result: {
+                about_profile: {
+                  account_based_in: 'Germany',
+                  location_accurate: true,
+                  source: 'web',
+                },
+              },
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    )
+    await fetchLocationData('known')
+    vi.mocked(chrome.runtime.sendMessage).mockClear()
+    vi.mocked(getCached).mockClear()
+
+    // 'fresh' is only here so there is one message to look inside; what the
+    // test is about is that 'known' is in neither list.
+    cachedExcept('fresh')
+    usersData([
+      { userName: 'known', displayName: null, bio: null },
+      { userName: 'fresh', displayName: null, bio: null },
+    ])
+
+    const message = await enqueueMessage()
+    expect(message.candidates).toEqual([
+      { userName: 'fresh', priority: 'high' },
+    ])
+    expect(message.revalidate).toEqual([])
+    // Whatever the cache holds cannot change the answer, so a whole timeline of
+    // already-answered names must not cost a read apiece.
+    expect(getCached).not.toHaveBeenCalledWith('known')
   })
 
   it('wakes the poller rather than leaving a fresh batch in a sleep', async () => {

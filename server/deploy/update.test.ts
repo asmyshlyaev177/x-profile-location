@@ -312,6 +312,29 @@ describe.skipIf(MISSING.length > 0)('update.ts — rollback', () => {
     expect(r.stderr).toContain('this is not the new code')
   })
 
+  // The rollback restored the old commit but could not rebuild the native
+  // module for this Node, so the restart it then does is doomed. Discarding
+  // that npm result made it surface only as the second, unexplained healthz
+  // failure — the operator was told "this is not the new code" when it was.
+  it('names the failed rebuild rather than blaming the old commit', () => {
+    writeInOrigin('server/src/node-server.ts', '// v2\n')
+    commit('second')
+    stub('curl', `exit 22`)
+    // Loads on the probe before the pull, not on the one inside the rollback.
+    stub(
+      'fake-node',
+      `echo "node-probe" >> ${logFile}
+       test "$(grep -c node-probe ${logFile})" -le 1`,
+    )
+    stub('npm', `echo "npm $*" >> ${logFile}; exit 1`)
+
+    const r = run()
+
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('could not rebuild')
+    expect(r.stderr).not.toContain('STILL not serving')
+  })
+
   it('restores the unit files too, not just the source', () => {
     writeInOrigin(
       'server/deploy/x-loc-cache.service',

@@ -229,6 +229,23 @@ function usableShare(rate: RateState, reserveFraction: number): number {
   return Math.max(1, Math.floor(rate.limit * clampFraction(reserveFraction)))
 }
 
+/** Share of the budget re-asking about known accounts. See "Revalidation" in CLAUDE.md. */
+export const REVALIDATE_SHARE = 0.05
+
+/**
+ * Lookups per window spent on known accounts. Floored at one: rounding to zero
+ * would switch revalidation off on exactly the smallest budgets.
+ */
+export function revalidateBudget(
+  rate: RateState,
+  reserveFraction: number,
+): number {
+  return Math.max(
+    1,
+    Math.floor(usableShare(rate, reserveFraction) * REVALIDATE_SHARE),
+  )
+}
+
 export function prefetchBudget(
   rate: RateState,
   reserveFraction: number,
