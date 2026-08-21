@@ -58,7 +58,7 @@ const budgets = new Map<string, Budget>()
  * Filter `usernames` down to the ones this client still has budget for, and
  * charge them to it. Names the client has already contributed this window are
  * free — re-reporting a handle is what an honest client does when a location
- * changes or the server asks it to revalidate, and it cannot grow the table.
+ * changes or an expired one is read from X again, and it cannot grow the table.
  *
  * Returns the accepted subset, in the order given.
  */

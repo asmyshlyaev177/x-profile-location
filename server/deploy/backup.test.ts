@@ -1,19 +1,19 @@
-// Tests for deploy/backup.sh and deploy/restore.sh.
+// Tests for deploy/backup.ts and deploy/restore.ts.
 //
 // Deliberately NOT part of `pnpm test`: vitest.config.ts includes only
 // `src/**`, this suite has its own config, and CI never runs it. It shells out
-// to sqlite3, dash, gzip and flock against real databases on disk — the point
-// is to exercise the shipped scripts, not a re-implementation of them, so
-// there is nothing here that a mock could stand in for.
+// to sqlite3, gzip, flock and the stub shims on PATH against real databases on
+// disk — the point is to exercise the shipped scripts, not a re-implementation
+// of them, so there is nothing here that a mock could stand in for.
 //
 //   pnpm test:deploy
 //
-// The load tests are the reason this file exists. `.backup` — what these
-// scripts used to use — restarts from scratch whenever another connection
-// writes, so on a server taking contributions it finished only once writes
-// stopped: 11s against a 7.6MB database with a writer running, versus 0.03s for
-// VACUUM INTO. A backup that never converges is invisible in every other test,
-// because with an idle database both are fast and correct.
+// The load tests are the reason this file exists. The obvious alternative,
+// SQLite's `.backup`, restarts from scratch whenever another connection writes,
+// so on a server taking contributions it finishes only once writes stop: 11s
+// against a 7.6MB database with a writer running, versus 0.03s for VACUUM INTO.
+// A backup that never converges is invisible in every other test, because with
+// an idle database both are fast and correct.
 
 import { spawn, spawnSync } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
@@ -32,12 +32,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { rootRefusal } from './backup.ts'
 
 const DEPLOY = import.meta.dirname
 const SERVER = join(DEPLOY, '..')
-const BACKUP = join(DEPLOY, 'backup.sh')
-const RESTORE = join(DEPLOY, 'restore.sh')
-const VACUUM = join(DEPLOY, 'vacuum.sh')
+const BACKUP = join(DEPLOY, 'backup.ts')
+const RESTORE = join(DEPLOY, 'restore.ts')
+const VACUUM = join(DEPLOY, 'vacuum.ts')
 
 function available(cmd: string): boolean {
   return spawnSync('sh', ['-c', `command -v ${cmd}`]).status === 0
@@ -72,7 +73,10 @@ function run(
   args: string[],
   extra: Record<string, string> = {},
 ) {
-  return spawnSync('sh', [script, ...args], {
+  const [command, argv] = script.endsWith('.ts')
+    ? [process.execPath, ['--experimental-strip-types', script, ...args]]
+    : ['sh', [script, ...args]]
+  return spawnSync(command!, argv!, {
     env: envFor(extra),
     encoding: 'utf8',
   })
@@ -123,8 +127,45 @@ function seed(file: string, profiles: number): void {
   db.close()
 }
 
+describe('backup.ts — the run it refuses', () => {
+  it('will not run as root, and says how to run it properly', () => {
+    const refusal = rootRefusal(0, '/opt/x-loc-cache/server/deploy/backup.ts')
+    expect(refusal?.[0]).toContain('refusing to run as root')
+    expect(refusal?.[1]).toContain('sudo -u xloc')
+  })
+
+  it('runs for anyone else', () => {
+    expect(rootRefusal(1000, '/whatever')).toBeNull()
+  })
+})
+
 /**
- * Kept archives, by the exact name backup.sh gives them. Matching a bare
+ * Profiles whose only votes are past the retention window — the rows the next
+ * retention pass deletes, and the ones backup.ts's baseline must not count.
+ */
+function addExpiredProfiles(n: number): void {
+  const db = new Database(dbPath)
+  db.pragma('journal_mode = WAL')
+  const stale = Date.now() - 61 * 24 * 60 * 60 * 1000
+  const insProfile = db.prepare(
+    'INSERT OR REPLACE INTO profiles (username, location, source, location_accurate, location_confidence, updated_at) VALUES (?,?,?,?,?,?)',
+  )
+  const insVote = db.prepare(
+    'INSERT OR REPLACE INTO location_votes (username, client_id, location, source, location_accurate, seen_at) VALUES (?,?,?,?,?,?)',
+  )
+  const fill = db.transaction((count: number) => {
+    for (let i = 0; i < count; i++) {
+      insProfile.run(`expired-${i}`, 'Japan', 'web', 1, 1, stale)
+      insVote.run(`expired-${i}`, 'old-client', 'Japan', 'web', 1, stale)
+    }
+  })
+  fill(n)
+  db.pragma('wal_checkpoint(TRUNCATE)')
+  db.close()
+}
+
+/**
+ * Kept archives, by the exact name backup.ts gives them. Matching a bare
  * `.db.gz` would also sweep in `corrupt-evidence.db.gz`, which is not an
  * archive and is the one file whose presence means backups are failing.
  */
@@ -135,7 +176,7 @@ function archives(): string[] {
     .sort()
 }
 
-/** The two sizes backup.sh records for the heartbeat, parsed as it writes them. */
+/** The two sizes backup.ts records for the heartbeat, parsed as it writes them. */
 function vacuumStatus(): Record<string, string> {
   const raw = readFileSync(join(backupDir, '.vacuum-status'), 'utf8')
   const fields: Record<string, string> = {}
@@ -236,7 +277,7 @@ afterEach(() => {
 })
 
 describe.skipIf(MISSING.length > 0)(
-  `backup.sh${MISSING.length ? ` (skipped: missing ${MISSING.join(', ')})` : ''}`,
+  `backup.ts${MISSING.length ? ` (skipped: missing ${MISSING.join(', ')})` : ''}`,
   () => {
     it('writes a verified, restorable snapshot of every row', () => {
       seed(dbPath, 200)
@@ -288,8 +329,8 @@ describe.skipIf(MISSING.length > 0)(
     })
 
     it('rejects a non-numeric XLOC_BACKUP_KEEP instead of silently never pruning', () => {
-      // `[ 7d -lt 1 ]` is a test *error* in dash, which an `if` reads as false —
-      // the guard has to be a case, or rotation quietly stops forever.
+      // A value that is not a count must stop the run, not fall through to a
+      // comparison that quietly reads as "keep nothing" or "prune nothing".
       seed(dbPath, 20)
       const r = run(BACKUP, [], { XLOC_BACKUP_KEEP: '7d' })
       expect(r.status).toBe(1)
@@ -300,16 +341,6 @@ describe.skipIf(MISSING.length > 0)(
     it('rejects XLOC_BACKUP_KEEP=0, which would prune everything', () => {
       seed(dbPath, 20)
       expect(run(BACKUP, [], { XLOC_BACKUP_KEEP: '0' }).status).toBe(1)
-    })
-
-    it('refuses to run as root', () => {
-      // Root leaves the backups directory root-owned, and every later run as
-      // xloc then fails to write into it.
-      seed(dbPath, 20)
-      const r = run(BACKUP, [], stubs({ id: 'echo 0' }))
-      expect(r.status).toBe(1)
-      expect(r.stderr).toContain('refusing to run as root')
-      expect(archives()).toEqual([])
     })
 
     it('records what a vacuum would reclaim, since it just measured it', () => {
@@ -366,6 +397,67 @@ describe.skipIf(MISSING.length > 0)(
       expect(usage.stderr).not.toContain('vacuum-status')
     })
 
+    it('backs up a database with nothing in it yet', () => {
+      // A fresh deploy: schema, no rows. The baseline is 0, and 0 profiles is
+      // not short of it — a first night reporting failure would look like
+      // corruption on a box that is merely new.
+      seed(dbPath, 0)
+      const r = run(BACKUP, [])
+      expect(r.status).toBe(0)
+      expect(r.stdout).toContain('backup ok')
+
+      const restored = openArchive(join(backupDir, archives()[0]!))
+      expect(restored.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual(
+        { n: 0 },
+      )
+      restored.close()
+    })
+
+    it('backs up a database whose every profile has already expired', () => {
+      // The same 0 baseline reached the other way: every row is there and every
+      // one is past the window, so the next retention pass takes all of them.
+      seed(dbPath, 0)
+      addExpiredProfiles(5)
+      const r = run(BACKUP, [])
+      expect(r.status).toBe(0)
+
+      const restored = openArchive(join(backupDir, archives()[0]!))
+      expect(restored.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual(
+        { n: 5 },
+      )
+      restored.close()
+    })
+
+    it('sweeps what a killed run left, and only that', () => {
+      seed(dbPath, 20)
+      mkdirSync(backupDir, { recursive: true })
+      const leftovers = [
+        'x-loc-cache-20200101-000000.db',
+        'x-loc-cache-20200101-000000.db.gz.part',
+        'corrupt-evidence.db.gz.part',
+        '.vacuum-status.part',
+      ]
+      // Evidence is never swept: it is the only copy of a database that failed
+      // its check, and it outlives the run that produced it.
+      const keepers = [
+        'x-loc-cache-20200102-000000.db.gz',
+        'corrupt-evidence.db.gz',
+      ]
+      for (const name of [...leftovers, ...keepers]) {
+        writeFileSync(join(backupDir, name), 'leftover')
+      }
+
+      expect(run(BACKUP, [], { XLOC_BACKUP_KEEP: '5' }).status).toBe(0)
+
+      for (const name of leftovers) {
+        expect(existsSync(join(backupDir, name))).toBe(false)
+      }
+      for (const name of keepers) {
+        expect(existsSync(join(backupDir, name))).toBe(true)
+      }
+      expect(archives()).toHaveLength(2)
+    })
+
     it('refuses a second concurrent run rather than racing it', () => {
       seed(dbPath, 20)
       mkdirSync(backupDir, { recursive: true })
@@ -386,7 +478,7 @@ describe.skipIf(MISSING.length > 0)(
 )
 
 describe.skipIf(MISSING.length > 0)(
-  'backup.sh — a database it must not trust',
+  'backup.ts — a database it must not trust',
   () => {
     it('fails on a corrupt source, keeps the evidence, and prunes nothing', () => {
       seed(dbPath, 400)
@@ -442,6 +534,30 @@ exec ${real} "$@"`,
       expect(archives()).toEqual(['x-loc-cache-20200101-000000.db.gz'])
     })
 
+    it('accepts a snapshot short by exactly what retention could have taken', () => {
+      // Retention can land inside the copy and take profiles whose last vote
+      // just aged out. The baseline excludes exactly those 50.
+      seed(dbPath, 300)
+      addExpiredProfiles(50)
+      const real = spawnSync('sh', ['-c', 'command -v sqlite3'], {
+        encoding: 'utf8',
+      }).stdout.trim()
+      const r = run(
+        BACKUP,
+        [],
+        stubs({
+          sqlite3: `
+case "$*" in
+  *"COUNT(*) FROM profiles; SELECT COUNT(*) FROM location_votes"*) echo 300; echo 900; exit 0 ;;
+esac
+exec ${real} "$@"`,
+        }),
+      )
+      expect(r.stderr).toBe('')
+      expect(r.status).toBe(0)
+      expect(archives()).toHaveLength(1)
+    })
+
     it('keeps ONE evidence file however many nights in a row it fails', () => {
       // Whatever gets here is usually permanent — an index out of sync with
       // its table survives VACUUM INTO verbatim — so a stamped file per run
@@ -487,7 +603,7 @@ exec ${real} "$@"`,
       expect(existsSync(join(backupDir, 'corrupt-evidence.db.gz'))).toBe(true)
       expect(archives()).toHaveLength(1)
 
-      // ...and restore.sh must not offer it as something to restore from.
+      // ...and restore.ts must not offer it as something to restore from.
       const usage = run(RESTORE, [], stubs({ id: 'echo 0' }))
       expect(usage.stderr).toContain('available:')
       expect(usage.stderr).not.toContain('corrupt-evidence')
@@ -532,7 +648,7 @@ exec ${real} "$@"`,
   },
 )
 
-describe.skipIf(MISSING.length > 0)('backup.sh — under write load', () => {
+describe.skipIf(MISSING.length > 0)('backup.ts — under write load', () => {
   it('finishes while the database is still being written to', async () => {
     // The regression test. With `.backup` this returned only once the writer
     // stopped, because the backup API restarts on every external commit.
@@ -601,7 +717,7 @@ describe.skipIf(MISSING.length > 0)('backup.sh — under write load', () => {
   }, 60_000)
 })
 
-describe.skipIf(MISSING.length > 0)('vacuum.sh', () => {
+describe.skipIf(MISSING.length > 0)('vacuum.ts', () => {
   /** systemctl/curl/chown/sudo/id, so the script can run outside a real box. */
   function vacuumStubs(log: string, extra: Record<string, string> = {}) {
     return stubs(
@@ -805,6 +921,14 @@ exec ${realMv} "$@"`,
     expect(existsSync(log)).toBe(false)
   })
 
+  it('refuses a database that is not there, before stopping the service', () => {
+    const log = join(dir, 'systemctl.log')
+    const r = run(VACUUM, ['-y'], vacuumStubs(log))
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('no database at')
+    expect(existsSync(log)).toBe(false)
+  })
+
   it('refuses to run as a normal user, before touching anything', () => {
     seed(dbPath, 20)
     const r = run(VACUUM, ['-y'])
@@ -820,7 +944,7 @@ exec ${realMv} "$@"`,
   })
 })
 
-describe.skipIf(MISSING.length > 0)('restore.sh', () => {
+describe.skipIf(MISSING.length > 0)('restore.ts', () => {
   /** systemctl/curl/chown/sudo/id, so the script can run outside a real box. */
   function restoreStubs(log: string) {
     return stubs({
@@ -847,6 +971,28 @@ describe.skipIf(MISSING.length > 0)('restore.sh', () => {
     expect(readdirSync(dir).filter((f) => f.startsWith('restore-'))).toEqual([])
   })
 
+  it('rejects an archive that is not gzip at all', () => {
+    seed(dbPath, 50)
+    const log = join(dir, 'systemctl.log')
+    const bogus = join(dir, 'x-loc-cache-19700101-000000.db.gz')
+    writeFileSync(bogus, 'not gzip')
+
+    const r = run(RESTORE, [bogus], restoreStubs(log))
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('could not unpack')
+    expect(r.stderr).toContain('service untouched')
+    // A zlib stack trace is the wrong thing to hand someone mid-incident.
+    expect(r.stderr).not.toContain('at Zlib')
+    expect(existsSync(log)).toBe(false)
+    expect(readdirSync(dir).filter((f) => f.startsWith('restore-'))).toEqual([])
+
+    const live = new Database(dbPath, { readonly: true })
+    expect(live.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+      n: 50,
+    })
+    live.close()
+  })
+
   it('lists the available archives when called with no argument', () => {
     seed(dbPath, 20)
     expect(run(BACKUP, []).status).toBe(0)
@@ -857,6 +1003,87 @@ describe.skipIf(MISSING.length > 0)('restore.sh', () => {
     expect(r.stderr).toContain('available:')
     expect(r.stderr).toContain(archives()[0]!)
   })
+
+  it('refuses to run as a normal user, before touching anything', () => {
+    seed(dbPath, 20)
+    expect(run(BACKUP, []).status).toBe(0)
+    const r = run(RESTORE, [join(backupDir, archives()[0]!)])
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('run as root')
+    // Not even unpacked: nothing may land beside the live database.
+    expect(readdirSync(dir).filter((f) => f.startsWith('restore-'))).toEqual([])
+  })
+
+  it('puts the original back and restarts the service if the swap fails', () => {
+    // The one-mv window: between the move-aside and the swap there is no
+    // database, and a restart there has SQLite create an empty one.
+    seed(dbPath, 80)
+    expect(run(BACKUP, []).status).toBe(0)
+    const log = join(dir, 'systemctl.log')
+    const realMv = spawnSync('sh', ['-c', 'command -v mv'], {
+      encoding: 'utf8',
+    }).stdout.trim()
+
+    const r = run(
+      RESTORE,
+      [join(backupDir, archives()[0]!)],
+      stubs({
+        id: 'echo 0',
+        systemctl: `echo "systemctl $*" >> '${log}'`,
+        chown: `echo "chown $*" >> '${log}'`,
+        curl: 'exit 0',
+        sudo: 'shift 2; exec "$@"',
+        // Only the swap itself; the move-aside and the rollback both pass
+        // through, since neither has the unpacked file as its source.
+        mv: `
+case "$1" in
+  */restore-*.db) echo "mv: simulated failure" >&2; exit 1 ;;
+esac
+exec ${realMv} "$@"`,
+      }),
+    )
+
+    expect(r.status).not.toBe(0)
+    expect(r.stderr).toContain('putting the original database back')
+    expect(existsSync(dbPath)).toBe(true)
+    expect(readdirSync(dir).some((f) => f.includes('.replaced-'))).toBe(false)
+    expect(readdirSync(dir).filter((f) => f.startsWith('restore-'))).toEqual([])
+    expect(readFileSync(log, 'utf8')).toContain('systemctl start x-loc-cache')
+
+    // What came back is the original, not an empty file.
+    const back = new Database(dbPath, { readonly: true })
+    expect(back.pragma('integrity_check', { simple: true })).toBe('ok')
+    expect(back.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+      n: 80,
+    })
+    back.close()
+  })
+
+  it('fails loudly when the restarted service never answers', () => {
+    // The swap worked; the thing it exists to produce did not.
+    seed(dbPath, 40)
+    expect(run(BACKUP, []).status).toBe(0)
+    const log = join(dir, 'systemctl.log')
+
+    const r = run(
+      RESTORE,
+      [join(backupDir, archives()[0]!)],
+      stubs({
+        id: 'echo 0',
+        systemctl: `echo "systemctl $*" >> '${log}'`,
+        chown: `echo "chown $*" >> '${log}'`,
+        curl: 'exit 7', // never comes up
+        sudo: 'shift 2; exec "$@"',
+      }),
+    )
+
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('healthz FAILED')
+    expect(r.stdout).not.toContain('healthz ok')
+    // It verified before the swap; rolling it back would hide which half broke.
+    expect(existsSync(dbPath)).toBe(true)
+    expect(readdirSync(dir).some((f) => f.includes('.replaced-'))).toBe(true)
+  }, 30_000)
 
   it('restores the snapshot, discarding a stale WAL rather than replaying it', () => {
     seed(dbPath, 100)
