@@ -79,6 +79,95 @@ const USER_RESERVE =
  */
 const FAST = { prefetchPacing: 'instant', showLocationInFeed: true }
 
+/**
+ * Write a location straight into the extension's IDB, the way an earlier
+ * session (or a community-cache hit) would have left it. Origin-scoped, so the
+ * page has to be on x.com already; the store is created if the content script
+ * has not needed it yet.
+ */
+async function seedCached(page: Page, userName: string): Promise<void> {
+  await page.evaluate(
+    (key) =>
+      new Promise<void>((resolve, reject) => {
+        const req = indexedDB.open('x-profile-location', 1)
+        req.onupgradeneeded = () =>
+          req.result.createObjectStore('location-data')
+        req.onerror = () => reject(req.error)
+        req.onsuccess = () => {
+          const db = req.result
+          const tx = db.transaction('location-data', 'readwrite')
+          tx.objectStore('location-data').put(
+            {
+              data: {
+                location: 'Japan',
+                locationAccurate: true,
+                source: 'web',
+              },
+              fetchedAt: Date.now(),
+            },
+            key,
+          )
+          tx.oncomplete = () => {
+            db.close()
+            resolve()
+          }
+          tx.onerror = () => {
+            db.close()
+            reject(tx.error)
+          }
+        }
+      }),
+    userName,
+  )
+}
+
+// A cached account is filtered out in the tab, before the worker ever sees it,
+// so the only route back to X is the window's revalidation reserve: the tab
+// offers what it knows on LOOKUP_ENQUEUE and the worker hands one back with
+// `revalidate` set. Both halves are needed and neither can be seen alone.
+test('an account this tab has cached is asked about again, ahead of the queue', async ({
+  context,
+  extensionId,
+}) => {
+  const page = await context.newPage()
+  const lookups = await serveStubX(context, {
+    handles: HANDLES,
+    answer: () => ({ location: 'Japan' }),
+    tabName: () => 'first',
+  })
+  // Nothing may be looked up before the cache is seeded, or `asked` covers the
+  // seeded handle for the rest of the window and the reserve has nothing to do.
+  await setSettings(context, extensionId, {
+    ...FAST,
+    backgroundPrefetch: false,
+  })
+
+  await page.goto(FEED_URL)
+  await page.locator('article[data-testid="tweet"]').first().waitFor()
+  await seedCached(page, HANDLES[0]!)
+  const seeded = lookups.length
+
+  // Explicitly back on: `storage.local.set` merges, so leaving the key out
+  // would leave it false.
+  await setSettings(context, extensionId, {
+    ...FAST,
+    backgroundPrefetch: true,
+  })
+  await page.reload()
+  await page.locator('article[data-testid="tweet"]').first().waitFor()
+
+  await expect
+    .poll(() => lookups.length, { timeout: 30_000 })
+    .toBeGreaterThan(seeded)
+
+  // Long enough for the rest of the feed to have been granted too.
+  await new Promise((r) => setTimeout(r, 8_000))
+  const asked = askedFor(lookups.slice(seeded))
+  expect(asked[0]).toBe(HANDLES[0])
+  // Once — the reserve is spent, and the fresh answer is cached again.
+  expect(asked.filter((name) => name === HANDLES[0])).toHaveLength(1)
+})
+
 test('two tabs never spend two requests on the same account', async ({
   context,
   extensionId,

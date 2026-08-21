@@ -34,6 +34,22 @@ sqlite3 /var/lib/x-loc-cache/x-loc-cache.db \
   'SELECT COUNT(*) AS profiles, SUM(location_confidence >= 2) AS ready FROM profiles;'
 ```
 
+Confidence can only climb if the same handle is looked up first-hand twice, and a value
+this cache hands over is written to local IDB immediately — which is exactly the state in
+which this end never looks it up. **5% of the prefetch share re-asks about accounts
+already known** for that reason, as well as to notice a relocation, and it spends that
+share on the _least_-corroborated account on screen first. `conf` is kept with the hit as
+`LocationData.votes` for exactly that ordering — it is never sent back, and the threshold
+still reads the server's live figure. See "Revalidation" in
+[`../prefetch/CLAUDE.md`](../prefetch/CLAUDE.md).
+
+**A name is marked queried before the batch is sent**, so a scroll that re-renders it
+mid-flight doesn't send it twice. A request that _fails_ asked nobody anything, so
+`forgetQueried` clears the mark: leaving it would keep those names off the server for
+`QUERIED_TTL_MS` after it came back, and every one of them would then be paid for out of
+X's rate limit instead. Pinned by "does not lock a failed batch out of the retry" in
+`shared-cache.test.ts`.
+
 **The popup's count** (`GET /v1/stats` → `{ profiles }`, `fetchCacheCount`) is the only
 request not driven by someone reading a timeline, so the only one that could arrive as a
 crowd. Four things keep it cheap and none work without the others: it runs only while the

@@ -13,8 +13,11 @@ export const UNREACHABLE_RETRY_MS = 30 * 1000
 export interface PollerDeps {
   /** Ask the broker for work; null when it could not be reached. */
   next: () => Promise<NextInstruction | null>
-  /** Do the lookup. Reporting what it cost is the lookup's own job. */
-  fetch: (userName: string) => Promise<void>
+  /**
+   * Do the lookup. Reporting what it cost is the lookup's own job; `revalidate`
+   * means the tab has it cached and must ask X anyway.
+   */
+  fetch: (userName: string, revalidate: boolean) => Promise<void>
   now?: () => number
   setTimer?: (fn: () => void, ms: number) => unknown
   clearTimer?: (handle: unknown) => void
@@ -45,7 +48,10 @@ export class PrefetchPoller {
     if (!instruction.userName) return instruction.waitMs
 
     try {
-      await this.deps.fetch(instruction.userName)
+      await this.deps.fetch(
+        instruction.userName,
+        instruction.revalidate ?? false,
+      )
     } catch {
       // best-effort; a failed background lookup is never surfaced
     }

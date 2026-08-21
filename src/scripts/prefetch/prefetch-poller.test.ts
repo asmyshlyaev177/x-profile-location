@@ -9,6 +9,7 @@ import { PrefetchPoller, UNREACHABLE_RETRY_MS } from './prefetch-poller'
 // ---------------------------------------------------------------------------
 function harness(answers: Array<NextInstruction | null>) {
   const fetched: string[] = []
+  const revalidated: string[] = []
   const timers: Array<() => void> = []
   const delays: number[] = []
   const asked: number[] = []
@@ -20,12 +21,13 @@ function harness(answers: Array<NextInstruction | null>) {
       // `?? default` would swallow a scripted null, which is the unreachable case.
       return answers.length ? answers.shift()! : { waitMs: 5000 }
     },
-    fetch: async (userName) => {
+    fetch: async (userName, revalidate) => {
       if (failNext) {
         failNext = false
         throw new Error('X said no')
       }
       fetched.push(userName)
+      if (revalidate) revalidated.push(userName)
     },
     setTimer: (fn, ms) => {
       timers.push(fn)
@@ -38,6 +40,7 @@ function harness(answers: Array<NextInstruction | null>) {
   return {
     poller,
     fetched,
+    revalidated,
     delays,
     asked,
     failOnce: () => {
@@ -58,6 +61,15 @@ describe('runOnce', () => {
     const h = harness([{ userName: 'alice', waitMs: 0 }])
     expect(await h.poller.runOnce()).toBe(0)
     expect(h.fetched).toEqual(['alice'])
+    expect(h.revalidated).toEqual([])
+  })
+
+  // The handle is one this tab has cached; without the flag the lookup would
+  // stop at the cache and the window's revalidation reserve would buy nothing.
+  it('passes on that a grant was a revalidation', async () => {
+    const h = harness([{ userName: 'alice', waitMs: 0, revalidate: true }])
+    await h.poller.runOnce()
+    expect(h.revalidated).toEqual(['alice'])
   })
 
   // The broker owns the pace and has just been told what this lookup cost, so

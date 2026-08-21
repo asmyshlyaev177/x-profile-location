@@ -5,16 +5,38 @@ lives here: the location rows, the hover card, the filters, the swipe, the place
 It fetches; the pace it fetches at is [`../prefetch/`](../prefetch/CLAUDE.md), the answers
 it keeps are [`../cache/`](../cache/CLAUDE.md).
 
+`content.tsx` is the script itself: the MutationObserver, everything drawn into
+a post or a hover card, and the redraw cycle (`rehighlightAll`,
+`refreshHiddenTweets`, `refreshFeedLocations`) they call into. What sits beside
+it is what owns its own state and needs none of that:
+
+| File                | Owns                                                                          |
+| ------------------- | ----------------------------------------------------------------------------- |
+| `tweet-dom.ts`      | X's selectors and the readers over them. A renamed testid breaks this only.   |
+| `enabled.ts`        | The master switch, asked by nearly every entry point.                         |
+| `filters.ts`        | The filter settings, `activeMatches`/`hideMatchFor`, and what to call a rule. |
+| `highlight.ts`      | The keyword/flag rule, its settings, and the marks it paints.                 |
+| `lookup.ts`         | `fetchLocationData` — one `AboutAccountQuery`, and the report to the broker.  |
+| `overlays.ts`       | The bottom-centre slot: rate-limit countdown, swipe answer, rating ask.       |
+| `bio-cache.ts`      | The in-memory bio/facts LRU the highlight rule reads synchronously.           |
+| `account-chips.ts`  | `accountChips` — one builder per fact X returned, in reading order.           |
+| `resize-guard.ts`   | `whenSafeToResize` and its observer (see below).                              |
+| `snapshot-decor.ts` | `decorateSnapshot` — our rows in, the reader's controls out.                  |
+
+Each of those carries its own `__reset*` for `__testResetState` to call.
+
 ## Module state
 
-Module state: `apiHeaders` (captured auth headers, settable via `setApiHeaders()`),
+`lookup.ts` holds `apiHeaders` (captured auth headers, settable via `setApiHeaders()`),
 `checkedThisSession` (attempted in **this tab**; the cross-tab answer is the broker's
-`asked`), `pendingMap` (in-flight fetches, so concurrent hovers share one promise),
-`rateLimitResetAt` (ms until the limit lifts, 0 when clear — set by a 429 here or by
-`LOOKUP_RATE` from another tab), `blockedCountries` and `highlightKeywords` (from
+`asked`, and `answeredThisSession()` is the reader) and `pendingMap` (in-flight fetches,
+so concurrent hovers share one promise). `overlays.ts` holds `rateLimitResetAt` (ms until
+the limit lifts, 0 when clear — set by a 429 in `lookup.ts` or by `LOOKUP_RATE` from
+another tab, via `noteRateLimit()`, which shows the countdown in the same breath).
+`filters.ts` holds `blockedCountries` and `highlight.ts` `highlightKeywords` (from
 `chrome.storage.local`, reloaded on change, keywords lowercased and each carrying its own
-match mode). `__testResetState()` is exported for tests: it clears `checkedThisSession`
-and resets `rateLimitResetAt`.
+match mode). `content.tsx` keeps only the display settings and the page's own bookkeeping.
+`__testResetState()` is exported for tests and calls every module's reset.
 
 ## The bio X declined to render
 
@@ -126,7 +148,8 @@ row would have been, after the name line. Never into the post's own body.
 counts too. Excepted, the row shows the country's own flag again; with no handle to judge
 by it warns, the answer that cannot under-warn. Every caller has a handle:
 `buildInfoRow(data, userName)` and `locationSummaryText(data, userName)`. Deliberately
-_not_ affected: `ruleMatches()`' icons and `flagEmojiFor()` (the snapshot strip), which
+_not_ affected: `ruleMatches()`' icons and `flagEmojiFor()` (`countries.ts`; the snapshot
+strip), which
 never warn — a placeholder names the rule in words, and a warning in a reposted image reads
 as something X said.
 

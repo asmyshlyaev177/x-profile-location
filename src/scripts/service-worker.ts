@@ -171,6 +171,8 @@ interface BrokerMessage {
   type: string
   tab?: TabState
   candidates?: PrefetchCandidate[]
+  /** Cached handles the tab is willing to ask X about again. */
+  revalidate?: string[]
   report?: LookupReport
 }
 
@@ -186,6 +188,7 @@ async function handleBrokerMessage(
 
   if (message.type === MSG.ENQUEUE) {
     state.enqueue(tabId, message.candidates ?? [], tab)
+    state.offerRevalidation(message.revalidate ?? [])
   } else if (message.type === MSG.NEXT) {
     answer = state.next(tabId, tab)
   } else if (message.report) {
