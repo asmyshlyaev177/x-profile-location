@@ -231,6 +231,147 @@ describe('resilience: failures, timeout, circuit breaker', () => {
     expect(fetchFn).toHaveBeenCalledTimes(6)
   })
 
+  it('fails fast when the network is simply gone', async () => {
+    vi.useFakeTimers()
+    // DNS failure or a refused connection — no server to answer, no hang.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
+    )
+
+    const p = sharedBatchLookup(['offline'])
+    await vi.advanceTimersByTimeAsync(0)
+    await expect(p).resolves.toEqual([])
+  })
+
+  it('does not lock a failed batch out of the retry', async () => {
+    // The names were marked queried before the request went out. Nobody
+    // answered, so the mark has to go with the failure — otherwise a server
+    // that is back in a second is not asked again for QUERIED_TTL_MS.
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) })
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          profiles: [{ u: 'ada', loc: 'JP', src: null, acc: true, conf: 1 }],
+        }),
+      })
+    vi.stubGlobal('fetch', fetchFn)
+
+    expect(await sharedBatchLookup(['ada'])).toEqual([])
+    expect(await sharedBatchLookup(['ada'])).toEqual([
+      {
+        userName: 'ada',
+        data: { location: 'JP', locationAccurate: true, source: null },
+      },
+    ])
+    expect(fetchFn).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not lock out a batch the request never came back from', async () => {
+    vi.useFakeTimers()
+    const hang = vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () =>
+            reject(new Error('aborted')),
+          )
+        }),
+    )
+    vi.stubGlobal('fetch', hang)
+
+    const p = sharedBatchLookup(['grace'])
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(await p).toEqual([])
+
+    mockFetchJson({ profiles: [] })
+    await sharedBatchLookup(['grace'])
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('reopens half a minute after a first outage, not ten', async () => {
+    vi.useFakeTimers()
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue({ ok: false, status: 502, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchFn)
+
+    for (const n of ['d1', 'd2', 'd3']) await sharedBatchLookup([n])
+    expect(fetchFn).toHaveBeenCalledTimes(3)
+
+    await vi.advanceTimersByTimeAsync(29_000)
+    await sharedBatchLookup(['d4'])
+    expect(fetchFn).toHaveBeenCalledTimes(3) // still open
+
+    await vi.advanceTimersByTimeAsync(2_000)
+    await sharedBatchLookup(['d5'])
+    expect(fetchFn).toHaveBeenCalledTimes(4)
+  })
+
+  it('backs off further while the server stays down, and forgets it once it answers', async () => {
+    vi.useFakeTimers()
+    const down = { ok: false, status: 502, json: async () => ({}) }
+    const fetchFn = vi.fn().mockResolvedValue(down)
+    vi.stubGlobal('fetch', fetchFn)
+
+    for (const n of ['e1', 'e2', 'e3']) await sharedBatchLookup([n])
+    await vi.advanceTimersByTimeAsync(31_000)
+    await sharedBatchLookup(['e4']) // 4th failure — second trip, 60s
+    expect(fetchFn).toHaveBeenCalledTimes(4)
+
+    await vi.advanceTimersByTimeAsync(31_000)
+    await sharedBatchLookup(['e5'])
+    expect(fetchFn).toHaveBeenCalledTimes(4) // 30s is no longer enough
+
+    await vi.advanceTimersByTimeAsync(31_000)
+    fetchFn.mockResolvedValue({
+      ok: true,
+      json: async () => ({ profiles: [] }),
+    })
+    await sharedBatchLookup(['e6'])
+    expect(fetchFn).toHaveBeenCalledTimes(5)
+
+    // Recovered: the next outage starts from 30s again, not from 120s.
+    fetchFn.mockResolvedValue(down)
+    for (const n of ['e7', 'e8', 'e9']) await sharedBatchLookup([n])
+    expect(fetchFn).toHaveBeenCalledTimes(8)
+    await vi.advanceTimersByTimeAsync(31_000)
+    await sharedBatchLookup(['e10'])
+    expect(fetchFn).toHaveBeenCalledTimes(9)
+  })
+
+  it('never waits longer than the cap, however long the outage runs', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue({ ok: false, status: 502, json: async () => ({}) }),
+    )
+
+    for (const n of ['f1', 'f2', 'f3']) await sharedBatchLookup([n])
+    for (let trip = 0; trip < 10; trip++) {
+      await vi.advanceTimersByTimeAsync(10 * 60 * 1000 + 1_000)
+      await sharedBatchLookup([`f-retry-${trip}`])
+    }
+    const calls = (fetch as unknown as Mock).mock.calls.length
+    expect(calls).toBe(13) // one probe per cooldown, never fewer
+  })
+
+  it('leaves the popup count outside the breaker', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
+      .mockResolvedValue({ ok: true, json: async () => ({ profiles: 42 }) })
+    vi.stubGlobal('fetch', fetchFn)
+
+    for (const n of ['g1', 'g2', 'g3']) await sharedBatchLookup([n])
+    expect(await fetchCacheCount()).toBe(42)
+  })
+
   it('a failing contribution does not throw', async () => {
     vi.useFakeTimers()
     const fetchFn = vi

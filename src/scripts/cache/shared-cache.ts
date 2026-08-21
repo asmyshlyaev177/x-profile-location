@@ -28,7 +28,10 @@ const CLIENT_ID_KEY = 'sharedCacheClientId'
 
 const FETCH_TIMEOUT_MS = 5000
 const BREAKER_THRESHOLD = 3
-const BREAKER_COOLDOWN_MS = 10 * 60 * 1000
+// Short enough that a deploy, a Caddy reload or the ~1s swap in deploy/vacuum.ts
+// costs a reader half a minute of a colder cache, not ten.
+const BREAKER_COOLDOWN_MS = 30_000
+const BREAKER_MAX_COOLDOWN_MS = 10 * 60 * 1000
 
 let enabled = false
 
@@ -66,21 +69,41 @@ function getClientId(): Promise<string> {
 const negativeCache = new Map<string, number>()
 const recentlyQueried = new Map<string, number>()
 
+/**
+ * A batch is marked queried before it is sent, so a scroll that re-renders the
+ * same names mid-flight doesn't send them twice. A request that then fails
+ * asked nobody anything — leaving the mark would keep those names off the
+ * server for QUERIED_TTL_MS after it came back, spending X's rate limit on
+ * answers the cache already had.
+ */
+function forgetQueried(batch: string[]): void {
+  for (const u of batch) recentlyQueried.delete(u)
+}
+
 // --- resilience: timeout + circuit breaker -----------------------------------
 let consecutiveFailures = 0
+let breakerTrips = 0
 let breakerOpenUntil = 0
 
 function breakerOpen(now: number): boolean {
   return now < breakerOpenUntil
 }
+/** Doubling per trip: a blip reopens in 30s, a real outage still backs off. */
+function cooldownMs(trips: number): number {
+  return Math.min(
+    BREAKER_COOLDOWN_MS * 2 ** (trips - 1),
+    BREAKER_MAX_COOLDOWN_MS,
+  )
+}
 function noteFailure(): void {
   consecutiveFailures += 1
-  if (consecutiveFailures >= BREAKER_THRESHOLD) {
-    breakerOpenUntil = Date.now() + BREAKER_COOLDOWN_MS
-  }
+  if (consecutiveFailures < BREAKER_THRESHOLD) return
+  breakerTrips += 1
+  breakerOpenUntil = Date.now() + cooldownMs(breakerTrips)
 }
 function noteSuccess(): void {
   consecutiveFailures = 0
+  breakerTrips = 0
   breakerOpenUntil = 0
 }
 
@@ -144,6 +167,7 @@ export async function sharedBatchLookup(
     })
     if (!resp.ok) {
       noteFailure()
+      forgetQueried(batch)
       return []
     }
     const body = (await resp.json()) as { profiles?: ServedProfile[] }
@@ -171,6 +195,7 @@ export async function sharedBatchLookup(
     return hits
   } catch {
     noteFailure()
+    forgetQueried(batch)
     return []
   }
 }
@@ -331,6 +356,7 @@ export function __resetSharedCache(): void {
   outBuffer.clear()
   lastSent.clear()
   consecutiveFailures = 0
+  breakerTrips = 0
   breakerOpenUntil = 0
   if (flushTimer !== null) {
     clearTimeout(flushTimer)
