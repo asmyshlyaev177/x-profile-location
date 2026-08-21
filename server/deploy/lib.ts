@@ -95,6 +95,10 @@ export function loadEnvFile(
   }
 }
 
+export function servicePort(): string {
+  return process.env.XLOC_PORT ?? '8787'
+}
+
 /** UTC, so lexical order is age order wherever these names are sorted. */
 export function stamp(): string {
   const [date = '', time = ''] = new Date().toISOString().split('T')

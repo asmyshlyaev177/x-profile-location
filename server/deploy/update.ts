@@ -25,6 +25,7 @@ import {
   healthy,
   loadEnvFile,
   run,
+  servicePort,
   uid,
   type CommandResult,
 } from './lib.ts'
@@ -165,7 +166,15 @@ async function rollback(to: string, port: string): Promise<never> {
       `Do it by hand: git -C ${REPO} reset --hard ${to} && systemctl restart ${SERVICE}`,
     )
   }
-  if (!abiOk()) npmInstall()
+  if (!abiOk()) {
+    const rebuild = npmInstall()
+    if (!rebuild.ok) {
+      die(
+        `rolled back to ${to.slice(0, 7)} but could not rebuild for ${NODE}: ${rebuild.out}`,
+        `Do it by hand: cd ${REPO}/server && ${NPM} install && systemctl restart ${SERVICE}`,
+      )
+    }
+  }
   syncUnits()
   run('systemctl', ['daemon-reload'])
   run('systemctl', ['restart', SERVICE])
@@ -236,7 +245,7 @@ async function main(): Promise<void> {
     die('run as root — it writes to /etc/systemd/system and drives systemctl')
   }
   loadEnvFile()
-  const PORT = process.env.XLOC_PORT ?? '8787'
+  const PORT = servicePort()
 
   const { before, after, changed } = pull()
   ensureDependencies(changed)

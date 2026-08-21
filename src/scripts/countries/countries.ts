@@ -280,6 +280,11 @@ export function flagFor(canonical: string): string {
   return COUNTRY_FLAGS[canonical] ?? REGION_FLAGS[canonical] ?? '🌐'
 }
 
+/** flagFor for a location X reported, whatever spelling it used for it. */
+export function flagEmojiFor(location: string): string {
+  return flagFor(canonicalLocation(location))
+}
+
 // Keyed by the canonical name, which is the vocabulary X itself reports. An
 // alias that is also a flag key stops being offered separately in the picker.
 export const LOCATION_ALIASES: Record<string, string[]> = {

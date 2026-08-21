@@ -8,7 +8,7 @@ import { CACHE_API_BASE, SHARED_CACHE_COUNT_KEY } from '../constants'
 // Client for the community location cache (../../server). Only
 // location/source/accurate go over the wire — never bios or who looked up whom.
 
-import type { LocationData } from './cache'
+import { answerSignature, type LocationData } from './cache'
 
 // Distinct clients that must agree before a location is trusted. Still 1 on
 // purpose — see "Community cache consensus" in CLAUDE.md.
@@ -69,13 +69,7 @@ function getClientId(): Promise<string> {
 const negativeCache = new Map<string, number>()
 const recentlyQueried = new Map<string, number>()
 
-/**
- * A batch is marked queried before it is sent, so a scroll that re-renders the
- * same names mid-flight doesn't send them twice. A request that then fails
- * asked nobody anything — leaving the mark would keep those names off the
- * server for QUERIED_TTL_MS after it came back, spending X's rate limit on
- * answers the cache already had.
- */
+// A failed request asked nobody anything — see "queried" in ./CLAUDE.md.
 function forgetQueried(batch: string[]): void {
   for (const u of batch) recentlyQueried.delete(u)
 }
@@ -185,6 +179,7 @@ export async function sharedBatchLookup(
           location: p.loc,
           locationAccurate: p.acc,
           source: p.src as LocationData['source'],
+          votes: p.conf,
         },
       })
     }
@@ -212,15 +207,11 @@ const outBuffer = new Map<string, OutVote>()
 const lastSent = new Map<string, string>()
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 
-function signature(data: LocationData): string {
-  return `${data.location ?? ''}|${data.source ?? ''}|${data.locationAccurate}`
-}
-
 /** A real AboutAccountQuery result, never a cache hit. Deduped per session. */
 export function contributeLocation(userName: string, data: LocationData): void {
   if (!enabled) return
   const u = userName.toLowerCase()
-  const sig = signature(data)
+  const sig = answerSignature(data)
   if (lastSent.get(u) === sig) return
   lastSent.set(u, sig)
 

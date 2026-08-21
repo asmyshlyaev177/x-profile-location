@@ -36,6 +36,7 @@ import {
   mv,
   reclaimPct,
   run,
+  servicePort,
   sqlite,
   stamp,
   uid,
@@ -118,7 +119,7 @@ async function main(): Promise<void> {
   loadEnvFile()
 
   const DB = process.env.XLOC_DB ?? '/var/lib/x-loc-cache/x-loc-cache.db'
-  const PORT = process.env.XLOC_PORT ?? '8787'
+  const PORT = servicePort()
 
   const args = parseArgs(process.argv.slice(2))
   if (args === null) die(`usage: ${process.argv[1]} [-y]`)

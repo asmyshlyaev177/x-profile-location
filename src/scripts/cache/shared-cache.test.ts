@@ -87,6 +87,19 @@ describe('sharedBatchLookup', () => {
     })
   })
 
+  // How many distinct clients back the answer is the whole of what decides
+  // which cached account is worth a first-hand re-ask, and the batch response
+  // is the only place a client ever hears it.
+  it('carries the server’s vote count back with the hit', async () => {
+    mockFetchJson({
+      profiles: [{ u: 'alice', loc: 'JP', src: null, acc: true, conf: 4 }],
+    })
+
+    const hits = await sharedBatchLookup(['alice'])
+
+    expect(hits[0]?.data.votes).toBe(4)
+  })
+
   it('applies a raised threshold to what it will serve', async () => {
     setMinConfidence(2)
     mockFetchJson({
@@ -263,7 +276,12 @@ describe('resilience: failures, timeout, circuit breaker', () => {
     expect(await sharedBatchLookup(['ada'])).toEqual([
       {
         userName: 'ada',
-        data: { location: 'JP', locationAccurate: true, source: null },
+        data: {
+          location: 'JP',
+          locationAccurate: true,
+          source: null,
+          votes: 1,
+        },
       },
     ])
     expect(fetchFn).toHaveBeenCalledTimes(2)

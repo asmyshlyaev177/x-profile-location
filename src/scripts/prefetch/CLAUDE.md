@@ -54,6 +54,50 @@ The budget it spends is the 50 / 15 min in [`../CLAUDE.md`](../CLAUDE.md).
   server is configured (`!isSharedCacheConfigured() || isSharedCacheEnabled()`), so an
   empty `CACHE_API_BASE` build still prefetches. The options page mirrors it.
 
+## Revalidation
+
+The queue only ever holds accounts **nobody has an answer for** — `content.tsx`
+filters every batch against its own IDB before the broker sees it, and the
+broker keeps `asked` on top of that. So a location was fetched once and then
+believed until the 30-day cache TTL dropped it, and an account that moved
+country stayed wrong for a month. Worse for the community cache: a value the
+server handed over is cached locally the moment it arrives, which is exactly
+the state in which this end will never look it up first-hand — so
+`location_confidence` had no way to climb past the client that first reported it.
+
+**5% of the share goes to accounts already known** — `revalidateBudget()`,
+floored down, and at least 1. At the shipped defaults that is 2 of the 40
+lookups a window. The reserve is measured against the _share_, not against
+what is left of it, so it does not shrink as the window is spent.
+
+Both halves are needed and neither can do it alone: only the tab can read
+x.com's IndexedDB, and only the worker knows what the window can spare. The tab
+**offers** every cached account in the batch on the `LOOKUP_ENQUEUE` message,
+ranked; the broker **rations** — it keeps the newest `MAX_REVALIDATE` offers and
+hands one back as `{ userName, revalidate: true }`. `fetchLocationData` takes
+that flag straight past the "already in IDB" short-circuit — without it the
+grant would resolve from the cache, report `spent: false`, and buy nothing.
+
+- **Least-corroborated first, not oldest-first.** The rank is
+  `LocationData.votes` — the server's `conf` for a community-cache hit, plus one
+  for each first-hand confirmation since. One client's word is what a second
+  answer is worth most against. `fetchedAt` could not do it: every `mergeCached`
+  rewrites it and a bio lands on every appearance in a timeline, so it dates the
+  last time the account was _seen_, not the last time its location was
+  _fetched_ — sorting on it would revalidate whoever posts least.
+- **Ties are broken at random** (`shuffled()` before a stable sort). Equal
+  counts are the common case, and a fixed order would re-offer the same names
+  for the whole session while the rest of the feed is never re-asked about.
+- **Ahead of the queues, not behind them.** Behind, it would never happen on the
+  readers it is for: a scrolled feed outproduces a trickle of one per ~22s, so
+  `high` is rarely empty. Ahead, it costs the feed the first two lookups of a
+  window and nothing after.
+- **Accounts answered this session are never offered.** They already cost a
+  request, and `checkedThisSession` is what says so.
+- A revalidation that spends nothing (the tab had it in flight, or headers went
+  away) **hands the reserve back**, like any other grant that reports
+  `spent: false`.
+
 ## The broker (`lookup-broker.ts`)
 
 Everything above describes **one** budget. Per-tab copies of the queue, pace and ledger
