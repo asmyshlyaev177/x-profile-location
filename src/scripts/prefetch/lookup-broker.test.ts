@@ -254,6 +254,182 @@ describe('handles already asked about', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Revalidation — the reserved slice spent on accounts already answered for
+// ---------------------------------------------------------------------------
+// The queue only ever holds accounts nobody has an answer for, so without this
+// a location is fetched once and believed until the 30-day cache TTL drops it.
+// The tab offers what it has cached; how much of it goes out is the window's.
+describe('revalidation', () => {
+  it('re-asks about a cached account ahead of the queue, and says so', () => {
+    const { broker } = makeBroker(unpaced())
+    broker.enqueue(1, [{ userName: 'feed' }], FOCUSED)
+    broker.offerRevalidation(['cached'])
+
+    expect(broker.next(1, FOCUSED)).toEqual({
+      userName: 'cached',
+      waitMs: 0,
+      revalidate: true,
+    })
+  })
+
+  // Behind the queue it would never happen at all: a scrolled feed outproduces
+  // the trickle, so `high` is rarely empty on the readers this is for.
+  it('spends the window reserve and then leaves the budget alone', () => {
+    const { broker } = makeBroker(unpaced())
+    broker.offerRevalidation(['a', 'b', 'c', 'd', 'e'])
+
+    // 50 * 0.8 = 40 a window, of which 2.
+    expect(drain(broker, 1, FOCUSED)).toEqual(['a', 'b'])
+  })
+
+  it('leaves the queue to the tier order once the reserve is gone', () => {
+    const { broker } = makeBroker(unpaced())
+    broker.enqueue(1, [{ userName: 'reply', priority: 'low' }], FOCUSED)
+    broker.enqueue(1, [{ userName: 'feed' }], FOCUSED)
+    broker.offerRevalidation(['x', 'y', 'z'])
+
+    expect(drain(broker, 1, FOCUSED)).toEqual(['x', 'y', 'feed', 'reply'])
+  })
+
+  it('hands the reserve back when the tab spent nothing after all', () => {
+    const { broker } = makeBroker(unpaced())
+    broker.offerRevalidation(['a', 'b', 'c'])
+
+    const granted = broker.next(1, FOCUSED)
+    broker.report({ userName: granted.userName!, spent: false })
+
+    // Nothing left the browser, so the window still owes two revalidations.
+    expect(drain(broker, 1, FOCUSED)).toEqual(['b', 'c'])
+  })
+
+  it('never re-asks about a handle the window already paid for', () => {
+    const { broker } = makeBroker(unpaced())
+    broker.enqueue(1, [{ userName: 'alice' }], FOCUSED)
+    broker.next(1, FOCUSED)
+    broker.report({ userName: 'alice', spent: true, ok: true })
+
+    broker.offerRevalidation(['Alice'])
+    expect(broker.next(1, FOCUSED).waitMs).toBe(IDLE_POLL_MS)
+  })
+
+  // The offer list arrives over chrome.runtime from a content script, typed
+  // string[] and nothing more — an empty or non-string entry would become a
+  // grant the poller then asks X about by that name.
+  it('drops junk offers rather than granting them', () => {
+    const { broker } = makeBroker(unpaced())
+    broker.offerRevalidation(['', null, 42, 'real'] as unknown as string[])
+
+    expect(drain(broker, 1, FOCUSED)).toEqual(['real'])
+  })
+
+  it('takes the same handle from two tabs as one offer', () => {
+    const { broker } = makeBroker(unpaced())
+    broker.offerRevalidation(['cached'])
+    broker.offerRevalidation(['CACHED'])
+
+    expect(drain(broker, 1, FOCUSED)).toEqual(['cached'])
+  })
+
+  it('gets its reserve back when the window rolls over', () => {
+    const h = makeBroker(unpaced())
+    seedLedger(h.broker, {
+      limit: 50,
+      remaining: 50,
+      reset: (START + WINDOW) / 1000,
+    })
+    h.broker.offerRevalidation(['a', 'b', 'c', 'd'])
+    expect(drain(h.broker, 1, FOCUSED)).toEqual(['a', 'b'])
+
+    h.advance(WINDOW + 1000)
+    expect(drain(h.broker, 1, FOCUSED)).toEqual(['c', 'd'])
+  })
+
+  it('drops what it was offered when the user clears the cache', () => {
+    const { broker } = makeBroker(unpaced())
+    broker.offerRevalidation(['a', 'b'])
+    broker.forgetAsked()
+
+    expect(broker.next(1, FOCUSED).waitMs).toBe(IDLE_POLL_MS)
+  })
+
+  it('holds only the newest offers, so a scroll cannot grow the snapshot', () => {
+    const { broker } = makeBroker(unpaced())
+    const older = Array.from({ length: 50 }, (_, i) => `old-${i}`)
+    broker.offerRevalidation(older)
+    broker.offerRevalidation(['newest'])
+
+    const held = broker.__state().revalidate
+    expect(held[0]).toBe('newest')
+    expect(held.length).toBeLessThan(older.length)
+    // Dropped from the tail: the oldest offer, and the one a tab ranked last.
+    expect(held).not.toContain(older[older.length - 1])
+  })
+
+  it('is not a way round a 429', () => {
+    const { broker } = makeBroker(unpaced())
+    broker.report({ userName: 'alice', spent: true, status: 429 })
+    broker.offerRevalidation(['cached'])
+
+    expect(broker.next(1, FOCUSED).userName).toBeUndefined()
+  })
+
+  // The reserve is a slice of prefetch's share, not an allowance beside it.
+  it('stops with the rest of prefetch at the user’s reserve', () => {
+    const { broker } = makeBroker(unpaced())
+    seedLedger(broker, { limit: 50, remaining: 10 })
+    broker.offerRevalidation(['cached'])
+
+    expect(broker.next(1, FOCUSED).userName).toBeUndefined()
+  })
+
+  it('does not offer a handle another tab has in flight', () => {
+    const { broker } = makeBroker(unpaced())
+    broker.enqueue(1, [{ userName: 'alice' }], FOCUSED)
+    broker.next(1, FOCUSED)
+
+    broker.offerRevalidation(['alice'])
+    expect(broker.next(2, VISIBLE).waitMs).toBe(IDLE_POLL_MS)
+  })
+
+  // The request left the window whatever X answered, so the reserve is spent.
+  it('keeps a refused revalidation charged to the window', () => {
+    const { broker } = makeBroker(unpaced())
+    broker.offerRevalidation(['a', 'b', 'c'])
+    broker.next(1, FOCUSED)
+    broker.report({ userName: 'a', spent: true, ok: false, status: 500 })
+
+    expect(drain(broker, 1, FOCUSED)).toEqual(['b'])
+  })
+
+  it('starts revalidating from a snapshot written before it existed', () => {
+    const h = makeBroker(unpaced())
+    const older = h.broker.toJSON()
+    delete older.revalidate
+    delete older.revalidateSpent
+
+    const restored = LookupBroker.from(older, { now: h.now })
+    restored.setPacing({ pacing: 'instant', minSpacingMs: 0 })
+    restored.offerRevalidation(['cached'])
+    expect(restored.next(1, FOCUSED).userName).toBe('cached')
+  })
+
+  it('survives the worker being torn down mid-window', () => {
+    const h = makeBroker(unpaced())
+    h.broker.offerRevalidation(['a', 'b', 'c'])
+    h.broker.next(1, FOCUSED)
+    h.broker.report({ userName: 'a', spent: true, ok: true })
+
+    const restored = LookupBroker.from(
+      JSON.parse(JSON.stringify(h.broker.toJSON())),
+      { now: h.now },
+    )
+    restored.setPacing({ pacing: 'instant', minSpacingMs: 0 })
+    // One of the two is already spent, and 'a' is not offered a second time.
+    expect(drain(restored, 1, FOCUSED)).toEqual(['b'])
+  })
+})
+
+// ---------------------------------------------------------------------------
 // The shared window
 // ---------------------------------------------------------------------------
 describe('the rate-limit ledger', () => {

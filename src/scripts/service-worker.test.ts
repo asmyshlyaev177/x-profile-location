@@ -156,6 +156,21 @@ describe('the broker over messages', () => {
     expect(answer).toMatchObject({ userName: 'foreground' })
   })
 
+  // The tab is the only side that can read x.com's IndexedDB, so what it
+  // already knows arrives with the same message its candidates do.
+  it('passes on the cached accounts a tab offered for revalidation', async () => {
+    await loadWorker()
+    await send({
+      type: MSG.ENQUEUE,
+      candidates: [{ userName: 'alice' }],
+      revalidate: ['cached'],
+      tab: FOCUSED,
+    })
+
+    const answer = await send({ type: MSG.NEXT, tab: FOCUSED })
+    expect(answer).toMatchObject({ userName: 'cached', revalidate: true })
+  })
+
   it('ignores a message from something that is not a tab', async () => {
     await loadWorker()
     expect(await send({ type: MSG.NEXT, tab: FOCUSED }, null)).toBeUndefined()

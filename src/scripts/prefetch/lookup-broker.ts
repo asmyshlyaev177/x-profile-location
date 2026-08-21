@@ -19,6 +19,7 @@ import {
   PRIORITIES,
   type QueueSnapshot,
   type RateState,
+  revalidateBudget,
 } from './prefetch-queue'
 
 /** A grant whose tab never reported back — closed, crashed or navigated away. */
@@ -30,6 +31,10 @@ const INFLIGHT_TTL_MS = 60 * 1000
  */
 export const IDLE_POLL_MS = 30 * 1000
 
+// Offers arrive ~20 a batch and drain 2 a window, and every message rewrites the
+// whole snapshot — see "Revalidation" in CLAUDE.md.
+const MAX_REVALIDATE = 10
+
 export interface TabState {
   focused: boolean
   visible: boolean
@@ -39,6 +44,8 @@ export interface TabState {
 export interface NextInstruction {
   userName?: string
   waitMs: number
+  /** The tab has this one cached: ask X anyway, that is the point of it. */
+  revalidate?: boolean
 }
 
 export interface LookupReport {
@@ -60,6 +67,8 @@ interface InflightEntry {
   prevGrantAt: number
   /** Whether the grant decremented `remaining`, so a skip can put it back. */
   optimistic: boolean
+  /** Whether it also spent from the window's revalidation reserve. */
+  revalidate: boolean
 }
 
 interface TabRecord extends TabState {
@@ -78,6 +87,8 @@ export interface BrokerSnapshot {
   asked: Array<[string, number]>
   inflight: Array<[string, InflightEntry]>
   tabs: Array<[number, TabSnapshot]>
+  revalidate?: string[]
+  revalidateSpent?: number
 }
 
 export interface BrokerOptions extends PacingOptions {
@@ -98,6 +109,9 @@ export class LookupBroker {
   /** Handle → when it may be asked about again. Cleared as the window rolls. */
   private asked = new Map<string, number>()
   private inflight = new Map<string, InflightEntry>()
+  /** Cached handles tabs offered up, newest first. */
+  private revalidate: string[] = []
+  private revalidateSpent = 0
   private rate: RateState
   // -Infinity until the first grant, so the first candidate goes out at once.
   private lastGrantAt = Number.NEGATIVE_INFINITY
@@ -167,6 +181,24 @@ export class LookupBroker {
     )
   }
 
+  // The tab offers, the reserve decides — see "Revalidation" in ./CLAUDE.md.
+  offerRevalidation(handles: string[]): void {
+    const now = this.now()
+    const held = new Set(this.revalidate.map(key))
+    const fresh: string[] = []
+
+    for (const handle of handles) {
+      if (typeof handle !== 'string' || handle === '') continue
+      if (this.isSpokenFor(handle, now) || held.has(key(handle))) continue
+      held.add(key(handle))
+      fresh.push(handle)
+    }
+    // Newest offer first, its own order kept — the queues' rule, for the same
+    // reason: what a tab just saw is what its reader is looking at.
+    this.revalidate.unshift(...fresh)
+    this.revalidate.length = Math.min(this.revalidate.length, MAX_REVALIDATE)
+  }
+
   /** In flight somewhere, or already asked about this window. */
   private isSpokenFor(userName: string, now: number): boolean {
     const handle = key(userName)
@@ -219,6 +251,20 @@ export class LookupBroker {
     return false
   }
 
+  /**
+   * A cached handle to re-ask about, ahead of the queues rather than behind
+   * them — see "Revalidation" in CLAUDE.md.
+   */
+  private takeRevalidation(now: number): string | null {
+    const reserve = revalidateBudget(this.rate, this.opts.reserveFraction)
+    if (this.revalidateSpent >= reserve) return null
+    while (this.revalidate.length > 0) {
+      const userName = this.revalidate.shift()!
+      if (!this.isSpokenFor(userName, now)) return userName
+    }
+    return null
+  }
+
   /** Names another tab has since claimed or resolved are dropped, not returned. */
   private takeUnclaimed(
     queue: CandidateQueue,
@@ -251,22 +297,30 @@ export class LookupBroker {
     // float arithmetic on the gap leaves debts of 10^-11 ms behind.
     if (owed >= 1) return { waitMs: owed }
 
-    const candidate = this.takeBest(now)
-    if (!candidate) return { waitMs: IDLE_POLL_MS }
+    const stale = this.takeRevalidation(now)
+    const userName = stale ?? this.takeBest(now)?.userName
+    if (userName === undefined) return { waitMs: IDLE_POLL_MS }
 
+    const revalidate = stale !== null
     // Optimistic, like the per-tab counter it replaces: report() makes it exact
     // from the headers, and a skip hands it straight back.
     const optimistic = this.rate.remaining > 0
     if (optimistic) this.rate.remaining -= 1
-    this.inflight.set(key(candidate.userName), {
+    if (revalidate) this.revalidateSpent += 1
+    this.inflight.set(key(userName), {
       tabId,
       at: now,
       prevGrantAt: this.lastGrantAt,
       optimistic,
+      revalidate,
     })
     this.lastGrantAt = now
 
-    return { userName: candidate.userName, waitMs: 0 }
+    // Left off rather than set false: a plain grant is the same message it
+    // always was, and every caller reads it as one.
+    return revalidate
+      ? { userName, waitMs: 0, revalidate }
+      : { userName, waitMs: 0 }
   }
 
   /**
@@ -289,6 +343,9 @@ export class LookupBroker {
     // account the cache already knew costs the trickle nothing.
     if (!entry) return
     if (this.lastGrantAt === entry.at) this.lastGrantAt = entry.prevGrantAt
+    if (entry.revalidate) {
+      this.revalidateSpent = Math.max(0, this.revalidateSpent - 1)
+    }
     if (entry.optimistic) {
       this.rate.remaining = Math.min(this.rate.limit, this.rate.remaining + 1)
     }
@@ -320,6 +377,7 @@ export class LookupBroker {
     if (this.rate.windowResetAt && now >= this.rate.windowResetAt) {
       this.rate.remaining = this.rate.limit
       this.rate.windowResetAt = 0
+      this.revalidateSpent = 0
     }
     if (this.rate.resetAt && now >= this.rate.resetAt) this.rate.resetAt = 0
     for (const [handle, until] of this.asked) {
@@ -336,6 +394,8 @@ export class LookupBroker {
   /** The user cleared the cache: every handle is worth asking about again. */
   forgetAsked(): void {
     this.asked.clear()
+    // Offers were made about a cache that no longer holds any of it.
+    this.revalidate = []
   }
 
   /** What every tab is told after a lookup, so a 429 pauses all of them. */
@@ -350,6 +410,8 @@ export class LookupBroker {
       lastGrantAt: Number.isFinite(this.lastGrantAt) ? this.lastGrantAt : null,
       asked: [...this.asked],
       inflight: [...this.inflight],
+      revalidate: [...this.revalidate],
+      revalidateSpent: this.revalidateSpent,
       tabs: [...this.tabs].map(([id, tab]) => [
         id,
         {
@@ -375,6 +437,8 @@ export class LookupBroker {
       : Number.NEGATIVE_INFINITY
     broker.asked = new Map(snapshot.asked ?? [])
     broker.inflight = new Map(snapshot.inflight ?? [])
+    broker.revalidate = [...(snapshot.revalidate ?? [])]
+    broker.revalidateSpent = snapshot.revalidateSpent ?? 0
     for (const [id, tab] of snapshot.tabs ?? []) {
       broker.tabs.set(id, {
         queue: CandidateQueue.from(tab.queue, broker.maxQueue),
@@ -392,6 +456,8 @@ export class LookupBroker {
       lastGrantAt: this.lastGrantAt,
       asked: [...this.asked.keys()],
       inflight: [...this.inflight.keys()],
+      revalidate: [...this.revalidate],
+      revalidateSpent: this.revalidateSpent,
       tabs: [...this.tabs].map(([id, tab]) =>
         Object.assign(
           { id, focused: tab.focused, visible: tab.visible },

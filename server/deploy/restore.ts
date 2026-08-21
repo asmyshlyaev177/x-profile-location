@@ -28,6 +28,7 @@ import {
   moveAside,
   mv,
   run,
+  servicePort,
   sqlite,
   stamp,
   uid,
@@ -58,7 +59,7 @@ async function main(): Promise<void> {
   const DB = process.env.XLOC_DB ?? '/var/lib/x-loc-cache/x-loc-cache.db'
   const BACKUP_DIR =
     process.env.XLOC_BACKUP_DIR ?? '/var/lib/x-loc-cache/backups'
-  const PORT = process.env.XLOC_PORT ?? '8787'
+  const PORT = servicePort()
 
   const archive = process.argv[2]
   if (!archive || !existsSync(archive)) {

@@ -6,6 +6,7 @@ import {
   type PacingOptions,
   prefetchBudget,
   type RateState,
+  revalidateBudget,
 } from './prefetch-queue'
 
 // ---------------------------------------------------------------------------
@@ -278,6 +279,50 @@ describe('prefetchBudget', () => {
     expect(
       prefetchBudget(rate({ limit: 10, remaining: 10 }), Number.NaN, 0),
     ).toBe(prefetchBudget(rate({ limit: 10, remaining: 10 }), 0.8, 0))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The revalidation reserve — the slice of the share spent on what is cached
+// ---------------------------------------------------------------------------
+describe('revalidateBudget', () => {
+  const rate = (over: Partial<RateState> = {}): RateState => ({
+    remaining: 50,
+    limit: 50,
+    resetAt: 0,
+    ...over,
+  })
+
+  it('is a twentieth of what prefetch may spend', () => {
+    // 50 * 0.8 = 40 lookups a window, of which 2 re-ask about known accounts.
+    expect(revalidateBudget(rate(), 0.8)).toBe(2)
+  })
+
+  it('rounds down rather than up — the reserve is taken from the feed', () => {
+    // 50 * 0.7 = 35, a twentieth of which is 1.75.
+    expect(revalidateBudget(rate(), 0.7)).toBe(1)
+  })
+
+  it('still revalidates one account on a budget too small for a share of it', () => {
+    // floor(4 * 0.05) is 0, and a reserve of nothing is the feature switched
+    // off on exactly the installs with the least room to notice.
+    expect(revalidateBudget(rate({ limit: 4 }), 0.5)).toBe(1)
+  })
+
+  it('keeps a whole lookup for a window X reported as empty', () => {
+    expect(revalidateBudget(rate({ limit: 0 }), 0.8)).toBe(1)
+  })
+
+  it('falls back to the default share for a non-finite one', () => {
+    expect(revalidateBudget(rate(), Number.NaN)).toBe(
+      revalidateBudget(rate(), 0.8),
+    )
+  })
+
+  it('is measured against the share, not what is left of the window', () => {
+    // Spending down `remaining` must not shrink the reserve mid-window, or the
+    // last lookups of every window would all be revalidations.
+    expect(revalidateBudget(rate({ remaining: 1 }), 0.8)).toBe(2)
   })
 })
 
