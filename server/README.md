@@ -584,13 +584,42 @@ Backups are covered in [their own section](#backups) below.
 To update:
 
 ```bash
-cd /opt/x-loc-cache && sudo git pull
-sudo systemctl restart x-loc-cache
+cd /opt/x-loc-cache/server && npm run update    # sudo ./deploy/update.ts
 ```
 
+It pulls (`--ff-only`), reinstalls dependencies if `server/package.json` moved
+**or** the native module has stopped loading, copies any changed unit file into
+`/etc/systemd/system` and reloads systemd, restarts the service, and waits for
+`/healthz`. If the new version does not answer, it resets the tree to the commit
+it started from, restarts, and tells you whether _that_ one serves.
+
 Shutdown is graceful — the listener closes, WAL is checkpointed, then the process
-exits. Re-run `npm install` after a pull only if `server/package.json` changed,
-and re-run it always after a Node **major** upgrade (see the ABI note in step 4).
+exits.
+
+Three things it deliberately does not do:
+
+- **Enable a unit this box has not installed.** A new `.service` or `.timer`
+  upstream is reported, not copied: `x-loc-heartbeat` and `x-loc-alert@` are
+  opt-in and want `/etc/x-loc-alert.env`.
+- **Touch `/etc/x-loc-cache.env`.** A setting added upstream is named in the
+  output; the value is yours to choose.
+- **Resolve a diverged tree.** `--ff-only` fails and nothing is changed.
+
+By hand it is the same five steps, and the middle two are the ones that get
+skipped:
+
+```bash
+cd /opt/x-loc-cache && sudo git pull
+cd server && sudo env PATH=/usr/bin:/bin /usr/bin/npm install --omit=dev  # if package.json moved
+sudo cp deploy/*.service deploy/*.timer /etc/systemd/system/   # only the ones already there
+sudo systemctl daemon-reload
+sudo systemctl restart x-loc-cache && curl localhost:8787/healthz
+```
+
+Skipping the unit copy is how a changed `ExecStart=` becomes tomorrow morning's
+`status=203/EXEC` on a timer that only fires at 23:30. Skipping `npm install`
+after a Node **major** upgrade is the ABI break in step 4 — the module fails to
+load at startup, not at pull time.
 
 ### Backups
 

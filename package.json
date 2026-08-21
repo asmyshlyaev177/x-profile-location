@@ -10,6 +10,7 @@
     "build:nocache": "VITE_CACHE_API_BASE= bedframe build",
     "preview": "vite preview",
     "publish": "bedframe publish -b",
+    "server:update": "npm --prefix server run update",
     "zip": "bedframe zip",
     "format": "oxfmt .",
     "lint": "oxlint --fix .",

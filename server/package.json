@@ -12,6 +12,7 @@
     "db:init": "wrangler d1 execute x-loc-cache --remote --file=./schema.sql",
     "db:init:local": "wrangler d1 execute x-loc-cache --local --file=./schema.sql",
     "start": "node --experimental-strip-types --env-file-if-exists=.env src/node-server.ts",
+    "update": "sudo ./deploy/update.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:deploy": "vitest run --config vitest.deploy.config.ts",
