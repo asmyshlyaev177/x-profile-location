@@ -14,6 +14,8 @@
  * See "Cross-tab lookup broker" in CLAUDE.md.
  */
 import type { Page } from '@playwright/test'
+import { prefetchBudget } from '../src/scripts/prefetch/prefetch-queue'
+import { DEFAULT_PREFETCH_SHARE } from '../src/scripts/settings'
 import { test, expect, setSettings } from './fixtures'
 import { FEED_URL, type Lookup, serveStubX } from './x-stub'
 
@@ -52,6 +54,24 @@ function expectNoDuplicates(lookups: Lookup[]): void {
   const asked = askedFor(lookups)
   expect(asked).toEqual([...new Set(asked)])
 }
+
+/** X's per-window total for AboutAccountQuery, which the stub reports as its own. */
+const RATE_LIMIT = 50
+
+/**
+ * The point below which everything left in the window is the user's. Asked of
+ * the code that decides it, at the shipped share: over a full window the budget
+ * is prefetch's entire share, so whatever it does not claim is the reserve.
+ * Restating the arithmetic here is what made this file assert a 0.7 reserve for
+ * five days after the default moved to 0.8.
+ */
+const USER_RESERVE =
+  RATE_LIMIT -
+  prefetchBudget(
+    { remaining: RATE_LIMIT, limit: RATE_LIMIT, resetAt: 0, windowResetAt: 0 },
+    DEFAULT_PREFETCH_SHARE,
+    1,
+  )
 
 /**
  * Spend the share at the floor rather than one lookup every ~26 seconds. The
@@ -122,9 +142,9 @@ test('both tabs share one window rather than getting one each', async ({
     answer: () => ({
       location: 'Japan',
       headers: {
-        'x-rate-limit-limit': '50',
-        // Two of the 35-lookup share left before the user's reserve begins.
-        'x-rate-limit-remaining': '17',
+        'x-rate-limit-limit': String(RATE_LIMIT),
+        // Two lookups left before the user's reserve begins.
+        'x-rate-limit-remaining': String(USER_RESERVE + 2),
       },
     }),
     tabName: tabs.tabName,
@@ -262,13 +282,13 @@ test('a hover spends from the same window the trickle is pacing against', async 
 }) => {
   const tabs = await twoTabsOnTheSameFeed(context)
   // X counts down for us: whatever the window has left is whatever it last said.
-  let remaining = 50
+  let remaining = RATE_LIMIT
   const lookups = await serveStubX(context, {
     handles: HANDLES,
     answer: () => ({
       location: 'Japan',
       headers: {
-        'x-rate-limit-limit': '50',
+        'x-rate-limit-limit': String(RATE_LIMIT),
         'x-rate-limit-remaining': String(--remaining),
       },
     }),
@@ -313,14 +333,16 @@ test('the trickle stops at the reserve a hover still has to spend from', async (
   extensionId,
 }) => {
   const tabs = await twoTabsOnTheSameFeed(context)
-  // The reserve at the default 0.7 share is the last 15 of 50. Report the
-  // window as already down to it: background lookups have nothing left, and
-  // everything still there belongs to the user.
+  // Report the window as already down to the reserve: background lookups have
+  // nothing left, and everything still there belongs to the user.
   const lookups = await serveStubX(context, {
     handles: HANDLES,
     answer: () => ({
       location: 'Japan',
-      headers: { 'x-rate-limit-limit': '50', 'x-rate-limit-remaining': '15' },
+      headers: {
+        'x-rate-limit-limit': String(RATE_LIMIT),
+        'x-rate-limit-remaining': String(USER_RESERVE),
+      },
     }),
     tabName: tabs.tabName,
   })
@@ -358,7 +380,7 @@ test('a run of manual hovers stretches the gap between background lookups', asyn
   // Enough accounts that the queue never runs dry and stops the trickle for a
   // reason that has nothing to do with pacing.
   const handles = Array.from({ length: 40 }, (_, i) => `feed${i}`)
-  let remaining = 50
+  let remaining = RATE_LIMIT
   // A window that rolls over in 90 seconds rather than 15 minutes. The gap is
   // `time left / budget left`, so this is what makes it measurable inside a
   // test — the arithmetic under it is the shipped arithmetic.
@@ -369,7 +391,7 @@ test('a run of manual hovers stretches the gap between background lookups', asyn
     answer: () => ({
       location: 'Japan',
       headers: {
-        'x-rate-limit-limit': '50',
+        'x-rate-limit-limit': String(RATE_LIMIT),
         'x-rate-limit-remaining': String(--remaining),
         'x-rate-limit-reset': String(windowEndsAt),
       },
