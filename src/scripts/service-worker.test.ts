@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { MSG } from './constants'
+import { LOOKUP_WINDOW_MS, MSG } from './constants'
 import { LookupBroker } from './prefetch/lookup-broker'
 
 // ---------------------------------------------------------------------------
@@ -306,7 +306,7 @@ describe('tabs coming and going', () => {
 // One broker means one place reads them — here — or two tabs could be pacing
 // against different numbers.
 describe('pacing settings', () => {
-  const WINDOW = 15 * 60 * 1000
+  const WINDOW = LOOKUP_WINDOW_MS
 
   // `remaining` puts the window past the opening sprint, whose gap is a flat
   // 3s and would say nothing about the share the worker read.

@@ -1,7 +1,7 @@
 {
   "name": "x-pat",
   "private": true,
-  "version": "1.8.2",
+  "version": "1.8.3",
   "type": "module",
   "scripts": {
     "dev": "concurrently --kill-others \"pnpm proxy\" \"pnpm dev:app\"",

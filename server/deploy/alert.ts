@@ -1,25 +1,5 @@
-// Email alerting for the cache server and its backups.
-//
-// Two modes, both driven by systemd:
-//
-//   alert.ts <unit>     a unit failed — sent from OnFailure= (see
-//                       x-loc-alert@.service). Catches everything, including
-//                       what backup.ts cannot report about itself: an OOM kill,
-//                       a missing interpreter, a timeout.
-//   alert.ts --report   the weekly heartbeat (x-loc-heartbeat.timer). Its
-//                       *absence* is the signal — a failure alert can only fire
-//                       if something ran, so a timer that never fires is
-//                       silent. This is what notices that.
-//
-// Deliberately touches no SQLite: nodemailer is pure JS with no native module,
-// so this still sends when better-sqlite3 is what broke — a Node major upgrade
-// without `npm install` takes down the server, and that is precisely the
-// outage the email has to survive.
-//
-// Configured from /etc/x-loc-alert.env; the variable names match the ones a
-// nodemailer setup already uses, so credentials can be copied across as-is.
-// Unconfigured is not an error — it logs and exits 0, so a deployment that
-// wants no email does not collect a failed unit every time.
+// Email alerting: `alert.ts <unit>` from OnFailure=, `alert.ts --report` weekly.
+// Touches no SQLite. See "What each script refuses to do" in CLAUDE.md.
 
 import { spawnSync } from 'node:child_process'
 import { hostname } from 'node:os'
@@ -38,12 +18,8 @@ export interface AlertConfig {
   subjectPrefix: string
 }
 
-/**
- * Strings backup.ts prints when the *data* is at fault rather than the run.
- * `alert.test.ts` asserts each one still appears in backup.ts — renaming a
- * message there without this would silently downgrade a corruption alert to a
- * generic failure, which is the difference between "look now" and "look later".
- */
+/** Strings backup.ts prints when the *data* is at fault; alert.test.ts holds
+ *  them to the source. See CLAUDE.md. */
 export const CORRUPTION_MARKERS = [
   'the LIVE database failed integrity_check',
   'snapshot verification FAILED',
@@ -167,12 +143,8 @@ export interface BackupStats {
   totalMb: number
 }
 
-/**
- * The archives backup.ts keeps, by their exact stamped name. Matching a looser
- * `.db.gz` would also pick up `corrupt-evidence.db.gz`, which is the one file
- * whose presence means backups are *failing* — counting it as a healthy
- * archive is precisely backwards.
- */
+/** Archives by their exact stamped name: a looser `.db.gz` would count
+ *  `corrupt-evidence.db.gz` as a healthy archive. */
 const ARCHIVE_NAME = /^x-loc-cache-\d{8}-\d{6}\.db\.gz$/
 
 /** One decimal, used for every size this report prints. */
@@ -225,24 +197,12 @@ export interface VacuumStatus {
 /** Written by backup.ts beside the archives. */
 export const VACUUM_STATUS_FILE = '.vacuum-status'
 
-/**
- * Below this, a VACUUM buys back a slice that ordinary churn re-consumes
- * anyway, and costs a stop / rebuild / restart to do it. The database only
- * accumulates free pages after a one-off — a shortened retention window, a
- * tightened cap, a peak that did not come back — so this is a threshold that
- * should fire rarely and mean something when it does.
- */
+/** Below this a VACUUM buys back what churn re-consumes anyway, at the cost of
+ *  a stop and rebuild. Should fire rarely — see CLAUDE.md. */
 export const DEFAULT_VACUUM_ALERT_PCT = 25
 
-/**
- * The two sizes the nightly backup left behind. It rebuilds the whole database
- * to make its snapshot, so that snapshot is what a compacted file would weigh —
- * this is a measurement of what a VACUUM would reclaim, not an estimate.
- *
- * Reads a text file rather than opening the database, for the same reason the
- * rest of this file touches no SQLite: the heartbeat has to keep arriving when
- * SQLite is the thing that broke.
- */
+/** The two sizes last night's backup left behind — a measurement of what a
+ *  VACUUM would reclaim, read from text so no SQLite is opened. */
 export function readVacuumStatus(backupDir: string): VacuumStatus | null {
   let raw: string
   try {
@@ -265,9 +225,8 @@ export function readVacuumStatus(backupDir: string): VacuumStatus | null {
 
   const liveBytes = size('live_bytes')
   const vacuumedBytes = size('vacuumed_bytes')
-  // A truncated or hand-edited file reports nothing rather than something
-  // wrong. A missing line in the email is honest; a fabricated percentage that
-  // sends somebody to stop the service is not.
+  // A truncated file reports nothing rather than something wrong: a missing
+  // line is honest, a fabricated percentage sends somebody to stop the service.
   if (liveBytes === null || vacuumedBytes === null || liveBytes === 0) {
     return null
   }
@@ -316,9 +275,8 @@ export function buildReportMessage(
     stats.count === 0 ||
     stats.newestAgeHours === null ||
     stats.newestAgeHours > staleAfterHours
-  // Only ever mentioned when the backups themselves are fine. A stale-backup
-  // week has one thing worth acting on, and reclaimable disk is not it — the
-  // measurement still appears in the body, just not in the subject line.
+  // Only when the backups themselves are fine: a stale-backup week has one
+  // thing worth acting on, and reclaimable disk is not it.
   const bloated =
     !stale && vacuum !== null && vacuum.reclaimPct >= vacuumAlertPct
   const subject = stale

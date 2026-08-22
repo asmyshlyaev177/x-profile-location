@@ -357,38 +357,74 @@ test('clear cache button empties IDB and forces fresh API call on re-hover', asy
   expect(await queryFired).toBe(true)
 })
 
-test('second hover uses checkedThisSession cache — no repeat API call', async ({
-  page,
-}) => {
+test('a hover refetches a cached account once per window', async ({ page }) => {
   await mockLocationApis(page, { account_based_in: 'Germany' })
 
-  // First hover: populates checkedThisSession and IDB for this username.
-  await hoverOwnTweet(page, 'sotaproject')
+  // First hover: IDB, checkedThisSession and the window's one manual refetch all
+  // now hold sotaproject.
+  const first = await hoverOwnTweet(page, 'sotaproject')
+  expect((await hoverCardLocation(first)).basedIn).toBe('Germany')
 
-  // Move mouse to a neutral spot to dismiss the hover card.
-  await page.mouse.move(0, 0)
-  await page.waitForTimeout(400)
-
-  // Register the listener BEFORE the second hover so no request can slip through.
-  const queryFired = page
-    .waitForRequest(/AboutAccountQuery/, { timeout: 3_000 })
-    .then(() => true)
-    .catch(() => false)
-
-  // Hover the same username again.
   const usernameLink = page
     .locator(
       `${TWEET_ARTICLE} [data-testid="User-Name"] a[href="/sotaproject" i]`,
     )
     .first()
-  await usernameLink.hover()
 
-  // Extension reads from checkedThisSession → no network request should fire.
+  // A reload is a new session with the same IDB — the throttle has not been
+  // spent in it, so the hover asks X again rather than believing a location that
+  // could be 30 days old. X answers differently, which is how the card proves
+  // the answer is the fresh one and not the cached one.
+  await mockAboutAccount(page, { account_based_in: 'Japan' })
+  await page.reload()
+  await usernameLink.waitFor({ timeout: 15_000 })
+
+  // The feed row is drawn from IDB as the timeline mounts, so it is showing the
+  // stale country before the hover has asked anything.
+  const feedRow = page.locator(`${TWEET_ARTICLE} .x-loc-feed-row`).first()
+  await feedRow.waitFor({ timeout: 15_000 })
+  await expect
+    .poll(() => hoverCardLocation(feedRow).then((l) => l.basedIn), {
+      timeout: 10_000,
+    })
+    .toBe('Germany')
+
+  const refetched = page.waitForResponse(/AboutAccountQuery/, {
+    timeout: 15_000,
+  })
+  await usernameLink.hover()
+  await refetched
+
+  const card = page.locator(HOVER_CARD)
+  await card.locator('.x-loc-info').waitFor({ timeout: 10_000 })
+  await expect
+    .poll(() => hoverCardLocation(card).then((l) => l.basedIn), {
+      timeout: 10_000,
+    })
+    .toBe('Japan')
+
+  // The row under the name is the same answer as the card, or the reader is
+  // shown two countries for one account. It was already drawn, and every path
+  // that pushed a fresh lookup into the feed used to skip an article that had a
+  // row — so the flag stayed on the old country until X recycled the node.
+  await expect
+    .poll(() => hoverCardLocation(feedRow).then((l) => l.basedIn), {
+      timeout: 10_000,
+    })
+    .toBe('Japan')
+
+  // Same window, same handle: the gesture is answered from the cache and nothing
+  // goes out. Register the listener before the hover so none can slip through.
+  await page.mouse.move(0, 0)
+  await page.waitForTimeout(400)
+  const queryFired = page
+    .waitForRequest(/AboutAccountQuery/, { timeout: 3_000 })
+    .then(() => true)
+    .catch(() => false)
+  await usernameLink.hover()
   expect(await queryFired).toBe(false)
 
-  // Location is still shown from the in-memory / IDB data.
-  const card = page.locator(HOVER_CARD)
   await card.locator('.x-loc-info').waitFor({ timeout: 5_000 })
-  const { basedIn } = await hoverCardLocation(card)
-  expect(basedIn).not.toBeNull()
+  expect((await hoverCardLocation(card)).basedIn).toBe('Japan')
+  expect((await hoverCardLocation(feedRow)).basedIn).toBe('Japan')
 })

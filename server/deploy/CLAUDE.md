@@ -62,6 +62,59 @@ A plain `COUNT(*)` in `backup.ts` false-alarms whenever a retention pass lands
 inside the ~0.6 s copy: verification fails, the archive is thrown away, an alert
 fires and an evidence copy is kept — for a good backup.
 
+## What each script refuses to do
+
+**`backup.ts`** runs snapshot → verify → compress → check the source → prune, and prunes
+**only on a clean run**, so neither a corrupt source nor a bad snapshot can age out the
+archives you are about to need. It keeps ONE compressed corruption-evidence copy, not one
+per night — whatever lands there is usually permanent, and it shares a disk with the live
+database.
+
+- **`VACUUM INTO`, not the `.backup` API.** `.backup` restarts whenever another connection
+  writes, so it never converges under load: 236 MB, 0.2 s idle against 58 s at 10
+  writes/s, versus a flat 0.6 s here. It also rebuilds, so the file lands compacted with
+  no WAL flag to carry into a restore. Cost: one deferred checkpoint.
+- **`integrity_check`, not `quick_check`, and on the source as well as the copy.** Neither
+  subsumes the other: `VACUUM INTO` repacks free-page faults away in the copy while
+  leaving them in the source, and an index out of sync with its table crosses over
+  verbatim (measured on sqlite 3.37 and 3.53). ~1.2 s per 236 MB, in its own process,
+  after the snapshot is stored — a copy of a failing database is worth having.
+- The snapshot _is_ the database rebuilt, so the gap between the two file sizes is what a
+  VACUUM would hand back: measured, free, and written to a plain text file the heartbeat
+  reads without opening SQLite.
+
+**`vacuum.ts`** is never on a timer. Retention frees pages exactly where new votes land,
+so the file plateaus on its own; real free pages come from one-offs (a shortened window, a
+tightened cap, a peak that did not return). It rebuilds into a new file and swaps, so the
+result is verified before anything is replaced and the original stays as
+`*.replaced-<stamp>`. The service is stopped for the whole rebuild on purpose — a live
+snapshot would silently drop every contribution arriving before the swap, where a client
+that cannot reach the server keeps its votes. It is also the one script that can fill the
+disk the server writes to.
+
+**`restore.ts`** verifies the archive _before_ stopping the service, so a bad one costs no
+downtime.
+
+**The swap rollback** in `lib.ts` covers a window one `mv` wide: dying between moving the
+old database aside and the new one in leaves no database at all, and a restart there has
+SQLite create an empty one and answer from it. The original goes back first, and the
+service is restarted whatever happened. Moves take `-wal`/`-shm` along, or SQLite replays
+a stale WAL over the file that replaced it.
+
+**`alert.ts`** has two modes, both from systemd: `alert.ts <unit>` from `OnFailure=`
+(catching what `backup.ts` cannot report about itself — an OOM kill, a missing
+interpreter, a timeout), and `alert.ts --report`, the weekly heartbeat whose _absence_ is
+the signal, since a failure alert can only fire if something ran. Unconfigured is not an
+error: it logs and exits 0, so a deployment wanting no email does not collect a failed
+unit every week. It matches archives by their exact stamped name — a looser `.db.gz` would
+count `corrupt-evidence.db.gz` as a healthy archive, which is precisely backwards — and
+mentions reclaimable disk only when the backups themselves are fine.
+
+`DATA_FAULT_MESSAGES` in `alert.ts` are strings `backup.ts` prints when the _data_ is at
+fault rather than the run; `alert.test.ts` holds them to the source. Renaming one without
+the other downgrades a corruption alert to a generic failure, which is the difference
+between "look now" and "look later".
+
 ## Testing
 
 `pnpm test:deploy` only ([`vitest.deploy.config.ts`](../vitest.deploy.config.ts)) —

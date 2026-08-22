@@ -1,59 +1,6 @@
 #!/usr/bin/env node
-/**
- * Scrub personal data out of the committed Playwright HAR recordings.
- *
- * WHY THIS EXISTS
- * A capture is a slice of a real logged-in X session, so a raw `.har` carries the
- * timeline of whoever recorded it: hundreds of real accounts per file with display
- * names, bios, avatars and post text, plus the recording account's own identity
- * throughout. test-proxy-recorder already redacts `cookie`, `set-cookie`,
- * `authorization` and `x-csrf-token`; that covers credentials, not identity.
- * This covers identity.
- *
- * NO REAL HANDLE APPEARS IN THIS FILE OR IN scrub.config.json — and none may be
- * added. Both are committed, so naming an account here would republish the very
- * identity the scrub removes, and naming the *recording* account would be worse
- * than leaving it in the HAR, because a config is the first thing anyone reads.
- *
- * Users are recognised by SHAPE: any object carrying a handle field. Which of
- * them keep their identity is DERIVED, not declared — a handle survives exactly
- * when a test source names it, because that is what "the suite asserts against
- * this account" looks like. Those accounts keep their handle, display name and
- * bio (the keyword tests match on real bio text) and their country, app-store
- * source and creation date, which is the data under test. Every other account in
- * a capture is an incidental third party and is pseudonymised. The recording
- * account is named by no test, so it is removed without ever being written down,
- * and an account a test stops naming is anonymised by the next run.
- *
- * "By shape" has to mean every shape and every carrier, which took two goes to
- * get right. A user reaches a capture as GraphQL's `screen_name`, as the newer
- * `core`/`legacy` split, and as Periscope's `twitter_screen_name` + `display_name`
- * — and arrives not only as a JSON response body but inlined into the HTML of
- * every server-rendered document, where X writes the signed-in account's name,
- * bio, location, avatar and date of birth into `__INITIAL_STATE__`. Recognising
- * one shape in one carrier left the recording account's display name in the
- * sidebar of every committed recording; see scrubMarkup() and userHandle().
- *
- * WHAT IT DOES NOT DO
- * It does not prune X's JavaScript. Those bundles are ~80% of a HAR's bytes, but
- * they are X's public static assets — no personal data — and the page needs them
- * to render under replay, which is what makes replay deterministic. Size is a
- * side effect here; identity is the goal.
- *
- * MAPPING
- * A handle maps to `user_<8 hex of sha256(lowercased handle)>`. Deterministic, so
- * two machines scrubbing the same capture produce identical output and re-runs are
- * no-ops, and there is no real→fake dictionary that could be committed by mistake.
- * It is pseudonymisation, not anonymisation: the mapping is reversible by anyone
- * who guesses a handle. That is why display names, bios, avatars and post text go
- * too — the hash is not the protection, the absence of anything to link it to is.
- *
- *   node scripts/scrub-recordings.mjs             scrub the recordings in place
- *   node scripts/scrub-recordings.mjs --check     exit 1 if anything is unscrubbed (CI)
- *   node scripts/scrub-recordings.mjs --stdin     scrub one recording, stdin → stdout
- *   node scripts/scrub-recordings.mjs --id <h>    print the synthetic id for a handle
- *   node scripts/scrub-recordings.mjs --verbose   per-file detail
- */
+// Scrub personal data out of the committed HAR recordings; flags and rules in
+// CLAUDE.md. NO REAL HANDLE MAY BE ADDED HERE OR TO scrub.config.json.
 import { createHash } from 'node:crypto'
 import {
   readFileSync,
@@ -81,31 +28,20 @@ const config = JSON.parse(readFileSync(CONFIG, 'utf8'))
 const DROP_MEDIA = new Set(config.dropMedia ?? [])
 const TEST_SOURCES = config.testSources ?? []
 
-/**
- * Handles the tests assert against, derived from the test sources rather than
- * declared in config. Populated by findTestSubjects() before anything is
- * rewritten. Members keep their real handle, display name and bio; everyone else
- * is pseudonymised. The recording account is named by no test, so it falls on the
- * anonymised side without appearing in any committed file.
- */
+/** Handles the tests assert against, derived from the test sources rather than
+ *  declared. Members keep their identity; everyone else is pseudonymised. */
 const SUBJECTS = new Set()
 const isSubject = (handle) => SUBJECTS.has(String(handle).toLowerCase())
 
 /** A handle this script has already rewritten — makes re-runs no-ops. */
 const SYNTHETIC = /^user_[0-9a-f]{8}$/
 
-// X handles are [A-Za-z0-9_]{1,15}. Explicit boundaries rather than \b, which
-// treats `_` as a word character and would let a short handle rewrite the prefix
-// of a longer one.
+// Explicit boundaries rather than \b, which treats `_` as a word character and
+// would let a short handle rewrite the prefix of a longer one.
 const HANDLE_TOKEN = '[A-Za-z0-9_]{1,15}'
 
-/**
- * Every key that carries a handle. `screen_name` is GraphQL and the legacy REST
- * shape; Periscope — X's video/spaces backend, which the timeline calls on its
- * own — answers with `twitter_screen_name` and `username` instead. Its response
- * to the token exchange is a complete profile of the signed-in account, and it
- * was invisible to a scrubber that only knew `screen_name`.
- */
+/** Every key that carries a handle, across GraphQL, the legacy shape and
+ *  Periscope — see "Every shape, every carrier" in CLAUDE.md. */
 const HANDLE_KEYS = ['screen_name', 'twitter_screen_name', 'username']
 /** Keys holding a display name beside one of those handles. */
 const NAME_KEYS = ['name', 'display_name', 'user_display_name']
@@ -117,23 +53,12 @@ const AVATAR_KEYS = [
   'image_url',
 ]
 
-/**
- * Only the unambiguous handle keys are used to *discover* accounts from raw text.
- * A bare `username` is an ordinary word in plenty of unrelated payloads, so it is
- * trusted only in a parsed object that also has a display name — see userHandle().
- */
+/** Only unambiguous keys discover accounts from raw text; a bare `username` is
+ *  trusted only beside a display name. */
 const HANDLE_FIELD = '(?:twitter_screen_name|screen_name)'
 
-/**
- * Scanning raw HAR text has to allow for escaped quotes. A HAR stores each
- * response body as a JSON *string*, so the body's own JSON is double-encoded: on
- * disk the field reads `\"screen_name\":\"jack\"`, never `"screen_name":"jack"`.
- * Matching only the unescaped form finds nothing at all — which is how a --check
- * can report success over a completely unscrubbed file.
- *
- * (The structural pass is unaffected: it runs on the result of JSON.parse of that
- * string, where the keys are ordinary.)
- */
+/** Raw HAR text is double-encoded, so the escaped form is what appears on disk.
+ *  Matching only the unescaped one finds nothing — see CLAUDE.md. */
 const Q = '\\\\?"'
 const screenNameRe = () =>
   new RegExp(`${Q}${HANDLE_FIELD}${Q}\\s*:\\s*${Q}(${HANDLE_TOKEN})${Q}`, 'g')
@@ -145,12 +70,8 @@ const POST_PLACEHOLDER = 'Post text removed by scrub-recordings.'
 const PLACEHOLDER_IMAGE_B64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
 
-/**
- * Tokens common enough in test code that finding one proves nothing about which
- * accounts a test asserts against. An account whose handle collides with one of
- * these is pseudonymised like any other; if that breaks a test, name the account
- * somewhere less ambiguous than a bare identifier.
- */
+/** Tokens common enough in test code that finding one proves nothing. A handle
+ *  colliding with one is pseudonymised like any other. */
 const SOURCE_RESERVED = new Set([
   'page',
   'test',
@@ -210,23 +131,13 @@ const syntheticTrend = (name) =>
     ? name
     : `Trend ${createHash('sha256').update(name).digest('hex').slice(0, 4)}`
 
-// ---------------------------------------------------------------------------
 // Structural pass — rewrite identity fields inside parsed JSON bodies
-// ---------------------------------------------------------------------------
 
-/**
- * Fields carrying a session rather than an identity. test-proxy-recorder redacts
- * the `cookie` *header*; Periscope's token exchange returns one in the response
- * *body*, where nothing was looking for it.
- */
+/** Session fields in a response *body* — the recorder only redacts headers. */
 const CREDENTIAL_KEYS = ['cookie', 'set_cookie']
 
-/**
- * The handle of a user-shaped object, or null when it is not one. The two
- * `screen_name` spellings are proof on their own. A bare `username` is not — it
- * is an ordinary field name in unrelated payloads — so it counts only next to a
- * display name.
- */
+/** The handle of a user-shaped object, or null. A `screen_name` is proof on its
+ *  own; a bare `username` counts only next to a display name. */
 function userHandle(node) {
   if (typeof node.screen_name === 'string') return node.screen_name
   if (typeof node.twitter_screen_name === 'string')
@@ -240,14 +151,8 @@ function userHandle(node) {
   return null
 }
 
-/**
- * Walk any JSON value and rewrite the identity fields of every user-shaped object
- * found. X returns users in three shapes — a flat `legacy`-style object carrying
- * `screen_name` beside `name`/`description`, the newer split of
- * `core: { screen_name, name }` with `avatar: { image_url }` as siblings, and
- * Periscope's `twitter_screen_name`/`display_name` — so all three are handled
- * where they are found rather than assuming one schema.
- */
+/** Walk any JSON value and rewrite every user-shaped object found, in all three
+ *  shapes X returns them in. */
 function walk(node, stats) {
   if (Array.isArray(node)) {
     for (const child of node) walk(child, stats)
@@ -278,9 +183,8 @@ function walk(node, stats) {
     if (node.entryId.slice(cut) !== id) stats.trends++
     node.entryId = node.entryId.slice(0, cut) + id
   }
-  // An opaque blob that base64-encodes whatever the entry is about — the trend
-  // name included, so a rewritten trend hands it straight back. Nothing renders
-  // from it; it is the payload of X's "not interested in this" control.
+  // Base64-encodes the trend name, so a rewritten trend hands it straight back.
+  // Nothing renders from it.
   if (typeof node.feedbackMetadata === 'string' && node.feedbackMetadata) {
     node.feedbackMetadata = ''
     stats.trends++
@@ -296,9 +200,8 @@ function walk(node, stats) {
     }
   }
 
-  // Post text — nothing asserts on it, and it is the most personal payload here.
-  // Tweet objects carry an id_str/rest_id sibling; the guard keeps us off
-  // unrelated `text` fields (labels, tooltips, i18n strings).
+  // Post text, guarded by an id_str/rest_id sibling so unrelated `text` fields
+  // (labels, tooltips, i18n) are left alone.
   const isTweet =
     typeof node.id_str === 'string' || typeof node.rest_id === 'string'
   for (const key of ['full_text', 'text']) {
@@ -315,19 +218,8 @@ const isObject = (v) => Boolean(v) && typeof v === 'object'
 /** How a timeline entry id carries the trend it is for. */
 const TREND_ENTRY = '-trend-'
 
-/**
- * Rewrite one trend out of the sidebar.
- *
- * Trends are public, but *which* trends X chose to show is not: the panel is
- * personalised to where the viewer is, and labels them "Trending in <country>"
- * to say so. Left alone it puts the recording account in a country as reliably as
- * the profile field this already blanks, only from the other direction — so the
- * name, the label and the search URLs all go.
- *
- * The `cd` request param is dropped rather than rewritten: it is a base64 blob
- * that encodes the trend name, so leaving it would hand back what the rename took
- * away.
- */
+/** Rewrite one trend out of the sidebar: which trends X chose is personalisation
+ *  ("Trending in <country>"). See CLAUDE.md. */
 function rewriteTrend(node, stats) {
   const id = syntheticTrend(node.name)
   if (node.name !== id) stats.trends++
@@ -376,17 +268,14 @@ function rewriteUser(obj, handle, stats) {
       if (obj.description !== '') stats.bios++
       obj.description = ''
     }
-    // The bio's links outlive the bio: X keeps them parsed out into `entities`,
-    // expanded_url and all, so blanking `description` alone leaves the personal
-    // site or list the account linked to.
+    // X keeps bio links parsed into `entities`, so blanking `description` alone
+    // leaves the personal site the account linked to.
     if (obj.entities?.description?.urls?.length) {
       obj.entities.description.urls = []
       stats.bios++
     }
-    // A date of birth is the strongest identifier a profile carries, and X
-    // inlines the signed-in account's into every document it renders. Deleted
-    // rather than blanked: not knowing someone's birthday is the normal state of
-    // every other user object in a capture.
+    // Deleted rather than blanked: not knowing a birthday is the normal state
+    // of every other user object in a capture.
     if (obj.birthdate) {
       delete obj.birthdate
       stats.pii++
@@ -400,30 +289,18 @@ function rewriteUser(obj, handle, stats) {
       for (const key of ['url', 'ssl_url']) blankAvatar(variant, key, stats)
     }
   }
-  // Self-declared profile fields that can carry a real name or personal site.
-  // (X's *account* country lives in about_profile.account_based_in, which this
-  // never touches — that value is what the tests assert on.)
+  // Self-declared fields only; about_profile.account_based_in is never touched,
+  // because that value is what the tests assert on.
   if (!subject) {
     if (typeof obj.location === 'string' && obj.location) obj.location = ''
     if (typeof obj.url === 'string' && obj.url.includes('t.co')) obj.url = ''
   }
 }
 
-// ---------------------------------------------------------------------------
 // Textual pass — handles in URLs, entity mentions, nested JSON strings
-// ---------------------------------------------------------------------------
 
-/**
- * Replace every known handle wherever it appears as a whole token. The structural
- * pass cannot reach handles inside a URL path, a percent-encoded GraphQL
- * `variables` blob, or a JSON string that itself contains JSON — and those matter:
- * `routeFromHAR` matches on the request URL, so a rewritten body behind an
- * unrewritten URL would simply fail to match at replay.
- *
- * Applied only to URLs and JSON bodies. X's JS bundles are never touched: they
- * hold no personal data, and blind token replacement inside minified code is a
- * good way to corrupt it.
- */
+/** Every known handle as a whole token, in URLs and JSON bodies only — never in
+ *  X's JS bundles. See "What else goes, and why" in CLAUDE.md. */
 function rewriteText(text, stats) {
   if (!text) return text
   let out = text
@@ -446,29 +323,13 @@ function replaceToken(text, from, to, stats) {
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-// ---------------------------------------------------------------------------
 // Markup — the state blob X inlines into every server-rendered document
-// ---------------------------------------------------------------------------
 
 /** Where a user-shaped object may start inside markup. */
 const markupAnchorRe = () => new RegExp(`"${HANDLE_FIELD}"\\s*:`, 'g')
 
-/**
- * A server-rendered x.com document carries `__INITIAL_STATE__={…}`, and inside it
- * the signed-in account's display name, bio, location, avatar, banner and date of
- * birth. Markup used to get the textual pass and nothing else — which rewrote the
- * handle, because the handle is a token the mapping knows, and left every one of
- * those fields untouched. That is what put the recording account's name in the
- * sidebar of all 29 committed recordings.
- *
- * So markup gets the structural pass too: find the JSON around each user-shaped
- * anchor, hand the parsed object to walk(), and splice the result back.
- *
- * Nothing here trusts a variable name or a script tag. The blob is located by
- * balancing braces out from the anchor and confirmed by JSON.parse before a byte
- * moves — so a document this cannot make sense of is left exactly as markup was
- * left before, rather than corrupted by a guess.
- */
+/** The structural pass over `__INITIAL_STATE__` in a server-rendered document,
+ *  located by balancing braces and confirmed by JSON.parse. See CLAUDE.md. */
 function scrubMarkup(text, stats) {
   const anchors = [...text.matchAll(markupAnchorRe())].map((m) => m.index)
   if (anchors.length === 0) return text
@@ -476,9 +337,8 @@ function scrubMarkup(text, stats) {
   const { chains, closeOf } = braceChains(text, anchors)
   const spans = new Map()
   for (const anchor of anchors) {
-    // Outermost first: a user split across sibling keys (`core`, `legacy`,
-    // `avatar`) has to reach walk() in one piece, and the nearest enclosing
-    // object is only `core`.
+    // Outermost first: a user split across `core`/`legacy`/`avatar` has to
+    // reach walk() in one piece.
     for (const open of chains.get(anchor) ?? []) {
       const close = closeOf.get(open)
       if (close === undefined || close < anchor) continue
@@ -516,15 +376,8 @@ function scrubMarkup(text, stats) {
   return out
 }
 
-/**
- * For each anchor, the `{` positions still open at that point (outermost first),
- * plus where every `{` is closed.
- *
- * One forward pass that tracks JSON string literals, so a brace inside a bio or a
- * URL does not count. The document is HTML with inline script rather than JSON,
- * so this is a heuristic — but a fail-safe one: where it reads the nesting wrong
- * the slice it proposes does not parse, and scrubMarkup rewrites nothing.
- */
+/** Open `{` positions per anchor, outermost first, tracking string literals. A
+ *  heuristic, but fail-safe: a misread slice does not parse. */
 function braceChains(text, anchors) {
   const wanted = new Set(anchors)
   const chains = new Map()
@@ -552,21 +405,15 @@ function braceChains(text, anchors) {
   return { chains, closeOf }
 }
 
-/**
- * The blob sits in a <script>, where a literal `</script` inside a string closes
- * the tag early and a raw U+2028/U+2029 is not a legal JS string character.
- * JSON.stringify escapes neither. Both forms below are still valid JSON, so a
- * later run parses back exactly what this wrote.
- */
+/** Re-escapes `</script` and U+2028/9, which JSON.stringify does not; both
+ *  forms stay valid JSON. */
 const inlineSafe = (json) =>
   json
     .replace(/<\//g, '<\\/')
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029')
 
-// ---------------------------------------------------------------------------
 // Per-entry processing
-// ---------------------------------------------------------------------------
 
 const isJsonish = (mime) =>
   /json|text\/plain/.test(mime || '') &&
@@ -618,12 +465,8 @@ function scrubEntry(entry, stats) {
     return
   }
 
-  // Markup gets both passes. X server-renders the signed-in account into the
-  // document — inlined initial state, meta tags — so skipping HTML entirely left
-  // that account's handle in every capture, which is what the first version of
-  // this script did; and running only the textual pass over it rewrote the handle
-  // while leaving the name, bio, location, avatar and birthdate beside it, which
-  // is what the second version did.
+  // Markup gets both passes; each half alone has already shipped a leak. See
+  // "Every shape, every carrier" in CLAUDE.md.
   if (isMarkup(mime) && content.text) {
     content.text = scrubMarkup(content.text, stats)
     content.text = rewriteText(content.text, stats)
@@ -631,11 +474,8 @@ function scrubEntry(entry, stats) {
   }
 }
 
-/**
- * URLs are rewritten for *every* entry whatever its content type: an avatar or a
- * media segment can carry the handle in its path, and the request still has to
- * match at replay.
- */
+/** Every entry whatever its content type: an avatar path can carry a handle, and
+ *  the request still has to match at replay. */
 function scrubUrls(entry, stats) {
   if (entry.request?.url)
     entry.request.url = rewriteText(entry.request.url, stats)
@@ -665,15 +505,10 @@ function scrubUrls(entry, stats) {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Discovery — learn every handle before rewriting anything
-// ---------------------------------------------------------------------------
 
-/**
- * X reserves a set of first-path segments that look exactly like handles in a
- * URL. `x.com/i/api/graphql` is the one that matters most here — `i` is X's
- * internal namespace, not an account.
- */
+/** X's reserved first-path segments, which look exactly like handles — `i`
+ *  above all. */
 const RESERVED_PATHS = new Set([
   'i',
   'home',
@@ -712,23 +547,8 @@ const RESERVED_PATHS = new Set([
   'twitter',
 ])
 
-/**
- * Build the mapping before anything is rewritten — the textual pass can only
- * replace handles it already knows, and a handle may appear in a URL in one file
- * before any user object introduces it. Scanning the whole corpus first is also
- * what keeps the mapping consistent between files.
- *
- * A `screen_name` field is the ONLY thing treated as proof that a token is an
- * account. URLs are read too, but purely to cross-check: a first path segment is
- * mapped only when some response also presents it as a screen_name.
- *
- * That rule is load-bearing rather than fussy. `x.com/i/status/…` makes `i` look
- * like a handle, and `i` occurs ~125,000 times as a standalone token in a single
- * recording — mapping it would rewrite every `x.com/i/api/graphql` URL and
- * corrupt the whole corpus. The same trap waits behind any short or dictionary
- * word someone uses as a handle, so the guard is general, not a list of the ones
- * already seen.
- */
+/** Build the mapping over the whole corpus first, treating a `screen_name` field
+ *  as the only proof a token is an account — see CLAUDE.md for why. */
 function discover(texts) {
   const byScreenName = new Set()
   const byUrl = new Set()
@@ -752,27 +572,15 @@ function discover(texts) {
     )
   }
 
-  // Deliberately does NOT build the mapping. synthetic() consults SUBJECTS, and
-  // SUBJECTS is only known after the test sources are read — mapping here would
-  // assign every future subject a synthetic id, and the textual pass would then
-  // faithfully rewrite the very accounts the tests assert against.
+  // Deliberately does NOT map: SUBJECTS is only known after the test sources
+  // are read, and mapping here would rewrite the accounts tests assert on.
   return byScreenName
 }
 
-// ---------------------------------------------------------------------------
 // Test sources
-// ---------------------------------------------------------------------------
 
-/**
- * Read the test sources and mark every handle they name as a subject. Runs before
- * any rewriting, so the mapping is settled by the time a byte moves.
- *
- * Only handles that actually occur in the recordings are considered, so an
- * ordinary English word in a comment cannot promote a random account. The
- * length and reserved-word guards then drop handles too code-like to distinguish
- * from an identifier — those get pseudonymised like anyone else, and the warning
- * says so rather than letting a test quietly break.
- */
+/** Mark every handle a test source names as a subject, before any rewriting.
+ *  Only handles occurring in the recordings count. */
 function findTestSubjects(discovered) {
   const sources = TEST_SOURCES.flatMap((pattern) => expandGlob(pattern))
   const text = sources.map((f) => readFileSync(f, 'utf8')).join('\n')
@@ -814,9 +622,7 @@ function expandGlob(pattern) {
     .sort()
 }
 
-// ---------------------------------------------------------------------------
 // Main
-// ---------------------------------------------------------------------------
 
 const harFiles = () =>
   readdirSync(RECORDINGS)
@@ -829,22 +635,8 @@ function* readEach(files) {
   for (const file of files) yield readFileSync(file, 'utf8')
 }
 
-/**
- * Scrub one recording from stdin to stdout.
- *
- * This is how a recording that is already committed gets fixed: a history rewrite
- * pipes every historical `.har` blob through it, so the repair is done by the code
- * that scrubs the working tree rather than by a second implementation of the same
- * rules in whatever language the rewrite tool speaks. See "Fixing a recording
- * already in history" in CONTRIBUTING.md.
- *
- *   git filter-repo --blob-callback '<pipe HAR blobs through this>'
- *
- * Subjects come from the test sources as they are *now*, not as they were at the
- * commit the blob came from: today's policy applied uniformly. An account the
- * suite has since stopped naming is pseudonymised in the old recording too, which
- * is the safe direction to be wrong in.
- */
+/** Scrub one recording stdin → stdout, which is how an already-committed one is
+ *  fixed inside a history rewrite. See CLAUDE.md and CONTRIBUTING.md. */
 function scrubStdin() {
   const raw = readFileSync(0, 'utf8')
   const discovered = discover([raw])
@@ -857,14 +649,8 @@ function scrubStdin() {
   process.stdout.write(scrubHar(parseHar('<stdin>', raw), blankStats()))
 }
 
-/**
- * What a run changed. Every counter is incremented only when a value actually
- * moved, never merely because the field was there — otherwise a clean recording
- * reports work it did not do, and --check cannot say what it found.
- *
- * `unparsed` is the exception and is left out of that report: it counts bodies
- * this cannot read, which is a property of the capture, not of the scrub.
- */
+/** What a run changed; counters move only when a value did. `unparsed` is left
+ *  out of the report — a property of the capture, not of the scrub. */
 const STAT_KEYS = [
   'handles',
   'names',
@@ -892,11 +678,8 @@ const describe = (stats) =>
     .map((k) => `${k}:${stats[k]}`)
     .join(' ') || 'differs byte-for-byte'
 
-/**
- * Named, because the bare parse error says only "Unexpected end of JSON input" —
- * and the usual cause is scrubbing a recording the proxy is still flushing, where
- * knowing *which* file is the whole answer.
- */
+/** Named: the bare parse error says only "Unexpected end of JSON input", and the
+ *  usual cause is a recording the proxy is still flushing. */
 function parseHar(file, raw) {
   try {
     const har = JSON.parse(raw)
@@ -924,17 +707,8 @@ function scrubHar(har, stats) {
   return JSON.stringify(har)
 }
 
-/**
- * Drop the body of a client-event beacon.
- *
- * X's client posts back what it rendered, so the sidebar's trend names arrive a
- * second time as a percent-encoded blob in a *request* — and along with them,
- * what was on screen and what was clicked. The whole body goes rather than the
- * names within it, for two reasons: it is the report of one person's session and
- * none of it is under test, and matching names would need every trend in the
- * capture known in advance, which is impossible when a recording is scrubbed on
- * its own — as it is when one is repaired inside a history rewrite.
- */
+/** Drop a client-event beacon's whole body: it reports one person's session,
+ *  none of it is under test. See CLAUDE.md. */
 function scrubTelemetry(entry, stats) {
   const body = entry.request?.postData
   if (typeof body?.text !== 'string' || !body.text) return
@@ -944,11 +718,8 @@ function scrubTelemetry(entry, stats) {
   stats.telemetry++
 }
 
-/**
- * Handles still present in raw text that this script has not rewritten. Test
- * subjects are excluded: they are real handles on purpose, and flagging them
- * would make --check permanently red on a correctly scrubbed file.
- */
+/** Handles still in raw text that this has not rewritten; subjects excluded,
+ *  since they are real handles on purpose. */
 function residualHandles(text) {
   const out = new Set()
   for (const m of text.matchAll(screenNameRe())) {
@@ -1002,12 +773,8 @@ function main() {
     const stats = blankStats()
     const out = scrubHar(har, stats)
 
-    // --check asks one question of what is on disk: would scrubbing it change
-    // anything? A file that survives its own scrubber unchanged has been through
-    // it; one that does not, has not — whatever the reason, and including the
-    // fields no regex over raw text can see. (Searching for leftover handles
-    // instead is what let a document keep the recording account's display name
-    // for as long as its handle beside it had already been rewritten.)
+    // --check asks one question: would scrubbing this change anything? See
+    // "--check asks one question" in CLAUDE.md.
     if (CHECK) {
       if (out !== raw)
         offenders.push({ file, stats, leftover: residualHandles(raw) })
@@ -1015,9 +782,8 @@ function main() {
       continue
     }
 
-    // Written via a temp file and renamed: writeFileSync truncates first, so a
-    // crash mid-write leaves a half-written HAR that fails to parse on the next
-    // run — turning one bad recording into a permanently stuck scrub.
+    // Temp file then rename: writeFileSync truncates first, and a half-written
+    // HAR fails to parse on every later run.
     const tmp = `${file}.tmp`
     writeFileSync(tmp, out)
     renameSync(tmp, file)
@@ -1064,10 +830,8 @@ function main() {
   console.log('\n✓ scrubbed — now verify: pnpm test:e2e')
 }
 
-// Only when run as a command. The scrubbing itself is exported so it can be
-// tested against fixtures: --check proves a committed recording went through this
-// script, and cannot prove the script knows about a shape it has never seen —
-// nothing about a clean corpus goes red when a pass is dropped from the code.
+// Exported so the passes can be tested against fixtures: --check cannot prove
+// the script knows a shape it has never seen.
 if (process.argv[1] === fileURLToPath(import.meta.url)) main()
 
 export {

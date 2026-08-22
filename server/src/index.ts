@@ -1,19 +1,5 @@
-// Shared location cache — request handlers, backend-agnostic.
-//
-// The server never talks to X. Clients fetch location from X's AboutAccountQuery
-// themselves (rate-limited, on hover) and contribute the result here; other
-// clients read it back cheaply, skipping the X call. Bio/displayName are NOT
-// handled here — clients get those free from the timeline.
-//
-// Endpoints (all CORS-open, no credentials):
-//   POST /v1/loc/batch  { usernames: string[] }        -> { profiles: Served[] }
-//   POST /v1/loc        { clientId, entries: Vote[] }   -> { ok: true }
-//   GET  /v1/stats                                      -> { profiles: number }
-//
-// This module runs unmodified on two backends — Cloudflare Workers + D1
-// (wrangler.toml) and Node + SQLite on a VPS (node-server.ts) — because it only
-// ever touches `Env.DB` through the minimal interface in db-types.ts, which both
-// satisfy. Keep it that way: no Worker globals, no node: imports.
+// Shared location cache — request handlers, backend-agnostic. The server never
+// talks to X. See CLAUDE.md and README.md; endpoints are listed in both.
 
 import { admitContributions } from './contrib-limit.ts'
 import { pickConsensus, type LocationVote } from './consensus.ts'
@@ -29,36 +15,13 @@ export const VOTE_RETENTION_MS = 60 * 24 * 60 * 60 * 1000 // 60 days
 const USERNAME_RE = /^[a-z0-9_]{1,50}$/
 const MAX_FIELD_LEN = 60
 
-// Per-username vote cap. location_votes is keyed (username, client_id), so
-// without a cap it grows as users × profiles-each-user-sees — the only
-// superlinear term in the system, and the first thing that would exhaust a small
-// VPS disk. Capping bounds it at distinct-profiles × VOTE_CAP instead, flat in
-// user count.
-//
-// Pruning is not done at exactly VOTE_CAP: once a popular handle sits on the cap,
-// every further contribution would evict one row, doubling writes on the hot path
-// forever. Instead rows are allowed to pile up to VOTE_CAP + VOTE_CAP_SLACK and
-// then pruned back to VOTE_CAP in one go, amortising the delete over SLACK votes.
-//
-// Eviction is oldest-first, which is also the behaviour you want on merit: the
-// surviving window is the most recent observers, so a relocation propagates
-// instead of being outvoted forever by stale votes. The cost is that poisoning
-// gets cheaper — a flood of forged client ids only has to fill the window rather
-// than out-number every honest vote ever cast. The client's confidence threshold
-// (MIN_CONFIDENCE_KEY, src/scripts/shared-cache.ts) is the backstop there, and
-// admitContributions below raises the price of manufacturing those ids.
+// Per-username vote cap, pruned at cap + slack, oldest-first — see "Why the vote
+// cap has slack" in CLAUDE.md.
 const VOTE_CAP = 10
 const VOTE_CAP_SLACK = 5
 
-// How long /v1/stats reuses a count before recomputing it, and how long clients
-// are told to. It is what makes the endpoint cost one COUNT per minute rather
-// than one per reader: the popup asks while it is open, so the request rate
-// tracks how many people have a popup open, which nothing else here does.
-//
-// Not a nicety. `COUNT(*)` is a full scan — 7.8ms over both tables at 10k-user
-// scale (README, "Benchmarks") — and better-sqlite3 is synchronous, so an
-// unmemoised one would be an event-loop stall on the request path, the thing
-// every other query here is shaped to avoid.
+// How long /v1/stats reuses a count, and how long clients are told to. Not a
+// nicety — see "Two queries that look wrong" in CLAUDE.md.
 const STATS_TTL_MS = 60_000
 
 interface Served {
@@ -86,9 +49,7 @@ interface VoteRow {
   seen_at: number
 }
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 function cors(resp: Response): Response {
   resp.headers.set('Access-Control-Allow-Origin', '*')
   resp.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -127,14 +88,8 @@ function toLocationVote(r: VoteRow): LocationVote {
   }
 }
 
-/**
- * Rows affected by a `run()`, across both backends. The two drivers report it
- * differently — better-sqlite3 returns `{ changes }`, D1 nests it as
- * `{ meta: { changes } }` — and db-types.ts deliberately types `run()` as
- * `unknown` rather than committing the shared handlers to either shape. Returns
- * 0 for anything unrecognised, so a driver change degrades the log line rather
- * than the cleanup.
- */
+/** Rows affected by a `run()`, across both backends: better-sqlite3 returns
+ *  `{ changes }`, D1 `{ meta: { changes } }`. Unrecognised shapes give 0. */
 function rowsChanged(result: unknown): number {
   if (typeof result !== 'object' || result === null) return 0
   const direct = (result as { changes?: unknown }).changes
@@ -154,9 +109,7 @@ function toServed(r: ProfileRow): Served {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Handlers
-// ---------------------------------------------------------------------------
 async function handleBatch(req: Request, env: Env): Promise<Response> {
   const body = (await req.json().catch(() => null)) as {
     usernames?: unknown
@@ -180,8 +133,7 @@ async function handleBatch(req: Request, env: Env): Promise<Response> {
 }
 
 // The last count and when it was taken. Module state, so on Workers it is per
-// isolate — a cold isolate just pays for one COUNT, which is the same thing a
-// restart costs the Node box.
+// isolate — a cold isolate pays for one COUNT, as a restart does on Node.
 let counted: { at: number; profiles: number } | null = null
 
 /** The memo outlives a test otherwise, and the next one would read its number. */
@@ -189,19 +141,8 @@ export function __resetStats(): void {
   counted = null
 }
 
-/**
- * How many accounts the cache can answer for.
- *
- * Unfiltered, though handleBatch only serves `location_confidence > 0`: the two
- * counts are the same number, because `pickConsensus` counts the votes backing
- * the value it picks and never returns fewer than one, so no row is ever written
- * below 1 (consensus.test.ts pins that) and scheduled() removes a profile rather
- * than zeroing it. The difference is what they cost — `WHERE
- * location_confidence > 0` cannot use the username index and drops to a table
- * scan: 5.3ms against 0.05ms over 200k rows, and better-sqlite3 is synchronous,
- * so that gap is an event-loop stall. Adding an index for it is ruled out for
- * the same reasons as every other index here (schema.sql).
- */
+/** How many accounts the cache can answer for. Unfiltered on purpose — see
+ *  "Two queries that look wrong" in CLAUDE.md. */
 async function handleStats(env: Env, now: number): Promise<Response> {
   if (counted === null || now - counted.at >= STATS_TTL_MS) {
     const { results } = await env.DB.prepare(
@@ -223,11 +164,8 @@ interface ParsedVote {
   acc: number
 }
 
-/**
- * The entries a request actually carried, cleaned. Everything here is untrusted
- * input from an install we cannot identify, so anything unrecognisable is
- * dropped rather than rejected — a poisoner learns nothing from the response.
- */
+/** Untrusted input from an install we cannot identify: anything unrecognisable
+ *  is dropped rather than rejected. */
 export function parseContribution(body: unknown): ParsedVote[] {
   const rec = (body ?? {}) as { entries?: unknown }
   const rawEntries = Array.isArray(rec.entries) ? rec.entries : []
@@ -247,10 +185,7 @@ export function parseContribution(body: unknown): ParsedVote[] {
   return parsed
 }
 
-/**
- * The votes just read, grouped by username and trimmed to VOTE_CAP — newest
- * kept, the rest handed back for deletion.
- */
+/** Votes grouped by username and trimmed to VOTE_CAP, newest kept. */
 export function groupAndCapVotes(rows: VoteRow[]): {
   byUser: Map<string, VoteRow[]>
   evictions: VoteRow[]
@@ -301,11 +236,8 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
   const parsed = parseContribution(body)
   if (parsed.length === 0) return json({ ok: true })
 
-  // Charge the distinct handles to this client's budget and keep only what it
-  // can still afford (see contrib-limit.ts). Anything over budget is dropped
-  // silently and the response is still `{ ok: true }`: contributions are
-  // best-effort and the client ignores the body either way, so there is no
-  // reason to hand a poisoner a signal telling it when to rotate its id.
+  // Charge the distinct handles to this client's budget; anything over it is
+  // dropped silently (see contrib-limit.ts and CLAUDE.md).
   const allowed = new Set(
     admitContributions(cid, [...new Set(parsed.map((v) => v.u))], now),
   )
@@ -329,12 +261,8 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
     ),
   )
 
-  // 2. Recompute consensus for every affected username from all its votes.
-  //    No date filter here: the scheduled() retention job physically deletes
-  //    votes older than VOTE_RETENTION_MS, so every row still in the table is
-  //    within the window by construction. That makes deletion the single source
-  //    of truth for the 60-day bound (rather than a filter here *and* a delete)
-  //    and lets the query ride the (username, client_id) primary key directly.
+  // 2. Recompute consensus from all of a username's votes — no date filter,
+  //    see "Two queries that look wrong" in CLAUDE.md.
   const affectedList = [...affected]
   const ph = affectedList.map(() => '?').join(',')
   const { results } = await env.DB.prepare(
@@ -345,17 +273,12 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
     .bind(...affectedList)
     .all<VoteRow>()
 
-  // 2a. Enforce the per-username cap (see VOTE_CAP). Rows to drop are computed
-  //     from the votes we just read — no extra SELECT — and consensus below is
-  //     then taken over what *survives*, so the served profile always reflects
-  //     the rows that remain in the table.
+  // 2a. Enforce the per-username cap over the votes just read, so consensus is
+  //     taken on what survives and matches the table.
   const { byUser, evictions } = groupAndCapVotes(results ?? [])
 
-  // 3. Current consensus for the affected users, so we can skip rewriting a
-  //    profile row whose value hasn't actually changed (e.g. a client
-  //    re-affirming the same location in a later session). Trading this read for
-  //    a skipped write is a win: D1's write budget is ~50x scarcer than reads,
-  //    and `updated_at` is write-only (never served), so a skipped bump is inert.
+  // 3. Current consensus, so an unchanged profile is not rewritten: D1's write
+  //    budget is ~50x scarcer than reads, and `updated_at` is never served.
   const { results: curRows } = await env.DB.prepare(
     `SELECT username, location, source, location_accurate, location_confidence
        FROM profiles
@@ -379,11 +302,7 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
   return json({ ok: true })
 }
 
-/**
- * One profile upsert per affected username whose consensus actually moved. A
- * username whose votes agree on nothing, or whose stored row already says what
- * they agree on, produces no statement at all — see `alreadyStored`.
- */
+/** One upsert per username whose consensus moved; see `alreadyStored`. */
 export function consensusWrites(
   env: Env,
   ctx: {
@@ -421,9 +340,7 @@ export function consensusWrites(
   return writes
 }
 
-// ---------------------------------------------------------------------------
 // Router
-// ---------------------------------------------------------------------------
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     if (req.method === 'OPTIONS') {
@@ -446,19 +363,8 @@ export default {
     }
   },
 
-  // Retention cleanup. D1 never evicts data on its own, so location_votes would
-  // grow without bound. This physically deletes votes older than
-  // VOTE_RETENTION_MS and is now the *only* thing that ages votes out — the
-  // consensus recompute above reads whatever remains. Runs on the cron schedule
-  // in wrangler.toml. The DELETE has no seen_at index to ride, so it's a full
-  // scan that spends the abundant read budget — deliberately traded against not
-  // taxing every insert's ~50x scarcer write budget with an index.
-  // `_controller` / `_ctx` are typed loosely rather than as Cloudflare's
-  // ScheduledController / ExecutionContext so this file needs no workers-types;
-  // both are unused, and node-server.ts calls it with nothing.
-  //
-  // Returns the number of votes deleted, which node-server.ts logs. Workers
-  // ignores a scheduled() return value, so this costs the Worker build nothing.
+  // Retention cleanup, the only thing that ages votes out — see CLAUDE.md.
+  // `_controller` / `_ctx` stay loose so this file needs no workers-types.
   async scheduled(
     _controller: unknown,
     env: Env,
@@ -470,13 +376,8 @@ export default {
       .bind(Date.now() - VOTE_RETENTION_MS)
       .run()
 
-    // Then the profiles those votes were the last evidence for. The next
-    // client to want that handle misses, re-reads it from X and contributes it
-    // back, rebuilding the row — so a value is cached for VOTE_RETENTION_MS and
-    // then re-earned, but only while somebody still looks at it.
-    //
-    // `profiles` can therefore shrink, which deploy/backup.ts's snapshot
-    // verification allows for; see the baseline it counts there.
+    // Then the profiles those votes were the last evidence for; `profiles` can
+    // shrink, which deploy/backup.ts allows for. See CLAUDE.md.
     await env.DB.prepare(
       `DELETE FROM profiles
         WHERE NOT EXISTS (

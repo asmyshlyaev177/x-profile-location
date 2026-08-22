@@ -22,10 +22,8 @@ export interface LocationChipsProps {
   onExclusions: (next: RegionExclusions) => void
 }
 
-/**
- * Which of a region's countries it still covers. Unchecking every one leaves
- * the region matching only profiles that say the region itself.
- */
+/** Which of a region's countries it still covers. Unchecking every one leaves
+ *  the region matching only profiles that say the region itself. */
 function RegionPicker({
   region,
   covered,
@@ -75,11 +73,8 @@ function RegionPicker({
   )
 }
 
-/**
- * The blocked-location list. A region chip opens the picker below the list
- * rather than in place: at 57 countries it is taller than the chips are, and
- * the popup is 320px wide.
- */
+/** The blocked-location list. A region chip opens the picker below the list:
+ *  at 57 countries it is taller than the chips, in a 320px popup. */
 export function LocationChips({
   blocked,
   exclusions,

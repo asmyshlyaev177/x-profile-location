@@ -1,9 +1,5 @@
-// Pure consensus logic — no runtime dependencies, unit-testable in isolation.
-//
-// The source of truth for a profile's location is X's own AboutAccountQuery, so
-// every honest client that looks up the same account reports the identical
-// (location, source, accurate) tuple. Casual poisoning is defeated by requiring
-// several *distinct* clients to agree before the value is trusted.
+// Pure consensus logic. Every honest client reading the same account reports an
+// identical tuple, so agreement between distinct clients is the signal.
 
 export interface LocationVote {
   location: string | null
@@ -28,13 +24,8 @@ function tupleKey(v: {
   return JSON.stringify([v.location, v.source, v.locationAccurate])
 }
 
-/**
- * Pick the (location, source, accurate) tuple with the most distinct-client
- * votes. Votes are already deduped one-per-client by the `location_votes`
- * primary key, so counting votes counts distinct clients. Ties are broken by
- * the most recently seen vote, so a fresh relocation can overtake stale data
- * once enough clients re-report it.
- */
+/** The tuple with the most distinct-client votes (the primary key dedupes them),
+ *  ties broken by the most recently seen vote. */
 export function pickConsensus(votes: LocationVote[]): Consensus | null {
   if (votes.length === 0) return null
 

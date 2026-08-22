@@ -1,5 +1,4 @@
-// The keyword / flag rule, and the marks it paints. Owns the settings that
-// decide it. Nothing here touches the DOM X owns — see "Marking the matched
+// The keyword / flag rule and the marks it paints — see "Marking the matched
 // keyword" in CLAUDE.md.
 
 import { HIGHLIGHT_FLAGS_KEY } from '../constants'
@@ -80,11 +79,7 @@ export function shouldHighlight(
   return matchesHighlightRule(userName, displayName, bio)
 }
 
-// ---------------------------------------------------------------------------
-// Marking the matched keyword in a hover card
-// ---------------------------------------------------------------------------
-// Nothing here touches the DOM X owns. Cosmetic either way — see "Marking the
-// matched keyword" in CLAUDE.md.
+// Marking the matched keyword in a hover card. Cosmetic either way.
 
 function highlightRegistry(): typeof CSS.highlights | null {
   return typeof CSS !== 'undefined' && 'highlights' in CSS
@@ -92,10 +87,8 @@ function highlightRegistry(): typeof CSS.highlights | null {
     : null
 }
 
-/**
- * Text node by text node, so a keyword split across two is missed rather than
- * mismarked. Our own injected text is skipped, or we point at ourselves.
- */
+/** Text node by text node, so a keyword split across two is missed rather than
+ *  mismarked. Our own injected text is skipped. */
 export function keywordRangesIn(root: Element): Range[] {
   const ranges: Range[] = []
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {

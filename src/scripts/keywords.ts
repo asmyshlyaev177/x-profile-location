@@ -30,10 +30,8 @@ export function graphemeIncludes(
   return false
 }
 
-/**
- * Every position `needle` starts at, as grapheme indices. Separate from
- * graphemeIncludes, which returns early and runs against every bio we see.
- */
+/** Every position `needle` starts at, as grapheme indices. Separate from
+ *  graphemeIncludes, which returns early and runs against every bio. */
 /* jscpd:ignore-start -- the duplicated scan is the point; see above. */
 export function graphemeIndicesOf(
   haystack: string[],
@@ -53,9 +51,7 @@ export function graphemeIndicesOf(
 }
 /* jscpd:ignore-end */
 
-// ---------------------------------------------------------------------------
 // Keyword matching (stateful — call setKeywords whenever the set changes)
-// ---------------------------------------------------------------------------
 
 /** Whether a keyword has to stand alone, or may sit inside a longer word. */
 export type MatchMode = 'word' | 'partial'
@@ -78,14 +74,8 @@ let pattern: Compiled | null = null
 // Grapheme search, or 🇵🇸 matches inside 🇰🇵🇸🇴.
 let emojiKeywordGraphemes: string[][] = []
 
-// A match may not end mid-cluster in *either* mode: \p{M} and ZWJ are what keep
-// a keyword from matching half an emoji — see the cases in keywords.test.ts.
-// Word boundaries for any script, without grapheme segmentation, are the letters
-// and digits on top of that, and only 'word' asks for them.
-//
-// Deliberately not \w: underscore is a separator here, not a letter. Handles and
-// display names are written with the punctuation a space would be — "nft_lover",
-// "nft.eth", "nft|dev" — and treating one of them as a letter would spare it.
+// Deliberately not \w: underscore is a separator here, not a letter.
+// See "Keyword matching" in CLAUDE.md.
 const CLUSTER_CHARS = '\\p{M}\\u200d'
 const WORD_CHARS = '\\p{L}\\p{N}'
 

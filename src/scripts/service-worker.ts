@@ -107,9 +107,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return undefined
 })
 
-// ---------------------------------------------------------------------------
 // Cross-tab lookup broker
-// ---------------------------------------------------------------------------
 const BROKER_KEY = 'lookupBroker'
 
 let broker: LookupBroker | null = null
@@ -125,11 +123,8 @@ async function pacingSettings(): Promise<PacingOptions> {
   }
 }
 
-/**
- * Module state does not survive the ~30s idle teardown, so every entry point
- * reads the queue back before touching it. `storage.session` is memory-only:
- * nothing here reaches disk, and a browser restart starts over.
- */
+/** Module state dies with the ~30s idle teardown, so every entry point reads
+ *  the queue back first. `storage.session` is memory-only. */
 async function loadBroker(): Promise<LookupBroker> {
   if (broker) return broker
   const stored = await chrome.storage.session.get(BROKER_KEY)
@@ -139,9 +134,8 @@ async function loadBroker(): Promise<LookupBroker> {
   return restored
 }
 
-// Awaited before the handler answers, never left as a floating promise: the
-// worker can be torn down the moment it goes idle, and a write that did not
-// land is a queue that never drains.
+// Awaited before the handler answers, never floating: the worker can be torn
+// down the moment it goes idle, and a lost write is a queue that never drains.
 async function saveBroker(state: LookupBroker): Promise<void> {
   await chrome.storage.session.set({ [BROKER_KEY]: state.toJSON() })
 }

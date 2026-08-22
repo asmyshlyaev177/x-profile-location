@@ -84,11 +84,6 @@ export function normalizeSharedCacheCount(
   return { n: Math.floor(n), at }
 }
 
-// Measured live. A starting assumption and the figures the UI quotes — the real
-// budget comes from the x-rate-limit-* response headers.
-export const LOOKUP_LIMIT_PER_WINDOW = 50
-export const LOOKUP_WINDOW_MINUTES = 15
-
 export const DEFAULT_PREFETCH_SHARE = 0.8
 
 /** The shares the options page offers, as fractions. */
@@ -176,12 +171,8 @@ export function normalizePopupSection(value: unknown): PopupSection | null {
     : null
 }
 
-// ---------------------------------------------------------------------------
-// Use, and the one thing the popup asks for
-// ---------------------------------------------------------------------------
-// Neither key is a setting: not exported, not importable, not editable. They
-// count days of use, because an install that never resolved a profile has no
-// opinion to give.
+// Use, and the one thing the popup asks for. Neither key is a setting: not
+// exported, not importable, not editable.
 
 export interface UsageStats {
   /** Local calendar days on which the content script did visible work. */
@@ -218,9 +209,7 @@ export function normalizeRatePrompt(value: unknown): RatePromptState {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Filters, exceptions, and the allowlist
-// ---------------------------------------------------------------------------
 
 export interface AccountAgeFilter {
   enabled: boolean
@@ -229,10 +218,7 @@ export interface AccountAgeFilter {
 
 export const DEFAULT_ACCOUNT_AGE_DAYS = 180
 
-/**
- * Months and years, not weeks: farmed accounts are registered in batches and
- * left to age, and a week-old account is visibly new without a filter.
- */
+/** Months and years, not weeks: farmed accounts are aged in batches. */
 export const ACCOUNT_AGE_CHOICES = [90, 180, 365, 1095] as const
 
 /** How a threshold is written in the UI: months up to a year, then years. */
@@ -267,10 +253,7 @@ export const FILTER_RULES = [
 
 export type FilterRule = (typeof FILTER_RULES)[number]
 
-/**
- * Account age is deliberately absent: location and affiliation catch what the
- * user named on purpose, where "joined recently" catches whoever falls under it.
- */
+/** Account age is deliberately absent — see CLAUDE.md. */
 export const HIDING_RULES: readonly FilterRule[] = ['location', 'affiliation']
 
 /** Whether a rule may hide a post, as opposed to only marking it. */
@@ -300,12 +283,8 @@ export function normalizeHandleList(value: unknown): string[] {
   return out
 }
 
-/**
- * Per-rule exceptions, with `HIGHLIGHT_EXCEPTIONS_KEY` folded into the
- * `highlight` bucket. Read forever rather than migrated once: a storage rewrite
- * on load is a data-loss bug waiting for the install where it half-completes,
- * and leaving the old key also lets a downgrade find its exceptions.
- */
+/** Per-rule exceptions, with `HIGHLIGHT_EXCEPTIONS_KEY` folded into the
+ *  `highlight` bucket — never migrated, see CLAUDE.md. */
 export function normalizeRuleExceptions(
   value: unknown,
   legacyHighlight?: unknown,
@@ -466,12 +445,8 @@ export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
   return settingValue(key, undefined)
 }
 
-// ---------------------------------------------------------------------------
-// The two list edits both editors make
-// ---------------------------------------------------------------------------
-// Shared by the popup and the options page, which must agree on more than the
-// key. Each returns the list it was given when nothing changed, so a caller
-// comparing by identity knows whether it has anything to write.
+// The two list edits both editors make. Each returns the list it was given when
+// nothing changed, so a caller comparing by identity knows whether to write.
 
 // Whole-word unless the editor says otherwise, which is what every keyword
 // stored before 1.7.4 meant. Changed afterwards from the chip — withKeywordMode.
@@ -524,10 +499,8 @@ export interface SettingsFile {
   settings: Record<string, unknown>
 }
 
-/**
- * Only keys the user has actually set, so importing into a future version can't
- * pin today's defaults. Never the client id — it would link two installs.
- */
+/** Only keys the user actually set, so an import can't pin today's defaults.
+ *  Never the client id — it would link two installs. */
 export async function exportSettings(): Promise<SettingsFile> {
   const stored = await chrome.storage.local.get(SETTINGS_KEYS)
   const settings: Record<string, unknown> = {}

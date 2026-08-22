@@ -18,6 +18,7 @@ import {
   mockAboutAccount,
   mockSharedCache,
   mostLikedReply,
+  readIdb,
   setCheckboxOption,
   waitForReplies,
 } from './helpers'
@@ -44,7 +45,9 @@ test('a community-cache hit shows the location without asking X for it', async (
 }) => {
   // The background prefetcher queries on-screen accounts on its own schedule and
   // can race the cache write, which would make "did X get asked?" meaningless.
-  // Off, the only thing left that could ask is the hover under test.
+  // Off, the only thing left that could ask is the hover under test — which
+  // deliberately does ask, once per handle per window (see "Asking again for the
+  // account in front of the reader" in src/scripts/content/CLAUDE.md).
   await setCheckboxOption(
     context,
     extensionId,
@@ -84,10 +87,24 @@ test('a community-cache hit shows the location without asking X for it', async (
     .then(() => true)
     .catch(() => false)
 
+  // The community answer lands in IDB on its own, off the back of the batch
+  // lookup — no hover, and no AboutAccountQuery for this account.
+  await expect
+    .poll(
+      () =>
+        readIdb(page).then((keys) => keys.includes(screenName.toLowerCase())),
+      {
+        timeout: 5_000,
+      },
+    )
+    .toBe(true)
+  expect(await askedX).toBe(false)
+
+  // The hover is the reader asking about this account now, so it upgrades the
+  // borrowed answer to a first-hand one.
   const card = await hoverForLocationRow(page, link)
   const { basedIn } = await hoverCardLocation(card)
-  expect(basedIn).toBe('Germany')
-  expect(await askedX).toBe(false)
+  expect(basedIn).toBe('Japan')
 })
 
 test('accounts answered once are never asked about again, not even after a reload', async ({

@@ -1,18 +1,6 @@
 #!/usr/bin/env node
-// Reconcile every locale catalogue against the English one.
-//
-// Fourteen of the fifteen are translated outside this repo, a file at a time,
-// against whatever the English catalogue looked like when that pass started. So
-// a message added here mid-translation comes back missing from whichever files
-// were already in flight — silently, because a missing message just renders its
-// own key in a language nobody on this side reads.
-//
-// This adds any key a locale is missing, in English and in the right position,
-// and leaves every existing translation exactly as it was. Run it after a
-// translation pass; `messages.test.ts` is what fails if you forget.
-//
-//   node scripts/sync-locales.mjs          report only
-//   node scripts/sync-locales.mjs --write  fill the gaps
+// Reconcile every locale catalogue against the English one; `--write` fills the
+// gaps, bare reports. See CLAUDE.md.
 
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -81,9 +69,8 @@ for (const locale of readdirSync(LOCALES).sort()) {
   console.log(`${locale.padEnd(6)} ${notes.join('; ')}`)
   if (missing.length) console.log(`       ${missing.join(', ')}`)
 
-  // Only the mechanical half is fixed here. A wrong localeTag, an over-long
-  // name or a dropped `$1` are decisions about the translation, and guessing at
-  // them would bury the thing worth reading.
+  // Only the mechanical half is fixed here: the rest are decisions about the
+  // translation, and guessing at them would bury what is worth reading.
   if (write && (missing.length || documented.length)) {
     const merged = {}
     // Message only: descriptions are notes for whoever translates, and the one

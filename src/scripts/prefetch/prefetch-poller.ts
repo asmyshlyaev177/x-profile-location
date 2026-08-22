@@ -1,9 +1,5 @@
-// The tab half of the lookup broker: ask what to look up, look it up, ask again.
-//
-// The clock lives here and not in the service worker because an MV3 worker is
-// evicted after ~30s idle and a pending setTimeout dies with it — and the paced
-// gap runs to minutes whenever the budget is spent. See "Cross-tab lookup
-// broker" in CLAUDE.md.
+// The tab half of the lookup broker: ask what to look up, look it up, ask
+// again. The clock lives here, not in the worker — see CLAUDE.md.
 
 import type { NextInstruction } from './lookup-broker'
 
@@ -13,10 +9,7 @@ export const UNREACHABLE_RETRY_MS = 30 * 1000
 export interface PollerDeps {
   /** Ask the broker for work; null when it could not be reached. */
   next: () => Promise<NextInstruction | null>
-  /**
-   * Do the lookup. Reporting what it cost is the lookup's own job; `revalidate`
-   * means the tab has it cached and must ask X anyway.
-   */
+  /** `revalidate` means the tab has it cached and must ask X anyway. */
   fetch: (userName: string, revalidate: boolean) => Promise<void>
   now?: () => number
   setTimer?: (fn: () => void, ms: number) => unknown
@@ -76,10 +69,8 @@ export class PrefetchPoller {
     return this.running
   }
 
-  /**
-   * Poll now rather than at the end of the current wait. Mid-poll it is
-   * remembered, not scheduled — see "Waking a poll in flight" in CLAUDE.md.
-   */
+  /** Poll now rather than at the end of the current wait — see "Waking a poll
+   *  in flight" in CLAUDE.md. */
   wake(): void {
     if (!this.running) return
     this.woken = true
