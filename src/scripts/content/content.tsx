@@ -570,6 +570,7 @@ function markHighlightedArticles(userName: string) {
 }
 
 const FEED_LOCATION_ATTR = 'data-x-loc-feed-done'
+const FEED_ROW_KEY_ATTR = 'data-x-loc-row'
 
 // Feed rows land *after* the name line, the primary tweet's *inside* it, so
 // neither sees the other's row without looking at the parent of both.
@@ -594,15 +595,38 @@ function insertionAboveFold(article: Element): boolean {
   return anchor.getBoundingClientRect().bottom < 0
 }
 
+/** Everything buildInfoRow draws, so a revalidation that moved an account is
+ *  redrawn and one that confirmed it is left alone. */
+function feedRowKey(data: LocationData): string {
+  return `${data.location ?? ''}|${data.locationAccurate}|${data.source ?? ''}`
+}
+
+/** The row already there says exactly what the new data would. */
+function feedRowIsCurrent(article: Element, data: LocationData): boolean {
+  const row = article.querySelector('.x-loc-feed-row')
+  return !!row && row.getAttribute(FEED_ROW_KEY_ATTR) === feedRowKey(data)
+}
+
 function placeFeedRow(article: Element, plan: FeedRowPlan): void {
   if (!showLocationInFeed) return
-  if (article.querySelector('.x-loc-feed-row')) return
+  if (feedRowIsCurrent(article, plan.data)) return
   const userNameEl = getNameEl(article)
   if (!userNameEl) return
   article.setAttribute(FEED_LOCATION_ATTR, '1')
   const row = buildInfoRow(plan.data, plan.userName)
   row.classList.add('x-loc-feed-row')
-  userNameEl.insertAdjacentElement('afterend', row)
+  row.setAttribute(FEED_ROW_KEY_ATTR, feedRowKey(plan.data))
+  const stale = article.querySelector('.x-loc-feed-row')
+  if (!stale) {
+    userNameEl.insertAdjacentElement('afterend', row)
+    return
+  }
+  // The revealed-post exception button lives in the row; a new location is no
+  // reason to take it away.
+  stale
+    .querySelectorAll('.x-loc-exc-btn')
+    .forEach((btn) => row.appendChild(btn))
+  stale.replaceWith(row)
 }
 
 function getFeedRowObserver(): IntersectionObserver {
@@ -634,7 +658,7 @@ function getFeedRowObserver(): IntersectionObserver {
 // Place the row now if doing so won't shift the scroll, otherwise park it until
 // the tweet is scrolled into view (see pendingFeedRows / getFeedRowObserver).
 function injectFeedRow(article: Element, plan: FeedRowPlan): void {
-  if (article.querySelector('.x-loc-feed-row')) return
+  if (feedRowIsCurrent(article, plan.data)) return
   if (pendingFeedRows.has(article)) {
     pendingFeedRows.set(article, plan)
     return
@@ -679,7 +703,7 @@ function injectFeedLocationForUser(userName: string, data: LocationData) {
   document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
     if (extractTweetUserInfo(article).userName?.toLowerCase() !== lc) return
     if (article.matches(SEL_PRIMARY_TWEET)) return
-    if (!getNameEl(article) || article.querySelector('.x-loc-feed-row')) return
+    if (!getNameEl(article)) return
     article.setAttribute(FEED_LOCATION_ATTR, '1')
     injectFeedRow(article, { data, userName })
   })
@@ -1953,6 +1977,7 @@ async function revealLocationForSwipe(article: Element) {
     article.setAttribute(FEED_LOCATION_ATTR, '1')
     const row = buildInfoRow(data, userName)
     row.classList.add('x-loc-feed-row')
+    row.setAttribute(FEED_ROW_KEY_ATTR, feedRowKey(data))
     userNameEl.insertAdjacentElement('afterend', row)
   }
 
