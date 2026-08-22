@@ -379,6 +379,16 @@ test('a hover refetches a cached account once per window', async ({ page }) => {
   await page.reload()
   await usernameLink.waitFor({ timeout: 15_000 })
 
+  // The feed row is drawn from IDB as the timeline mounts, so it is showing the
+  // stale country before the hover has asked anything.
+  const feedRow = page.locator(`${TWEET_ARTICLE} .x-loc-feed-row`).first()
+  await feedRow.waitFor({ timeout: 15_000 })
+  await expect
+    .poll(() => hoverCardLocation(feedRow).then((l) => l.basedIn), {
+      timeout: 10_000,
+    })
+    .toBe('Germany')
+
   const refetched = page.waitForResponse(/AboutAccountQuery/, {
     timeout: 15_000,
   })
@@ -389,6 +399,16 @@ test('a hover refetches a cached account once per window', async ({ page }) => {
   await card.locator('.x-loc-info').waitFor({ timeout: 10_000 })
   await expect
     .poll(() => hoverCardLocation(card).then((l) => l.basedIn), {
+      timeout: 10_000,
+    })
+    .toBe('Japan')
+
+  // The row under the name is the same answer as the card, or the reader is
+  // shown two countries for one account. It was already drawn, and every path
+  // that pushed a fresh lookup into the feed used to skip an article that had a
+  // row — so the flag stayed on the old country until X recycled the node.
+  await expect
+    .poll(() => hoverCardLocation(feedRow).then((l) => l.basedIn), {
       timeout: 10_000,
     })
     .toBe('Japan')
@@ -406,4 +426,5 @@ test('a hover refetches a cached account once per window', async ({ page }) => {
 
   await card.locator('.x-loc-info').waitFor({ timeout: 5_000 })
   expect((await hoverCardLocation(card)).basedIn).toBe('Japan')
+  expect((await hoverCardLocation(feedRow)).basedIn).toBe('Japan')
 })

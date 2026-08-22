@@ -2814,6 +2814,55 @@ describe('injectFeedLocationForUser — via hover card fetch', () => {
 
     expect(article.querySelectorAll('.x-loc-feed-row')).toHaveLength(1)
   })
+
+  it('redraws a feed row whose account has moved since it was drawn', async () => {
+    // The hover card asks X again and gets a different country. The card shows
+    // it; the row already under the name in the feed used to keep the old flag
+    // until X recycled the node.
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'Italy',
+      locationAccurate: true,
+      source: 'web',
+      bio: null,
+    })
+
+    const article = makeTweetArticle('moveduser')
+    document.body.appendChild(article)
+    await flushAsync()
+    expect(
+      article.querySelector('.x-loc-feed-row .x-loc-icon-flag')?.textContent,
+    ).toBe('\u{1F1EE}\u{1F1F9}')
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            user_result_by_screen_name: {
+              result: {
+                about_profile: {
+                  account_based_in: 'Germany',
+                  location_accurate: true,
+                  source: 'web',
+                },
+              },
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    )
+
+    const hoverCard = document.createElement('div')
+    hoverCard.setAttribute('data-testid', 'HoverCard')
+    hoverCard.innerHTML = `<span>@moveduser</span>`
+    document.body.appendChild(hoverCard)
+    await flushAsync()
+
+    expect(article.querySelectorAll('.x-loc-feed-row')).toHaveLength(1)
+    expect(
+      article.querySelector('.x-loc-feed-row .x-loc-icon-flag')?.textContent,
+    ).toBe('\u{1F1E9}\u{1F1EA}')
+  })
 })
 
 // ---------------------------------------------------------------------------
