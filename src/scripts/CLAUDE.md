@@ -143,6 +143,31 @@ X sends GraphQL over XHR, so a fetch-only hook records nothing and looks clean.
 
 ---
 
+## The share card (share-card.ts)
+
+The card carries **what X said, in X's words**. The VPN chip reads exactly as the
+on-page badge does, so the image and the extension never describe one field in two
+vocabularies, and neither claims _detection_: `location_accurate: false` is X declining
+to verify, not a finding.
+
+Chips wrap rather than shrink or drop. Silently omitting the VPN caveat for want of
+width is the one failure mode that actually misleads.
+
+---
+
+## Keyword matching (keywords.ts)
+
+A match may not end mid-cluster in **either** mode — `\p{M}` and ZWJ are what stop a
+keyword matching half an emoji (`keywords.test.ts` pins the cases). `'word'` mode adds
+letters and digits on top, which is how word boundaries work for any script without
+grapheme segmentation.
+
+**Deliberately not `\w`:** underscore is a separator here, not a letter. Handles and
+display names use punctuation where a space would go — `nft_lover`, `nft.eth`,
+`nft|dev` — and treating one as a letter would spare it from the rule.
+
+---
+
 ## page-script.ts
 
 The IIFE checks `window.__X_LOC_INJECTED__` and exits if set, preventing double-patching.
@@ -247,7 +272,13 @@ Other notes:
   `setPacing()`. `normalizePrefetchShare()` **snaps to the nearest `PREFETCH_SHARE_CHOICES`
   entry** (0.3/0.5/0.7/0.9, compared in whole percent so ties go to the smaller), so
   storage, UI and content script can never hold a value the `<select>` can't display.
-  `LOOKUP_LIMIT_PER_WINDOW` (50) and `LOOKUP_WINDOW_MINUTES` (15) are in `countries/`.
+  `LOOKUP_LIMIT_PER_WINDOW` (50), `LOOKUP_WINDOW_MINUTES` (15) and the derived
+  `LOOKUP_WINDOW_MS` live in `constants.ts` — the one place the window is written
+  down. `RATE_LIMIT_RESET_DEFAULT_MS`, the broker's `windowMs`, the community
+  cache's re-query guard and the manual refetch throttle all derive from it, so a
+  measurement that moves moves once. (`server/src/contrib-limit.ts` keeps its own
+  `CONTRIB_WINDOW_MS`: the backend is a separate package and imports nothing from
+  `src/`.)
 
 Default blocked regions on install (service-worker.ts): `['Africa', 'India', 'South Asia',
 'Nigeria', 'Pakistan', 'Bangladesh']`. ⚠️ This now **expands** — with `REGION_MEMBERS`,

@@ -224,9 +224,8 @@ chrome.storage.local
     showShareButton = readSetting(SHOW_SHARE_BUTTON_KEY, r)
     hideMode = readSetting(HIDE_BLOCKED_LOCATIONS_KEY, r)
     prefetchEnabled = readSetting(BACKGROUND_PREFETCH_KEY, r)
-    // The share and the pacing are the broker's, not this tab's — it reads them
-    // itself so every tab is spending against one set of numbers.
-    // Inert unless a server URL is configured (see CACHE_API_BASE in constants.ts).
+    // The share and pacing are the broker's, so every tab spends against one set
+    // of numbers. Inert unless CACHE_API_BASE is configured.
     setSharedCacheEnabled(readSetting(SHARED_CACHE_KEY, r))
     setMinConfidence(r[MIN_CONFIDENCE_KEY])
 
@@ -277,11 +276,8 @@ function stripAllInjections(): void {
 
 type StorageChanges = Record<string, chrome.storage.StorageChange>
 
-/**
- * The shape every setting change follows: present in the batch, normalized
- * through the registry, then applied. A removed key arrives as an undefined
- * `newValue`, which the normalizer answers with the default.
- */
+/** Present in the batch, normalized through the registry, then applied. A
+ *  removed key arrives undefined, which the normalizer answers with a default. */
 function onSettingChange<K extends SettingKey>(
   changes: StorageChanges,
   key: K,
@@ -405,10 +401,8 @@ function applyLookupChanges(changes: StorageChanges): void {
   })
 }
 
-/**
- * Everything on screen, redrawn. The incremental refreshes compare rules, and a
- * language change moves none of them — only the words.
- */
+/** Everything on screen, redrawn: the incremental refreshes compare rules, and
+ *  a language change moves none of them. */
 function relocalize(): void {
   if (!isEnabled()) return
   stripAllInjections()
@@ -489,18 +483,14 @@ chrome.runtime.onMessage.addListener((message) => {
 
 async function applyResolved(userName: string): Promise<void> {
   if (!isEnabled()) return
-  // The broadcast goes to every tab, this one included. A tab that did the
-  // lookup itself has already applied it — and applied it the way its own path
-  // called for, which for a hover means deliberately leaving the post the card
-  // was opened from where it is. Redrawing here would take that post away.
+  // A tab that did the lookup itself has already applied it, its own way — for
+  // a hover that means leaving the post the card was opened from alone.
   if (answeredThisSession(userName)) return
   const data = await getCached(userName)
   if (data) applyFiltersForUser(userName, data)
 }
 
-// ---------------------------------------------------------------------------
 // Inject CSS once
-// ---------------------------------------------------------------------------
 function injectStyles() {
   if (document.getElementById('x-loc-styles')) return
   const style = document.createElement('style')
@@ -580,6 +570,7 @@ function markHighlightedArticles(userName: string) {
 }
 
 const FEED_LOCATION_ATTR = 'data-x-loc-feed-done'
+const FEED_ROW_KEY_ATTR = 'data-x-loc-row'
 
 // Feed rows land *after* the name line, the primary tweet's *inside* it, so
 // neither sees the other's row without looking at the parent of both.
@@ -604,15 +595,38 @@ function insertionAboveFold(article: Element): boolean {
   return anchor.getBoundingClientRect().bottom < 0
 }
 
+/** Everything buildInfoRow draws, so a revalidation that moved an account is
+ *  redrawn and one that confirmed it is left alone. */
+function feedRowKey(data: LocationData): string {
+  return `${data.location ?? ''}|${data.locationAccurate}|${data.source ?? ''}`
+}
+
+/** The row already there says exactly what the new data would. */
+function feedRowIsCurrent(article: Element, data: LocationData): boolean {
+  const row = article.querySelector('.x-loc-feed-row')
+  return !!row && row.getAttribute(FEED_ROW_KEY_ATTR) === feedRowKey(data)
+}
+
 function placeFeedRow(article: Element, plan: FeedRowPlan): void {
   if (!showLocationInFeed) return
-  if (article.querySelector('.x-loc-feed-row')) return
+  if (feedRowIsCurrent(article, plan.data)) return
   const userNameEl = getNameEl(article)
   if (!userNameEl) return
   article.setAttribute(FEED_LOCATION_ATTR, '1')
   const row = buildInfoRow(plan.data, plan.userName)
   row.classList.add('x-loc-feed-row')
-  userNameEl.insertAdjacentElement('afterend', row)
+  row.setAttribute(FEED_ROW_KEY_ATTR, feedRowKey(plan.data))
+  const stale = article.querySelector('.x-loc-feed-row')
+  if (!stale) {
+    userNameEl.insertAdjacentElement('afterend', row)
+    return
+  }
+  // The revealed-post exception button lives in the row; a new location is no
+  // reason to take it away.
+  stale
+    .querySelectorAll('.x-loc-exc-btn')
+    .forEach((btn) => row.appendChild(btn))
+  stale.replaceWith(row)
 }
 
 function getFeedRowObserver(): IntersectionObserver {
@@ -644,7 +658,7 @@ function getFeedRowObserver(): IntersectionObserver {
 // Place the row now if doing so won't shift the scroll, otherwise park it until
 // the tweet is scrolled into view (see pendingFeedRows / getFeedRowObserver).
 function injectFeedRow(article: Element, plan: FeedRowPlan): void {
-  if (article.querySelector('.x-loc-feed-row')) return
+  if (feedRowIsCurrent(article, plan.data)) return
   if (pendingFeedRows.has(article)) {
     pendingFeedRows.set(article, plan)
     return
@@ -689,7 +703,7 @@ function injectFeedLocationForUser(userName: string, data: LocationData) {
   document.querySelectorAll<Element>(SEL_TWEET).forEach((article) => {
     if (extractTweetUserInfo(article).userName?.toLowerCase() !== lc) return
     if (article.matches(SEL_PRIMARY_TWEET)) return
-    if (!getNameEl(article) || article.querySelector('.x-loc-feed-row')) return
+    if (!getNameEl(article)) return
     article.setAttribute(FEED_LOCATION_ATTR, '1')
     injectFeedRow(article, { data, userName })
   })
@@ -711,11 +725,8 @@ function refreshFeedLocations() {
   })
 }
 
-// ---------------------------------------------------------------------------
-// Hide tweets from blocked locations
-// ---------------------------------------------------------------------------
-// Collapsed behind a placeholder, never removed: attribute-and-CSS survives
-// React's re-renders where surgery on its nodes would not.
+// Hide tweets from blocked locations. Collapsed behind a placeholder, never
+// removed: attribute-and-CSS survives React's re-renders.
 /** Everything of `match` a placeholder shows — so a change to it is visible. */
 function placeholderKey(match: FilterMatch): string {
   return `${match.rule}|${match.icon}|${match.label}`
@@ -748,14 +759,8 @@ function buildShowButton(match: FilterMatch, onShow: () => void): HTMLElement {
   return btn
 }
 
-/**
- * The exception button, once "Show" has put the post on screen. A collapsed
- * post leaves nothing to hover, so the card the button otherwise lives in
- * cannot be opened from a timeline — but sparing an account is a judgement
- * about what it posts, and until the post is readable there is nothing to
- * judge. It rides at the end of the flags row, where everything else this
- * extension says about the account already is.
- */
+/** The exception button, once "Show" has put the post on screen — see "The
+ *  exception button" in CLAUDE.md. */
 function placeRevealedException(
   target: Element,
   userName: string,
@@ -809,10 +814,8 @@ function hideArticle(
   const schedule = bornHidden ? runNow : whenSafeToResize
 
   if (hideMode === 'hide') {
-    // Silent: CSS takes the whole article, so this mode has no placeholder —
-    // and one left behind by collapse mode has to go with it. `display: none`
-    // hides it either way, which is why it could sit there unnoticed; switching
-    // back would then find it and build a second one underneath.
+    // CSS takes the whole article, so this mode has no placeholder — and one
+    // left by collapse mode must go, or switching back builds a second.
     if (isHiddenSilently(article, HIDDEN_ATTR)) return
     schedule(article, () => {
       article.setAttribute(HIDDEN_ATTR, 'hide')
@@ -821,11 +824,8 @@ function hideArticle(
     return
   }
 
-  // collapse: build the placeholder when there isn't one — a React re-render
-  // dropped it, or the post was in 'hide' mode until now — and when the one
-  // there names a rule that is no longer the one catching this post. Otherwise
-  // leave it exactly as it is, which is what keeps a rule change off every
-  // post it doesn't concern.
+  // Build a placeholder only when there is none, or the one there names a rule
+  // no longer catching this post — that keeps rule changes off other posts.
   if (isCollapsedFor(article, HIDDEN_ATTR, match)) return
   schedule(article, () => {
     article.setAttribute(HIDDEN_ATTR, 'collapse')
@@ -836,11 +836,8 @@ function hideArticle(
   })
 }
 
-/**
- * The placeholder this target owns — a direct child, which is how they are
- * built. A plain descendant query would also find the one a collapsed quote
- * inside the article owns, and answer for the wrong post.
- */
+/** The placeholder this target owns — a direct child. A descendant query would
+ *  also find a collapsed quote's, and answer for the wrong post. */
 function ownPlaceholder(target: Element): HTMLElement | null {
   for (const child of Array.from(target.children)) {
     if (child.classList.contains(HIDDEN_PLACEHOLDER_CLASS)) {
@@ -874,20 +871,16 @@ function unhideArticle(article: Element): void {
   })
 }
 
-// User clicked "Show" on a collapsed tweet: reveal it and never re-hide it (the
-// marker lives only as long as this DOM node, which X recycles on scroll).
-// Deliberately immediate, parked change dropped: the click came from the
-// placeholder, so the post is on screen and the user is waiting on it. The
-// placeholder is taken down by the click that got here — see onShow.
+// "Show" reveals the post and never re-hides it; the marker lives only as long
+// as the DOM node. Immediate, not parked: the user is waiting on it.
 function revealArticle(article: Element): void {
   cancelPendingResize(article)
   article.removeAttribute(HIDDEN_ATTR)
   article.setAttribute(HIDDEN_REVEALED_ATTR, '1')
 }
 
-// --- quoted posts -----------------------------------------------------------
-// The quote collapses alone: taking the whole row removes a post the reader
-// never filtered. X-Posed shipped that and had to fix it.
+// The quote collapses alone: taking the whole row would remove a post the
+// reader never filtered.
 
 function hideQuote(
   quote: Element,
@@ -931,10 +924,8 @@ function revealQuote(quote: Element): void {
   quote.setAttribute(QUOTE_REVEALED_ATTR, '1')
 }
 
-/**
- * Collapse a just-inserted post in the microtask it arrived in, so it is never
- * laid out at full height. Worth 2188px of uncommanded scroll — see CLAUDE.md.
- */
+/** Collapse a just-inserted post in the microtask it arrived in, so it is never
+ *  laid out at full height — worth 2188px of scroll, see CLAUDE.md. */
 function applyKnownHide(article: Element): void {
   if (hideMode === 'off') return
 
@@ -1106,11 +1097,8 @@ async function refreshHiddenTweets(): Promise<void> {
   void refreshPeopleCells()
 }
 
-// ---------------------------------------------------------------------------
-// Marking posts a rule points at rather than hides
-// ---------------------------------------------------------------------------
-// Nothing is taken away, so no placeholder and no reason to skip the post a
-// status page is about — a young author is worth knowing on the post you opened.
+// Marking posts a rule points at rather than hides: nothing is taken away, so
+// no placeholder and no reason to skip the post a status page is about.
 
 async function tryMarkArticle(article: Element) {
   // The quote's author is judged on their own, exactly as they are for hiding
@@ -1156,11 +1144,8 @@ function markTweetsForUser(userName: string, data: LocationData): void {
   }
 }
 
-// ---------------------------------------------------------------------------
-// People lists (Followers / Following / the People tab of search)
-// ---------------------------------------------------------------------------
-// Marked, never removed: hiding rows means the count says 400, you scroll past
-// 380, and nothing says whether the extension ate them or the list is stale.
+// People lists (Followers / Following / the People tab of search). Marked,
+// never removed — a short list would look like X's, not ours.
 
 async function tryMarkPeopleCell(cell: Element) {
   if (cell.hasAttribute(PEOPLE_CELL_ATTR)) return
@@ -1197,10 +1182,8 @@ function markPeopleCellsForUser(userName: string, data: LocationData): void {
   }
 }
 
-/**
- * One function, so no caller wires up two of three. `hideNow: false` judges
- * without collapsing — a hover card opens at a post, and asking is not filtering.
- */
+/** One function, so no caller wires up two of three. `hideNow: false` judges
+ *  without collapsing — asking about an account is not filtering it. */
 function applyFiltersForUser(
   userName: string,
   data: LocationData,
@@ -1223,9 +1206,7 @@ async function refreshPeopleCells() {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Build info row DOM element
-// ---------------------------------------------------------------------------
 function makeIcon(emoji: string, tooltip: string): HTMLElement {
   const span = document.createElement('span')
   span.className = 'x-loc-icon'
@@ -1301,13 +1282,8 @@ function buildInfoRow(
   return row
 }
 
-/**
- * Redraw every flag already on the page, for a rule change that moved one.
- *
- * One glyph, swapped where it stands: rebuilding the rows would take height out
- * of a post and put it back, which is the resize X's timeline answers by
- * scrolling the window (see whenSafeToResize).
- */
+/** Redraw every flag on the page after a rule change. One glyph, swapped where
+ *  it stands: rebuilding rows would resize the post (see whenSafeToResize). */
 function refreshLocationFlags(): void {
   for (const row of Array.from(
     document.querySelectorAll<HTMLElement>('.x-loc-info'),
@@ -1325,16 +1301,11 @@ function refreshLocationFlags(): void {
   }
 }
 
-// ---------------------------------------------------------------------------
-// The exception button
-// ---------------------------------------------------------------------------
-// One button whatever the rule: from the reader's side these are one complaint,
-// "not this account". The exceptions stay per-rule underneath.
+// One button whatever the rule — from the reader's side these are one
+// complaint, "not this account". The exceptions stay per-rule underneath.
 
-/**
- * Exceptions included: a rule already excepted is the one the button must keep
- * offering, or a mistake could only be undone from the options page.
- */
+/** Exceptions included: an already-excepted rule is the one the button must
+ *  keep offering, or a mistake needs the options page to undo. */
 function activeRulesFor(
   userName: string,
   data: LocationData | null | undefined,
@@ -1395,10 +1366,8 @@ function buildExceptionButton(
   return btn
 }
 
-/**
- * Called more than once per card — the bio answers before the lookup does — and
- * rebuilt rather than patched, so label, tooltip and handler never disagree.
- */
+/** Called more than once per card, and rebuilt rather than patched, so label,
+ *  tooltip and handler never disagree. */
 function syncExceptionButton({
   host,
   userName,
@@ -1435,9 +1404,7 @@ function syncExceptionButton({
   place(buildExceptionButton(userName, rules))
 }
 
-// ---------------------------------------------------------------------------
 // Account card
-// ---------------------------------------------------------------------------
 function buildAccountCard(
   facts: Partial<AccountFacts> | undefined,
 ): HTMLElement | null {
@@ -1490,9 +1457,7 @@ function buildRateLimitRow(onExpiry: () => void): HTMLElement {
   return row
 }
 
-// ---------------------------------------------------------------------------
 // Insert a row element into a hover card at the right position
-// ---------------------------------------------------------------------------
 function insertIntoCard(card: Element, userName: string, el: HTMLElement) {
   const atSpan = Array.from(card.querySelectorAll('span')).find(
     (s) => s.textContent?.trim().toLowerCase() === `@${userName.toLowerCase()}`,
@@ -1514,17 +1479,11 @@ function insertIntoCard(card: Element, userName: string, el: HTMLElement) {
   ;(card.querySelector('div > div > div') ?? card).appendChild(el)
 }
 
-// ---------------------------------------------------------------------------
-// The bio X declined to render
-// ---------------------------------------------------------------------------
-// A blocker's card is stripped of its bio, but the highlight rule still fires on
-// the bio the timeline response carried — so the card would show a mark and no
-// reason for it.
+// The bio X declined to render — see "The bio X declined to render" in
+// CLAUDE.md.
 
-/**
- * A slice distinctive enough to look for in a card. URLs come out first: X
- * substitutes a t.co display form, so they never match verbatim.
- */
+/** A slice distinctive enough to look for in a card. URLs come out first: X
+ *  substitutes a t.co display form, so they never match verbatim. */
 export function bioProbe(bio: string): string {
   const plain = bio
     .replace(/https?:\/\/\S+/gi, ' ')
@@ -1566,9 +1525,7 @@ function syncBioRow(
   wrap.before(el)
 }
 
-// ---------------------------------------------------------------------------
 // Process a hover card
-// ---------------------------------------------------------------------------
 const HOVER_CARD_DONE_ATTR = 'data-x-loc-done'
 
 /** The account-facts card: after the flags, before the exception button. */
@@ -1621,7 +1578,8 @@ async function processCard(card: Element) {
   syncExceptionButton({ host: wrap, userName, data: null, info: known, place })
   void markKeywords()
 
-  const data = await fetchLocationData(userName)
+  // The card is open because the user hovered it: ask X again, throttled.
+  const data = await fetchLocationData(userName, { manual: true })
 
   if (data === null && isRateLimited()) {
     // The whole pass starts again rather than the row being patched: by the
@@ -1662,9 +1620,7 @@ async function processCard(card: Element) {
   applyFiltersForUser(userName, data, { hideNow: false })
 }
 
-// ---------------------------------------------------------------------------
 // Process primary tweet author on status pages
-// ---------------------------------------------------------------------------
 function primaryTweetTarget(): {
   tweet: Element
   userNameEl: Element
@@ -1753,11 +1709,8 @@ async function processPrimaryTweet() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Share a post with its location flags
-// ---------------------------------------------------------------------------
-// The context-menu click arrives in the service worker, which knows the tab but
-// not the element — so the post is remembered here, as the menu opens.
+// Share a post with its location flags. The context-menu click arrives in the
+// worker, which knows the tab but not the element — so it is remembered here.
 let lastRightClickedTweet: Element | null = null
 
 document.addEventListener(
@@ -1811,11 +1764,8 @@ function postElementForAccount(userName: string): Element | null {
   return null
 }
 
-/**
- * One path for both entry points, so the wording and the "never spend a lookup"
- * rule can't drift. The drawn card is the fallback: a snapshot has more ways to
- * fail, rendering in a restricted context on a page we don't control.
- */
+/** One path for both entry points, so the wording and the "never spend a
+ *  lookup" rule can't drift. The drawn card is the fallback. */
 async function shareCardFor(
   userName: string,
   displayName: string,
@@ -1823,9 +1773,7 @@ async function shareCardFor(
 ): Promise<void> {
   renderLocationToast(t('toastRendering', userName), true)
 
-  // Whatever is already known. A share must not trigger a lookup: it would
-  // spend a slice of the rate-limit window on a card, which is the one thing
-  // this extension is built not to do.
+  // Whatever is already known: a share must never spend a lookup on a card.
   const data = (await getCached(userName)) ?? {
     location: null,
     locationAccurate: true,
@@ -1839,9 +1787,8 @@ async function shareCardFor(
     )
   }
 
-  // A post the user collapsed is rendered collapsed — the computed styles that
-  // hide it get copied along with everything else — so that one goes to the
-  // drawn card instead of producing an image of a placeholder.
+  // A collapsed post would snapshot as its placeholder, styles and all, so it
+  // goes to the drawn card instead.
   const snapshotable =
     article &&
     !article.hasAttribute(HIDDEN_ATTR) &&
@@ -1916,9 +1863,7 @@ function buildShareButton(userName: string, displayName: string): HTMLElement {
   return btn
 }
 
-// ---------------------------------------------------------------------------
 // MutationObserver
-// ---------------------------------------------------------------------------
 /** A node added to the timeline is sometimes the article, sometimes its container. */
 function eachMatching(
   node: Element,
@@ -1984,9 +1929,7 @@ function startObserver() {
   observer.observe(document.body, { childList: true, subtree: true })
 }
 
-// ---------------------------------------------------------------------------
 // Swipe-right on a tweet to fetch location (mobile)
-// ---------------------------------------------------------------------------
 const SWIPE_MIN_X = 40 // px of rightward travel before the gesture commits
 const SWIPE_MAX_Y = 50 // px of vertical drift still counted as horizontal
 const SWIPE_X_DOMINANCE = 1.5 // dx must beat dy by this factor
@@ -2012,7 +1955,7 @@ async function revealLocationForSwipe(article: Element) {
   // a swipe that appears to do nothing invites the user to swipe again.
   renderLocationToast(t('toastLookingUp', userName), true)
 
-  const data = await fetchLocationData(userName)
+  const data = await fetchLocationData(userName, { manual: true })
   if (!data || !locationSummaryText(data, userName)) {
     // "X knows nothing" and "we couldn't ask" are different answers, and the
     // rate-limit toast owns this corner when it is the second.
@@ -2034,16 +1977,14 @@ async function revealLocationForSwipe(article: Element) {
     article.setAttribute(FEED_LOCATION_ATTR, '1')
     const row = buildInfoRow(data, userName)
     row.classList.add('x-loc-feed-row')
+    row.setAttribute(FEED_ROW_KEY_ATTR, feedRowKey(data))
     userNameEl.insertAdjacentElement('afterend', row)
   }
 
   showLocationOverlay(data, userName)
 }
 
-/**
- * Commits mid-drag: waiting for the lift spent the rest of the swipe, usually
- * longer than the lookup. touchend is the backstop for an unreported flick.
- */
+/** Commits mid-drag; touchend is the backstop for an unreported flick. */
 function startSwipeListener() {
   let startX = 0
   let startY = 0
@@ -2113,9 +2054,7 @@ function startSwipeListener() {
   )
 }
 
-// ---------------------------------------------------------------------------
 // Listen for captured headers from page-script
-// ---------------------------------------------------------------------------
 window.addEventListener(EVENTS.HEADERS_CAPTURED, (e: Event) => {
   const headers = (e as CustomEvent).detail?.headers
   if (headers?.authorization) {
@@ -2125,9 +2064,7 @@ window.addEventListener(EVENTS.HEADERS_CAPTURED, (e: Event) => {
   }
 })
 
-// ---------------------------------------------------------------------------
 // Listen for user bio data intercepted from timeline/tweet API responses
-// ---------------------------------------------------------------------------
 // Confirmed hits only, so a flag can show without a per-profile X call.
 async function applySharedHits(userNames: string[]) {
   const hits = await sharedBatchLookup(await unknownNames(userNames))
@@ -2140,11 +2077,8 @@ async function applySharedHits(userNames: string[]) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Background location lookups
-// ---------------------------------------------------------------------------
-// The queue and the pace live in the service worker, so every open x.com tab
-// trickles from one shared budget. This end only asks and fetches.
+// Background location lookups. The queue and the pace live in the service
+// worker; this end only asks and fetches.
 const poller = new PrefetchPoller({
   next: () => askBroker<NextInstruction>({ type: MSG.NEXT }),
   fetch: async (userName, revalidate) => {
@@ -2171,12 +2105,8 @@ async function locallyAnswered(userName: string): Promise<boolean> {
   return (await cachedAnswer(userName)) !== undefined
 }
 
-/**
- * Names this tab already has an answer for never reach the broker's queue or
- * the community cache — neither can check for itself, since the cache is
- * x.com's IndexedDB rather than the extension's. A whole timeline response
- * arrives at once, so the reads go out together rather than one await at a time.
- */
+/** Names this tab already answered never reach the broker or the community
+ *  cache — neither can read x.com's IndexedDB to check for itself. */
 async function unknownNames(userNames: string[]): Promise<string[]> {
   const known = await Promise.all(userNames.map(locallyAnswered))
   return userNames.filter((_, i) => !known[i])
@@ -2196,10 +2126,8 @@ function shuffled<T>(items: T[]): T[] {
   return pool
 }
 
-/**
- * Least-corroborated first; ties at random (shuffle, then a stable sort) or a
- * feed re-offers the same names all session. How many go out is the broker's.
- */
+/** Least-corroborated first; ties at random, or a feed re-offers the same
+ *  names all session. How many go out is the broker's. */
 function leastVotedFirst(known: RankedHandle[]): string[] {
   return shuffled(known)
     .sort((a, b) => a.votes - b.votes)
@@ -2290,9 +2218,7 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
   void syncPrimaryExceptionButton()
 })
 
-// ---------------------------------------------------------------------------
 // Init
-// ---------------------------------------------------------------------------
 injectStyles()
 startObserver()
 startSwipeListener()

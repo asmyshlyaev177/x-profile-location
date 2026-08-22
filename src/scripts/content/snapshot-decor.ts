@@ -1,6 +1,5 @@
 // The post as it goes into a shared image: our rows in, the reader's controls
-// out. Every style is inline — no stylesheet reaches inside the SVG a snapshot
-// is drawn from.
+// out. Every style is inline — no stylesheet reaches inside the SVG.
 
 import type { LocationData } from '../cache/cache'
 import { canonicalLocation, flagEmojiFor } from '../countries/countries'
@@ -13,10 +12,7 @@ import { getNameEl, SEL_PRIMARY_TWEET } from './tweet-dom'
 
 // flagEmojiFor throughout, never getLocationDisplay: in a shared image a ⚠️
 // reads as something X said.
-/**
- * Names in words, because a flag in a reposted image is a coloured rectangle
- * nobody can hover.
- */
+/** Names in words: a flag in a reposted image is a rectangle nobody can hover. */
 function buildSnapshotLocationRow(data: LocationData): HTMLElement {
   const row = document.createElement('div')
   // No `color`: it inherits X's own from the inlined ancestor styles, so it

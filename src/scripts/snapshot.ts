@@ -123,10 +123,8 @@ export function inlineStyles(source: Element, clone: Element): void {
   }
 }
 
-/**
- * A computed height is a pixel value from before the insertion, so every ancestor
- * is pinned to a box with no room for what was just added.
- */
+/** A computed height predates the insertion, pinning every ancestor to a box
+ *  with no room for what was just added. */
 export function allowGrowth(from: Element, root: Element): void {
   let node: Element | null = from
   while (node) {
@@ -141,10 +139,7 @@ export function allowGrowth(from: Element, root: Element): void {
   }
 }
 
-/**
- * X sizes its ellipsis boxes for its own webfont; the fallback is wider, so text
- * that fitted on the page comes out as "Some Very Long Nam…".
- */
+/** X sizes ellipsis boxes for its own webfont; the fallback is wider. */
 export function unclampText(clone: Element): void {
   for (const el of Array.from(clone.querySelectorAll<HTMLElement>('*'))) {
     if (el.style.textOverflow !== 'ellipsis') continue
@@ -156,10 +151,8 @@ export function unclampText(clone: Element): void {
   }
 }
 
-/**
- * Laid out off-screen rather than guessed — a flat 80px of slack left a band of
- * dead background. The union of every descendant, or overflow is clipped off.
- */
+/** Laid out off-screen, not guessed: the union of every descendant, or
+ *  overflow is clipped off. */
 export function measureClone(
   clone: Element,
   width: number,
@@ -246,10 +239,8 @@ function placeholderFor(el: Element, glyph: string): HTMLElement {
   return box
 }
 
-/**
- * There is no playback in the restricted context, so a video leaves a hole. Runs
- * after the styles are inlined, so the replacement inherits its box.
- */
+/** No playback in the restricted context, so a video leaves a hole. Runs after
+ *  the styles are inlined, so the replacement inherits its box. */
 export function replaceVideos(clone: Element): void {
   for (const video of Array.from(clone.querySelectorAll('video'))) {
     const poster = video.getAttribute('poster')
@@ -274,10 +265,8 @@ function backgroundUrls(value: string): string[] {
     .filter((u) => u && !u.startsWith('data:'))
 }
 
-/**
- * Anything left pointing at a URL disappears inside the SVG. Fetched rather than
- * redrawn: X loads images without `crossorigin`, so that canvas is tainted.
- */
+/** A URL disappears inside the SVG. Fetched, not redrawn: X loads images
+ *  without `crossorigin`, so that canvas is tainted. */
 export async function inlineImages(clone: Element): Promise<void> {
   const embed = async (url: string): Promise<string> => {
     const resp = await fetch(url, { credentials: 'omit', mode: 'cors' })

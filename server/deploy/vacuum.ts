@@ -1,22 +1,6 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// Compact the cache database — reclaim the free pages a long run of retention
-// passes left behind:
-//
-//   sudo /opt/x-loc-cache/server/deploy/vacuum.ts [-y]
-//
-// Run it when the weekly heartbeat reports a reclaimable share worth the stop,
-// never on a timer: retention frees space exactly where new votes land, so the
-// file plateaus on its own. Real free pages come from one-offs — a shortened
-// window, a tightened cap, a peak that did not come back. See "Compacting the
-// database" in README.md.
-//
-// It rebuilds into a new file and swaps that in, so the result is verified
-// before anything is replaced and the original stays as *.replaced-<stamp>. An
-// in-place VACUUM offers neither and cannot be rolled back once started.
-//
-// The service is stopped for the whole rebuild on purpose: snapshotting it live
-// would silently drop every contribution arriving before the swap. A client
-// that cannot reach the server keeps its votes and re-contributes them.
+// Compact the cache database: `sudo .../deploy/vacuum.ts [-y]`, by hand and
+// never on a timer. See CLAUDE.md and "Compacting the database" in README.md.
 
 import { existsSync, statfsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -51,10 +35,8 @@ export function parseArgs(argv: string[]): { assumeYes: boolean } | null {
   return null
 }
 
-/**
- * The rebuild is a second copy beside the first, so this is the one script that
- * can fill the disk the server writes to — and a full disk stops contributions.
- */
+/** The rebuild sits beside the original, so this is the one script that can
+ *  fill the disk the server writes to. */
 function freeBytes(directory: string): number | null {
   try {
     const fs = statfsSync(directory)
@@ -64,10 +46,8 @@ function freeBytes(directory: string): number | null {
   }
 }
 
-/**
- * Everything that must hold before the service is stopped, so a refusal costs no
- * downtime. Returns the size the rebuild will be measured against.
- */
+/** Everything that must hold before the service is stopped, so a refusal costs
+ *  no downtime. Returns the size the rebuild is measured against. */
 function preflight(dbFile: string): number {
   if (uid() !== 0) {
     die('run as root — it drives systemctl and chowns the database')

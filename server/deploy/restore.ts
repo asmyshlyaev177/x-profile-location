@@ -1,12 +1,6 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// Restore the cache database from a backup taken by backup.ts:
-//
-//   sudo /opt/x-loc-cache/server/deploy/restore.ts \
-//     /var/lib/x-loc-cache/backups/x-loc-cache-<stamp>.db.gz
-//
-// Verifies the archive BEFORE stopping the service, so a bad one costs no
-// downtime, then swaps it in, restarts and health-checks. What it replaced is
-// kept as *.replaced-<stamp>; delete those once the restore has proven out.
+// Restore from a backup.ts archive, verified before the service is stopped.
+// What it replaced is kept as *.replaced-<stamp>. See CLAUDE.md.
 
 import {
   createReadStream,

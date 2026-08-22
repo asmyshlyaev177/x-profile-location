@@ -1,15 +1,5 @@
-// Load benchmark for the SQLite backend.
-//
-//   node --experimental-strip-types bench/load.ts [--users N] [--profiles N] [--keep]
-//
-// Builds a database the size a real deployment would reach, then times every
-// operation the server actually performs against it — the two request handlers,
-// the retention pass, and the stats queries. Prints p50/p95/p99, because a mean
-// hides exactly the stalls that matter on a synchronous driver: better-sqlite3
-// blocks the event loop, so a slow query is not one slow request, it is every
-// concurrent request waiting behind it.
-//
-// Defaults model ~10k users. Sizing rationale in DEFAULTS below.
+// Load benchmark: `node --experimental-strip-types bench/load.ts [--users N]`.
+// p50/p95/p99, because a mean hides the event-loop stalls that matter here.
 
 import { rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -20,9 +10,8 @@ import { openDatabase, type SqliteDb } from '../src/sqlite.ts'
 const DEFAULTS = {
   // Distinct anonymous installs. The figure the sizing question is asked in.
   users: 10_000,
-  // Distinct handles ever looked up. Not users × handles-per-user: timelines
-  // overlap heavily, so this grows far slower than the user count. 200 distinct
-  // handles per user with ~90% overlap across the population lands here.
+  // Distinct handles ever looked up — timelines overlap heavily, so this grows
+  // far slower than the user count.
   profiles: 2_000_000,
   // Votes are capped at 10 per handle (VOTE_CAP), but most handles are seen by
   // one or two installs. The generator below averages ~2.4, giving ~4.8M rows.
@@ -42,9 +31,7 @@ const DB_PATH = join(tmpdir(), `x-loc-bench-${PROFILES}-${USERS}.db`)
 const DAY = 24 * 60 * 60 * 1000
 const VOTE_RETENTION_DAYS = 60
 
-// ---------------------------------------------------------------------------
 // Generation
-// ---------------------------------------------------------------------------
 const COUNTRIES = [
   'United States',
   'Japan',
@@ -115,9 +102,7 @@ function generate(db: SqliteDb): void {
   )
 }
 
-// ---------------------------------------------------------------------------
 // Timing
-// ---------------------------------------------------------------------------
 interface Result {
   name: string
   n: number
@@ -165,9 +150,7 @@ function names(start: number, count: number, missRate = 0): string[] {
   })
 }
 
-// ---------------------------------------------------------------------------
 // Run
-// ---------------------------------------------------------------------------
 const fresh = (() => {
   try {
     return statSync(DB_PATH).size === 0

@@ -58,12 +58,8 @@ const CHIP_FONT = '600 22px system-ui, -apple-system, sans-serif'
 const BODY_LINE_HEIGHT = 40
 const MAX_BODY_LINES = 12
 
-/**
- * Break text to a pixel width. `measure` is injected so wrapping can be tested
- * against a predictable width rather than whatever font is installed. A word
- * longer than the line overflows on its own line instead of being cut — a
- * truncated link is worse than a wide one.
- */
+/** Break text to a pixel width; `measure` is injected so wrapping is testable.
+ *  An over-long word overflows its line rather than being cut. */
 function wrapParagraph(
   paragraph: string,
   maxWidth: number,
@@ -110,12 +106,8 @@ function locationChip(location: string): string {
   return `${flagFor(key)} ${localizedLocation(key)}`
 }
 
-/**
- * The chips the card carries: what X said, in X's words. The VPN chip reads
- * exactly as the on-page badge does, so the image and the extension don't
- * describe one field in two vocabularies. Neither claims *detection*:
- * `location_accurate: false` is X declining to verify, not a finding.
- */
+/** What X said, in X's words — the VPN chip reads exactly as the on-page badge
+ *  does. See "The share card" in CLAUDE.md. */
 export function shareChips(data: LocationData): string[] {
   const chips: string[] = []
   const { platform, country } = classifySource(data.source)
@@ -197,11 +189,8 @@ export function buildShareLayout(
 
 const CHIP_HEIGHT = 44
 
-/**
- * The chip row, starting at `top`. Chips wrap rather than shrinking or being
- * dropped: silently omitting the VPN caveat for want of width is the one
- * failure mode that actually misleads.
- */
+/** The chip row, starting at `top`. Chips wrap rather than shrink or drop —
+ *  losing the VPN caveat to a narrow card is the one misleading failure. */
 function chipOps(
   chips: string[],
   top: number,
@@ -216,9 +205,8 @@ function chipOps(
       x = PAD
       y += CHIP_HEIGHT + 12
     }
-    // Compared against the message rather than sniffed for a leading '⚠': a
-    // translator who drops the emoji must not silently lose the amber tint that
-    // is the whole reason the caveat is on the card.
+    // Compared against the message, not sniffed for a leading '⚠': a translator
+    // dropping the emoji must not lose the amber tint with it.
     const warn = chip === t('vpnBadge')
     ops.push({
       kind: 'rect',
@@ -292,11 +280,8 @@ export async function renderShareCard(input: ShareInput): Promise<Blob> {
   })
 }
 
-/**
- * Put the card on the clipboard, falling back to a download — image writes need a
- * live user gesture and aren't available everywhere. The return value says which
- * happened, so the toast can be honest about where the image went.
- */
+/** Clipboard, falling back to a download — image writes need a live gesture.
+ *  The return value says which happened, so the toast can be honest. */
 export async function deliverShareCard(
   blob: Blob,
   fileName: string,

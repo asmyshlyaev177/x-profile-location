@@ -24,10 +24,8 @@ export const RATING_ASK_ID = 'x-loc-ask-toast'
 export const RATE_TOAST_ID = 'x-loc-rate-toast'
 export const LOCATION_TOAST_ID = 'x-loc-location-toast'
 
-/**
- * X renders emoji as `<img alt="🇷🇺">`, with no text node for a Range to cover.
- * The alt is user input reaching a selector, hence the escaping.
- */
+/** X renders emoji as `<img alt="🇷🇺">`, with no text node for a Range to
+ *  cover. The alt is user input reaching a selector, hence the escaping. */
 export function emojiKeywordCss(keywords: string[]): string {
   if (keywords.length === 0) return ''
   const selectors = keywords.map(

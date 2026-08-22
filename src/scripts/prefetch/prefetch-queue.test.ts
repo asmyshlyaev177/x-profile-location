@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { LOOKUP_WINDOW_MS } from '../constants'
 import {
   CandidateQueue,
   nextDelayMs,
@@ -331,7 +332,7 @@ describe('revalidateBudget', () => {
 // ---------------------------------------------------------------------------
 describe('nextDelayMs', () => {
   const NOW = 1_000_000
-  const WINDOW = 15 * 60 * 1000
+  const WINDOW = LOOKUP_WINDOW_MS
 
   // Real-world shape at the shipped defaults: 50/15min with a 0.8 share → 40
   // background lookups to spread over 15 minutes ≈ one every 22s, with the last

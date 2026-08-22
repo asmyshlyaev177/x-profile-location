@@ -1,4 +1,2 @@
-// oxlint-disable no-empty-file -- Scaffold from the Vite template: `index.html`
-// at the repo root loads this, and neither is emitted into any dist/<browser>/
-// target. Kept because the dev server wants a root document, deliberately empty
-// because the extension's real entries are src/pages/* and src/scripts/*.
+// oxlint-disable no-empty-file -- Vite scaffold the dev server wants; the real
+// entries are src/pages/* and src/scripts/*, and none of this is emitted.

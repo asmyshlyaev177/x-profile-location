@@ -1,21 +1,6 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// Pull, reinstall if needed, re-sync the systemd units, restart, verify:
-//
-//   sudo /opt/x-loc-cache/server/deploy/update.ts
-//
-// The three steps a hand-run upgrade forgets, in the order that matters:
-//
-//   * `npm install` after package.json moved, or after a Node major upgrade —
-//     better-sqlite3 is native, and an unrebuilt one fails at startup with
-//     ERR_DLOPEN_FAILED rather than at pull time.
-//   * the unit files. They live in git and run from /etc/systemd/system, so a
-//     pull that changes an ExecStart= changes nothing until they are copied and
-//     systemd is reloaded. A timer that only fires at 23:30 reports that as
-//     status=203/EXEC the following morning.
-//   * /healthz. A service that came back up is not the same as one that works.
-//
-// A failed health check rolls the tree back to the commit it started from and
-// restarts, so the box is never left on a version that does not serve.
+// Pull, reinstall if needed, re-sync the units, restart, verify — and roll back
+// the tree on a failed /healthz. See CLAUDE.md for what each step catches.
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -52,11 +37,8 @@ export function isUnitFile(name: string): boolean {
   return /\.(service|timer)$/.test(name)
 }
 
-/**
- * Only units this box already installed. A new one upstream is reported, never
- * copied in: `x-loc-heartbeat` and `x-loc-alert@` are opt-in and want an env
- * file that may not exist here.
- */
+/** Only units this box already has; a new one upstream is reported, never
+ *  copied in — the alert units are opt-in and need an env file. */
 export function unitPlan(
   repoUnits: string[],
   installed: (name: string) => boolean,
@@ -218,10 +200,8 @@ function pull(): Pulled {
   return { before, after, changed }
 }
 
-/**
- * The ABI check runs on every pass, not only when package.json moved: a Node
- * major upgrade breaks the native module without touching the repo at all.
- */
+/** Runs every pass: a Node major upgrade breaks the native module without
+ *  touching the repo at all. */
 function ensureDependencies(changed: string[]): void {
   const stale = !abiOk()
   if (!needsInstall(changed) && !stale) return

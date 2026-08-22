@@ -1,11 +1,5 @@
-// Shared plumbing for backup.ts, restore.ts and vacuum.ts. Policy stays in the
-// scripts.
-//
-// SQLite goes through the `sqlite3` CLI, not better-sqlite3: a Node major
-// upgrade without a rebuild takes the native module down, which is exactly the
-// outage where backups still have to run (alert.ts avoids SQLite for the same
-// reason). systemctl/sudo/chown/mv/curl stay spawned commands — they are
-// privileged steps either way, and the tests stub each one on PATH.
+// Shared plumbing for backup.ts, restore.ts and vacuum.ts; policy stays in the
+// scripts. See "Four things that look incidental" in CLAUDE.md.
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, rmSync, statSync } from 'node:fs'
@@ -32,10 +26,8 @@ export function run(command: string, args: string[]): CommandResult {
   }
 }
 
-/**
- * The CLI creates root-owned -wal/-shm beside a WAL database when they are
- * absent, which stops the service writing its own — hence `asUser`.
- */
+/** The CLI creates root-owned -wal/-shm when they are absent, which stops the
+ *  service writing its own — hence `asUser`. */
 export function sqlite(args: string[], asUser?: string): CommandResult {
   if (asUser) return run('sudo', ['-u', asUser, 'sqlite3', ...args])
   return run('sqlite3', args)
@@ -47,12 +39,8 @@ export interface Inspection {
   votes: number | null
 }
 
-/**
- * Both checks, because neither covers the other: `integrity_check` calls an
- * *empty* database "ok" — a failed `VACUUM INTO` leaves exactly that — so the
- * counts prove the tables arrived. An unparseable count is `null`, never a
- * number, so it cannot sail through the comparison meant to catch it.
- */
+/** Both checks: `integrity_check` calls an *empty* database "ok", so the counts
+ *  prove the tables arrived. An unparseable count is `null`, never a number. */
 export function inspect(dbFile: string, asUser?: string): Inspection {
   const integrity = sqlite([dbFile, 'PRAGMA integrity_check;'], asUser)
   const counted = sqlite(
@@ -77,12 +65,8 @@ export function uid(): number {
   return r.ok ? Number(r.out.trim()) : -1
 }
 
-/**
- * The unit's own env file, so a hand-run agrees with the timer. It overrides the
- * caller's environment on purpose — a stale `XLOC_DB` export must not decide
- * which database gets touched — so not `process.loadEnvFile`, which would leave
- * an already-set variable alone.
- */
+/** The unit's own env file, overriding the caller's environment: a stale
+ *  `XLOC_DB` export must not decide which database gets touched. */
 export function loadEnvFile(
   file: string = process.env.XLOC_ENV_FILE ?? '/etc/x-loc-cache.env',
 ): void {
@@ -133,10 +117,8 @@ export function reclaimPct(before: number, after: number): number {
   return Math.round(((before - after) / before) * 100)
 }
 
-/**
- * Takes -wal/-shm along: a WAL left behind belongs to a file that no longer
- * exists, and SQLite would replay it over the database that replaced it.
- */
+/** Takes -wal/-shm along, or SQLite replays a stale WAL over the database that
+ *  replaced it. */
 export function moveAside(dbFile: string, suffix: string): void {
   for (const part of ['', '-wal', '-shm']) {
     const from = `${dbFile}${part}`
@@ -156,13 +138,8 @@ export interface SwapGuard {
   swapped: boolean
 }
 
-/**
- * Cleanup for a swap that dies half-done. Between moving the old database aside
- * and moving the new one in there is a window one `mv` wide; dying inside it
- * leaves no database, and a restart there has SQLite create an empty one and
- * answer from it. So the original goes back first, and the service is restarted
- * whatever happened. Returns the flags the caller flips as it goes.
- */
+/** Cleanup for a swap that dies half-done — the original goes back first, and
+ *  the service is restarted whatever happened. See CLAUDE.md. */
 export function guardSwap(
   dbFile: string,
   suffix: string,

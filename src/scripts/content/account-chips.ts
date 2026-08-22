@@ -78,10 +78,8 @@ const protectedChip: ChipBuilder = (facts) =>
     ? { text: t('chipProtected'), title: t('chipProtectedTitle') }
     : null
 
-/**
- * In the order they are worth reading — blocked-you first, because it explains
- * everything else the card is missing. The order is all these rules share.
- */
+/** In the order they are worth reading — blocked-you first, because it explains
+ *  everything else the card is missing. */
 const CHIP_BUILDERS: ChipBuilder[] = [
   blockedByChip,
   ageChip,

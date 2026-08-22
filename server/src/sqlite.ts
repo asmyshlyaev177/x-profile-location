@@ -1,13 +1,5 @@
-// SQLite backend — a D1-shaped adapter over better-sqlite3.
-//
-// Implements exactly the interface in db-types.ts, which is all index.ts uses,
-// so the request handlers are shared verbatim with the Cloudflare Worker build.
-//
-// better-sqlite3 is synchronous: every query blocks the event loop for the few
-// microseconds it takes. That is the right trade here — these are single-index
-// lookups on a small table, and a synchronous driver means no connection pool,
-// no await interleaving, and a batch() that is a real transaction rather than a
-// best-effort sequence.
+// SQLite backend — a D1-shaped adapter over better-sqlite3, implementing only
+// db-types.ts. See "The Node deployment" in CLAUDE.md.
 
 import Database from 'better-sqlite3'
 import type { Statement } from 'better-sqlite3'
@@ -20,11 +12,8 @@ export interface SqliteConfig {
   path: string
   /** SQLite page cache ceiling. Real resident memory once the DB is big enough. */
   cacheMb: number
-  /**
-   * Memory-mapped I/O ceiling. Unlike cacheMb this is address space backed by
-   * the OS page cache, so the kernel reclaims it under pressure — safe to set
-   * well above free RAM.
-   */
+  /** Address space backed by the OS page cache, reclaimed under pressure —
+   *  safe well above free RAM, unlike cacheMb. */
   mmapMb: number
 }
 
@@ -48,9 +37,8 @@ class BoundStatement implements DbBoundStatement {
     this.#stmt.run(...(this.#args as never[]))
   }
 
-  // These are `async` purely so a driver error surfaces as a rejected promise
-  // rather than a synchronous throw — D1's contract, and what the caller's
-  // `await` expects. The body itself never yields.
+  // `async` only so a driver error rejects rather than throwing synchronously,
+  // which is D1's contract. The body never yields.
   async all<T = Record<string, unknown>>(): Promise<{ results?: T[] }> {
     return { results: this.#stmt.all(...(this.#args as never[])) as T[] }
   }
@@ -75,10 +63,8 @@ class PreparedStatement extends BoundStatement implements DbStatement {
 
 export class SqliteDb implements Db {
   #db: Database.Database
-  // Statement cache. The handlers build SQL with a variable number of `IN (?,…)`
-  // placeholders, so the text varies with batch size — bounded at ~2 × MAX_BATCH
-  // distinct strings, but capped anyway so a future caller can't grow it without
-  // limit. Eviction is oldest-first (Map preserves insertion order).
+  // Statement cache: SQL text varies with batch size, so it is capped and
+  // evicted oldest-first.
   #cache = new Map<string, Statement>()
   #cacheLimit = 512
 
@@ -99,10 +85,7 @@ export class SqliteDb implements Db {
     return new PreparedStatement(stmt)
   }
 
-  /**
-   * D1's batch() runs its statements in one implicit transaction; better-sqlite3
-   * gives us a real one. Only write statements are ever batched by index.ts.
-   */
+  /** D1 batches in one implicit transaction; this is a real one. */
   async batch(statements: DbBoundStatement[]): Promise<unknown> {
     const tx = this.#db.transaction((list: DbBoundStatement[]) => {
       for (const s of list) (s as BoundStatement).exec()
@@ -117,27 +100,19 @@ export class SqliteDb implements Db {
   }
 
   close(): void {
-    // Lets SQLite update its internal stats so the query planner starts warm
-    // next boot. Cheap, and the docs recommend it before closing a long-lived
-    // connection.
+    // Updates SQLite's internal stats so the planner starts warm next boot.
     this.#db.pragma('optimize')
     this.#db.close()
   }
 }
 
-/**
- * Open (creating if absent) the cache database and apply the schema. schema.sql
- * is all `CREATE TABLE IF NOT EXISTS`, so this is idempotent and there is no
- * separate migration step to forget on a fresh box.
- */
+/** Open (creating if absent) and apply schema.sql, which is idempotent — there
+ *  is no separate migration step to forget on a fresh box. */
 export function openDatabase(config: SqliteConfig): SqliteDb {
   const db = new Database(config.path)
 
-  // WAL lets the read path (the hot one) proceed while a contribution is
-  // writing. synchronous=NORMAL trades an fsync per commit for the OS's
-  // durability guarantees — on a crash the last few contributions can be lost,
-  // which for a best-effort crowdsourced cache is a fine trade for the write
-  // throughput. It is *not* corruption-prone; WAL still recovers cleanly.
+  // WAL + synchronous=NORMAL: reads proceed during a write, at the cost of the
+  // last few contributions on a crash. See CLAUDE.md.
   db.pragma('journal_mode = WAL')
   db.pragma('synchronous = NORMAL')
   db.pragma(`busy_timeout = ${DEFAULT_SQLITE_CONFIG.busyTimeoutMs}`)
