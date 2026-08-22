@@ -1,6 +1,5 @@
 // A resize above the fold makes X's timeline scroll the window by a multiple of
-// the height that changed. See "Resizing without moving the scroll" in
-// CLAUDE.md.
+// the height that changed. See "Resizing without moving the scroll".
 
 let pendingResizes = new WeakMap<Element, () => void>()
 let resizeObserverIO: IntersectionObserver | null = null
@@ -43,11 +42,8 @@ function getResizeObserver(): IntersectionObserver {
   return resizeObserverIO
 }
 
-/**
- * Run `apply` now when it won't move the scroll, otherwise when `target` next
- * has its top edge in view. Parking again replaces the pending call, so it is
- * always the newest verdict that lands.
- */
+/** Run `apply` now when it won't move the scroll, else when `target` next has
+ *  its top edge in view. Parking again replaces the pending call. */
 export function whenSafeToResize(target: Element, apply: () => void): void {
   if (!resizeAboveFold(target)) {
     cancelPendingResize(target)
@@ -65,12 +61,8 @@ export function cancelPendingResize(target: Element): void {
   resizeObserverIO?.unobserve(target)
 }
 
-/**
- * whenSafeToResize's counterpart for a node that has just been inserted and not
- * yet laid out. There is no height to change there — the post is collapsed
- * before it has ever been anything else — so there is nothing to wait for, and
- * waiting would itself create the resize this is all trying to avoid.
- */
+/** For a node inserted but not yet laid out: no height has changed yet, and
+ *  waiting would itself create the resize this avoids. */
 export function runNow(_target: Element, apply: () => void): void {
   apply()
 }

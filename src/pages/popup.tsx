@@ -69,10 +69,8 @@ function write(key: string, value: unknown) {
 /** Crypto donations, via NOWPayments. */
 const DONATE_URL = 'https://nowpayments.io/donation/asmyshlyaev177'
 
-/**
- * `openOptionsPage()` needs `options_ui` in the manifest, and `window.close()`
- * must not run synchronously after it — that cancels the open it just asked for.
- */
+/** `window.close()` must not run synchronously after `openOptionsPage()` —
+ *  that cancels the open it just asked for. */
 async function openOptions() {
   try {
     if (chrome.runtime.openOptionsPage) {
@@ -90,10 +88,8 @@ async function openOptions() {
   window.close()
 }
 
-/**
- * A button and a body, not `<details>`: `<details open>` fires `toggle` as it
- * mounts, so restoring a remembered section wrote it straight back to storage.
- */
+/** A button and a body, not `<details>`: `<details open>` fires `toggle` as it
+ *  mounts, so restoring a section wrote it straight back to storage. */
 function Section({
   id,
   title,
@@ -254,13 +250,8 @@ export function Popup() {
       })
   }, [])
 
-  // The one thing in this panel that costs a request, so it asks only while the
-  // panel is open — and keeps asking, because the number belongs to everyone
-  // using the cache and moves while you are looking at it. What keeps that from
-  // being a load on the server is in shared-cache.ts, above COUNT_POLL_MS.
-  //
-  // Held back until `loaded`: the defaults say the cache is on, and asking on
-  // those before storage answers would query a server the user opted out of.
+  // Asks only while the panel is open, and held back until `loaded`: asking on
+  // the defaults would query a server the user may have opted out of.
   useEffect(() => {
     if (!loaded || !enabled || !sharedCache || !isSharedCacheConfigured()) {
       return

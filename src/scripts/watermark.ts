@@ -63,10 +63,7 @@ function parseRgb(value: string): Rgba | null {
   }
 }
 
-/**
- * Ink that stays readable on `background`. Anything unreadable or see-through
- * falls back to the mid grey that works on both — an invisible mark is no mark.
- */
+/** Ink readable on `background`; anything see-through falls back to mid grey. */
 export function watermarkInk(background: string): string {
   const color = parseColor(background)
   if (!color || color.alpha < 0.5) return INK_ON_EITHER

@@ -63,10 +63,7 @@ function substitute(message: string, subs: string[]): string {
   )
 }
 
-/**
- * The localized string for `key`, falling back to the key itself — a missing
- * message should be greppable in a bug report rather than an invisible gap.
- */
+/** The localized string for `key`, falling back to the key itself. */
 export function t(key: string, ...subs: (string | number)[]): string {
   const strings = subs.map(String)
   const local = injected?.[key] ?? chosen?.[key]
@@ -77,21 +74,15 @@ export function t(key: string, ...subs: (string | number)[]): string {
   return message ? message : key
 }
 
-/**
- * Which locale the strings are coming from, read out of the catalogue rather
- * than asked of the browser — which answers differently, see CLAUDE.md.
- */
+/** Read out of the catalogue, not asked of the browser — see CLAUDE.md. */
 export function uiLocale(): string {
   const tag = t('localeTag')
   // `t` falls back to the key, which is not a locale anything can parse.
   return tag === 'localeTag' ? 'en' : tag
 }
 
-// ---------------------------------------------------------------------------
-// Loading a chosen language
-// ---------------------------------------------------------------------------
-// A content script cannot read `_locales/` without exposing it to x.com, so it
-// asks the service worker instead. See "Localization" in CLAUDE.md.
+// Loading a chosen language: a content script cannot read `_locales/` without
+// exposing it to x.com, so it asks the service worker. See CLAUDE.md.
 
 function isExtensionPage(): boolean {
   return /^(chrome|moz|safari-web)-extension:$/.test(

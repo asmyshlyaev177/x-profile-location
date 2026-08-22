@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { LOOKUP_WINDOW_MS } from '../constants'
 import {
   type BrokerOptions,
   IDLE_POLL_MS,
@@ -13,7 +14,7 @@ import { PACING_DEFAULTS } from './prefetch-queue'
 // the pacing suite sets a real gap.
 // ---------------------------------------------------------------------------
 const START = 1_000_000
-const WINDOW = 15 * 60 * 1000
+const WINDOW = LOOKUP_WINDOW_MS
 
 function makeBroker(options: BrokerOptions = {}) {
   let now = START

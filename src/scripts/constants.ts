@@ -15,12 +15,16 @@ export const X_TAB_PATTERNS = [
   '*://twitter.com/*',
 ] as const
 
-/** How long a 429 pauses lookups when X sends no `x-rate-limit-reset`. */
-export const RATE_LIMIT_RESET_DEFAULT_MS = 5 * 60 * 1000
+// Measured live; the real budget comes from the x-rate-limit-* headers.
+// Everything that counts in windows derives from these.
+export const LOOKUP_LIMIT_PER_WINDOW = 50
+export const LOOKUP_WINDOW_MINUTES = 15
+export const LOOKUP_WINDOW_MS = LOOKUP_WINDOW_MINUTES * 60 * 1000
 
-// Content script ⇄ service worker. The three requests belong to the lookup
-// broker; the two broadcasts are what it pushes back. See "Cross-tab lookup
-// broker" in CLAUDE.md.
+/** How long a 429 pauses lookups when X sends no `x-rate-limit-reset`. */
+export const RATE_LIMIT_RESET_DEFAULT_MS = LOOKUP_WINDOW_MS / 3
+
+// Content script ⇄ service worker — see "Cross-tab lookup broker" in CLAUDE.md.
 export const MSG = {
   CLEAR_CACHE: 'CLEAR_CACHE',
   SHARE_POST: 'SHARE_POST',
@@ -42,52 +46,8 @@ export const MSG = {
 export const CACHE_API_BASE =
   import.meta.env?.VITE_CACHE_API_BASE ?? 'https://xloc.vmirrormanv.xyz'
 
-// Every chrome.storage.local key the extension owns. The value behind each one is
-// read only through settings.ts — see "Storage keys" in countries/CLAUDE.md.
-// Accounts exempt from every filter — never hidden, collapsed or highlighted.
-// The blunt instrument, for people you always want to read.
-// Per-rule exception lists: `{ location: ['someone'], age: [...] }`. Generalised
-// from a single highlight-exception list, so a new filter doesn't mean a fourth
-// parallel list, key and UI — or a user learning which one a name belongs in.
-// Filter accounts younger than `days`. Off by default: this is the filter most
-// likely to catch someone whose only offence is having joined recently.
-// The parent handle, lowercased and without @: an org renames its badge freely,
-// but not what it points at.
-// The hover-card "Copy card" button. On by default: a feature reachable only by
-// right-clicking is one most people never discover.
-// On by default: the data rides along with responses we already receive.
-// Collapsed by default but remembered: adding three countries shouldn't mean
-// three re-opens in a ~300px popup.
-// The extension's own pages only: what the content script draws follows X's
-// theme, or a light card lands on a dark timeline.
-// The only options-page UI state left to remember; an older version's
-// `optionsSections` is never read.
-// Whether the options page reveals Advanced. Off by default: what it holds are
-// documented trade-offs, not preferences.
-// A setting rather than a constant, and kept behind Advanced. See "Community
-// cache consensus" in CLAUDE.md.
-// How background prefetch spends its share.
-//   'spread'  — trickle over the time left in the window (default)
-//   'instant' — as fast as allowed, then wait the window out
-// Fraction of the rate-limit window background prefetch may spend; 0.8 leaves 10
-// of 50 for the user's own hovers. Feeds BackgroundPrefetcher.reserveFraction.
-// Warm the caches for on-screen accounts in page order, so flags appear without
-// hovering. Spends at most PREFETCH_SHARE_KEY of the rate-limit window.
-// What the shared cache last said it holds, so the popup opens with a number
-// instead of a gap and still has one to show when the server can't be reached.
-// Not a setting — a remembered answer is not a decision, so it stays out of
-// SETTINGS_REGISTRY and out of an export, like `usageStats`.
-// Query the shared community cache and contribute results back. Inert unless
-// CACHE_API_BASE is configured.
-// What happens to a post whose author's location is on the blocked list.
-//   'off'      — show normally
-//   'collapse' — a slim placeholder with a "Show" (default)
-//   'hide'     — remove silently, no trace
-// Whether to show the one-click exception button on profile hover cards (and on
-// the primary tweet of a status page, which X opens no hover card for).
-// Usernames (lowercased) that should never be highlighted, even when they match
-// a keyword or flag rule — e.g. accounts using a keyword sarcastically ("no NAFO").
-// Off means X renders exactly as it would with the extension uninstalled.
+// Every chrome.storage.local key the extension owns, read only through
+// settings.ts — see "Settings: keys, normalizers, defaults" in CLAUDE.md.
 export const EXTENSION_ENABLED_KEY = 'extensionEnabled'
 export const BLOCKED_COUNTRIES_KEY = 'blockedCountries'
 // Members unchecked under a blocked region — see RegionExclusions.

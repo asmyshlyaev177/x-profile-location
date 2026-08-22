@@ -38,6 +38,30 @@ another tab, via `noteRateLimit()`, which shows the countdown in the same breath
 match mode). `content.tsx` keeps only the display settings and the page's own bookkeeping.
 `__testResetState()` is exported for tests and calls every module's reset.
 
+## Asking again for the account in front of the reader
+
+A hover card and a swipe both pass `{ manual: true }` to `fetchLocationData`. That
+takes the lookup past the "already in IDB" and "already asked this session"
+short-circuits, because the gesture is the reader asking about _this_ account now
+and a cached location can be up to 30 days old — the same staleness the broker's
+5% revalidation reserve exists to chip away at, spent here on the account being
+looked at.
+
+Bounded two ways, and both matter:
+
+- **One request per handle per rate-limit window** (`LOOKUP_WINDOW_MS`), stamped
+  when a request actually leaves — not when the gesture happens. A hover that found
+  no auth headers or a closed rate-limit window asked X nothing, so the next one is
+  free to try. Beyond that the gesture is answered from the cache as before.
+- **The cached answer survives a failed refetch.** Rate-limited, offline, X refusing
+  — a revalidation that cannot complete returns what was stored rather than `null`,
+  or hovering a known account during a spent window would replace its location row
+  with the rate-limit retry row.
+
+Each successful refetch also contributes a fresh first-hand vote to the community
+cache, which is what lets a relocated account's new location overtake the old
+consensus there.
+
 ## The bio X declined to render
 
 An account that **blocks the signed-in user** gets a stripped hover card: avatar, name,

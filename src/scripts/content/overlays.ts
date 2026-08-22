@@ -1,7 +1,5 @@
-// The bottom-centre slot: the rate-limit countdown, the swipe answer, and the
-// rating ask, which take it from each other in that order of priority. The
-// countdown owns the window it counts down to — every writer of that number
-// shows the toast in the same breath.
+// The bottom-centre slot: the rate-limit countdown, the swipe answer and the
+// rating ask, in that order of priority.
 
 import type { LocationData } from '../cache/cache'
 import { t } from '../i18n'
@@ -29,9 +27,7 @@ export function formatCountdown(ms: number): string {
   return m > 0 ? t('countdownMinSec', m, sec) : t('countdownSec', sec)
 }
 
-// ---------------------------------------------------------------------------
 // Rate limit toast
-// ---------------------------------------------------------------------------
 /** A click closes the countdown and keeps it closed for this window. */
 export function dismissRateLimitToast(): void {
   rateLimitToastDismissedUntil = rateLimitResetAt
@@ -88,19 +84,13 @@ export function showRateLimitToast(force = false) {
   rateLimitToastInterval = setInterval(tick, 1000)
 }
 
-// ---------------------------------------------------------------------------
 // Location overlay toast (mobile swipe feedback)
-// ---------------------------------------------------------------------------
 const LOCATION_TOAST_MS = 2500
 
 let locationToastTimer: ReturnType<typeof setTimeout> | null = null
 
-/**
- * One-line summary for the swipe overlay, or '' when there is nothing to say.
- * The store country outranks the stated location, and one that *matches* it
- * corroborates it — so that pairing drops the VPN warning even when X flagged
- * the location inaccurate. Exported for tests.
- */
+/** One-line summary for the swipe overlay, or '' when there is nothing to say.
+ *  A store country matching the stated location drops the VPN warning. */
 export function locationSummaryText(
   data: LocationData,
   userName?: string | null,
@@ -151,11 +141,7 @@ export function showLocationOverlay(
   renderLocationToast(text)
 }
 
-// ---------------------------------------------------------------------------
-// The rating ask
-// ---------------------------------------------------------------------------
-// The popup's ask, put where people actually are. See "The rating ask" in
-// CLAUDE.md for the rules it has to keep.
+// The rating ask — see "The rating ask" in CLAUDE.md for its rules.
 
 /** Long enough that the flag it is riding on has been read. */
 const RATING_ASK_DELAY_MS = 6000
@@ -166,10 +152,8 @@ export function dismissRatingAsk(): void {
   document.getElementById(RATING_ASK_ID)?.remove()
 }
 
-/**
- * The manifest's own icon, inlined by `?inline` — a fetchable extension URL is
- * something x.com can probe for, even while the extension is paused.
- */
+/** Inlined by `?inline`: a fetchable extension URL is something x.com can
+ *  probe for, even while the extension is paused. */
 function buildBrandMark(): HTMLImageElement {
   const img = document.createElement('img')
   img.src = toolbarIconUrl
@@ -237,10 +221,7 @@ function showRatingAsk(): void {
   void noteRatingAskShown()
 }
 
-/**
- * Called once per page, after the day has been counted — the count is what
- * decides the ask, so checking before it lands would be a day behind.
- */
+/** Called once per page, after the day has been counted. */
 export async function considerRatingAsk(
   stillEnabled: () => boolean,
 ): Promise<void> {

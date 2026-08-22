@@ -1,16 +1,11 @@
 // Type-only, so this module keeps its runtime independence from everything else.
+import { LOOKUP_WINDOW_MS } from '../constants'
 import type { PrefetchPacing } from '../settings'
-// The candidate queue and the pacing arithmetic behind background lookups.
-//
-// No timers, no fetching and no rate-limit state of its own: `lookup-broker.ts`
-// holds one queue per tab and one clock for all of them, so N open x.com tabs
-// still trickle at one shared rate. See "Cross-tab lookup broker" in CLAUDE.md.
+// The candidate queue and the pacing arithmetic behind background lookups. No
+// timers, no fetching, no rate-limit state — see "Cross-tab lookup broker".
 
-/**
- * Which queue a candidate lands in. 'high' — the feed being scrolled — drains to
- * exhaustion before 'low' — a thread's replies — gets a single lookup. The tweet
- * the user opened never comes through here; processPrimaryTweet() fetches it.
- */
+/** 'high' (the feed being scrolled) drains to exhaustion before 'low' (a
+ *  thread's replies) gets a single lookup. */
 export type PrefetchPriority = 'high' | 'low'
 
 /** Grant order within one queue, and across every queue the broker holds. */
@@ -23,10 +18,8 @@ export interface PrefetchCandidate {
 }
 
 export interface RateState {
-  /**
-   * Lookups left in the window. Seeded at `limit`, decremented on every request
-   * and corrected from x-rate-limit-remaining — so hovers count too.
-   */
+  /** Seeded at `limit`, decremented per request and corrected from
+   *  x-rate-limit-remaining — so hovers count too. */
   remaining: number
   /** Per-window total (x-rate-limit-limit). */
   limit: number
@@ -37,20 +30,12 @@ export interface RateState {
 }
 
 export interface PacingOptions {
-  /**
-   * Fraction of the window prefetch may spend; the rest is reserved for hovers.
-   * 0.8 leaves the last 10 of 50. Options page, live via the broker.
-   */
+  /** Fraction of the window prefetch may spend; the rest is for hovers. */
   reserveFraction?: number
-  /**
-   * 'spread' (default) trickles the share over the window; 'instant' spends it at
-   * minSpacingMs and then idles. Same share either way.
-   */
+  /** 'spread' trickles the share over the window; 'instant' spends it at
+   *  minSpacingMs and then idles. Same share either way. */
   pacing?: PrefetchPacing
-  /**
-   * Floor on the paced gap, and the whole gap under 'instant'. Keeps the tail of
-   * a window a trickle rather than a burst.
-   */
+  /** Floor on the paced gap, and the whole gap under 'instant'. */
   minSpacingMs?: number
   /** Ceiling on the paced gap, so a stale reset can't park a queue with work in it. */
   maxSpacingMs?: number
@@ -67,7 +52,7 @@ export const PACING_DEFAULTS: Required<PacingOptions> = {
   pacing: 'spread',
   minSpacingMs: 1500,
   maxSpacingMs: 2 * 60 * 1000,
-  windowMs: 15 * 60 * 1000,
+  windowMs: LOOKUP_WINDOW_MS,
   sprintShare: 0.25,
   sprintSpacingMs: 3000,
 }
@@ -83,10 +68,8 @@ export interface QueueSnapshot {
 
 const names = (queue: PrefetchCandidate[]) => queue.map((c) => c.userName)
 
-/**
- * Two queues, deduped by lowercased handle: page order within a batch, newest
- * batch first. Reads and writes only — whoever owns one decides when to drain it.
- */
+/** Two queues, deduped by lowercased handle: page order within a batch, newest
+ *  batch first. Whoever owns one decides when to drain it. */
 export class CandidateQueue {
   // `high` is offered completely before `low`, so a thread full of replies can't
   // push the feed aside.
@@ -103,12 +86,8 @@ export class CandidateQueue {
     this.maxQueue = maxQueue
   }
 
-  /**
-   * Put candidates in front of everything queued before them, in the order
-   * given: the tweet just opened is what the user is looking at, and the feed
-   * they scrolled past can wait. Dedup keeps the slot a name already holds; a
-   * 'low' name seen as 'high' is promoted, never the reverse.
-   */
+  /** Newest batch first. Dedup keeps the slot a name already holds; a 'low'
+   *  name seen as 'high' is promoted, never the reverse. */
   enqueue(candidates: PrefetchCandidate[]): boolean {
     const fresh: Record<PrefetchPriority, PrefetchCandidate[]> = {
       high: [],
@@ -137,10 +116,7 @@ export class CandidateQueue {
     return added
   }
 
-  /**
-   * Drop the oldest batch from whichever queue is longer, `low` on a tie —
-   * emptying `low` first threw away every reply author a busy feed outgrew.
-   */
+  /** Drop the oldest batch from whichever queue is longer, `low` on a tie. */
   private trimToMaxQueue(): void {
     let overflow = this.high.length + this.low.length - this.maxQueue
     while (overflow > 0) {
@@ -232,10 +208,8 @@ function usableShare(rate: RateState, reserveFraction: number): number {
 /** Share of the budget re-asking about known accounts. See "Revalidation" in CLAUDE.md. */
 export const REVALIDATE_SHARE = 0.05
 
-/**
- * Lookups per window spent on known accounts. Floored at one: rounding to zero
- * would switch revalidation off on exactly the smallest budgets.
- */
+/** Lookups per window spent on known accounts. Floored at one: rounding to
+ *  zero would switch revalidation off on the smallest budgets. */
 export function revalidateBudget(
   rate: RateState,
   reserveFraction: number,
@@ -256,11 +230,8 @@ export function prefetchBudget(
   return Math.max(0, rate.remaining - reservedForUser)
 }
 
-/**
- * How long to wait before the next lookup: until a 429 lifts, until the window
- * refills when the budget is spent, or else the window left over the budget
- * left, clamped — which is what spreads the share evenly.
- */
+/** Until a 429 lifts, until the window refills, or else the window left over
+ *  the budget left, clamped — which spreads the share evenly. */
 export function nextDelayMs(
   rate: RateState,
   opts: Required<PacingOptions>,

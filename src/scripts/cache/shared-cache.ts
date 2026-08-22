@@ -4,7 +4,11 @@ import {
   normalizeMinConfidence,
   normalizeSharedCacheCount,
 } from '../settings'
-import { CACHE_API_BASE, SHARED_CACHE_COUNT_KEY } from '../constants'
+import {
+  CACHE_API_BASE,
+  LOOKUP_WINDOW_MS,
+  SHARED_CACHE_COUNT_KEY,
+} from '../constants'
 // Client for the community location cache (../../server). Only
 // location/source/accurate go over the wire — never bios or who looked up whom.
 
@@ -19,7 +23,9 @@ export function setMinConfidence(value: unknown): void {
 }
 
 const NEG_TTL_MS = 60 * 60 * 1000 // remember "server had nothing" for 1h
-const QUERIED_TTL_MS = 15 * 60 * 1000 // don't re-query the same name within 15m
+// Don't re-query the same name within one lookup window — the same bound the
+// rest of the extension asks X on.
+const QUERIED_TTL_MS = LOOKUP_WINDOW_MS
 // Sent sooner on MAX_CONTRIB or a hidden tab.
 export const FLUSH_DELAY_MS = 30_000
 const MAX_CONTRIB = 50
@@ -48,7 +54,7 @@ export function isSharedCacheEnabled(): boolean {
   return enabled
 }
 
-// --- anonymous, per-install client id (contributions only) -------------------
+// Anonymous, per-install client id (contributions only)
 let clientIdPromise: Promise<string> | null = null
 function getClientId(): Promise<string> {
   if (!clientIdPromise) {
@@ -74,7 +80,7 @@ function forgetQueried(batch: string[]): void {
   for (const u of batch) recentlyQueried.delete(u)
 }
 
-// --- resilience: timeout + circuit breaker -----------------------------------
+// Resilience: timeout + circuit breaker
 let consecutiveFailures = 0
 let breakerTrips = 0
 let breakerOpenUntil = 0
@@ -195,7 +201,7 @@ export async function sharedBatchLookup(
   }
 }
 
-// --- contributions -----------------------------------------------------------
+// Contributions
 interface OutVote {
   u: string
   loc: string | null
@@ -269,12 +275,8 @@ export function flushContributions(): void {
   void flush()
 }
 
-// --- how much the cache holds ------------------------------------------------
-// The popup shows this, and only while it is open. Three things keep it off the
-// server: nobody asks unless a popup is on screen, the answer carries a
-// `max-age` so a re-ask inside that window never leaves the browser, and the
-// server memoises the count for the same window — so what does get through
-// costs one `COUNT(*)` between every reader, not one each.
+// How much the cache holds — shown in the popup, and only while it is open.
+// See "The count the popup shows" in CLAUDE.md.
 
 /** How often the popup re-asks while it is open. Under the server's max-age. */
 export const COUNT_POLL_MS = 30_000
@@ -282,13 +284,8 @@ export const COUNT_POLL_MS = 30_000
 /** Older than this, a remembered number says more about the gap than the cache. */
 const COUNT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
-/**
- * Accounts the shared cache can answer for, or null when there is nobody to ask
- * or the answer didn't come. Outside the circuit breaker on purpose: the breaker
- * exists to stop a scrolling timeline retrying a struggling server, and this
- * asks at most twice a minute while a popup is open — it also must not go blank
- * because lookups in a different tab tripped it.
- */
+/** Accounts the shared cache can answer for, or null. Outside the circuit
+ *  breaker on purpose — see CLAUDE.md. */
 export async function fetchCacheCount(): Promise<number | null> {
   if (!isSharedCacheConfigured()) return null
   try {
@@ -306,12 +303,8 @@ export async function fetchCacheCount(): Promise<number | null> {
   }
 }
 
-/**
- * The last answer, if it is recent enough to still mean something. `at` is when
- * the number last *moved*, so a cache whose count has stood still for a week is
- * one nothing is contributing to — and a stale figure is worse than the second
- * of blank before the live one lands.
- */
+/** The last answer, if recent enough to still mean something. `at` is when the
+ *  number last *moved*. */
 export function rememberedCount(
   stored: Record<string, unknown>,
   now = Date.now(),
@@ -321,11 +314,8 @@ export function rememberedCount(
   return count.n
 }
 
-/**
- * Ask, and remember the answer for the next popup. Stored only when the number
- * actually moved — every write wakes the service worker and each open x.com
- * tab's storage listener, and this runs on a timer.
- */
+/** Ask, and remember the answer for the next popup. Stored only when the
+ *  number moved — every write wakes the worker and every tab's listener. */
 export async function refreshCacheCount(): Promise<number | null> {
   const n = await fetchCacheCount()
   if (n === null) return null

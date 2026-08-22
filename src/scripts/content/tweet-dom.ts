@@ -1,6 +1,5 @@
-// X's own markup, and the readers over it. A data-testid X renames breaks this
-// file and nothing else — the rest of the content script asks these functions
-// what a post says rather than what it is made of.
+// X's own markup and the readers over it. A data-testid X renames breaks this
+// file and nothing else.
 
 export const SEL_HOVER_CARD = '[data-testid="HoverCard"]'
 export const SEL_USER_NAME = '[data-testid="UserName"] a[href]'

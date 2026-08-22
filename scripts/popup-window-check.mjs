@@ -1,25 +1,6 @@
 #!/usr/bin/env node
-// Does the popup window keep its width while the panel grows?
-//
-//   pnpm test:popup-window
-//
-// Chrome sizes the popup window to the document, so anything that widens the
-// document when content grows — a scrollbar, most of all — moves the whole
-// popup sideways under the reader. Nothing else in the repo can see that:
-// Playwright cannot open a browser-action popup, headless Chromium draws
-// overlay scrollbars (no width to take), and a popup page opened as a tab is
-// sized by the tab, not by Chrome's own measurement.
-//
-// So this drives the real thing: a headed browser under Xvfb, the real action
-// popup, and raw CDP to read it, because the popup is not a Playwright page.
-//
-// `chrome.action.openPopup()` refuses to open on a window Chrome does not
-// consider active, and bare Xvfb has no window manager to make one active —
-// whether a fresh browser lands focused is luck, so a launch that cannot open
-// the popup is retried from scratch rather than reported as a width failure.
-// Under a WM (a real desktop, or `xvfb-run` with openbox) the first try works.
-//
-// Requires: xvfb-run and a built extension in dist/chrome.
+// Does the popup window keep its width while the panel grows? Needs xvfb-run and
+// a built dist/chrome; see CLAUDE.md for why nothing else can see this.
 
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'

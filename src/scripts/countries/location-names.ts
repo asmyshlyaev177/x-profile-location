@@ -157,10 +157,8 @@ export function aliasNote(
   return alias && alias !== localizedLocation(canonical) ? alias : undefined
 }
 
-/**
- * Localized names folded into the alias table, additively — "Япония" finds
- * Japan, and so do "Japan" and "JP" for whoever thinks in another language.
- */
+/** Localized names folded into the alias table additively: "Япония", "Japan"
+ *  and "JP" all find Japan. */
 export function withLocalizedAliases(
   base: Record<string, string[]>,
 ): Record<string, string[]> {

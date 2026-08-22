@@ -16,11 +16,8 @@ const modeOptions = () => (
   </>
 )
 
-/**
- * The keyword input with the mode the next keyword will be added under. The
- * choice sticks, so a run of partial keywords is chosen once rather than fixed
- * one badge at a time afterwards.
- */
+/** The keyword input, with the mode the next keyword is added under. The choice
+ *  sticks, so a run of partial keywords is chosen once. */
 export function KeywordAddRow({
   mode,
   onMode,
@@ -54,12 +51,8 @@ export interface KeywordChipsProps {
   onChange: (next: Keyword[]) => void
 }
 
-/**
- * The keyword list, each chip carrying the choice that decides how its own
- * keyword is read. One select per keyword rather than one for the whole list:
- * "nft" wants to be found inside "NFTguy" and "art" does not want to be found
- * inside "partido".
- */
+/** One select per keyword, not one for the list: "nft" wants to be found inside
+ *  "NFTguy" and "art" does not want to be found inside "partido". */
 export function KeywordChips({
   keywords,
   classes,

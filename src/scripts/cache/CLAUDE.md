@@ -64,3 +64,18 @@ each open tab's storage listener. `at` is therefore when the number last _moved_
 that hasn't in a week is dropped rather than shown. A server that 404s reads as "no
 answer": the line keeps what it had, or stays away. Nothing about the reader goes with the
 request — a bodyless GET, same response for everyone.
+
+## The count the popup shows
+
+`/v1/stats` is asked only while a popup is on screen, and three things keep it off the
+server: nobody asks without a popup open, the answer carries a `max-age` so a re-ask
+inside that window never leaves the browser, and the server memoises the count for the
+same window — so what does get through costs one `COUNT(*)` between every reader.
+
+It sits **outside the circuit breaker** on purpose. The breaker exists to stop a
+scrolling timeline retrying a struggling server; this asks at most twice a minute, and
+must not go blank because lookups in another tab tripped it.
+
+The remembered answer's `at` is when the number last _moved_: a count that has stood
+still for a week belongs to a cache nothing is contributing to, and a stale figure is
+worse than the second of blank before the live one lands.

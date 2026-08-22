@@ -44,9 +44,7 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
     }
   })
 
-  // ---------------------------------------------------------------------------
   // Bio extraction from timeline/tweet API responses
-  // ---------------------------------------------------------------------------
   const BIO_INTERCEPT: Array<[operation: string, priority: PrefetchPriority]> =
     [
       ['HomeTimeline', 'high'],
@@ -121,9 +119,7 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
     userBuffer.clear()
   })
 
-  // ---------------------------------------------------------------------------
   // Wrap fetch
-  // ---------------------------------------------------------------------------
 
   /** The URL of a fetch() argument, in whichever of its three forms it arrived. */
   function requestUrl(input: RequestInfo | URL): string {
@@ -140,10 +136,7 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
     return headers
   }
 
-  /**
-   * Headers as lowercased name → value. fetch() takes them as a Headers, pairs or
-   * a plain object, on the init or (with a Request) the input — all land here.
-   */
+  /** Headers as lowercased name → value, from every shape fetch() accepts. */
   function requestHeaders(
     input: RequestInfo | URL,
     init?: RequestInit,
@@ -187,9 +180,7 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
     return promise
   }
 
-  // ---------------------------------------------------------------------------
   // Wrap XMLHttpRequest
-  // ---------------------------------------------------------------------------
   const OriginalXHR = window.XMLHttpRequest
   function PatchedXHR(this: XMLHttpRequest) {
     const xhr = new OriginalXHR()
