@@ -31,9 +31,8 @@ export const baseManifest = {
     // Toolbar tooltip. Was `pkg.name`, which is now the npm-style `x-pat` —
     // correct as a package name, wrong as something a user reads.
     default_title: '__MSG_actionTitle__',
-    // Its own page since the Phase 2 options redesign. Pointing this at
-    // options.html made the settings page unable to grow past what fits in a
-    // popup panel.
+    // Its own page: pointing this at options.html capped the settings page at
+    // what fits in a popup panel.
     default_popup: 'pages/popup.html',
   },
 
@@ -43,16 +42,8 @@ export const baseManifest = {
     email: pkg.author.email,
   },
 
-  // Required for `chrome.runtime.openOptionsPage()` to do anything at all — it
-  // throws "No Options page defined" without this key, which is what broke the
-  // popup's "All settings" link. Nothing declared it before, because until the
-  // popup was split out, `default_popup` *was* the options page and nothing
-  // ever needed to open it.
-  //
-  // `open_in_tab` because this page is now a full-width five-tab settings
-  // screen; the embedded dialog Chrome otherwise shows is the same cramped box
-  // the redesign existed to escape. It also gives the browser's own extension
-  // menu a working Options entry for free.
+  // Required for `chrome.runtime.openOptionsPage()` to work at all — see "Keys
+  // that are load-bearing" in CLAUDE.md.
   options_ui: {
     page: 'pages/options.html',
     open_in_tab: true,
@@ -84,10 +75,8 @@ export const baseManifest = {
       ],
     },
   ],
-  // Only the MAIN-world page-script chunks need to be web-accessible; the build
-  // plugin appends those specific hashed files automatically. We intentionally do
-  // NOT expose pages/* (e.g. options.html) or a broad assets/* wildcard — that
-  // only lets x.com fingerprint / probe the extension without any functional need.
+  // Only the MAIN-world page-script chunks, appended by the build plugin. Never
+  // pages/* or a broad assets/* — that lets x.com fingerprint the extension.
   web_accessible_resources: [
     {
       resources: [],

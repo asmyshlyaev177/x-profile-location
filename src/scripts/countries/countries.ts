@@ -805,11 +805,8 @@ REGION_MEMBERS['East Asia & Pacific'] = [
   ]),
 ]
 
-/**
- * Members the user has unchecked under a blocked region, keyed by region: a
- * country dropped from one region is still blocked through another that keeps
- * it, and through its own chip.
- */
+/** Members unchecked under a blocked region, keyed by region — a country
+ *  dropped from one is still blocked through another that keeps it. */
 export type RegionExclusions = Record<string, string[]>
 
 /** The members of `region` still covered by it. */
@@ -823,11 +820,8 @@ export function includedMembers(
   return members.filter((m) => !dropped.has(canonicalLocation(m)))
 }
 
-/**
- * Each region replaced by itself plus the members it still covers — X reports
- * both shapes. Only the content script expands; storage keeps the user's picks
- * as they made them.
- */
+/** Each region plus the members it still covers — X reports both shapes.
+ *  Only the content script expands; storage keeps the user's picks. */
 export function expandLocations(
   list: Iterable<string>,
   exclusions: RegionExclusions = {},

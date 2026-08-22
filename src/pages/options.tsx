@@ -9,8 +9,6 @@ import {
   formatAgeChoice,
   type HideBlockedMode,
   importSettings,
-  LOOKUP_LIMIT_PER_WINDOW,
-  LOOKUP_WINDOW_MINUTES,
   MIN_CONFIDENCE_CHOICES,
   normalizeAccountAge,
   normalizeHandle,
@@ -44,6 +42,8 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  LOOKUP_LIMIT_PER_WINDOW,
+  LOOKUP_WINDOW_MINUTES,
   MIN_CONFIDENCE_KEY,
   MSG,
   OPTIONS_TAB_KEY,
@@ -146,9 +146,8 @@ const KEYWORD_SUGGESTIONS = [
   'onlyfans',
 ].sort((a, b) => a.localeCompare(b))
 
-// --- layout pieces ----------------------------------------------------------
-// Every section is a Card and every control a Setting, so the rhythm can't drift
-// as settings are added — you find one by reading down the left edge.
+// Every section is a Card and every control a Setting, so the rhythm can't
+// drift as settings are added.
 
 function Card({
   title,
@@ -209,8 +208,8 @@ function Stack({ children }: { children: ComponentChildren }) {
   return <div class={css.stack}>{children}</div>
 }
 
-// A settings page's branches are its settings. Getting under the threshold means
-// five tab components, which a linter should not be the one to drive.
+// A settings page's branches are its settings; splitting into five tab
+// components is not a linter's call.
 // oxlint-disable-next-line complexity
 export function Options() {
   const [tab, setTab] = useState<OptionsTabId>('display')
@@ -346,10 +345,7 @@ export function Options() {
     chrome.storage.local.set({ [OPTIONS_TAB_KEY]: next })
   }
 
-  /**
-   * Reloaded, not re-rendered: the name tables are built once per mount, and a
-   * page showing two languages at once is worse than one that blinks.
-   */
+  /** Reloaded, not re-rendered: the name tables are built once per mount. */
   function updateLanguage(next: string) {
     setLanguage(next)
     chrome.storage.local.set({ [UI_LANGUAGE_KEY]: next })
@@ -477,9 +473,8 @@ export function Options() {
     })
   }
 
-  // --- import / export -------------------------------------------------------
   // An anchor and a file picker, not the `downloads` permission: one JSON file
-  // is not worth a scarier install prompt for every user.
+  // is not worth a scarier install prompt.
   async function handleExport() {
     const file = await exportSettings()
     const blob = new Blob([JSON.stringify(file, null, 2)], {

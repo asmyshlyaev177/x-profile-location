@@ -1,20 +1,5 @@
-// Request counters for the Node deployment.
-//
-// Cloudflare's dashboard gave this away for free; a self-hosted box has to
-// produce it itself. Everything here is an in-process counter plus, at log
-// time, a few COUNT(*) queries — no time-series store, no per-request rows, and
-// nothing on disk beyond the log line.
-//
-// Counters are per *window*, reset each time they are logged, because the
-// question is "what happened today", not "since when did this process last
-// restart". A restart therefore loses the partial window, which is why
-// node-server.ts also emits a snapshot on SIGTERM.
-//
-// On privacy: contributions carry an anonymous per-install clientId, already
-// stored in location_votes, so distinct-users is derivable without recording
-// anything new. Lookups carry no identity at all — there is deliberately no
-// per-IP accounting in here, and adding some would make the server able to
-// profile who looks up whom, which is exactly what it promises not to do.
+// Request counters for the Node deployment: in-process, per window, no per-IP
+// accounting ever. See "Stats cost what they measure" in CLAUDE.md.
 
 export interface StatsSnapshot {
   /** ISO timestamp the window opened. */
@@ -47,11 +32,8 @@ export interface StatsSnapshot {
   maxMs: number
 }
 
-/**
- * An install that sent nothing but junk clientIds could otherwise grow this set
- * without bound. Well past any real deployment, so hitting it means abuse, not
- * success — the count degrades to a floor rather than the process to an OOM.
- */
+/** A cap on junk clientIds: past any real deployment, so the count degrades to
+ *  a floor rather than the process to an OOM. */
 const MAX_TRACKED_CLIENTS = 50_000
 
 /** Body shapes we count. Parsed defensively — stats must never fail a request. */
@@ -90,12 +72,8 @@ export class Stats {
   #maxMs = 0
   #timed = 0
 
-  /**
-   * Record one handled request. `requestBody` / `responseBody` are the raw JSON
-   * already in hand, re-parsed here rather than threaded out of the handlers —
-   * that keeps index.ts free of instrumentation, which matters because it is
-   * shared verbatim with the Worker build.
-   */
+  /** Bodies are re-parsed here rather than threaded out of the handlers, so
+   *  index.ts stays free of instrumentation for the Worker build. */
   noteRequest(
     pathname: string,
     requestBody: string,
@@ -114,20 +92,16 @@ export class Stats {
       const body = parseBody(requestBody)
       this.#contributions += 1
       this.#contributedEntries += countArray(body, 'entries')
-      // Distinct installs, counted from the clientId already on the wire. Doing
-      // it here rather than as SELECT COUNT(DISTINCT client_id) keeps it free:
-      // that query is a full scan of location_votes, measured at ~230ms over
-      // 5.4M rows, and better-sqlite3 is synchronous, so it stalls every
-      // in-flight request for the duration. See bench/load.ts.
+      // Counted from the clientId already on the wire; the SQL equivalent is a
+      // ~230ms full scan that stalls the event loop. See bench/load.ts.
       const cid = body?.clientId
       if (typeof cid === 'string' && cid !== '') {
         if (this.#clients.size < MAX_TRACKED_CLIENTS) this.#clients.add(cid)
         else this.#clientsCapped = true
       }
     } else if (pathname === '/v1/stats') {
-      // Counted on its own rather than left in `other`, which is what says how
-      // much scanner traffic this box is taking. Popups asking for a number
-      // would drown that.
+      // On its own, not in `other`: that is what says how much scanner traffic
+      // this box takes, and popups asking for a number would drown it.
       this.#statsReads += 1
     } else {
       this.#other += 1

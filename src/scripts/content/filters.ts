@@ -1,6 +1,5 @@
-// Whether a rule acts on an account, and what to call it when it does. Owns the
-// settings that decide it — nothing here draws anything. See "Filters, hiding
-// and marking" in CLAUDE.md.
+// Whether a rule acts on an account, and what to call it. Nothing here draws —
+// see "Filters, hiding and marking" in CLAUDE.md.
 
 import {
   ACCOUNT_AGE_KEY,
@@ -81,10 +80,8 @@ export function setRuleExceptions(next: RuleExceptions): void {
   ruleExceptions = next
 }
 
-/**
- * Both keys: reads merge the legacy one in, so writing only the new key would let
- * a removal come straight back — and a downgrade still finds its exceptions.
- */
+/** Both keys: reads merge the legacy one in, so writing only the new key would
+ *  let a removal come straight back. */
 export function writeRuleExceptions(next: RuleExceptions): void {
   ruleExceptions = next
   chrome.storage.local.set({
@@ -185,10 +182,8 @@ export interface FilterMatch {
   icon: string
 }
 
-/**
- * Every data-driven rule an account matches, exceptions ignored — the exception
- * button has to be able to name a rule already excepted, in order to undo it.
- */
+/** Every rule an account matches, exceptions ignored — the button has to name
+ *  an already-excepted rule to undo it. */
 export function ruleMatches(
   data: LocationData | null | undefined,
 ): FilterMatch[] {

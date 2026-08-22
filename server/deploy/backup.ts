@@ -1,12 +1,6 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// Nightly snapshot of the cache database, verified and rotated. Runs from
-// x-loc-backup.timer as the xloc user, never root (see rootRefusal below).
-//
-// Order matters: snapshot → verify → compress → check the source → prune.
-// Pruning is last and only on a clean run, so neither a corrupt source nor a
-// bad snapshot can age out the backups you are about to need.
-//
-// Node rather than shell so VOTE_RETENTION_MS can be imported; see lib.ts.
+// Nightly snapshot, verified and rotated, as the xloc user and never root. The
+// order of the steps is load-bearing — see CLAUDE.md.
 
 import { spawnSync } from 'node:child_process'
 import {
@@ -59,13 +53,8 @@ export function rootRefusal(userId: number, self: string): string[] | null {
   ]
 }
 
-/**
- * The baseline a snapshot must not come in under — deliberately not the profile
- * count. Retention (`scheduled()` in src/index.ts) deletes profiles whose votes
- * aged out and can run during the copy, so the table legitimately shrinks. This
- * counts only what that pass cannot touch: a profile with a vote still inside
- * the window. Under-counting makes the check forgiving, never wrong.
- */
+/** The baseline a snapshot must not come in under: profiles with a vote still
+ *  inside the window, which retention cannot touch mid-copy. */
 export function baselineQuery(now: number): string {
   return `SELECT COUNT(*) FROM profiles p WHERE EXISTS (
     SELECT 1 FROM location_votes v
@@ -91,10 +80,8 @@ export function archivesToPrune(names: string[], keep: number): string[] {
     .slice(keep)
 }
 
-/**
- * Leftovers from a run killed too hard for its handlers. Only stamped names and
- * .part files match, so a kept archive is never at risk.
- */
+/** Leftovers from a run killed too hard for its handlers; only stamped names
+ *  and .part files match, so a kept archive is never at risk. */
 export function isOrphan(name: string): boolean {
   if (WORKING_RE.test(name)) return true
   if (LEFTOVER_PARTS.has(name)) return true
@@ -113,11 +100,8 @@ async function gzipTo(source: string, target: string): Promise<void> {
   renameSync(`${target}.part`, target)
 }
 
-/**
- * One run at a time: systemd won't start the oneshot twice, but a hand-run
- * alongside the timer would, and they share the orphan sweep. Returns only in
- * the re-executed child, which holds the lock.
- */
+/** One run at a time — a hand-run alongside the timer shares the orphan sweep.
+ *  Returns only in the re-executed child, which holds the lock. */
 function relaunchUnderLock(lock: string): void {
   if (process.env.XLOC_BACKUP_LOCKED) return
   if (spawnSync('sh', ['-c', 'command -v flock']).status !== 0) {
@@ -144,11 +128,8 @@ function relaunchUnderLock(lock: string): void {
   process.exit(relaunch.status ?? 1)
 }
 
-/**
- * ONE compressed copy, not one per night: whatever gets here is usually
- * permanent, so a stamped file per run would fill the disk the live database
- * writes to. The first copy is closest to the onset anyway.
- */
+/** ONE compressed copy, not one per night: it shares a disk with the live
+ *  database, and the first copy is closest to the onset. */
 async function keepEvidence(snapshot: string, evidence: string): Promise<void> {
   if (existsSync(evidence)) {
     console.error(
@@ -213,11 +194,8 @@ async function main(): Promise<void> {
 
   const baseline = sqlite([DB, baselineQuery(Date.now())])
 
-  // VACUUM INTO, *not* .backup: the backup API restarts whenever another
-  // connection writes, so it never converges under load — 236 MB database, 0.2 s
-  // idle and 58 s at 10 writes/s, against a flat 0.6 s here. It also rebuilds
-  // rather than copies, so the file lands compacted and carries no WAL flag
-  // into a restore. The cost is one deferred checkpoint for its duration.
+  // VACUUM INTO, *not* .backup, which never converges under load — see
+  // CLAUDE.md for the measurements.
   const snapshot = sqlite([
     '-cmd',
     '.timeout 5000',
@@ -237,10 +215,8 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 
-  // The snapshot *is* the database rebuilt, so the gap between the two files is
-  // what a VACUUM would hand back — measured, not estimated, and free. Read
-  // here because the compression below deletes it. No threshold is applied:
-  // "worth compacting" lives only in DEFAULT_VACUUM_ALERT_PCT (alert.ts).
+  // The gap between the two files is what a VACUUM would hand back. Read here
+  // because compression deletes it; the threshold lives in alert.ts.
   const live = liveBytes(DB)
   const rebuilt = bytes(SNAP)
 
@@ -248,12 +224,8 @@ async function main(): Promise<void> {
   rmSync(SNAP, { force: true })
   sweepWorkingFiles = false
 
-  // The source itself, because neither check subsumes the other: VACUUM INTO
-  // repacks free-page faults away in the copy but leaves them here, while an
-  // index out of sync with its table crosses over verbatim and fails above
-  // (measured on sqlite 3.37 and 3.53). integrity_check, not quick_check — this
-  // is the corruption monitor, ~1.2 s per 236 MB in its own process. It runs
-  // after the snapshot is stored: a copy of a failing database is worth having.
+  // The source too, because neither check subsumes the other, and after the
+  // snapshot is stored — a copy of a failing database is worth having.
   const source = sqlite([DB, 'PRAGMA integrity_check;'])
   if (source.out !== 'ok') {
     die(
@@ -269,10 +241,8 @@ async function main(): Promise<void> {
   }
   const kept = readdirSync(BACKUP_DIR).filter((n) => ARCHIVE_RE.test(n)).length
 
-  // Only on a run that got all the way through — the heartbeat should not quote
-  // a measurement from a database that then failed its check. Whole file then
-  // rename, and plain text rather than a query, because the heartbeat has to
-  // keep working when SQLite is what broke.
+  // Only on a run that got all the way through, and as plain text: the
+  // heartbeat has to keep working when SQLite is what broke.
   writeFileSync(
     `${STATUS}.part`,
     `stamp=${STAMP}\nlive_bytes=${live}\nvacuumed_bytes=${rebuilt}\n`,

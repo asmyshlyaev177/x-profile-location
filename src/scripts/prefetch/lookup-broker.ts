@@ -1,10 +1,6 @@
-import { LOOKUP_LIMIT_PER_WINDOW } from '../settings'
-// The one place that decides which account is looked up next, across every open
-// x.com tab. Lives in the service worker; tabs pull from it rather than pacing
-// themselves. See "Cross-tab lookup broker" in CLAUDE.md.
-//
-// Every effect is injected, so the whole thing is testable without a browser,
-// a clock or a message port.
+import { LOOKUP_LIMIT_PER_WINDOW } from '../constants'
+// Decides which account every open x.com tab looks up next; lives in the service
+// worker. Every effect is injected. See "Cross-tab lookup broker" in CLAUDE.md.
 
 import { RATE_LIMIT_RESET_DEFAULT_MS } from '../constants'
 import {
@@ -25,10 +21,7 @@ import {
 /** A grant whose tab never reported back — closed, crashed or navigated away. */
 const INFLIGHT_TTL_MS = 60 * 1000
 
-/**
- * Answer to a poll with nothing to hand out. Tabs re-ask on it, so a tab that
- * queued nothing itself still helps drain what other tabs queued.
- */
+/** Answer to a poll with nothing to hand out; tabs re-ask on it. */
 export const IDLE_POLL_MS = 30 * 1000
 
 // Offers arrive ~20 a batch and drain 2 a window, and every message rewrites the
@@ -157,10 +150,8 @@ export class LookupBroker {
     return record
   }
 
-  /**
-   * Forget a closed tab. Its outstanding grants are released rather than left to
-   * time out — at worst another tab repeats one request.
-   */
+  /** Forget a closed tab, releasing its grants rather than letting them time
+   *  out — at worst another tab repeats one request. */
   dropTab(tabId: number): void {
     this.tabs.delete(tabId)
     for (const [handle, entry] of this.inflight) {
@@ -218,12 +209,8 @@ export class LookupBroker {
       .map(([id]) => id)
   }
 
-  /**
-   * The best candidate any tab is holding: the whole feed tier before any reply
-   * tier, and within a tier the most engaged tab first. Whoever polls gets it —
-   * the fetching tab need not be the tab that queued it, since the result is
-   * broadcast back to all of them.
-   */
+  /** The whole feed tier before any reply tier, most engaged tab first.
+   *  Whoever polls gets it; the result is broadcast to every tab. */
   private takeBest(now: number): PrefetchCandidate | null {
     const order = this.rankedTabIds()
     for (const priority of PRIORITIES) {
@@ -236,10 +223,8 @@ export class LookupBroker {
     return null
   }
 
-  /**
-   * Whether any tab holds a feed account still worth asking about — which is
-   * the whole of what earns the opening sprint.
-   */
+  /** Whether any tab holds a feed account worth asking about — all that earns
+   *  the opening sprint. */
   private feedIsWaiting(now: number): boolean {
     for (const tab of this.tabs.values()) {
       const waiting = tab.queue.some(
@@ -251,10 +236,8 @@ export class LookupBroker {
     return false
   }
 
-  /**
-   * A cached handle to re-ask about, ahead of the queues rather than behind
-   * them — see "Revalidation" in CLAUDE.md.
-   */
+  /** A cached handle to re-ask about, ahead of the queues — see
+   *  "Revalidation" in CLAUDE.md. */
   private takeRevalidation(now: number): string | null {
     const reserve = revalidateBudget(this.rate, this.opts.reserveFraction)
     if (this.revalidateSpent >= reserve) return null
@@ -323,10 +306,7 @@ export class LookupBroker {
       : { userName, waitMs: 0 }
   }
 
-  /**
-   * What a lookup cost and what X said afterwards. Hovers report too — they are
-   * never granted, but they spend from the same window.
-   */
+  /** What a lookup cost. Hovers report too: never granted, same window. */
   report(report: LookupReport): void {
     const now = this.now()
     const handle = key(report.userName)

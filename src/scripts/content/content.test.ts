@@ -1,4 +1,8 @@
-import { RATE_PROMPT_KEY, USAGE_STATS_KEY } from '../constants'
+import {
+  LOOKUP_WINDOW_MS,
+  RATE_PROMPT_KEY,
+  USAGE_STATS_KEY,
+} from '../constants'
 import { REGION_MEMBERS } from '../countries/countries'
 import type { Keyword } from '../keywords'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -568,6 +572,152 @@ describe('fetchLocationData — checkedThisSession dedup', () => {
 
     await fetchLocationData('sessionuser')
     await fetchLocationData('sessionuser')
+
+    expect(fetchSpy).toHaveBeenCalledOnce()
+  })
+})
+
+describe('fetchLocationData — manual refetch', () => {
+  const HEADERS = {
+    authorization: 'Bearer token123',
+    'x-csrf-token': 'csrf123',
+  }
+
+  function okResponse(location: string) {
+    return new Response(
+      JSON.stringify({
+        data: {
+          user_result_by_screen_name: {
+            result: {
+              about_profile: {
+                account_based_in: location,
+                location_accurate: true,
+                source: 'web',
+              },
+            },
+          },
+        },
+      }),
+      { status: 200 },
+    )
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setApiHeaders(HEADERS)
+  })
+
+  it('asks X again for an account already answered from the cache', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'France',
+      locationAccurate: true,
+      source: 'web' as const,
+    })
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(okResponse('Germany'))
+
+    const data = await fetchLocationData('movedagain', { manual: true })
+
+    expect(fetchSpy).toHaveBeenCalledOnce()
+    expect(data).toMatchObject({ location: 'Germany' })
+  })
+
+  it('spends one request per handle per window, however often it is asked', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(okResponse('Germany'))
+
+    await fetchLocationData('hovered', { manual: true })
+    await fetchLocationData('hovered', { manual: true })
+    await fetchLocationData('hovered', { manual: true })
+
+    expect(fetchSpy).toHaveBeenCalledOnce()
+  })
+
+  it('asks again once the window has passed', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(okResponse('Germany'))
+    const realNow = Date.now
+    try {
+      await fetchLocationData('hovered', { manual: true })
+      Date.now = () => realNow() + LOOKUP_WINDOW_MS + 1
+      await fetchLocationData('hovered', { manual: true })
+    } finally {
+      Date.now = realNow
+    }
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('throttles per handle, not globally', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(okResponse('Germany'))
+
+    await fetchLocationData('one', { manual: true })
+    await fetchLocationData('two', { manual: true })
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('answers the throttled gesture from the cache', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'France',
+      locationAccurate: true,
+      source: 'web' as const,
+    })
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(okResponse('Germany'))
+
+    await fetchLocationData('throttled', { manual: true })
+    const second = await fetchLocationData('throttled', { manual: true })
+
+    expect(fetchSpy).toHaveBeenCalledOnce()
+    expect(second).toMatchObject({ location: 'France' })
+  })
+
+  it('keeps the cached answer when the refetch cannot go out', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      location: 'France',
+      locationAccurate: true,
+      source: 'web' as const,
+    })
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'))
+
+    const data = await fetchLocationData('offlineuser', { manual: true })
+
+    expect(data).toMatchObject({ location: 'France' })
+  })
+
+  it('reports nothing rather than a bio when the refetch fails', async () => {
+    // A bio-only entry is not a location answer, and handing it back would read
+    // as "X knows nothing" — the caller draws the rate-limit row off `null`.
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'a bio and nothing else',
+    })
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'))
+
+    const data = await fetchLocationData('bioonly', { manual: true })
+
+    expect(data).toBeNull()
+  })
+
+  it('leaves the window free after a refetch that never left', async () => {
+    setApiHeaders(null)
+    const data = await fetchLocationData('nosession', { manual: true })
+    expect(data).toBeNull()
+
+    setApiHeaders(HEADERS)
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(okResponse('Germany'))
+    await fetchLocationData('nosession', { manual: true })
 
     expect(fetchSpy).toHaveBeenCalledOnce()
   })

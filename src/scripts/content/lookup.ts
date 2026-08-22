@@ -1,8 +1,12 @@
 // Ask X about one account, once, and tell the broker what it cost. The pace is
-// the service worker's (see ../prefetch/CLAUDE.md); this side only spends and
-// reports.
+// the service worker's — see ../prefetch/CLAUDE.md.
 
-import { MSG, RATE_LIMIT_RESET_DEFAULT_MS, X_GRAPHQL_PATH } from '../constants'
+import {
+  LOOKUP_WINDOW_MS,
+  MSG,
+  RATE_LIMIT_RESET_DEFAULT_MS,
+  X_GRAPHQL_PATH,
+} from '../constants'
 import {
   answerSignature,
   getCached,
@@ -27,9 +31,18 @@ export function setApiHeaders(h: Record<string, string> | null) {
 // Tracks users whose location was already fetched via API this session,
 // so repeat hovers skip the network and read from IDB instead.
 const checkedThisSession = new Set<string>()
-// Shared promises, keyed by lowercased handle — lets concurrent processCard
-// calls for the same user await the same in-flight fetch instead of getting
-// null immediately.
+
+// A hover or swipe refetches rather than trusting a cached answer, at most once
+// per handle per window — see "Asking again for the account" in CLAUDE.md.
+const lastManualAt = new Map<string, number>()
+
+function manualRefetchDue(key: string): boolean {
+  const prev = lastManualAt.get(key)
+  return prev === undefined || Date.now() - prev >= LOOKUP_WINDOW_MS
+}
+
+// Shared promises, keyed by lowercased handle, so concurrent processCard calls
+// await one in-flight fetch instead of getting null.
 const pendingMap = new Map<string, Promise<LocationData | null>>()
 
 /** Attempted in this tab; the cross-tab answer is the broker's `asked`. */
@@ -52,11 +65,8 @@ function intHeader(resp: Response, name: string): number | null {
   return Number.isNaN(n) ? null : n
 }
 
-/**
- * The window is counted in the service worker, not here — every open x.com tab
- * spends from the same 50. All this side does is pass on what X answered, for
- * hovers and background lookups alike. See "Cross-tab lookup broker" in CLAUDE.md.
- */
+/** The window is counted in the service worker, not here; this side only passes
+ *  on what X answered. See "Cross-tab lookup broker" in CLAUDE.md. */
 function readRateHeaders(resp: Response): Partial<LookupReport> {
   return {
     status: resp.status,
@@ -144,6 +154,21 @@ type LookupCost = Omit<LookupReport, 'userName'>
 
 const NOTHING_SPENT: LookupCost = { spent: false }
 
+/** What can be answered with no request, or `undefined` when one has to go out.
+ *  A revalidation is bought on purpose, so it never lands here. */
+function answerWithoutAsking(
+  userName: string,
+  stored: LocationData | undefined,
+  revalidate: boolean,
+): LocationData | null | undefined {
+  if (revalidate) return undefined
+  // Bio-only entries (location: null, source: null) fall through.
+  if (stored?.location || stored?.source) return stored
+  // Already asked X this session — whatever IDB has is the whole answer.
+  if (checkedThisSession.has(userName.toLowerCase())) return stored ?? null
+  return undefined
+}
+
 async function runLookup(
   userName: string,
   capturedHeaders: Record<string, string> | null,
@@ -151,24 +176,21 @@ async function runLookup(
 ): Promise<{ data: LocationData | null; cost: LookupCost }> {
   const stored = await getCached(userName)
 
-  // Skip the network if location data is already in IDB.
-  // Bio-only entries (location: null, source: null) fall through.
-  if (!revalidate && (stored?.location || stored?.source)) {
-    return { data: stored, cost: NOTHING_SPENT }
-  }
+  const settled = answerWithoutAsking(userName, stored, revalidate)
+  if (settled !== undefined) return { data: settled, cost: NOTHING_SPENT }
 
-  // Already ran the API lookup this session — return whatever IDB has (may include bio).
-  if (checkedThisSession.has(userName.toLowerCase())) {
-    return { data: stored ?? null, cost: NOTHING_SPENT }
-  }
+  // A refetch that cannot go out still shows the last answer — but a bio-only
+  // entry is not one, and would cost the caller its rate-limit badge.
+  const storedAnswer = stored?.location || stored?.source ? stored : undefined
+  const fallbackData = revalidate ? (storedAnswer ?? null) : null
 
   // Don't attempt without intercepted headers — avoids failures before
   // the page-script captures the session.
-  if (!capturedHeaders) return { data: null, cost: NOTHING_SPENT }
+  if (!capturedHeaders) return { data: fallbackData, cost: NOTHING_SPENT }
 
   if (isRateLimited()) {
     showRateLimitToast()
-    return { data: null, cost: NOTHING_SPENT }
+    return { data: fallbackData, cost: NOTHING_SPENT }
   }
 
   try {
@@ -188,10 +210,10 @@ async function runLookup(
           ? cost.reset * 1000
           : Date.now() + RATE_LIMIT_RESET_DEFAULT_MS,
       )
-      return { data: null, cost }
+      return { data: fallbackData, cost }
     }
 
-    if (!resp.ok) return { data: null, cost }
+    if (!resp.ok) return { data: fallbackData, cost }
 
     checkedThisSession.add(userName.toLowerCase())
     cost.ok = true
@@ -207,13 +229,13 @@ async function runLookup(
     return { data, cost }
   } catch {
     // A request that threw still left the window; only X can say by how much.
-    return { data: null, cost: { spent: true } }
+    return { data: fallbackData, cost: { spent: true } }
   }
 }
 
 export async function fetchLocationData(
   userName: string,
-  opts: { granted?: boolean; revalidate?: boolean } = {},
+  opts: { granted?: boolean; revalidate?: boolean; manual?: boolean } = {},
 ): Promise<LocationData | null> {
   const key = userName.toLowerCase()
   if (pendingMap.has(key)) {
@@ -223,6 +245,9 @@ export async function fetchLocationData(
     return pendingMap.get(key)!
   }
 
+  const manual = opts.manual === true && manualRefetchDue(key)
+  const revalidate = opts.revalidate === true || manual
+
   // Capture snapshot so the IIFE always uses the headers that were valid at
   // call time, even if apiHeaders is updated mid-flight.
   const capturedHeaders = apiHeaders
@@ -231,17 +256,18 @@ export async function fetchLocationData(
     const { data, cost } = await runLookup(
       userName,
       capturedHeaders,
-      opts.revalidate === true,
+      revalidate,
     )
+    // Stamped on the request, not on the gesture: a hover that found the window
+    // closed asked X nothing, and the next one should be free to try.
+    if (manual && cost.spent) lastManualAt.set(key, Date.now())
     // Nothing went out and the broker is holding nothing for us — every hover
     // over a cached account lands here, and each report would wake the worker.
     if (!cost.spent && !opts.granted) return data
 
     const reported = reportLookup({ userName, ...cost })
-    // A granted lookup waits: the poller asks for the next handle the moment
-    // this resolves, and the broker has to have been told what this one cost.
-    // A hover never waits — that would put an evicted worker's cold start in
-    // front of the row the user is looking at.
+    // A granted lookup waits, so the broker knows the cost before handing out
+    // the next handle; a hover never waits on an evicted worker's cold start.
     if (opts.granted) await reported
     return data
   })()
@@ -254,5 +280,6 @@ export async function fetchLocationData(
 export function __resetLookup(): void {
   apiHeaders = null
   checkedThisSession.clear()
+  lastManualAt.clear()
   pendingMap.clear()
 }

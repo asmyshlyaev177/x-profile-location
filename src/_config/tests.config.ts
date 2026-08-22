@@ -3,11 +3,8 @@ import '@testing-library/jest-dom/vitest'
 import { __setMessages } from '../scripts/i18n'
 import enMessages from '../../public/_locales/en/messages.json'
 
-// ---------------------------------------------------------------------------
-// UI strings, without a browser to hold them
-// ---------------------------------------------------------------------------
-// From the shipped English catalogue, so assertions read real copy and a deleted
-// message fails a test rather than rendering its own key.
+// UI strings from the shipped English catalogue, so assertions read real copy
+// and a deleted message fails a test rather than rendering its own key.
 __setMessages(
   Object.fromEntries(
     Object.entries(enMessages as Record<string, { message: string }>).map(
@@ -16,13 +13,8 @@ __setMessages(
   ),
 )
 
-// ---------------------------------------------------------------------------
-// Keep happy-dom's MutationObserver alive across a garbage collection
-// ---------------------------------------------------------------------------
-// happy-dom 20.8.9 holds each observer's dispatch closure in a WeakRef that
-// nothing else references, so the first GC silently stops mutation delivery.
-// Wrapped here, not in the source: a real browser keeps it alive per the spec.
-// Remove when happy-dom does — delete this block and run `pnpm test`.
+// happy-dom 20.8.9 holds each MutationObserver's dispatch closure in a WeakRef
+// nothing else references, so the first GC stops delivery. Drop when it doesn't.
 const RealWeakRef = globalThis.WeakRef
 
 class StrongRef<T extends WeakKey> {
