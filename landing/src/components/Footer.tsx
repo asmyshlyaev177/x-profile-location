@@ -35,6 +35,7 @@ export function Footer() {
           label: t.footer.guideEngagementFarming,
           href: href('/spot-engagement-farming'),
         },
+        { label: t.footer.guideRateLimit, href: href('/x-rate-limit') },
         { label: t.footer.guideComparison, href: href('/x-posed-alternative') },
       ],
     },

@@ -8,6 +8,7 @@ export const vi: Dict = {
     howItWorks: 'Cách hoạt động',
     features: 'Tính năng',
     privacy: 'Quyền riêng tư',
+    comparison: 'So sánh',
     sourceOnGitHub: 'Mã nguồn trên GitHub',
     home: 'X-Pat — trang chủ',
   },
@@ -62,8 +63,8 @@ export const vi: Dict = {
         alt: 'Một timeline mà mỗi người đăng đều kèm cờ nước của họ trên dòng, khỏi cần rê chuột',
       },
       blocked: {
-        label: 'Chặn theo nước',
-        alt: 'Hồ sơ từ các vị trí bị chặn hiển thị dưới dạng biểu tượng cảnh báo thay vì cờ',
+        label: 'Ẩn trong dòng thời gian',
+        alt: 'Một dòng thời gian có bài đăng được gấp lại sau thanh “🚫 Đã ẩn · Ai Cập” và nút Hiện',
       },
       keyword: {
         label: 'Đánh dấu theo từ khóa',
@@ -106,6 +107,7 @@ export const vi: Dict = {
   },
 
   rateBudget: {
+    link: 'Cách hạn mức hoạt động',
     heading: 'Rate limit của X — xử lý chứ không đâm đầu vào.',
     lead: 'Bạn từng thấy cảnh này rồi. Đầu thread hiện ra hết, xong phần dưới thì trắng. Đó chính là cái giới hạn: năm chục lần tra mỗi mười lăm phút, mà một thread sôi nổi thì nhiều tài khoản hơn hẳn.',
     body: 'Đa số hồ sơ ở đây chẳng tốn lượt nào. Chúng đã có trong cache, hoặc có người khác tra rồi, cache chung trả lời. Phần còn thì được chia khẩu phần hẳn hoi.',
@@ -120,20 +122,20 @@ export const vi: Dict = {
       },
       spread: {
         title: 'Trải đều, không chạy hộc tốc',
-        body: 'Tầm một lần tra mỗi 26 giây, tính lại liên tục — giãn khi bạn rê chuột nhiều, siết khi cửa sổ đầy lại.',
+        body: 'Tầm một lần tra mỗi 22 giây, tính lại liên tục — giãn khi bạn rê chuột nhiều, siết khi cửa sổ đầy lại.',
         readoutKey: 'Tốc độ',
         readoutValue: 'cửa sổ ÷ hạn mức',
       },
       hovers: {
         title: 'Rê chuột luôn thắng',
-        body: 'Tác vụ nền dừng ở 70%, để chừa lại cho mấy tài khoản bạn thực sự chỉ vào.',
+        body: 'Tác vụ nền dừng ở 80%, để chừa lại cho mấy tài khoản bạn thực sự chỉ vào.',
         readoutKey: 'Dự phòng',
-        readoutValue: '15 trong 50',
+        readoutValue: '10 trong 50',
       },
     },
     bar: {
       caption: 'Một cửa sổ 15 phút',
-      alt: 'Năm chục lần tra mỗi cửa sổ: ba lăm cho prefetch nền, mười lăm giữ lại cho tài khoản bạn rê chuột.',
+      alt: 'Năm chục lần tra mỗi cửa sổ: bốn mươi cho prefetch nền, mười giữ lại cho tài khoản bạn rê chuột.',
       backgroundNote: 'nền, nhỏ giọt suốt mười lăm phút',
       reservedNote:
         'giữ lại, để cú rê chuột không bao giờ là cái request làm bạn hết sạch',
@@ -234,8 +236,8 @@ export const vi: Dict = {
 
   compareTeaser: {
     heading: 'Đang xài một cái khác rồi à?',
-    lead: 'Khoảng hai chục extension nhét cờ cạnh tên người dùng. Mấy cái khác biệt đáng kể thì không nằm trong danh sách tính năng — mà nằm ở chuyện cache chung được phép làm gì.',
-    body: 'Bảng đầy đủ có mười lăm dòng và chỉ đích danh ba thứ X-Posed làm tốt hơn extension này.',
+    lead: 'Khoảng hai chục extension nhét cờ cạnh tên người dùng. Mấy cái khác biệt đáng kể thì không nằm trong danh sách tính năng — mà nằm ở chuyện cache chung được phép làm gì, và ở chuyện gì xảy ra khi năm mươi lượt tra cứu của X hết sạch.',
+    body: 'Cái này tự giữ nhịp theo hạn mức thật lấy từ chính response header của X và chừa lại mười lượt cho tài khoản bạn rê chuột, nên một thread đông vẫn điền xong thay vì đứng giữa chừng. Bảng đầy đủ có mười bốn dòng và chỉ đích danh ba thứ X-Posed làm tốt hơn extension này.',
     link: 'Xem so sánh đầy đủ →',
   },
 
@@ -261,6 +263,7 @@ export const vi: Dict = {
     supportProject: 'Ủng hộ dự án',
     guideAboutAccount: 'Mục “About this account” của X',
     guideEngagementFarming: 'Phát hiện cày tương tác',
+    guideRateLimit: 'Giới hạn của X',
     guideComparison: 'So với X-Posed',
     privacyPolicy: 'Chính sách bảo mật',
     whatIsNotCollected: 'Những gì không thu thập',
@@ -282,10 +285,6 @@ export const vi: Dict = {
         label: 'Nước hiển thị ngay trên dòng, không cần mở menu',
         note: 'Đọc từ dữ liệu “About this account” của chính X, không đoán IP.',
       },
-      vpnWarning: {
-        label: 'Cảnh báo khi X không xác minh được vị trí',
-        note: 'X gắn cờ một số tài khoản có vị trí không xác minh được. Đó là X từ chối xác nhận — không phải bằng chứng VPN, và ở đây chẳng ai chứng minh được cái đó.',
-      },
       signupSource: {
         label: 'Nguồn đăng ký — Apple, Google Play hay web',
         note: '',
@@ -296,13 +295,13 @@ export const vi: Dict = {
         label: 'Ẩn hoặc thu gọn theo nước và khu vực',
         note: 'Ở đây mặc định thu gọn sau nút “Hiện”, vì timeline lặng lẽ vứt bài là timeline không audit được.',
       },
-      languageFilter: {
-        label: 'Lọc theo ngôn ngữ',
-        note: 'Trường ngôn ngữ mỗi bài trên X tệ tới mức dựng filter trên nó chỉ sinh ra bug. Cố ý chưa làm.',
-      },
       allowlist: {
         label: 'Danh sách luôn hiện và ngoại lệ theo luật',
         note: '',
+      },
+      budgetFromHeaders: {
+        label: 'Giữ nhịp theo hạn mức thật trong header rate limit của X',
+        note: 'X-Pat đọc header x-rate-limit ở mỗi phản hồi rồi trải các lượt tra cứu lên phần còn lại của cửa sổ, chừa một phần cho tài khoản bạn rê chuột. X-Posed chạy nhịp cố định 150 ms với tám yêu cầu song song, và chỉ đọc header reset sau khi đã dính 429.',
       },
       sharedCache: {
         label: 'Cache chung, để cờ sống qua rate limit',
@@ -327,7 +326,7 @@ export const vi: Dict = {
     losses: {
       mature: {
         title: 'X-Posed là bên trưởng thành hơn',
-        body: 'Tầm 7.000 lượt cài Chrome so với lèo tèo của mình, bốn năm ra bản, cache cộng đồng hàng triệu hồ sơ trong khi mình mới vài nghìn. Cache to hơn đồng nghĩa nhiều cờ tức thì hơn ngay ngày đầu. Lợi thế thật và cách biệt không nhỏ.',
+        body: 'Tầm 10.000 lượt cài Chrome so với lèo tèo của mình, ra mắt sớm hơn bốn tháng, cache cộng đồng hàng triệu hồ sơ trong khi mình mới vài nghìn. Cache to hơn đồng nghĩa nhiều cờ tức thì hơn ngay ngày đầu. Lợi thế thật và cách biệt không nhỏ.',
       },
       surfaces: {
         title: 'Nó có mặt trên nhiều nền hơn',
@@ -339,7 +338,7 @@ export const vi: Dict = {
       },
     },
     notApplicable: '—',
-    testCount: '609 test',
+    testCount: '{count} test',
     none: 'không',
   },
 
@@ -456,7 +455,7 @@ export const vi: Dict = {
       differs4:
         '<b>Tra cứu không mang định danh.</b> Lượt đọc là danh sách tên không ký, nên server chẳng có gì để ghép và không thể dựng kiểu "máy này đã xem mấy tài khoản này". Đếm người đọc tốn một dòng code và sẽ phá cái tính chất đó, thành ra số liệu công bố cố ý đếm thiếu.',
       differs5:
-        'Và rate limit được chia khẩu phần chứ không chạy đua: tác vụ nền dừng ở 70% cửa sổ, nên mười lăm lần cuối vẫn còn cho tài khoản bạn rê chuột. <a href="{href}">Cơ chế vẽ rõ ở trang chủ</a>.',
+        'Và rate limit được chia khẩu phần chứ không chạy đua: tác vụ nền dừng ở 80% cửa sổ, nên mười lần cuối vẫn còn cho tài khoản bạn rê chuột. <a href="{href}">Cơ chế vẽ rõ ở trang chủ</a>.',
       sourcesHeading: 'Nguồn',
       sourcesLead:
         'Đọc ngày {date}. Số cài và tính năng thay đổi; nếu bên dưới có gì cũ là lỗi chứ không phải lập trường, và <a href="{href}">issue tracker</a> là cách nhanh nhất để sửa.',
@@ -546,6 +545,13 @@ export const vi: Dict = {
       ],
     },
 
+    rateLimit: {
+      title: 'Giới hạn của X: 50 lượt tra cứu hồ sơ mỗi 15 phút',
+      description:
+        'X cho mỗi trình duyệt khoảng 50 lượt tra cứu tài khoản mỗi 15 phút. X-Pat phân bổ hạn mức đó ra sao, và vì sao hầu hết hồ sơ không tốn lượt nào.',
+      faq: [],
+    },
+
     comparison: {
       title: 'Thay thế X-Posed: so sánh X-Pat từng tính năng',
       description:
@@ -565,7 +571,7 @@ export const vi: Dict = {
         },
         {
           q: 'Sao cờ ngừng hiện giữa chừng thread?',
-          a: 'X cho một trình duyệt tầm 50 lần tra mỗi 15 phút, thread sôi nổi hơn thế. Extension đụng trần thì ngừng điền cờ. Cache chung tránh được — đa số hồ sơ không tốn lượt vì người khác tra rồi — và X-Pat chừa 30% cuối cửa sổ cho tài khoản bạn tự rê.',
+          a: 'X cho một trình duyệt tầm 50 lần tra mỗi 15 phút, thread sôi nổi hơn thế. Extension đụng trần thì ngừng điền cờ. Cache chung tránh được — đa số hồ sơ không tốn lượt vì người khác tra rồi — và X-Pat chừa 20% cuối cửa sổ cho tài khoản bạn tự rê.',
         },
       ],
     },

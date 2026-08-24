@@ -191,6 +191,14 @@
   img {
     max-width: 100%;
   }
+
+  /* Tailwind v4's preflight drops the UA `cursor: pointer` on buttons. Every
+     button on this site is a control, so it comes back here rather than as a
+     utility class remembered one component at a time — the gallery arrows,
+     thumbnails and "Full size" had all lost it. */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 @layer components {

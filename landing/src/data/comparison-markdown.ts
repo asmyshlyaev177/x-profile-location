@@ -6,7 +6,9 @@ import {
   SELF,
   type Cell,
 } from './comparison'
+import { TEST_COUNT } from './test-count'
 import { en } from '../i18n/dict/en'
+import { fill } from '../i18n/fill'
 
 /**
  * The comparison table as GitHub-flavoured Markdown, for the repo README.
@@ -18,7 +20,7 @@ import { en } from '../i18n/dict/en'
  * English, and only English: the README is one file in one language, so it
  * reads the `en` dictionary directly rather than going through `dictFor`.
  *
- * Only the `headline` rows. A fifteen-row table in a README is scrolled past;
+ * Only the `headline` rows. A fourteen-row table in a README is scrolled past;
  * the four architectural rows are the ones that answer "why this one".
  */
 
@@ -27,7 +29,8 @@ function cell(value: Cell): string {
   if (value === 'no') return '❌'
   if (value === 'unstated') return '–'
   if (value === 'n/a') return '–'
-  if (value === 'testCount') return en.comparison.testCount
+  if (value === 'testCount')
+    return fill(en.comparison.testCount, { count: String(TEST_COUNT) })
   if (value === 'none') return en.comparison.none
   return value
 }
@@ -62,6 +65,6 @@ ${body}
 
 ${losses}
 
-Full fifteen-row table, with sources: [${base}/x-posed-alternative](${base}/x-posed-alternative). Store listings read ${SCRAPED}.
+Full fourteen-row table, with sources: [${base}/x-posed-alternative](${base}/x-posed-alternative). Store listings read ${SCRAPED}.
 `
 }

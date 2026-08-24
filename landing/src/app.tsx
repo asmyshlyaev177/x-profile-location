@@ -12,6 +12,7 @@ import { Footer } from './components/Footer'
 import { PrivacyPolicy } from './components/PrivacyPolicy'
 import { AboutThisAccount } from './components/AboutThisAccount'
 import { EngagementFarming } from './components/EngagementFarming'
+import { RateLimit } from './components/RateLimit'
 import { Comparison } from './components/Comparison'
 import { ComparisonTeaser } from './components/ComparisonTeaser'
 import { NotFound } from './components/NotFound'
@@ -39,6 +40,7 @@ interface AppProps {
 const GUIDES: Record<string, () => VNode> = {
   '/x-about-this-account': AboutThisAccount,
   '/spot-engagement-farming': EngagementFarming,
+  '/x-rate-limit': RateLimit,
   '/x-posed-alternative': Comparison,
 }
 
@@ -112,14 +114,20 @@ function Body({
       <main>
         <Hero />
         <Screenshots />
-        {/* Above HowItWorks deliberately. "It runs out of lookups and stops
+        {/* Third, straight after the proof. "It runs out of lookups and stops
             working" is the specific way competing extensions disappoint people,
             so the answer to it is an early argument, not a footnote. */}
         <RateBudget />
-        <HowItWorks />
-        <SeeItInAction />
-        <Trust />
+        {/* Then what you do with it, and only then the mechanism: hiding a
+            country is what people arrive wanting, and where the flag comes
+            from is an answer to a question they only have once they want it. */}
+        {/* Straight after the rate limit: someone who already has one of these
+            installed is here because it stopped answering, and that section is
+            the claim the comparison then backs up. */}
         <ComparisonTeaser />
+        <SeeItInAction />
+        <HowItWorks />
+        <Trust />
         <Faq items={faq} />
         <CTA />
       </main>

@@ -89,9 +89,10 @@ export function Hero() {
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
-   A legible mock of X with the extension running: an inline flag in the feed,
-   the injected row inside a hover card, and a VPN warning. Three states, one
-   image — the panel does the job a feature list would otherwise have to.
+   A legible mock of X with the extension running: a post already collapsed by
+   country, an inline flag in the feed, the injected row inside a hover card,
+   and a VPN warning. Four states, one image — the panel does the job a feature
+   list would otherwise have to.
 
    The names and countries inside it are examples rather than UI, so they are
    the same in every language; only the two words X itself renders — Following,
@@ -171,14 +172,27 @@ function XPanel({ t }: { t: Dict }) {
         </div>
 
         <div class="space-y-2 p-3">
-          {/* 1 — inline flag in the timeline */}
+          {/* 1 — a blocked country, collapsed rather than silently dropped.
+              First in the stack and in the loudest colour on the panel: it is
+              the outcome people install for, and the flags below it are the
+              mechanism that produces it. */}
+          <div class="border-alarm/45 bg-alarm/12 flex items-center gap-2 rounded-xl border px-3 py-3">
+            <span class="text-alarm text-[0.8125rem] font-bold">
+              {t.hero.panelHidden}
+            </span>
+            <span class="text-xblue border-xblue/60 bg-xblue/10 ms-auto rounded-full border px-2.5 py-0.5 text-[0.6875rem] font-bold">
+              {t.hero.panelShow}
+            </span>
+          </div>
+
+          {/* 2 — inline flag in the timeline */}
           <TweetRow name="Lena Fischer" handle="@lenafischer">
             <span class="text-signal/90 inline-flex items-center gap-1 text-[0.6875rem]">
               <span class="text-[0.875rem] leading-none">🇯🇵</span> Japan
             </span>
           </TweetRow>
 
-          {/* 2 — the hover card: the moment the extension exists for */}
+          {/* 3 — the hover card: the moment the extension exists for */}
           <div class="border-hair-strong bg-void rounded-xl border p-3.5 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.9)]">
             <div class="flex items-start gap-3">
               <div class="bg-signal/15 ring-signal/25 h-11 w-11 shrink-0 rounded-full ring-1" />
@@ -220,7 +234,7 @@ function XPanel({ t }: { t: Dict }) {
             </div>
           </div>
 
-          {/* 3 — VPN warning */}
+          {/* 4 — VPN warning */}
           <TweetRow name="nightcrawler" handle="@n1ghtcrawl">
             <span class="inline-flex items-center gap-1.5">
               <span class="text-[0.875rem] leading-none">🇺🇸</span>
@@ -229,16 +243,6 @@ function XPanel({ t }: { t: Dict }) {
               </span>
             </span>
           </TweetRow>
-
-          {/* 4 — a blocked country, collapsed rather than silently dropped */}
-          <div class="border-hair/60 bg-ink-2/60 flex items-center gap-2 rounded-xl border px-3 py-2.5">
-            <span class="text-faint text-[0.75rem] font-semibold">
-              {t.hero.panelHidden}
-            </span>
-            <span class="text-xblue border-xblue/50 ms-auto rounded-full border px-2 py-0.5 text-[0.625rem] font-bold">
-              {t.hero.panelShow}
-            </span>
-          </div>
         </div>
       </div>
     </div>

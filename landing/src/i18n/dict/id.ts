@@ -8,6 +8,7 @@ export const id: Dict = {
     howItWorks: 'Cara kerja',
     features: 'Fitur',
     privacy: 'Privasi',
+    comparison: 'Perbandingan',
     sourceOnGitHub: 'Kode sumber di GitHub',
     home: 'X-Pat — beranda',
   },
@@ -62,8 +63,8 @@ export const id: Dict = {
         alt: 'Sebuah timeline di mana setiap penulis membawa bendera negaranya langsung, tanpa perlu hover',
       },
       blocked: {
-        label: 'Negara yang diblokir',
-        alt: 'Profil dari lokasi yang diblokir muncul sebagai tanda peringatan, bukan bendera',
+        label: 'Disembunyikan di linimasa',
+        alt: 'Linimasa dengan satu posting terlipat di balik bilah “🚫 Disembunyikan · Mesir” dan tombol Tampilkan',
       },
       keyword: {
         label: 'Sorotan kata kunci',
@@ -106,6 +107,7 @@ export const id: Dict = {
   },
 
   rateBudget: {
+    link: 'Cara kerja jatah lookup',
     heading: 'Batas laju X — diselesaikan, bukan ditabrak.',
     lead: 'Kamu pasti pernah liat gagalnya. Bagian atas utasan keisi, terus berhenti. Itu batasnya: lima puluh pengecekan akun tiap lima belas menit, padahal satu utasan rame isinya jauh lebih banyak dari itu.',
     body: 'Sebagian besar profil di sini nggak makan jatah. Mereka udah ada di cache, atau ada yang udah ngecek duluan dan cache bareng yang jawab. Sisanya dijatah rapi.',
@@ -120,20 +122,20 @@ export const id: Dict = {
       },
       spread: {
         title: 'Disebar, bukan digas',
-        body: 'Sekitar sekali ngecek tiap 26 detik, dihitung ulang tiap kali — melar pas kamu banyak hover, ngerapat pas jendela keisi lagi.',
+        body: 'Sekitar sekali ngecek tiap 22 detik, dihitung ulang tiap kali — melar pas kamu banyak hover, ngerapat pas jendela keisi lagi.',
         readoutKey: 'Ritme',
         readoutValue: 'jendela ÷ jatah',
       },
       hovers: {
         title: 'Hover selalu menang',
-        body: 'Kerja latar berhenti di 70%, jadi sisa jendela masih ada buat akun yang beneran kamu tuju.',
+        body: 'Kerja latar berhenti di 80%, jadi sisa jendela masih ada buat akun yang beneran kamu tuju.',
         readoutKey: 'Dicadangkan',
-        readoutValue: '15 dari 50',
+        readoutValue: '10 dari 50',
       },
     },
     bar: {
       caption: 'Satu jendela 15 menit',
-      alt: 'Lima puluh pengecekan per jendela: tiga puluh lima buat prefetch latar, lima belas dicadangkan buat akun yang kamu hover.',
+      alt: 'Lima puluh pengecekan per jendela: empat puluh buat prefetch latar, sepuluh dicadangkan buat akun yang kamu hover.',
       backgroundNote: 'latar, ditetesin sepanjang lima belas menit penuh',
       reservedNote:
         'ditahan, biar hover nggak pernah jadi request yang nguras jatah kamu',
@@ -234,8 +236,8 @@ export const id: Dict = {
 
   compareTeaser: {
     heading: 'Udah pakai yang lain?',
-    lead: 'Sekitar dua puluh ekstensi naro bendera di samping username. Perbedaan yang penting bukan di daftar fitur — tapi di apa yang boleh dilakukan cache bareng.',
-    body: 'Tabel lengkapnya ada lima belas baris dan nyebutin tiga hal yang X-Posed lakuin lebih baik dari ekstensi ini.',
+    lead: 'Sekitar dua puluh ekstensi naro bendera di samping username. Perbedaan yang penting bukan di daftar fitur — tapi di apa yang boleh dilakukan cache bareng, dan di apa yang kejadian pas lima puluh pengecekan dari X habis.',
+    body: 'Yang ini ngatur tempo sendiri berdasarkan jatah asli dari header respons X, dan nyisain sepuluh pengecekan buat akun yang kamu hover, jadi thread rame tetap kelar keisi, bukan berhenti di tengah. Tabel lengkapnya ada empat belas baris dan nyebutin tiga hal yang X-Posed lakuin lebih baik dari ekstensi ini.',
     link: 'Lihat perbandingan lengkap →',
   },
 
@@ -261,6 +263,7 @@ export const id: Dict = {
     supportProject: 'Dukung proyek',
     guideAboutAccount: '"Tentang akun ini" di X',
     guideEngagementFarming: 'Kenali engagement farming',
+    guideRateLimit: 'Batas laju X',
     guideComparison: 'Dibandingin sama X-Posed',
     privacyPolicy: 'Kebijakan privasi',
     whatIsNotCollected: 'Yang nggak dikumpulin',
@@ -283,10 +286,6 @@ export const id: Dict = {
         label: 'Negara ditampilkan inline, tanpa buka menu',
         note: 'Dibaca dari data "Tentang akun ini" milik X sendiri, bukan nebak dari alamat IP.',
       },
-      vpnWarning: {
-        label: 'Peringatan pas X nggak bisa verifikasi lokasi',
-        note: 'X nge-tag beberapa akun punya lokasi yang nggak bisa diverifikasi. Itu X yang nggak mau mastiin negaranya — bukan bukti ada VPN, dan nggak ada di sini yang bisa buktiin itu.',
-      },
       signupSource: {
         label: 'Sumber pendaftaran — Apple, Google Play, atau web',
         note: '',
@@ -297,13 +296,13 @@ export const id: Dict = {
         label: 'Sembunyiin atau lipat berdasarkan negara dan wilayah',
         note: 'Melipat di balik tombol "Tampilkan" bawaan di sini, karena timeline yang diam-diam ngebuang postingan itu timeline yang nggak bisa kamu audit.',
       },
-      languageFilter: {
-        label: 'Filter bahasa',
-        note: 'Kolom bahasa per postingan X itu cukup nggak bisa diandelin sampai bikin filter di atasnya cuma ngelahirin laporan bug. Sengaja belum dibikin.',
-      },
       allowlist: {
         label: 'Daftar izin selalu-tampil dan pengecualian per aturan',
         note: '',
+      },
+      budgetFromHeaders: {
+        label: 'Ngatur tempo dari jatah asli di header rate limit X',
+        note: 'X-Pat baca header x-rate-limit di tiap respons dan nyebar pengecekannya ke sisa jendela, sambil nyisain sebagian buat akun yang kamu hover. X-Posed jalan di interval tetap 150 ms dengan delapan permintaan paralel, dan baru baca header reset setelah kena 429.',
       },
       sharedCache: {
         label: 'Cache bareng, biar bendera tetep hidup lewat batas laju',
@@ -331,7 +330,7 @@ export const id: Dict = {
     losses: {
       mature: {
         title: 'X-Posed yang lebih matang',
-        body: 'Sekitar 7.000 install Chrome lawan segelintir punya kita, empat tahun rilis, dan cache komunitas jutaan profil sementara punya kita ribuan. Cache yang lebih gede memang artinya lebih banyak bendera instan dari hari pertama. Itu keunggulan nyata dan jaraknya nggak deket.',
+        body: 'Sekitar 10.000 install Chrome lawan segelintir punya kita, empat bulan lebih duluan, dan cache komunitas jutaan profil sementara punya kita ribuan. Cache yang lebih gede memang artinya lebih banyak bendera instan dari hari pertama. Itu keunggulan nyata dan jaraknya nggak deket.',
       },
       surfaces: {
         title: 'Dia tersedia di lebih banyak platform',
@@ -343,7 +342,7 @@ export const id: Dict = {
       },
     },
     notApplicable: '—',
-    testCount: '609 tes',
+    testCount: '{count} tes',
     none: 'nggak ada',
   },
 
@@ -460,7 +459,7 @@ export const id: Dict = {
       differs4:
         '<b>Pengecekan nggak bawa pengenal sama sekali.</b> Pembacaan berupa daftar username tanpa tanda tangan, jadi server nggak punya apa-apa buat ngegabunginnya dan nggak bisa ngebangun "install ini ngelihat akun-akun ini". Menghitung pembaca cuma satu baris kode dan bakal ngakhirin sifat itu, makanya statistik yang dipublikasi sengaja lebih rendah.',
       differs5:
-        'Dan batas lajunya dijatah, bukan diserobot: kerja latar berhenti di tujuh puluh persen jendela, jadi lima belas pengecekan terakhir masih ada buat akun yang beneran kamu hover. <a href="{href}">Mekanismenya digambarin di beranda</a>.',
+        'Dan batas lajunya dijatah, bukan diserobot: kerja latar berhenti di delapan puluh persen jendela, jadi sepuluh pengecekan terakhir masih ada buat akun yang beneran kamu hover. <a href="{href}">Mekanismenya digambarin di beranda</a>.',
       sourcesHeading: 'Sumber',
       sourcesLead:
         'Dibaca pada {date}. Jumlah install dan fitur berubah; kalau ada yang kedaluwarsa di bawah, itu kekeliruan bukan sikap, dan <a href="{href}">pelacak isu</a> cara paling cepet buat ngebenerinnya.',
@@ -550,6 +549,13 @@ export const id: Dict = {
       ],
     },
 
+    rateLimit: {
+      title: 'Batas laju X: 50 pencarian profil setiap 15 menit',
+      description:
+        'X mengizinkan satu peramban sekitar 50 pencarian akun tiap 15 menit. Bagaimana X-Pat menjatah jendela itu, dan mengapa sebagian besar profil tidak memakainya.',
+      faq: [],
+    },
+
     comparison: {
       title: 'Alternatif X-Posed: X-Pat dibandingin, fitur per fitur',
       description:
@@ -569,7 +575,7 @@ export const id: Dict = {
         },
         {
           q: 'Kok benderanya berhenti muncul di tengah utasan?',
-          a: 'X ngizinin satu browser sekitar lima puluh pengecekan akun tiap lima belas menit, dan utasan rame isinya jauh lebih banyak dari itu. Ekstensi yang nabrak langit-langit ya berhenti ngisi bendera. Cache bareng yang ngehindarin — sebagian besar profil nggak makan jatah karena ada yang udah ngeresolve duluan — dan X-Pat nambah nyadangin tiga puluh persen terakhir jendela buat akun yang kamu hover sendiri.',
+          a: 'X ngizinin satu browser sekitar lima puluh pengecekan akun tiap lima belas menit, dan utasan rame isinya jauh lebih banyak dari itu. Ekstensi yang nabrak langit-langit ya berhenti ngisi bendera. Cache bareng yang ngehindarin — sebagian besar profil nggak makan jatah karena ada yang udah ngeresolve duluan — dan X-Pat nambah nyadangin dua puluh persen terakhir jendela buat akun yang kamu hover sendiri.',
         },
       ],
     },

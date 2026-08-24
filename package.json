@@ -22,6 +22,7 @@
     "test": "vitest run --coverage",
     "typecheck": "tsc -b",
     "locales": "node scripts/sync-locales.mjs",
+    "tests:count": "node scripts/count-tests.mjs",
     "test:shuffle": "vitest run --sequence.shuffle",
     "test:visual": "playwright test -c playwright.visual.config.ts",
     "test:popup-window": "xvfb-run --auto-servernum node scripts/popup-window-check.mjs",

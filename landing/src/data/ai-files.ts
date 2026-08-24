@@ -508,7 +508,7 @@ Self-hosting instructions for both backends are in \`server/README.md\`.
 3. **The page script must run in \`world: 'MAIN'\`** to observe the headers X
    attaches to its own GraphQL calls. That is why Firefox needs 128+.
 4. **Rate limit is real budget, not a guess.** It comes from X's
-   \`x-rate-limit-*\` response headers. Background prefetching stops at 70% of
+   \`x-rate-limit-*\` response headers. Background prefetching stops at 80% of
    the window so hovers are never starved.
 5. **The IndexedDB database is still named \`x-profile-location\`** after the
    rename. Renaming it would point every existing install at an empty database.

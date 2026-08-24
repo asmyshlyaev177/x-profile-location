@@ -12,8 +12,11 @@ import { useI18n } from '../i18n/context'
  * feature-tick rows are mostly parity with X-Posed and would read as padding
  * here.
  *
- * Placed after Trust on purpose. Naming a competitor before the site has said
- * what it does is a page arguing with someone the reader has not met.
+ * Placed straight after the rate-limit section. It used to sit after Trust, on
+ * the grounds that naming a competitor before the site has said what it does is
+ * a page arguing with someone the reader has not met — but the reader who has
+ * met them is the one who arrived because their current extension stopped
+ * answering, and that is the section immediately above.
  */
 
 const HEADLINE_ROWS = ROWS.filter((r) => r.headline)

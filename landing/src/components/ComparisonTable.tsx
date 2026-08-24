@@ -1,5 +1,7 @@
 import { COMPETITORS, SELF, type Cell, type Row } from '../data/comparison'
+import { TEST_COUNT } from '../data/test-count'
 import { useT } from '../i18n/context'
+import { fill } from '../i18n/fill'
 import type { Dict } from '../i18n/dict/en'
 
 /**
@@ -14,11 +16,13 @@ import type { Dict } from '../i18n/dict/en'
 
 /**
  * Two cells hold a measured value rather than a verdict, and both are copy —
- * "609 tests" and "none" have to be sayable in fifteen languages. `comparison.ts`
- * stores the dictionary key; this resolves it.
+ * "1007 tests" and "none" have to be sayable in fifteen languages.
+ * `comparison.ts` stores the dictionary key; this resolves it, and the count
+ * itself comes from `test-count.ts` so the claim cannot drift from the suite.
  */
 function measured(value: Cell, t: Dict): string | null {
-  if (value === 'testCount') return t.comparison.testCount
+  if (value === 'testCount')
+    return fill(t.comparison.testCount, { count: String(TEST_COUNT) })
   if (value === 'none') return t.comparison.none
   return null
 }
@@ -52,7 +56,7 @@ function CellMark({ value, t }: { value: Cell; t: Dict }) {
       </span>
     )
   }
-  // A measured value ("609 tests", "none") says more than a tick could.
+  // A measured value ("1007 tests", "none") says more than a tick could.
   return (
     <span class="text-text font-mono text-[0.75rem] font-medium">
       {measured(value, t) ?? value}
@@ -75,13 +79,23 @@ function cellLabel(value: Cell, t: Dict): string {
 
 interface Props {
   rows: Row[]
-  /** Row notes are detail for the full page; the homepage table omits them. */
-  showNotes?: boolean
+  /**
+   * The full page shows row notes and the competitors' full store names; the
+   * homepage subset shows neither, because it is a teaser under a heading that
+   * has already named them.
+   */
+  detailed?: boolean
 }
 
-export function ComparisonTable({ rows, showNotes = false }: Props) {
+export function ComparisonTable({ rows, detailed = false }: Props) {
   const t = useT()
-  const columns = [SELF, ...COMPETITORS.map((c) => c.short)]
+  // The store name is what someone searching for a competitor by name actually
+  // types, so on the full page it belongs in the column head rather than only
+  // in the sources list at the foot.
+  const columns = [
+    { label: SELF, full: null },
+    ...COMPETITORS.map((c) => ({ label: c.short, full: c.name })),
+  ]
 
   return (
     // The table has five columns of prose and cannot reflow below ~640px, so it
@@ -97,13 +111,18 @@ export function ComparisonTable({ rows, showNotes = false }: Props) {
             </th>
             {columns.map((col) => (
               <th
-                key={col}
+                key={col.label}
                 scope="col"
-                class={`px-4 py-4 text-center text-[0.8125rem] font-semibold whitespace-nowrap ${
-                  col === SELF ? 'text-signal' : 'text-body'
-                }`}
+                class={`px-4 py-4 text-center align-bottom text-[0.8125rem] font-semibold ${
+                  detailed ? 'min-w-[9rem]' : ''
+                } ${col.label === SELF ? 'text-signal' : 'text-body'}`}
               >
-                {col}
+                <span class="block whitespace-nowrap">{col.label}</span>
+                {detailed && col.full ? (
+                  <span class="text-faint mt-1 block text-[0.6875rem] leading-tight font-normal">
+                    {col.full}
+                  </span>
+                ) : null}
               </th>
             ))}
           </tr>
@@ -118,19 +137,19 @@ export function ComparisonTable({ rows, showNotes = false }: Props) {
                   class="text-text max-w-[26rem] px-5 py-4 text-[0.875rem] leading-snug font-medium"
                 >
                   {copy.label}
-                  {showNotes && copy.note ? (
+                  {detailed && copy.note ? (
                     <span class="text-faint mt-1.5 block text-[0.8125rem] leading-relaxed font-normal">
                       {copy.note}
                     </span>
                   ) : null}
                 </th>
                 {columns.map((col) => {
-                  const value = row.cells[col] ?? 'unstated'
+                  const value = row.cells[col.label] ?? 'unstated'
                   return (
                     <td
-                      key={col}
+                      key={col.label}
                       class={`px-4 py-4 text-center align-middle ${
-                        col === SELF ? 'bg-signal/[0.04]' : ''
+                        col.label === SELF ? 'bg-signal/[0.04]' : ''
                       }`}
                     >
                       <CellMark value={value} t={t} />

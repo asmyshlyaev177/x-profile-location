@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-609_passing-3fb950?style=flat-square" alt="609 unit tests passing">
+  <img src="https://img.shields.io/badge/tests-1007_passing-3fb950?style=flat-square" alt="1007 unit tests passing">
   <img src="https://img.shields.io/badge/runtime_deps-2-3fb950?style=flat-square" alt="Two runtime dependencies">
   <img src="https://img.shields.io/badge/account_required-none-3fb950?style=flat-square" alt="No account required">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7f8c93?style=flat-square" alt="MIT License"></a>
@@ -171,22 +171,21 @@ Full text: [Privacy Policy](https://x-pat.pages.dev/privacy-policy).
 
 > Generated from `landing/src/data/comparison.ts` by the landing build. Edit that file, not this block.
 
-|                                               |   X-Pat   | X-Posed | Flags & Time | Region Blocker |
-| --------------------------------------------- | :-------: | :-----: | :----------: | :------------: |
-| Warning when X cannot verify the location     |    ✅     |   ✅    |      ✅      |       –        |
-| Shared cache, so flags survive the rate limit |    ✅     |   ✅    |      ✅      |       ❌       |
-| Cache server source published                 |    ✅     |   ❌    |      ❌      |       –        |
-| Cached entries cross-checked between installs |    ✅     |   ❌    |      –       |       –        |
-| Automated test suite in the repo              | 609 tests |  none   |      –       |       –        |
+| | X-Pat | X-Posed | Flags & Time | Region Blocker |
+| --- | :---: | :---: | :---: | :---: |
+| Paces against the live budget in X’s rate-limit headers | ✅ | ❌ | – | – |
+| Shared cache, so flags survive the rate limit | ✅ | ✅ | ✅ | ❌ |
+| Cache server source published | ✅ | ❌ | ❌ | – |
+| Cached entries cross-checked between installs | ✅ | ❌ | – | – |
+| Automated test suite in the repo | 1007 tests | none | – | – |
 
 **Where [X-Posed](https://chromewebstore.google.com/detail/x-posed-account-location/oodhljjldjdhcdopjpmfgbaoibpancfk) is ahead of X-Pat:**
 
-- **X-Posed is the mature one.** Roughly 7,000 Chrome installs against our handful, four years of releases, and a community cache holding millions of profiles where ours holds thousands. A bigger cache genuinely means more instant flags on day one. That is a real advantage and it is not close.
+- **X-Posed is the mature one.** Roughly 10,000 Chrome installs against our handful, a four-month head start, and a community cache holding millions of profiles where ours holds thousands. A bigger cache genuinely means more instant flags on day one. That is a real advantage and it is not close.
 - **It ships on more surfaces.** Firefox desktop, Firefox for Android, and a companion iPhone app. X-Pat is Chromium-only today — Chrome, Edge, Brave, and Lemur on Android. Firefox is planned, iOS is not.
 - **It has a language filter.** We do not, on purpose. X’s per-post language field is wrong often enough that filtering on it produces posts vanishing for no visible reason. That is a defensible call rather than a missing feature — but if filtering by language is what you came for, X-Posed has it and we do not.
 
-Full fifteen-row table, with sources: [https://x-pat.pages.dev/x-posed-alternative](https://x-pat.pages.dev/x-posed-alternative). Store listings read 2026-08-02.
-
+Full fourteen-row table, with sources: [https://x-pat.pages.dev/x-posed-alternative](https://x-pat.pages.dev/x-posed-alternative). Store listings read 2026-08-24.
 <!-- comparison:end -->
 
 ## Install
@@ -215,7 +214,7 @@ Georgia, which is why this is a plain link rather than the usual button.
 Bug reports and PRs welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the architecture,
 the test setup, and the three areas where a subtle change does the most damage.
 
-If you just want to see whether it's any good: `pnpm test` runs 609 unit tests (plus 44 for the cache server), and
+If you just want to see whether it's any good: `pnpm test` runs 1007 unit tests (plus 90 for the cache server), and
 [`server/README.md`](server/README.md) has the cache server's design and benchmarks.
 
 ## Licence

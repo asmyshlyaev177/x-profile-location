@@ -8,6 +8,7 @@ export const de: Dict = {
     howItWorks: "So geht's",
     features: 'Funktionen',
     privacy: 'Datenschutz',
+    comparison: 'Vergleich',
     sourceOnGitHub: 'Quellcode auf GitHub',
     home: 'X-Pat — Startseite',
   },
@@ -62,8 +63,8 @@ export const de: Dict = {
         alt: 'Eine Timeline, in der jeder Autor seine Landesflagge direkt in der Zeile trägt, ohne Hovern',
       },
       blocked: {
-        label: 'Gesperrte Länder',
-        alt: 'Profile aus gesperrten Ländern zeigen ein Warnzeichen statt einer Flagge',
+        label: 'Im Feed ausgeblendet',
+        alt: 'Eine Timeline, in der ein Beitrag hinter einer Leiste „🚫 Ausgeblendet · Ägypten“ und einer Anzeigen-Schaltfläche eingeklappt ist',
       },
       keyword: {
         label: 'Stichwort-Hervorhebung',
@@ -108,6 +109,7 @@ export const de: Dict = {
   },
 
   rateBudget: {
+    link: 'Wie das Budget funktioniert',
     heading: "X' Ratenlimit — gelöst, nicht gerissen.",
     lead: 'Du kennst das Bild: Oben im Thread füllt sich noch was, dann kommt nichts mehr. Das ist das Limit: fünfzig Abfragen alle fünfzehn Minuten, und ein lebhafter Thread hat mehr Accounts.',
     body: 'Die meisten Profile hier kosten gar keine Abfrage. Sie sind schon im Cache, oder jemand anderes hat sie nachgeschlagen und der geteilte Cache liefert die Antwort. Der Rest wird eingeteilt.',
@@ -122,20 +124,20 @@ export const de: Dict = {
       },
       spread: {
         title: 'Verteilt, nicht gesprintet',
-        body: 'Etwa eine Abfrage alle 26 Sekunden, jedes Mal neu berechnet — dehnt sich, wenn du viel hoverst, und zieht sich zusammen, wenn das Fenster wieder voll ist.',
+        body: 'Etwa eine Abfrage alle 22 Sekunden, jedes Mal neu berechnet — dehnt sich, wenn du viel hoverst, und zieht sich zusammen, wenn das Fenster wieder voll ist.',
         readoutKey: 'Takt',
         readoutValue: 'Fenster ÷ Budget',
       },
       hovers: {
         title: 'Hovers gehen immer vor',
-        body: 'Hintergrundarbeit stoppt bei 70 %, damit der Rest des Fensters für die Konten bleibt, auf die du wirklich zeigst.',
+        body: 'Hintergrundarbeit stoppt bei 80 %, damit der Rest des Fensters für die Konten bleibt, auf die du wirklich zeigst.',
         readoutKey: 'Reserviert',
-        readoutValue: '15 von 50',
+        readoutValue: '10 von 50',
       },
     },
     bar: {
       caption: 'Ein 15-Minuten-Fenster',
-      alt: 'Fünfzig Abfragen pro Fenster: fünfunddreißig für Hintergrund-Vorabladen, fünfzehn reserviert für deine Hovers.',
+      alt: 'Fünfzig Abfragen pro Fenster: vierzig für Hintergrund-Vorabladen, zehn reserviert für deine Hovers.',
       backgroundNote: 'Hintergrund, über die vollen fünfzehn Minuten verteilt',
       reservedNote:
         'zurückgehalten, damit kein Hover je die Abfrage ist, die dich leerlaufen lässt',
@@ -238,8 +240,8 @@ export const de: Dict = {
 
   compareTeaser: {
     heading: 'Nutzt du schon eine andere?',
-    lead: 'Etwa zwanzig Erweiterungen setzen eine Flagge neben ein Handle. Die Unterschiede, auf die es ankommt, stehen nicht in der Funktionsliste — sondern darin, was der geteilte Cache darf.',
-    body: 'Die ganze Tabelle hat fünfzehn Zeilen und nennt die drei Dinge, die X-Posed besser macht.',
+    lead: 'Etwa zwanzig Erweiterungen setzen eine Flagge neben ein Handle. Die Unterschiede, auf die es ankommt, stehen nicht in der Funktionsliste — sondern darin, was der geteilte Cache darf und was passiert, wenn Xʼ fünfzig Abfragen aufgebraucht sind.',
+    body: 'Diese hier taktet sich am echten Budget aus Xʼ eigenen Response-Headern und hält zehn Abfragen für die Konten zurück, die du hoverst — ein voller Thread füllt sich also zu Ende, statt auf halber Strecke stehen zu bleiben. Die ganze Tabelle hat vierzehn Zeilen und nennt die drei Dinge, die X-Posed besser macht.',
     link: 'Zum vollständigen Vergleich →',
   },
 
@@ -265,6 +267,7 @@ export const de: Dict = {
     supportProject: 'Das Projekt unterstützen',
     guideAboutAccount: 'X „Über dieses Konto"',
     guideEngagementFarming: 'Engagement-Farming erkennen',
+    guideRateLimit: 'Das Limit von X',
     guideComparison: 'Im Vergleich zu X-Posed',
     privacyPolicy: 'Datenschutzerklärung',
     whatIsNotCollected: 'Was nicht erfasst wird',
@@ -287,10 +290,6 @@ export const de: Dict = {
         label: 'Land direkt sichtbar, ohne Menü',
         note: 'Aus X\' eigenen „Über dieses Konto"-Daten, nicht per IP geraten.',
       },
-      vpnWarning: {
-        label: 'Warnung, wenn X den Standort nicht bestätigen kann',
-        note: 'X markiert manche Konten mit einem Standort, den es nicht bestätigen kann. X selbst sagt also: „keine Garantie" — das ist kein VPN-Beweis, und beweisen kann den hier sowieso niemand.',
-      },
       signupSource: {
         label: 'Registrierungsquelle — Apple, Google Play oder Web',
         note: '',
@@ -301,13 +300,13 @@ export const de: Dict = {
         label: 'Nach Land und Region ausblenden oder einklappen',
         note: 'Einklappen hinter „Anzeigen" ist die Voreinstellung — eine Timeline, die Beiträge stillschweigend schluckt, kannst du nicht prüfen.',
       },
-      languageFilter: {
-        label: 'Sprachfilter',
-        note: "X' Sprachfeld pro Beitrag ist so unzuverlässig, dass ein Filter darauf vor allem Bug-Reports produziert. Wurde bewusst noch nicht gebaut.",
-      },
       allowlist: {
         label: 'Immer-anzeigen-Liste und Ausnahmen pro Regel',
         note: '',
+      },
+      budgetFromHeaders: {
+        label: 'Taktet sich am Live-Budget aus X’ Rate-Limit-Headern',
+        note: 'X-Pat liest die x-rate-limit-Header bei jeder Antwort und verteilt seine Abfragen über das, was im Fenster übrig ist, mit einem Anteil, der für deine Hovers zurückbleibt. X-Posed taktet mit festen 150 ms und acht parallelen Anfragen und liest den Reset-Header erst, nachdem ein 429 bereits da war.',
       },
       sharedCache: {
         label: 'Geteilter Cache, damit Flaggen das Limit überleben',
@@ -335,7 +334,7 @@ export const de: Dict = {
     losses: {
       mature: {
         title: 'X-Posed ist das ausgereifte Projekt',
-        body: 'Etwa 7.000 Chrome-Installationen gegen unsere Handvoll, vier Jahre Releases und ein Community-Cache mit Millionen Profilen — unserer hat Tausende. Ein größerer Cache heißt wirklich mehr sofortige Flaggen am ersten Tag. Das ist ein handfester Vorsprung, und er ist deutlich.',
+        body: 'Etwa 10.000 Chrome-Installationen gegen unsere Handvoll, vier Monate Vorsprung und ein Community-Cache mit Millionen Profilen — unserer hat Tausende. Ein größerer Cache heißt wirklich mehr sofortige Flaggen am ersten Tag. Das ist ein handfester Vorsprung, und er ist deutlich.',
       },
       surfaces: {
         title: 'Es ist auf mehr Plattformen vertreten',
@@ -347,7 +346,7 @@ export const de: Dict = {
       },
     },
     notApplicable: '—',
-    testCount: '609 Tests',
+    testCount: '{count} Tests',
     none: 'keine',
   },
 
@@ -464,7 +463,7 @@ export const de: Dict = {
       differs4:
         '<b>Abfragen tragen keine Kennung.</b> Lesezugriffe sind eine unsignierte Handle-Liste — der Server hat nichts, womit er verknüpfen könnte, und kann kein „diese Installation hat diese Konten angesehen" aufbauen. Leser zu zählen wäre eine Zeile Code und würde diese Eigenschaft sofort zerstören. Deshalb zählen die veröffentlichten Statistiken mit Absicht zu niedrig.',
       differs5:
-        'Und das Ratenlimit wird rationiert statt verheizt: Hintergrundarbeit stoppt bei siebzig Prozent des Fensters, die letzten fünfzehn Abfragen bleiben für die Konten, die du wirklich hoverst. <a href="{href}">Der Mechanismus ist auf der Startseite aufgezeichnet</a>.',
+        'Und das Ratenlimit wird rationiert statt verheizt: Hintergrundarbeit stoppt bei achtzig Prozent des Fensters, die letzten zehn Abfragen bleiben für die Konten, die du wirklich hoverst. <a href="{href}">Der Mechanismus ist auf der Startseite aufgezeichnet</a>.',
       sourcesHeading: 'Quellen',
       sourcesLead:
         'Gelesen am {date}. Installationszahlen und Funktionen ändern sich. Falls etwas nicht mehr stimmt, ist das ein Fehler, keine Absicht — und der <a href="{href}">Issue-Tracker</a> der schnellste Weg zur Korrektur.',
@@ -554,6 +553,13 @@ export const de: Dict = {
       ],
     },
 
+    rateLimit: {
+      title: 'Das Limit von X: 50 Profilabfragen alle 15 Minuten',
+      description:
+        'X erlaubt einem Browser rund 50 Kontoabfragen alle 15 Minuten. Wie X-Pat dieses Fenster einteilt und warum die meisten Profile keine davon kosten.',
+      faq: [],
+    },
+
     comparison: {
       title: 'X-Posed-Alternative: X-Pat im Vergleich, Funktion für Funktion',
       description:
@@ -573,7 +579,7 @@ export const de: Dict = {
         },
         {
           q: 'Warum erscheinen die Flaggen mitten im Thread nicht mehr?',
-          a: 'X erlaubt einem Browser rund fünfzig Kontoabfragen pro Viertelstunde, und ein lebhafter Thread hat mehr Konten. Erweiterungen, die ans Limit stoßen, zeigen einfach keine Flaggen mehr. Ein geteilter Cache umgeht das — fast alle Profile kosten nichts, weil sie schon jemand anderes aufgelöst hat. X-Pat reserviert zusätzlich die letzten dreißig Prozent des Fensters für Konten, die du selbst hoverst.',
+          a: 'X erlaubt einem Browser rund fünfzig Kontoabfragen pro Viertelstunde, und ein lebhafter Thread hat mehr Konten. Erweiterungen, die ans Limit stoßen, zeigen einfach keine Flaggen mehr. Ein geteilter Cache umgeht das — fast alle Profile kosten nichts, weil sie schon jemand anderes aufgelöst hat. X-Pat reserviert zusätzlich die letzten zwanzig Prozent des Fensters für Konten, die du selbst hoverst.',
         },
       ],
     },

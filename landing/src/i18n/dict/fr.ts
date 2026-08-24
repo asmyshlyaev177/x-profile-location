@@ -8,6 +8,7 @@ export const fr: Dict = {
     howItWorks: 'Fonctionnement',
     features: 'Fonctionnalités',
     privacy: 'Confidentialité',
+    comparison: 'Comparatif',
     sourceOnGitHub: 'Code sur GitHub',
     home: 'X-Pat — accueil',
   },
@@ -62,8 +63,8 @@ export const fr: Dict = {
         alt: 'Un fil où chaque auteur affiche son drapeau directement, sans avoir à survoler',
       },
       blocked: {
-        label: 'Pays bloqués',
-        alt: 'Des profils de pays bloqués affichant un avertissement au lieu d’un drapeau',
+        label: 'Masqué dans le fil',
+        alt: 'Un fil où un post est replié derrière une barre « 🚫 Masqué · Égypte » et un bouton Afficher',
       },
       keyword: {
         label: 'Surlignage par mot-clé',
@@ -106,6 +107,7 @@ export const fr: Dict = {
   },
 
   rateBudget: {
+    link: 'Comment fonctionne le budget',
     heading: 'Le quota de X, contourné plutôt que subi.',
     lead: 'Vous avez déjà vu le problème. Le haut d’un fil se remplit, puis plus rien. C’est le quota : cinquante consultations de comptes par quart d’heure, et un fil actif contient plus de comptes que cela.',
     body: 'Ici, la plupart des profils ne coûtent rien. Ils sont déjà en cache, ou quelqu’un d’autre les a consultés et le cache partagé répond. Le reste est rationné.',
@@ -120,20 +122,20 @@ export const fr: Dict = {
       },
       spread: {
         title: 'Étalé, pas épuisé d’un coup',
-        body: 'Environ une consultation toutes les 26 secondes, recalculée en continu — le rythme se détend quand vous survolez beaucoup, se resserre quand la fenêtre se recharge.',
+        body: 'Environ une consultation toutes les 22 secondes, recalculée en continu — le rythme se détend quand vous survolez beaucoup, se resserre quand la fenêtre se recharge.',
         readoutKey: 'Rythme',
         readoutValue: 'fenêtre ÷ quota',
       },
       hovers: {
         title: 'Le survol l’emporte toujours',
-        body: 'Le travail d’arrière-plan s’arrête à 70 %, si bien que le reste de la fenêtre est réservé aux comptes que vous survolez vous-même.',
+        body: 'Le travail d’arrière-plan s’arrête à 80 %, si bien que le reste de la fenêtre est réservé aux comptes que vous survolez vous-même.',
         readoutKey: 'Réservé',
-        readoutValue: '15 sur 50',
+        readoutValue: '10 sur 50',
       },
     },
     bar: {
       caption: 'Une fenêtre de 15 minutes',
-      alt: 'Cinquante consultations par fenêtre : trente-cinq disponibles pour le préchargement en arrière-plan, quinze réservées aux comptes que vous survolez.',
+      alt: 'Cinquante consultations par fenêtre : quarante disponibles pour le préchargement en arrière-plan, dix réservées aux comptes que vous survolez.',
       backgroundNote:
         'en arrière-plan, réparties tout au long des quinze minutes',
       reservedNote:
@@ -236,8 +238,8 @@ export const fr: Dict = {
 
   compareTeaser: {
     heading: 'Vous utilisez déjà l’une des autres ?',
-    lead: 'Une vingtaine d’extensions placent un drapeau à côté d’un pseudo. Les différences qui comptent ne sont pas dans la liste des fonctionnalités — elles sont dans ce que le cache partagé a le droit de faire.',
-    body: 'Le tableau complet couvre quinze lignes et nomme les trois domaines où X-Posed fait mieux que cette extension.',
+    lead: 'Une vingtaine d’extensions placent un drapeau à côté d’un pseudo. Les différences qui comptent ne sont pas dans la liste des fonctionnalités — elles sont dans ce que le cache partagé a le droit de faire, et dans ce qui se passe quand les cinquante consultations de X sont épuisées.',
+    body: 'Celle-ci se cale sur le budget réel annoncé par les en-têtes de réponse de X et garde dix consultations pour les comptes que vous survolez : un fil chargé finit de se remplir au lieu de s’arrêter à mi-chemin. Le tableau complet couvre quatorze lignes et nomme les trois domaines où X-Posed fait mieux que cette extension.',
     link: 'Voir la comparaison complète →',
   },
 
@@ -263,6 +265,7 @@ export const fr: Dict = {
     supportProject: 'Soutenir le projet',
     guideAboutAccount: 'X « À propos de ce compte »',
     guideEngagementFarming: 'Repérer l’engagement farming',
+    guideRateLimit: 'La limite de X',
     guideComparison: 'Comparé à X-Posed',
     privacyPolicy: 'Politique de confidentialité',
     whatIsNotCollected: 'Ce qui n’est pas collecté',
@@ -285,10 +288,6 @@ export const fr: Dict = {
         label: 'Pays affiché en ligne, sans ouvrir de menu',
         note: 'Lu depuis les données « À propos de ce compte » de X, pas deviné à partir d’une adresse IP.',
       },
-      vpnWarning: {
-        label: 'Alerte quand X ne peut pas vérifier la localisation',
-        note: 'X marque certains comptes comme ayant une localisation qu’il ne peut pas vérifier. C’est X qui refuse de confirmer le pays — pas la preuve d’un VPN, et personne ici ne peut en prouver un.',
-      },
       signupSource: {
         label: 'Origine de l’inscription — Apple, Google Play ou web',
         note: '',
@@ -302,13 +301,13 @@ export const fr: Dict = {
         label: 'Masquer ou replier par pays et par région',
         note: 'Le repli derrière un bouton « Afficher » est ici le comportement par défaut, parce qu’un fil qui supprime des messages en silence est un fil que vous ne pouvez pas vérifier.',
       },
-      languageFilter: {
-        label: 'Filtre par langue',
-        note: 'Le champ de langue par message de X est trop peu fiable pour qu’un filtre bâti dessus ne génère que des rapports de bug. Délibérément absent pour le moment.',
-      },
       allowlist: {
         label: 'Liste blanche « toujours afficher » et exceptions par règle',
         note: '',
+      },
+      budgetFromHeaders: {
+        label: 'Se cale sur le budget réel des en-têtes de quota de X',
+        note: 'X-Pat lit les en-têtes x-rate-limit à chaque réponse et répartit ses consultations sur ce qui reste de la fenêtre, en gardant une part pour les comptes que vous survolez. X-Posed avance à un intervalle fixe de 150 ms avec huit requêtes en parallèle et ne lit l’en-tête de réinitialisation qu’après un 429.',
       },
       sharedCache: {
         label: 'Cache partagé, pour que les drapeaux survivent au quota',
@@ -336,7 +335,7 @@ export const fr: Dict = {
     losses: {
       mature: {
         title: 'X-Posed est l’extension mature',
-        body: 'Environ 7 000 installations Chrome contre notre poignée, quatre ans de mises à jour, et un cache communautaire de plusieurs millions de profils là où le nôtre en compte des milliers. Un cache plus grand, cela signifie concrètement plus de drapeaux instantanés au premier jour. Cet avantage est réel et l’écart n’est pas près de se combler.',
+        body: 'Environ 10 000 installations Chrome contre notre poignée, quatre mois d’avance, et un cache communautaire de plusieurs millions de profils là où le nôtre en compte des milliers. Un cache plus grand, cela signifie concrètement plus de drapeaux instantanés au premier jour. Cet avantage est réel et l’écart n’est pas près de se combler.',
       },
       surfaces: {
         title: 'Elle est disponible sur plus de plateformes',
@@ -348,7 +347,7 @@ export const fr: Dict = {
       },
     },
     notApplicable: '—',
-    testCount: '609 tests',
+    testCount: '{count} tests',
     none: 'aucun',
   },
 
@@ -465,7 +464,7 @@ export const fr: Dict = {
       differs4:
         '<b>Les consultations ne portent aucun identifiant.</b> Les lectures sont une liste de pseudos non signée : le serveur n’a rien pour les recouper et ne peut pas construire un « cette installation a regardé ces comptes ». Compter les lecteurs tiendrait en une ligne de code et anéantirait cette propriété, raison pour laquelle les statistiques publiées sous-estiment volontairement.',
       differs5:
-        'Et le quota est rationné plutôt que disputé : le travail d’arrière-plan s’arrête à soixante-dix pour cent de la fenêtre, si bien que les quinze dernières consultations restent disponibles pour les comptes que vous survolez vous-même. <a href="{href}">Le mécanisme est détaillé sur la page d’accueil</a>.',
+        'Et le quota est rationné plutôt que disputé : le travail d’arrière-plan s’arrête à quatre-vingts pour cent de la fenêtre, si bien que les dix dernières consultations restent disponibles pour les comptes que vous survolez vous-même. <a href="{href}">Le mécanisme est détaillé sur la page d’accueil</a>.',
       sourcesHeading: 'Sources',
       sourcesLead:
         'Consulté le {date}. Les chiffres d’installation et les fonctionnalités évoluent ; si quelque chose ci-dessous n’est plus à jour, c’est une erreur et non une position, et le <a href="{href}">suivi des tickets</a> est le moyen le plus rapide de la faire corriger.',
@@ -557,6 +556,13 @@ export const fr: Dict = {
       ],
     },
 
+    rateLimit: {
+      title: 'La limite de X : 50 consultations de profil par 15 minutes',
+      description:
+        'X autorise environ 50 consultations de compte par navigateur toutes les 15 minutes. Comment X-Pat rationne cette fenêtre, et pourquoi la plupart des profils n’en coûtent aucune.',
+      faq: [],
+    },
+
     comparison: {
       title:
         'Alternative à X-Posed : X-Pat comparé, fonctionnalité par fonctionnalité',
@@ -577,7 +583,7 @@ export const fr: Dict = {
         },
         {
           q: 'Pourquoi le drapeau cesse-t-il d’apparaître au milieu d’un fil ?',
-          a: 'X autorise environ cinquante consultations de comptes par navigateur et par quart d’heure, et un fil actif contient davantage de comptes. Les extensions qui atteignent le plafond arrêtent simplement de remplir les drapeaux. C’est le cache partagé qui l’évite — la plupart des profils ne coûtent aucune consultation parce que quelqu’un d’autre les a déjà résolus — et X-Pat réserve en plus les trente derniers pour cent de la fenêtre aux comptes que vous survolez vous-même.',
+          a: 'X autorise environ cinquante consultations de comptes par navigateur et par quart d’heure, et un fil actif contient davantage de comptes. Les extensions qui atteignent le plafond arrêtent simplement de remplir les drapeaux. C’est le cache partagé qui l’évite — la plupart des profils ne coûtent aucune consultation parce que quelqu’un d’autre les a déjà résolus — et X-Pat réserve en plus les vingt derniers pour cent de la fenêtre aux comptes que vous survolez vous-même.',
         },
       ],
     },

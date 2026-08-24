@@ -1,67 +1,45 @@
 /* ───────────────────────────────────────────────────────────────────────────
-   The rate limit, and why it isn't the ceiling it looks like.
+   The rate limit, on the homepage: the number, the shape of the window, and a
+   link out.
 
-   Placed above HowItWorks on purpose. Running out of lookups and quietly
-   going dead is the specific way the competing extensions disappoint people,
-   so anyone arriving with that experience should hit the answer early rather
-   than after two sections about where the data comes from. It has to read
-   standalone as a result, which is why it states the limit itself instead of
-   assuming the reader met it earlier.
+   Running out of lookups and quietly going dead is the specific way the
+   competing extensions disappoint people, so anyone arriving with that
+   experience should hit the answer early rather than after two sections about
+   where the data comes from. It has to read standalone as a result, which is
+   why it states the limit itself instead of assuming the reader met it
+   earlier.
 
-   It answers with the mechanism rather than a reassurance. The
-   numbers in the copy are the shipped defaults from `src/scripts/countries.ts`
-   (LOOKUP_LIMIT_PER_WINDOW, LOOKUP_WINDOW_MINUTES, DEFAULT_PREFETCH_SHARE) —
-   written into the dictionaries the same way HowItWorks writes the 30-day
-   cache, since the landing site is its own package and importing across would
-   drag the extension's module graph into a static site for three integers.
+   The mechanism — the pacing, the reserved share, what happens when you do run
+   dry — is a page of its own at `/x-rate-limit`. It was here, and three
+   paragraphs plus a three-column grid is a wall of text between a visitor and
+   the rest of the site.
    ─────────────────────────────────────────────────────────────────────────── */
 
-import { useT } from '../i18n/context'
+import { useI18n } from '../i18n/context'
 import type { Dict } from '../i18n/dict/en'
 
 export function RateBudget() {
-  const t = useT()
-  const facts = [
-    t.rateBudget.facts.real,
-    t.rateBudget.facts.spread,
-    t.rateBudget.facts.hovers,
-  ]
+  const { t, href } = useI18n()
 
   return (
     <section id="budget" class="band relative scroll-mt-24">
       <div class="shell">
-        <div class="grid gap-12 lg:grid-cols-[1fr_1fr] lg:items-start lg:gap-16">
+        <div class="grid gap-12 lg:grid-cols-[1fr_1fr] lg:items-center lg:gap-16">
           <div>
             <h2 class="t-h2 reveal max-w-[22ch]">{t.rateBudget.heading}</h2>
             <p class="t-lead reveal mt-6">{t.rateBudget.lead}</p>
-            <p class="t-body reveal mt-6">{t.rateBudget.body}</p>
+            <a
+              href={href('/x-rate-limit')}
+              class="text-signal reveal mt-7 inline-block text-[0.9375rem] font-semibold underline decoration-1 underline-offset-4"
+            >
+              {t.rateBudget.link}
+            </a>
           </div>
 
           <div class="reveal" style="animation-delay:120ms">
             <BudgetBar t={t} />
           </div>
         </div>
-
-        <ol class="mt-16 grid gap-10 sm:grid-cols-3 sm:gap-px">
-          {facts.map((f, i) => (
-            <li
-              key={f.title}
-              class="reveal flex flex-col sm:px-7 sm:first:ps-0 sm:last:pe-0"
-              style={`animation-delay:${i * 90}ms`}
-            >
-              <h3 class="t-h3">{f.title}</h3>
-              <p class="t-body mt-2.5 max-w-[40ch]">{f.body}</p>
-              <dl class="border-hair mt-6 border-t pt-3 sm:mt-auto">
-                <dt class="t-data">{f.readoutKey}</dt>
-                <dd class="text-signal mt-1 font-mono text-[0.75rem] font-medium">
-                  {f.readoutValue}
-                </dd>
-              </dl>
-            </li>
-          ))}
-        </ol>
-
-        <p class="t-body reveal mt-14 max-w-[58ch]">{t.rateBudget.closing}</p>
       </div>
 
       <div class="hairline" />
@@ -72,13 +50,21 @@ export function RateBudget() {
 /* ── The window, drawn to scale ────────────────────────────────────────────
    Fifty ticks because the claim is a specific number and a generic progress
    bar would be a decoration instead of an argument. The split is the shipped
-   default: 35 for background work, the last 15 held back.
+   default: 40 for background work, the last 10 held back
+   (`DEFAULT_PREFETCH_SHARE = 0.8`).
+
+   The numbers in the copy around it are the shipped defaults from
+   `src/scripts/countries.ts` (LOOKUP_LIMIT_PER_WINDOW, LOOKUP_WINDOW_MINUTES,
+   DEFAULT_PREFETCH_SHARE) — written into the dictionaries the same way
+   HowItWorks writes the 30-day cache, since the landing site is its own
+   package and importing across would drag the extension's module graph into a
+   static site for three integers.
    ───────────────────────────────────────────────────────────────────────── */
 
-const BACKGROUND_SHARE = 35
+const BACKGROUND_SHARE = 40
 const TOTAL = 50
 
-function BudgetBar({ t }: { t: Dict }) {
+export function BudgetBar({ t }: { t: Dict }) {
   return (
     <figure class="border-hair bg-ink-1 rounded-2xl border p-7">
       <figcaption class="t-data">{t.rateBudget.bar.caption}</figcaption>

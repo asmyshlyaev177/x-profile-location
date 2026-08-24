@@ -101,6 +101,11 @@ export const routes: RouteDef[] = [
     sources: ['src/components/EngagementFarming.tsx'],
   },
   {
+    path: '/x-rate-limit',
+    dictKey: 'rateLimit',
+    sources: ['src/components/RateLimit.tsx', 'src/components/RateBudget.tsx'],
+  },
+  {
     // The exact phrase someone types when they already have one of these
     // installed and it is not doing what they wanted. Matching the query in the
     // slug is worth more here than a tidier /compare would be.

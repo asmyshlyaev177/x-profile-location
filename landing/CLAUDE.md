@@ -17,7 +17,7 @@ six times over.
 (head, canonical, prerender list, sitemap), so a new page is audited the moment it
 exists.
 
-**Desktop config, four categories, 100 on each** — all six pages, measured August 2026. Mobile is not what runs (`/` reproduces at 99). Lighthouse 13's fifth
+**Desktop config, four categories, 100 on each** — all seven pages, measured August 2026. Mobile is not what runs (`/` reproduces at 99). Lighthouse 13's fifth
 category `agentic-browsing` scores 100 everywhere but is deliberately not gated:
 Google is still moving its weights.
 
@@ -40,7 +40,16 @@ against an empty array and check nothing.
 
 ⚠ The landing build rewrites the comparison table in the repo `README.md`
 (`readmeComparison` in `landing/vite.config.ts`). CI builds the site, so that
-write must stay **idempotent**.
+write must stay **idempotent** — the committed block is the generator's output
+verbatim, unpadded cells and all. It was hand-aligned for a while and every
+build undid that, so a CI run left the tree dirty.
+
+⚠ The test count in that table is **generated, not typed**: `pnpm tests:count`
+(`scripts/count-tests.mjs`) collects with `vitest list` and writes
+`landing/src/data/test-count.ts`, which `ComparisonTable` and
+`comparison-markdown` fill into the `{count}` in `comparison.testCount`. Run it
+after adding tests. The hand-typed number said 609 while the suite had grown to
+1007; counting `it(` with a regex misses `it.each` and lands on 799.
 
 ⚠ The site's mark (`landing/src/data/brand-mark.json`, cyan X on a dark plate →
 `landing/public/favicon.svg`) is **not** the extension icon

@@ -45,7 +45,7 @@ export function Comparison() {
             {fill(g.featureLead, { date: scrapedLabel })}
           </p>
           <div class="reveal mt-10">
-            <ComparisonTable rows={ROWS} showNotes />
+            <ComparisonTable rows={ROWS} detailed />
           </div>
         </div>
       </section>
