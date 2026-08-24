@@ -8,6 +8,7 @@ export const zh: Dict = {
     howItWorks: '工作原理',
     features: '功能',
     privacy: '隐私',
+    comparison: '对比',
     sourceOnGitHub: 'GitHub 源码',
     home: 'X-Pat — 首页',
   },
@@ -62,8 +63,8 @@ export const zh: Dict = {
         alt: '一条时间线，每个作者旁边直接带着国旗，不用悬停',
       },
       blocked: {
-        label: '被屏蔽的国家',
-        alt: '来自被屏蔽地区的账号，不显示国旗，显示警告',
+        label: '在信息流中隐藏',
+        alt: '一条时间线，其中一条帖子被折叠在“🚫 已隐藏 · 埃及”条和“显示”按钮之后',
       },
       keyword: {
         label: '关键词高亮',
@@ -106,6 +107,7 @@ export const zh: Dict = {
   },
 
   rateBudget: {
+    link: '额度是如何分配的',
     heading: 'X 的速率限制，不硬碰，绕过去。',
     lead: '你见过这场景：点开一条长帖，上面加载出来了，往下就没影了。那就是限制：每 15 分钟 50 次查询，一条热闹的帖子里，账号比这多。',
     body: '在这里，绝大多数账号不耗你的查询次数。它们要么已经缓着，要么别人查过了，共享池替你回答。剩下的才按配额分。',
@@ -120,20 +122,20 @@ export const zh: Dict = {
       },
       spread: {
         title: '摊开用，不冲刺',
-        body: '大概每 26 秒一次，每次重新算——悬停多了就放缓，窗口回血了就收紧。',
+        body: '大概每 22 秒一次，每次重新算——悬停多了就放缓，窗口回血了就收紧。',
         readoutKey: '节奏',
         readoutValue: '时间窗口 ÷ 配额',
       },
       hovers: {
         title: '悬停永远优先',
-        body: '后台任务到 70% 就停，窗口剩下的留给那些你真正去指的账号。',
+        body: '后台任务到 80% 就停，窗口剩下的留给那些你真正去指的账号。',
         readoutKey: '预留',
-        readoutValue: '50 次里留 15 次',
+        readoutValue: '50 次里留 10 次',
       },
     },
     bar: {
       caption: '一个 15 分钟的窗口',
-      alt: '每窗口五十次查询：三十五次给后台预取慢慢用，十五次留着给悬停的账号。',
+      alt: '每窗口五十次查询：四十次给后台预取慢慢用，十次留着给悬停的账号。',
       backgroundNote: '后台，摊在十五分钟里一点点发',
       reservedNote: '留着不花，保证悬停不会是你把配额耗干的那次请求',
     },
@@ -232,8 +234,8 @@ export const zh: Dict = {
 
   compareTeaser: {
     heading: '已经在用别的同类扩展了？',
-    lead: '大概有二十个扩展会在用户名旁放国旗。真正要紧的区别不在功能列表上——在共享缓存被允许干什么。',
-    body: '完整表格覆盖十五项，并点名了 X-Posed 比这扩展做得更好的三件事。',
+    lead: '大概有二十个扩展会在用户名旁放国旗。真正要紧的区别不在功能列表上——在共享缓存被允许干什么，以及 X 的五十次查询用完之后会怎样。',
+    body: '这个扩展按 X 自己响应头里给出的真实配额来控速，并给你悬停的账号留出十次查询，所以热闹的长贴会填完，而不是填到一半就停。完整表格覆盖十四项，并点名了 X-Posed 比这扩展做得更好的三件事。',
     link: '查看完整对比 →',
   },
 
@@ -258,6 +260,7 @@ export const zh: Dict = {
     supportProject: '支持这个项目',
     guideAboutAccount: 'X 的「关于此账号」',
     guideEngagementFarming: '识别流量收割',
+    guideRateLimit: 'X 的速率限制',
     guideComparison: '与 X-Posed 对比',
     privacyPolicy: '隐私政策',
     whatIsNotCollected: '不被收集的数据',
@@ -279,10 +282,6 @@ export const zh: Dict = {
         label: '不用开菜单，国家直接显示',
         note: '读的是 X 自身「关于此账号」的数据，不是靠 IP 地址猜的。',
       },
-      vpnWarning: {
-        label: 'X 无法核实位置时给出警示',
-        note: 'X 会标记某些账号的位置无法核实。这是 X 不肯确认国家——不是 VPN 的证据，这里也没人能证明。',
-      },
       signupSource: {
         label: '注册来源 — Apple、Google Play 或网页',
         note: '',
@@ -293,13 +292,13 @@ export const zh: Dict = {
         label: '按国家和地区隐藏或折叠',
         note: '这里默认折叠到「显示」按钮后面，因为一条会悄无声息丢掉帖子的时间线无法核查。',
       },
-      languageFilter: {
-        label: '语言过滤',
-        note: 'X 单条帖子的语言字段太不可靠，往上做过滤只会产出一堆 bug 报告。有意暂未实现。',
-      },
       allowlist: {
         label: '始终显示的白名单和按规则的例外',
         note: '',
+      },
+      budgetFromHeaders: {
+        label: '按 X 速率限制响应头里的真实配额控速',
+        note: 'X-Pat 每个响应都读 x-rate-limit 响应头，把查询摊到窗口剩下的额度上，并留一部分给你悬停的账号。X-Posed 走固定 150 毫秒间隔、八个并发请求，只有在收到 429 之后才去读 reset 头。',
       },
       sharedCache: {
         label: '共享缓存，让国旗扛过速率限制',
@@ -324,7 +323,7 @@ export const zh: Dict = {
     losses: {
       mature: {
         title: 'X-Posed 是成熟的那个',
-        body: 'Chrome 上约 7000 安装，对比我们屈指可数；四年发布记录；社区缓存存着数百万账号，我们只有几千。缓存更大，第一天能秒出的国旗就是更多。这是实打实的优势，差距不小。',
+        body: 'Chrome 上约 10000 安装，对比我们屈指可数；早四个月起步；社区缓存存着数百万账号，我们只有几千。缓存更大，第一天能秒出的国旗就是更多。这是实打实的优势，差距不小。',
       },
       surfaces: {
         title: '它覆盖的平台更多',
@@ -336,7 +335,7 @@ export const zh: Dict = {
       },
     },
     notApplicable: '—',
-    testCount: '609 项测试',
+    testCount: '{count} 项测试',
     none: '无',
   },
 
@@ -453,7 +452,7 @@ export const zh: Dict = {
       differs4:
         '<b>查询不带标识符。</b>读取请求是份未签名的用户名列表，服务器没东西可关联，也拼不出「这个安装看过这些账号」。统计读者一行代码的事，做了这性质就没了——公开的统计数字是故意往少里算的。',
       differs5:
-        '而且速率限制是分配着用不是去抢：后台任务到窗口 70% 就停，最后十五次留给真正去悬停的账号。<a href="{href}">这套机制首页画出来了</a>。',
+        '而且速率限制是分配着用不是去抢：后台任务到窗口 80% 就停，最后十次留给真正去悬停的账号。<a href="{href}">这套机制首页画出来了</a>。',
       sourcesHeading: '资料来源',
       sourcesLead:
         '查阅于 {date}。安装量和功能都在变；下面有过时的内容，那是错误不是立场，<a href="{href}">issue 追踪</a>是最快的修正途径。',
@@ -543,6 +542,13 @@ export const zh: Dict = {
       ],
     },
 
+    rateLimit: {
+      title: 'X 的速率限制：每 15 分钟 50 次资料查询',
+      description:
+        'X 允许单个浏览器每 15 分钟约 50 次账号查询。X-Pat 如何分配这个窗口，以及为什么大多数资料根本不消耗额度。',
+      faq: [],
+    },
+
     comparison: {
       title: 'X-Posed 替代品：X-Pat 逐项对比',
       description:
@@ -562,7 +568,7 @@ export const zh: Dict = {
         },
         {
           q: '为什么长帖读到一半国旗就不出来了？',
-          a: 'X 允许一个浏览器每 15 分钟约五十次查询，一条热闹的帖子里账号比这多。撞到顶的扩展就干脆不填了。避开靠的是共享缓存——大多数号别人已解析过，不花查询次数——X-Pat 还额外把窗口最后 30% 留给悬停的账号。',
+          a: 'X 允许一个浏览器每 15 分钟约五十次查询，一条热闹的帖子里账号比这多。撞到顶的扩展就干脆不填了。避开靠的是共享缓存——大多数号别人已解析过，不花查询次数——X-Pat 还额外把窗口最后 20% 留给悬停的账号。',
         },
       ],
     },

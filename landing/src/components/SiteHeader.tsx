@@ -16,6 +16,7 @@ export function SiteHeader() {
     { href: href('/') + '#proof', label: t.nav.screenshots },
     { href: href('/') + '#how', label: t.nav.howItWorks },
     { href: href('/') + '#features', label: t.nav.features },
+    { href: href('/') + '#compare', label: t.nav.comparison },
     { href: href('/') + '#privacy', label: t.nav.privacy },
   ]
 
@@ -48,7 +49,7 @@ export function SiteHeader() {
       <div class="shell flex h-[var(--header-h)] items-center justify-between gap-6">
         <Wordmark />
 
-        {/* Four links plus a wordmark plus a button only breathe from ~1024px;
+        {/* Five links plus a wordmark plus a button only breathe from ~1024px;
             below that the install CTA is the only thing that matters anyway.
             The language picker stays at every width — someone reading the
             wrong language cannot use the page at all, which is a worse

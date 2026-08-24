@@ -41,6 +41,7 @@ export const en = {
     howItWorks: 'How it works',
     features: 'Features',
     privacy: 'Privacy',
+    comparison: 'Comparison',
     sourceOnGitHub: 'Source on GitHub',
     home: 'X-Pat — home',
   },
@@ -99,8 +100,8 @@ export const en = {
         alt: 'A timeline where every author carries their country flag inline, without hovering',
       },
       blocked: {
-        label: 'Blocked countries',
-        alt: 'Profiles from blocked locations reading as a warning sign instead of a flag',
+        label: 'Hidden in the feed',
+        alt: 'A timeline with a post folded away behind a “🚫 Hidden · Egypt” bar and a Show button',
       },
       keyword: {
         label: 'Keyword highlight',
@@ -143,6 +144,7 @@ export const en = {
   },
 
   rateBudget: {
+    link: 'How the budget works',
     heading: 'X’s rate limit, solved instead of hit.',
     lead: 'You have seen the failure. The top of a thread fills in, then nothing does. That is the limit: fifty account lookups every fifteen minutes, and one busy thread has more accounts than that.',
     body: 'Most profiles here never cost one. They are already cached, or someone else looked them up and the shared cache answers. The rest is rationed.',
@@ -157,20 +159,20 @@ export const en = {
       },
       spread: {
         title: 'Spread, not sprinted',
-        body: 'Roughly one lookup every 26 seconds, recomputed each time — stretching when you hover a lot, tightening when the window refills.',
+        body: 'Roughly one lookup every 22 seconds, recomputed each time — stretching when you hover a lot, tightening when the window refills.',
         readoutKey: 'Pace',
         readoutValue: 'window ÷ budget',
       },
       hovers: {
         title: 'Hovers always win',
-        body: 'Background work stops at 70%, so the rest of the window is there for accounts you actually point at.',
+        body: 'Background work stops at 80%, so the rest of the window is there for accounts you actually point at.',
         readoutKey: 'Reserved',
-        readoutValue: '15 of 50',
+        readoutValue: '10 of 50',
       },
     },
     bar: {
       caption: 'One 15-minute window',
-      alt: 'Fifty lookups per window: thirty-five available to background prefetching, fifteen reserved for the accounts you hover.',
+      alt: 'Fifty lookups per window: forty available to background prefetching, ten reserved for the accounts you hover.',
       backgroundNote:
         'background, trickled out across the full fifteen minutes',
       reservedNote:
@@ -205,9 +207,9 @@ export const en = {
     },
     hide: {
       title: 'Hide the countries you’d rather not read.',
-      p1: 'Once you can see where a post comes from, you can act on it. Pick the locations you’d rather skip and choose what happens to their tweets.',
-      p2: 'Collapsing is the default. The tweet folds down into a slim <b>🚫 Hidden · 🇮🇳 India</b> bar with a Show button, so you can still tell something was there, and one click brings it back for good. The filter follows the app store country when there’s one, and it leaves the tweet you opened on purpose alone.',
-      p3: 'Country is not the only handle you have. Block an organisation and every account X badges as belonging to it goes too, and accounts younger than a threshold you set get marked as they appear — marked, never hidden, because being new is not evidence of anything.',
+      p1: 'Once you can see where a post comes from, you can act on it. The country filter takes the places you’d rather skip — one country, or a whole region — and decides what happens to their tweets.',
+      p2: 'Collapsing is the default. The tweet folds down into a slim <b>🚫 Hidden · 🇮🇳 India</b> bar with a Show button, so you can still tell something was there, and one click brings it back for good. Where X reports a region instead of a country — NAM, EUR, SAS — the region filter catches it, so nothing slips through on a technicality. It follows the app store country when there’s one, and it leaves the tweet you opened on purpose alone.',
+      p3: 'The location filter is not the only handle you have. Block an organisation and every account X badges as belonging to it goes too, and accounts younger than a threshold you set get marked as they appear — marked, never hidden, because being new is not evidence of anything.',
       readoutCollapse: 'Collapse',
       readoutCollapseValue: 'Slim bar + Show',
       readoutHide: 'Hide',
@@ -274,8 +276,8 @@ export const en = {
 
   compareTeaser: {
     heading: 'Already using one of the others?',
-    lead: 'About twenty extensions put a flag next to a handle. The differences that matter are not on the feature list — they are in what the shared cache is allowed to do.',
-    body: 'The full table covers fifteen rows and names the three things X-Posed does better than this extension.',
+    lead: 'About twenty extensions put a flag next to a handle. The differences that matter are not on the feature list — they are in what the shared cache is allowed to do, and in what happens when X’s fifty lookups run out.',
+    body: 'This one paces itself against the real budget in X’s own response headers and holds ten lookups back for the accounts you hover, so a busy thread finishes filling in instead of stopping halfway. The full table covers fourteen rows and names the three things X-Posed does better than this extension.',
     link: 'See the full comparison →',
   },
 
@@ -301,6 +303,7 @@ export const en = {
     supportProject: 'Support the project',
     guideAboutAccount: 'X “About this account”',
     guideEngagementFarming: 'Spotting engagement farming',
+    guideRateLimit: 'X’s rate limit',
     guideComparison: 'Compared with X-Posed',
     privacyPolicy: 'Privacy policy',
     whatIsNotCollected: 'What is not collected',
@@ -327,10 +330,6 @@ export const en = {
         label: 'Country shown inline, without opening a menu',
         note: 'Read from X’s own “About this account” data, not guessed from an IP address.',
       },
-      vpnWarning: {
-        label: 'Warning when X cannot verify the location',
-        note: 'X marks some accounts as having a location it cannot verify. That is X declining to confirm the country — not proof of a VPN, and nobody here can prove one.',
-      },
       signupSource: {
         label: 'Sign-up source — Apple, Google Play or web',
         note: '',
@@ -341,13 +340,13 @@ export const en = {
         label: 'Hide or collapse by country and region',
         note: 'Collapse behind a “Show” button is the default here, because a timeline that silently drops posts is one you cannot audit.',
       },
-      languageFilter: {
-        label: 'Language filter',
-        note: 'X’s per-post language field is unreliable enough that shipping a filter on top of it generates bug reports. Deliberately not built yet.',
-      },
       allowlist: {
         label: 'Always-show allowlist and per-rule exceptions',
         note: '',
+      },
+      budgetFromHeaders: {
+        label: 'Paces against the live budget in X’s rate-limit headers',
+        note: 'X-Pat reads the x-rate-limit headers on every response and spreads its lookups across what is left in the window, holding a share back for the accounts you hover. X-Posed paces on a fixed 150 ms interval with eight parallel requests, and reads the reset header only after a 429 has already landed.',
       },
       sharedCache: {
         label: 'Shared cache, so flags survive the rate limit',
@@ -372,7 +371,7 @@ export const en = {
     losses: {
       mature: {
         title: 'X-Posed is the mature one',
-        body: 'Roughly 7,000 Chrome installs against our handful, four years of releases, and a community cache holding millions of profiles where ours holds thousands. A bigger cache genuinely means more instant flags on day one. That is a real advantage and it is not close.',
+        body: 'Roughly 10,000 Chrome installs against our handful, a four-month head start, and a community cache holding millions of profiles where ours holds thousands. A bigger cache genuinely means more instant flags on day one. That is a real advantage and it is not close.',
       },
       surfaces: {
         title: 'It ships on more surfaces',
@@ -385,7 +384,7 @@ export const en = {
     },
     /** The competitors' `n/a` cell, spelled out for the table's own copy. */
     notApplicable: 'n/a',
-    testCount: '609 tests',
+    testCount: '{count} tests',
     none: 'none',
   },
 
@@ -504,7 +503,7 @@ export const en = {
         '<b>Lookups carry no identifier.</b> Reads are an unsigned list of handles, so the server has nothing to join them against and cannot build “this install looked at these accounts”. Counting readers would take one line and would end that property, which is why the published stats undercount on purpose.',
       /** `{href}` is the homepage's rate-limit section, localised. */
       differs5:
-        'And the rate limit is rationed rather than raced: background work stops at seventy percent of the window, so the last fifteen lookups are still there for accounts you actually hover. <a href="{href}">The mechanism is drawn out on the homepage</a>.',
+        'And the rate limit is rationed rather than raced: background work stops at eighty percent of the window, so the last ten lookups are still there for accounts you actually hover. <a href="{href}">The mechanism is drawn out on the homepage</a>.',
       sourcesHeading: 'Sources',
       /** `{date}` the scrape date, `{href}` the issue tracker. */
       sourcesLead:
@@ -599,6 +598,13 @@ export const en = {
       ],
     },
 
+    rateLimit: {
+      title: 'X’s rate limit: 50 profile lookups every 15 minutes',
+      description:
+        'X allows one browser about 50 account lookups every 15 minutes. How X-Pat rations that window, and why most profiles never spend one.',
+      faq: [],
+    },
+
     comparison: {
       title: 'X-Posed alternative: X-Pat compared, feature by feature',
       description:
@@ -618,7 +624,7 @@ export const en = {
         },
         {
           q: 'Why does the flag stop appearing halfway down a thread?',
-          a: 'X allows one browser about fifty account lookups every fifteen minutes, and a busy thread contains more accounts than that. Extensions that hit the ceiling simply stop filling in flags. A shared cache is what avoids it — most profiles cost no lookup at all because someone else already resolved them — and X-Pat additionally reserves the last thirty percent of the window for accounts you hover yourself.',
+          a: 'X allows one browser about fifty account lookups every fifteen minutes, and a busy thread contains more accounts than that. Extensions that hit the ceiling simply stop filling in flags. A shared cache is what avoids it — most profiles cost no lookup at all because someone else already resolved them — and X-Pat additionally reserves the last twenty percent of the window for accounts you hover yourself.',
         },
       ],
     },

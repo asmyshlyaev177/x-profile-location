@@ -8,10 +8,10 @@ import type { Dict } from '../i18n/dict/en'
  * every language because the images are of an English UI.
  */
 const SHOT_IDS = [
+  'blocked',
   'hover',
   'vpn',
   'feed',
-  'blocked',
   'keyword',
   'flagBios',
   'swipe',
@@ -23,7 +23,7 @@ const SRC: Record<(typeof SHOT_IDS)[number], string> = {
   hover: '/Hover_screenshot-x-profile-location.png',
   vpn: '/VPN_screenshot-x-profile-location.png',
   feed: '/Flags_screenshot-x-profile-location.png',
-  blocked: '/Warning-screenshot-x-profile-location.png',
+  blocked: '/Hidden_screenshot-x-profile-location.png',
   keyword: '/Highlight_screenshot-x-profile-location.png',
   flagBios: '/Highlight2_screenshot-x-profile-location.png',
   swipe: '/swipe_right.png',
@@ -118,7 +118,8 @@ export function Screenshots() {
             id={`shot-panel-${active}`}
             role="tabpanel"
             aria-labelledby={`shot-tab-${active}`}
-            class="bg-ink-1 border-hair relative grid h-[clamp(19rem,44vw,27rem)] place-items-center overflow-hidden rounded-2xl border p-4 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] sm:p-8"
+            class="bg-ink-1 border-hair relative grid h-[var(--shot-h)] place-items-center overflow-hidden rounded-2xl border p-4 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] sm:p-8"
+            style="--shot-h:clamp(19rem,44vw,27rem)"
           >
             <div class="graticule opacity-40" aria-hidden="true" />
 
@@ -129,7 +130,12 @@ export function Screenshots() {
                 alt={shot.alt}
                 width="891"
                 height="676"
-                class="border-hair/70 relative max-h-full w-auto rounded-lg border object-contain shadow-[0_18px_50px_-24px_rgba(0,0,0,0.9)]"
+                // Capped off `--shot-h` rather than `max-h-full`: a percentage
+                // max-height on a grid item resolves against an auto-sized
+                // row, which is indefinite, so it resolved to nothing and
+                // every shot taller than the panel was cropped by
+                // `overflow-hidden` instead of being scaled down.
+                class="border-hair/70 relative max-h-[calc(var(--shot-h)-2rem)] w-auto rounded-lg border object-contain shadow-[0_18px_50px_-24px_rgba(0,0,0,0.9)] sm:max-h-[calc(var(--shot-h)-4rem)]"
                 loading="lazy"
                 decoding="async"
               />

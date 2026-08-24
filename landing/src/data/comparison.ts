@@ -65,7 +65,7 @@ export interface Row {
  * an undated competitive claim ages into a false one, and saying when you
  * looked is the cheapest way to stay honest about it.
  */
-export const SCRAPED = '2026-08-02'
+export const SCRAPED = '2026-08-24'
 
 export const COMPETITORS: Competitor[] = [
   {
@@ -96,17 +96,21 @@ export const SELF = 'X-Pat'
 
 export const ROWS: Row[] = [
   {
-    id: 'inlineCountry',
+    id: 'budgetFromHeaders',
+    headline: true,
     cells: {
       'X-Pat': 'yes',
-      'X-Posed': 'yes',
-      'Flags & Time': 'yes',
+      // Public repo, read 2026-08-24: a fixed MIN_INTERVAL_MS of 150 with
+      // MAX_CONCURRENT 8 (`extension/src/shared/constants.js`), and
+      // `x-rate-limit-reset` parsed only inside the 429 branch of
+      // `extension/src/background/api-client.js`.
+      'X-Posed': 'no',
+      'Flags & Time': 'unstated',
       'Region Blocker': 'unstated',
     },
   },
   {
-    id: 'vpnWarning',
-    headline: true,
+    id: 'inlineCountry',
     cells: {
       'X-Pat': 'yes',
       'X-Posed': 'yes',
@@ -148,15 +152,6 @@ export const ROWS: Row[] = [
       'X-Posed': 'yes',
       'Flags & Time': 'yes',
       'Region Blocker': 'yes',
-    },
-  },
-  {
-    id: 'languageFilter',
-    cells: {
-      'X-Pat': 'no',
-      'X-Posed': 'yes',
-      'Flags & Time': 'unstated',
-      'Region Blocker': 'unstated',
     },
   },
   {
@@ -212,8 +207,9 @@ export const ROWS: Row[] = [
     headline: true,
     cells: {
       // Not a tick but a count, and it is copy as much as data — so the string
-      // itself comes from the dictionary, where "609 tests" can become
-      // "609 اختبارات" without the row's meaning moving.
+      // itself comes from the dictionary, where "{count} tests" can become
+      // "{count} اختبارات" without the row's meaning moving. The number is
+      // filled from `test-count.ts`, which `pnpm tests:count` generates.
       'X-Pat': 'testCount',
       'X-Posed': 'none',
       'Flags & Time': 'n/a',

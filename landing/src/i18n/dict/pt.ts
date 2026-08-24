@@ -8,6 +8,7 @@ export const pt: Dict = {
     howItWorks: 'Como funciona',
     features: 'Recursos',
     privacy: 'Privacidade',
+    comparison: 'Comparação',
     sourceOnGitHub: 'Código no GitHub',
     home: 'X-Pat — início',
   },
@@ -62,8 +63,8 @@ export const pt: Dict = {
         alt: 'Uma timeline em que cada autor exibe a bandeira do seu país no próprio post, sem precisar passar o mouse',
       },
       blocked: {
-        label: 'Países bloqueados',
-        alt: 'Perfis de países bloqueados aparecendo como um aviso em vez de bandeira',
+        label: 'Oculto no feed',
+        alt: 'Uma linha do tempo com uma publicação recolhida atrás de uma barra “🚫 Oculto · Egito” e um botão Mostrar',
       },
       keyword: {
         label: 'Destaque por palavra-chave',
@@ -106,6 +107,7 @@ export const pt: Dict = {
   },
 
   rateBudget: {
+    link: 'Como funciona o orçamento',
     heading: 'O limite do X, contornado em vez de estourado.',
     lead: 'Você já viu isso acontecer. O começo da thread carrega e de repente trava. Esse é o limite: cinquenta consultas de conta a cada quinze minutos, e uma thread movimentada tem mais contas do que isso.',
     body: 'Aqui a maioria dos perfis não gasta consulta. Já estão em cache, ou alguém já consultou e o cache compartilhado responde. O resto é racionado.',
@@ -120,20 +122,20 @@ export const pt: Dict = {
       },
       spread: {
         title: 'Dosado, não disparado de uma vez',
-        body: 'Mais ou menos uma consulta a cada 26 segundos, recalculada sempre — alivia quando você passa muito o mouse, aperta quando a janela vai recompondo.',
+        body: 'Mais ou menos uma consulta a cada 22 segundos, recalculada sempre — alivia quando você passa muito o mouse, aperta quando a janela vai recompondo.',
         readoutKey: 'Ritmo',
         readoutValue: 'janela ÷ limite',
       },
       hovers: {
         title: 'O mouse sempre tem prioridade',
-        body: 'O trabalho em segundo plano para nos 70%, então o resto da janela fica reservado para as contas em que você realmente passar o mouse.',
+        body: 'O trabalho em segundo plano para nos 80%, então o resto da janela fica reservado para as contas em que você realmente passar o mouse.',
         readoutKey: 'Reservado',
-        readoutValue: '15 de 50',
+        readoutValue: '10 de 50',
       },
     },
     bar: {
       caption: 'Uma janela de 15 minutos',
-      alt: 'Cinquenta consultas por janela: trinta e cinco disponíveis para pré-carregamento em segundo plano, quinze reservadas para as contas em que você passa o mouse.',
+      alt: 'Cinquenta consultas por janela: quarenta disponíveis para pré-carregamento em segundo plano, dez reservadas para as contas em que você passa o mouse.',
       backgroundNote:
         'em segundo plano, pingadas ao longo dos quinze minutos inteiros',
       reservedNote:
@@ -236,8 +238,8 @@ export const pt: Dict = {
 
   compareTeaser: {
     heading: 'Já usa alguma das outras?',
-    lead: 'Cerca de vinte extensões colocam uma bandeira ao lado de um @. As diferenças que importam não estão na lista de recursos — estão no que o cache compartilhado tem permissão para fazer.',
-    body: 'A tabela completa tem quinze linhas e mostra as três coisas que o X-Posed faz melhor do que esta extensão.',
+    lead: 'Cerca de vinte extensões colocam uma bandeira ao lado de um @. As diferenças que importam não estão na lista de recursos — estão no que o cache compartilhado tem permissão para fazer, e no que acontece quando as cinquenta consultas do X acabam.',
+    body: 'Esta aqui se ritma pelo orçamento real que vem nos cabeçalhos de resposta do X e guarda dez consultas para as contas em que você passa o mouse, então uma thread cheia termina de preencher em vez de parar no meio. A tabela completa tem catorze linhas e mostra as três coisas que o X-Posed faz melhor do que esta extensão.',
     link: 'Ver a comparação completa →',
   },
 
@@ -263,6 +265,7 @@ export const pt: Dict = {
     supportProject: 'Apoie o projeto',
     guideAboutAccount: 'X "Sobre esta conta"',
     guideEngagementFarming: 'Como identificar engagement farming',
+    guideRateLimit: 'O limite do X',
     guideComparison: 'Comparado ao X-Posed',
     privacyPolicy: 'Política de privacidade',
     whatIsNotCollected: 'O que não é coletado',
@@ -285,10 +288,6 @@ export const pt: Dict = {
         label: 'País exibido na hora, sem abrir menu',
         note: 'Lido dos dados de "Sobre esta conta" do próprio X, não adivinhado por endereço de IP.',
       },
-      vpnWarning: {
-        label: 'Aviso quando o X não consegue verificar a localização',
-        note: 'O X marca algumas contas como tendo uma localização que não consegue verificar. Isso é o X se recusando a confirmar o país — não é prova de VPN, e ninguém aqui consegue provar uma.',
-      },
       signupSource: {
         label: 'Origem do cadastro — Apple, Google Play ou web',
         note: '',
@@ -302,13 +301,13 @@ export const pt: Dict = {
         label: 'Ocultar ou recolher por país e região',
         note: 'Recolher atrás de um botão "Mostrar" é o padrão aqui, porque uma timeline que descarta publicações em silêncio é uma timeline que você não consegue auditar.',
       },
-      languageFilter: {
-        label: 'Filtro por idioma',
-        note: 'O campo de idioma por publicação do X é pouco confiável a ponto de um filtro em cima disso só gerar relato de bug. Deliberadamente ainda não implementado.',
-      },
       allowlist: {
         label: 'Lista de sempre-mostrar e exceções por regra',
         note: '',
+      },
+      budgetFromHeaders: {
+        label: 'Ritma pelo orçamento real dos cabeçalhos de limite do X',
+        note: 'O X-Pat lê os cabeçalhos x-rate-limit em cada resposta e distribui suas consultas pelo que sobrou da janela, guardando uma parte para as contas em que você passa o mouse. O X-Posed usa um intervalo fixo de 150 ms com oito requisições em paralelo e só lê o cabeçalho de reset depois de um 429.',
       },
       sharedCache: {
         label: 'Cache compartilhado, para as bandeiras sobreviverem ao limite',
@@ -336,7 +335,7 @@ export const pt: Dict = {
     losses: {
       mature: {
         title: 'O X-Posed é o mais maduro',
-        body: 'Cerca de 7.000 instalações no Chrome contra o nosso punhado, quatro anos de lançamentos, e um cache comunitário com milhões de perfis onde o nosso tem milhares. Um cache maior significa, na prática, mais bandeiras instantâneas no primeiro dia. Essa vantagem é real e a distância nem se compara.',
+        body: 'Cerca de 10.000 instalações no Chrome contra o nosso punhado, quatro meses de vantagem, e um cache comunitário com milhões de perfis onde o nosso tem milhares. Um cache maior significa, na prática, mais bandeiras instantâneas no primeiro dia. Essa vantagem é real e a distância nem se compara.',
       },
       surfaces: {
         title: 'Ele roda em mais lugares',
@@ -348,7 +347,7 @@ export const pt: Dict = {
       },
     },
     notApplicable: '—',
-    testCount: '609 testes',
+    testCount: '{count} testes',
     none: 'nenhum',
   },
 
@@ -465,7 +464,7 @@ export const pt: Dict = {
       differs4:
         '<b>As consultas não carregam identificador.</b> As leituras são uma lista de @ sem assinatura, então o servidor não tem nada para cruzar e não consegue montar um "esta instalação olhou estas contas". Contar leitores levaria uma linha de código e acabaria com essa propriedade, e é por isso que as estatísticas publicadas propositalmente subestimam.',
       differs5:
-        'E o limite é racionado em vez de disputado: o trabalho em segundo plano para em setenta por cento da janela, então as últimas quinze consultas continuam disponíveis para as contas em que você realmente passa o mouse. <a href="{href}">O mecanismo está desenhado na página inicial</a>.',
+        'E o limite é racionado em vez de disputado: o trabalho em segundo plano para em oitenta por cento da janela, então as últimas dez consultas continuam disponíveis para as contas em que você realmente passa o mouse. <a href="{href}">O mecanismo está desenhado na página inicial</a>.',
       sourcesHeading: 'Fontes',
       sourcesLead:
         'Lido em {date}. Números de instalação e recursos mudam; se algo abaixo estiver desatualizado, é erro, não posição, e o <a href="{href}">rastreador de issues</a> é o jeito mais rápido de mandar corrigir.',
@@ -556,6 +555,13 @@ export const pt: Dict = {
       ],
     },
 
+    rateLimit: {
+      title: 'O limite do X: 50 consultas de perfil a cada 15 minutos',
+      description:
+        'O X permite a um navegador cerca de 50 consultas de conta a cada 15 minutos. Como o X-Pat raciona essa janela e por que a maioria dos perfis não gasta nenhuma.',
+      faq: [],
+    },
+
     comparison: {
       title: 'Alternativa ao X-Posed: X-Pat comparado, recurso por recurso',
       description:
@@ -575,7 +581,7 @@ export const pt: Dict = {
         },
         {
           q: 'Por que a bandeira para de aparecer no meio de uma thread?',
-          a: 'O X permite a um navegador cerca de cinquenta consultas de conta a cada quinze minutos, e uma thread movimentada tem mais contas que isso. Extensões que batem no teto simplesmente param de preencher bandeiras. O cache compartilhado é o que evita isso — a maioria dos perfis não custa consulta porque outra pessoa já resolveu — e o X-Pat ainda reserva os últimos trinta por cento da janela para as contas em que você mesmo passa o mouse.',
+          a: 'O X permite a um navegador cerca de cinquenta consultas de conta a cada quinze minutos, e uma thread movimentada tem mais contas que isso. Extensões que batem no teto simplesmente param de preencher bandeiras. O cache compartilhado é o que evita isso — a maioria dos perfis não custa consulta porque outra pessoa já resolveu — e o X-Pat ainda reserva os últimos vinte por cento da janela para as contas em que você mesmo passa o mouse.',
         },
       ],
     },

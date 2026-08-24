@@ -99,7 +99,7 @@ const SHOTS = [
   'Hover_screenshot-x-profile-location.png',
   'VPN_screenshot-x-profile-location.png',
   'Flags_screenshot-x-profile-location.png',
-  'Warning-screenshot-x-profile-location.png',
+  'Hidden_screenshot-x-profile-location.png',
   'Highlight_screenshot-x-profile-location.png',
   'Highlight2_screenshot-x-profile-location.png',
   'swipe_right.png',

@@ -8,6 +8,7 @@ export const tr: Dict = {
     howItWorks: 'Nasıl çalışıyor',
     features: 'Özellikler',
     privacy: 'Gizlilik',
+    comparison: 'Karşılaştırma',
     sourceOnGitHub: "GitHub'da kaynak kod",
     home: 'X-Pat — ana sayfa',
   },
@@ -62,8 +63,8 @@ export const tr: Dict = {
         alt: "Her yazarın ülke bayrağının satır içinde durduğu, hover'a gerek kalmayan bir akış",
       },
       blocked: {
-        label: 'Engellenen ülkeler',
-        alt: 'Engelli konumlardan gelen profillerin bayrak yerine uyarı işareti olarak görünmesi',
+        label: 'Akışta gizlendi',
+        alt: 'Bir gönderinin “🚫 Gizli · Mısır” çubuğu ve Göster düğmesi arkasına katlandığı bir akış',
       },
       keyword: {
         label: 'Anahtar kelime vurgusu',
@@ -106,6 +107,7 @@ export const tr: Dict = {
   },
 
   rateBudget: {
+    link: 'Bütçe nasıl işliyor',
     heading: "X'in istek sınırını çarpmak yerine çözdük.",
     lead: "Şu arızayı bilirsin. Thread'in üstü dolar, sonra hiçbir şey dolmaz. Sınır işte o: on beş dakikada elli hesap sorgusu, ki hareketli bir thread'de bundan çok hesap var.",
     body: 'Buradaki profillerin çoğu sorgu bile yakmıyor. Ya önbellekte var zaten, ya da başkası bakmış, ortak önbellek yanıtlıyor. Gerisi zaten karneli.',
@@ -120,20 +122,20 @@ export const tr: Dict = {
       },
       spread: {
         title: 'Yayılıyor, patlamıyor',
-        body: 'Kabaca her 26 saniyede bir sorgu, her seferinde yeniden hesaplanıyor — çok bakınca esniyor, pencere yeniden dolunca sıkılaşıyor.',
+        body: 'Kabaca her 22 saniyede bir sorgu, her seferinde yeniden hesaplanıyor — çok bakınca esniyor, pencere yeniden dolunca sıkılaşıyor.',
         readoutKey: 'Tempo',
         readoutValue: 'pencere ÷ bütçe',
       },
       hovers: {
         title: 'Hover her zaman kazanır',
-        body: "Arka plan işi %70'te duruyor, pencerenin geri kalanı gerçekten üzerine gittiğin hesaplara kalsın diye.",
+        body: "Arka plan işi %80'te duruyor, pencerenin geri kalanı gerçekten üzerine gittiğin hesaplara kalsın diye.",
         readoutKey: 'Ayrılan',
-        readoutValue: "50'de 15",
+        readoutValue: "50'de 10",
       },
     },
     bar: {
       caption: '15 dakikalık tek bir pencere',
-      alt: 'Pencere başına elli sorgu: otuz beşi arka planda ön yüklemeye açık, on beşi üzerine geldiğin hesaplara ayrılmış.',
+      alt: 'Pencere başına elli sorgu: kırkı arka planda ön yüklemeye açık, onu üzerine geldiğin hesaplara ayrılmış.',
       backgroundNote: 'arka plan, on beş dakikaya yayıla yayıla',
       reservedNote:
         'kenarda tutuluyor, bir hover hiçbir zaman seni sıfırlayan istek olmasın diye',
@@ -234,8 +236,8 @@ export const tr: Dict = {
 
   compareTeaser: {
     heading: 'Zaten başka birini mi kullanıyorsun?',
-    lead: 'Yaklaşık yirmi eklenti kullanıcı adının yanına bayrak koyuyor. Asıl fark özellik listesinde değil — ortak önbelleğin neye izni olduğu konusunda.',
-    body: "Tam tablo on beş satır ve X-Posed'un bu eklentiden daha iyi yaptığı üç şeyi açık açık söylüyor.",
+    lead: 'Yaklaşık yirmi eklenti kullanıcı adının yanına bayrak koyuyor. Asıl fark özellik listesinde değil — ortak önbelleğin neye izni olduğunda ve X’in elli sorgusu bittiğinde ne olduğunda.',
+    body: "Bu eklenti hızını X'in kendi yanıt başlıklarındaki gerçek bütçeye göre ayarlıyor ve üzerine gittiğin hesaplar için on sorgu saklı tutuyor; kalabalık bir başlık yarıda kalmak yerine sonuna kadar doluyor. Tam tablo on dört satır ve X-Posed'un bu eklentiden daha iyi yaptığı üç şeyi açık açık söylüyor.",
     link: 'Tam karşılaştırmayı gör →',
   },
 
@@ -261,6 +263,7 @@ export const tr: Dict = {
     supportProject: 'Projeye destek ol',
     guideAboutAccount: 'X "Bu hesap hakkında"',
     guideEngagementFarming: 'Etkileşim çiftçiliğini yakalamak',
+    guideRateLimit: 'X’in hız sınırı',
     guideComparison: 'X-Posed ile karşılaştırma',
     privacyPolicy: 'Gizlilik politikası',
     whatIsNotCollected: 'Toplanmayanlar',
@@ -282,10 +285,6 @@ export const tr: Dict = {
         label: 'Menü açmadan satır içinde ülke gösterimi',
         note: 'IP tahmini değil, X\'in kendi "Bu hesap hakkında" verisinden okunuyor.',
       },
-      vpnWarning: {
-        label: 'X konumu doğrulayamazsa uyarı',
-        note: "X bazı hesapları konumu doğrulanamayan hesap olarak işaretler. Bu X'in ülkeyi teyit etmeye yanaşmamasıdır — VPN kanıtı değildir, burada kimse kanıtlayamaz.",
-      },
       signupSource: {
         label: 'Kayıt kaynağı — Apple, Google Play veya web',
         note: '',
@@ -296,13 +295,14 @@ export const tr: Dict = {
         label: 'Ülke ve bölgeye göre gizleme veya katlama',
         note: 'Burada varsayılan, "Göster" düğmesinin arkasına katlamaktır, çünkü paylaşımları sessizce düşüren bir akış denetlenebilir değildir.',
       },
-      languageFilter: {
-        label: 'Dil filtresi',
-        note: "X'in gönderi başına dil alanı, filtrelenmek için fazla güvenilmez — üstüne filtre kurarsan hata raporu toplarsın. Bilerek yapılmadı.",
-      },
       allowlist: {
         label: 'Her zaman göster listesi ve kural başına istisnalar',
         note: '',
+      },
+      budgetFromHeaders: {
+        label:
+          'Hızını X’in rate-limit başlıklarındaki gerçek bütçeye göre ayarlar',
+        note: 'X-Pat her yanıtta x-rate-limit başlıklarını okur ve sorgularını pencerede kalana yayar, bir kısmını üzerine geldiğin hesaplara saklar. X-Posed sabit 150 ms aralık ve sekiz paralel istekle ilerler; reset başlığını ancak 429 geldikten sonra okur.',
       },
       sharedCache: {
         label: 'Ortak önbellek, bayraklar istek sınırını aşabilsin diye',
@@ -330,7 +330,7 @@ export const tr: Dict = {
     losses: {
       mature: {
         title: 'X-Posed olgun olan',
-        body: 'Bizim bir avucumuza karşılık yaklaşık 7.000 Chrome kurulumu, dört senelik sürüm geçmişi ve bizimki binlerdeyken milyonlarca profili tutan bir topluluk önbelleği. Daha büyük önbellek ilk günden daha çok anında bayrak demek. Bu gerçek bir avantaj ve aradaki fark az buz değil.',
+        body: 'Bizim bir avucumuza karşılık yaklaşık 10.000 Chrome kurulumu, dört aylık başlangıç avantajı ve bizimki binlerdeyken milyonlarca profili tutan bir topluluk önbelleği. Daha büyük önbellek ilk günden daha çok anında bayrak demek. Bu gerçek bir avantaj ve aradaki fark az buz değil.',
       },
       surfaces: {
         title: 'Daha çok yerde var',
@@ -342,7 +342,7 @@ export const tr: Dict = {
       },
     },
     notApplicable: '—',
-    testCount: '609 test',
+    testCount: '{count} test',
     none: 'yok',
   },
 
@@ -459,7 +459,7 @@ export const tr: Dict = {
       differs4:
         '<b>Sorgular kimlik taşımaz.</b> Okumalar imzasız bir kullanıcı adı listesidir, sunucunun onları birbirine bağlayacak hiçbir şeyi yoktur, "bu kurulum şu hesaplara baktı" gibi bir bilgi inşa edemez. Okuyucuları saymak tek satır sürer ve bu özelliği anında bitirir, yayınlanan istatistiklerin bilerek düşük olması bu yüzden.',
       differs5:
-        'İstek sınırı da yarışılmak yerine karnelenir: arka plan işi pencerenin yüzde yetmişinde durur, son on beş sorgu gerçekten üzerine gittiğin hesaplar için kalır. <a href="{href}">Mekanizma ana sayfada çizili halde</a>.',
+        'İstek sınırı da yarışılmak yerine karnelenir: arka plan işi pencerenin yüzde sekseninde durur, son on sorgu gerçekten üzerine gittiğin hesaplar için kalır. <a href="{href}">Mekanizma ana sayfada çizili halde</a>.',
       sourcesHeading: 'Kaynaklar',
       sourcesLead:
         '{date} tarihinde okundu. Kurulum sayıları ve özellikler değişir; aşağıda bir şey güncelliğini yitirmişse bu bir duruş değil hatadır, düzeltmenin en hızlı yolu <a href="{href}">sorun takipçisidir</a>.',
@@ -550,6 +550,13 @@ export const tr: Dict = {
       ],
     },
 
+    rateLimit: {
+      title: 'X’in hız sınırı: 15 dakikada 50 profil sorgusu',
+      description:
+        'X, bir tarayıcıya 15 dakikada yaklaşık 50 hesap sorgusu veriyor. X-Pat bu pencereyi nasıl paylaştırıyor ve çoğu profil neden hiç harcamıyor.',
+      faq: [],
+    },
+
     comparison: {
       title: 'X-Posed alternatifi: X-Pat karşılaştırması, özellik özellik',
       description:
@@ -569,7 +576,7 @@ export const tr: Dict = {
         },
         {
           q: "Bayrak neden bir thread'in ortasında kayboluyor?",
-          a: "X bir tarayıcıya on beş dakikada yaklaşık elli hesap sorgusu tanıyor, hareketli bir thread'de bundan fazla hesap var. Tavana çarpan eklentiler bayrakları doldurmayı bırakıverir. Bunu önleyen ortak önbellek — profillerin çoğu sorgu yakmaz çünkü başkası çoktan çözmüştür — ve X-Pat ayrıca pencerenin son yüzde otuzunu senin bizzat üzerine gittiğin hesaplara ayırır.",
+          a: "X bir tarayıcıya on beş dakikada yaklaşık elli hesap sorgusu tanıyor, hareketli bir thread'de bundan fazla hesap var. Tavana çarpan eklentiler bayrakları doldurmayı bırakıverir. Bunu önleyen ortak önbellek — profillerin çoğu sorgu yakmaz çünkü başkası çoktan çözmüştür — ve X-Pat ayrıca pencerenin son yüzde yirmisini senin bizzat üzerine gittiğin hesaplara ayırır.",
         },
       ],
     },

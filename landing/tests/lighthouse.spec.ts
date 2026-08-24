@@ -27,7 +27,7 @@ import { DEFAULT_LOCALE, localePath, locales } from '../src/i18n/locales'
  * pages exist here to check.
  *
  * Lighthouse 13's fifth category, `agentic-browsing`, is deliberately not on
- * the list. All six pages score 100 on it today, but it is new enough that
+ * the list. All seven pages score 100 on it today, but it is new enough that
  * Google is still moving its weights, and a patch bump re-scoring it would
  * fail this suite for a reason that has nothing to do with the site.
  */

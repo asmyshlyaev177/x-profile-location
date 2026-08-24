@@ -12,6 +12,7 @@ export const fil: Dict = {
     howItWorks: 'Paano gumagana',
     features: 'Features',
     privacy: 'Privacy',
+    comparison: 'Paghahambing',
     sourceOnGitHub: 'Source sa GitHub',
     home: 'X-Pat — home',
   },
@@ -66,8 +67,8 @@ export const fil: Dict = {
         alt: 'Isang timeline kung saan may dalang country flag ang bawat author, hindi na kailangan i-hover',
       },
       blocked: {
-        label: 'Mga naka-block na bansa',
-        alt: 'Mga profile galing sa blocked location na lumalabas bilang warning sign sa halip na flag',
+        label: 'Nakatago sa feed',
+        alt: 'Isang timeline kung saan nakatiklop ang isang post sa likod ng “🚫 Nakatago · Egypt” na bar at isang Show na buton',
       },
       keyword: {
         label: 'Highlight sa keyword',
@@ -110,6 +111,7 @@ export const fil: Dict = {
   },
 
   rateBudget: {
+    link: 'Paano gumagana ang budget',
     heading: 'Ang rate limit ng X, nireresolba sa halip na binabangga.',
     lead: 'Nakita mo na ang palya. Napupuno ang taas ng thread, tapos biglang wala na. Iyon ang limit: limampung account lookup kada labinlimang minuto, at mas marami pa diyan ang accounts sa isang busy na thread.',
     body: 'Karamihan ng profile dito walang gastos na lookup. Nasa cache na sila, o may ibang naghanap na at ang shared cache na ang sumasagot. Ang natitira, nirarasyon.',
@@ -124,20 +126,20 @@ export const fil: Dict = {
       },
       spread: {
         title: 'Sinusukat, hindi sinusugod',
-        body: 'Mga isang lookup kada 26 seconds, nire-recompute sa tuwing kailangan — humahabà kapag madalas kang mag-hover, humihigpit kapag napupuno uli ang window.',
+        body: 'Mga isang lookup kada 22 seconds, nire-recompute sa tuwing kailangan — humahabà kapag madalas kang mag-hover, humihigpit kapag napupuno uli ang window.',
         readoutKey: 'Pace',
         readoutValue: 'window ÷ budget',
       },
       hovers: {
         title: 'Laging panalo ang hover',
-        body: 'Humihinto sa 70% ang background work, kaya nandiyan pa ang natitirang window para sa mga account na talagang tinututukan mo.',
+        body: 'Humihinto sa 80% ang background work, kaya nandiyan pa ang natitirang window para sa mga account na talagang tinututukan mo.',
         readoutKey: 'Nakareserba',
-        readoutValue: '15 sa 50',
+        readoutValue: '10 sa 50',
       },
     },
     bar: {
       caption: 'Isang 15-minutong window',
-      alt: 'Limampung lookup kada window: tatlumput lima ang puwede para sa background prefetching, labinlima ang nakareserba para sa mga ina-hover mong account.',
+      alt: 'Limampung lookup kada window: apatnapu ang puwede para sa background prefetching, sampu ang nakareserba para sa mga ina-hover mong account.',
       backgroundNote:
         'background, dahan-dahang binibitawan sa buong labinlimang minuto',
       reservedNote:
@@ -241,8 +243,8 @@ export const fil: Dict = {
 
   compareTeaser: {
     heading: 'May ginagamit ka na bang iba?',
-    lead: 'Mga dalawampung extension ang naglalagay ng flag sa tabi ng handle. Ang mga pagkakaibang may halaga ay wala sa listahan ng features — nasa kung ano ang pinapayagang gawin ng shared cache.',
-    body: 'Labinlimang hilera ang sinasaklaw ng buong table at pinapangalanan ang tatlong bagay na mas magaling gawin ng X-Posed kaysa sa extension na ito.',
+    lead: 'Mga dalawampung extension ang naglalagay ng flag sa tabi ng handle. Ang mga pagkakaibang may halaga ay wala sa listahan ng features — nasa kung ano ang pinapayagang gawin ng shared cache, at sa kung ano ang nangyayari kapag naubos na ang limampung lookup ng X.',
+    body: 'Sinusukat nitong isa ang sarili niyang bilis sa totoong budget na galing mismo sa response headers ng X, at may nakatabing sampung lookup para sa mga account na hino-hover mo — kaya natatapos punan ang isang matraping thread sa halip na huminto sa kalagitnaan. Labing-apat na hilera ang sinasaklaw ng buong table at pinapangalanan ang tatlong bagay na mas magaling gawin ng X-Posed kaysa sa extension na ito.',
     link: 'Tingnan ang buong comparison →',
   },
 
@@ -268,6 +270,7 @@ export const fil: Dict = {
     supportProject: 'Suportahan ang project',
     guideAboutAccount: 'X "About this account"',
     guideEngagementFarming: 'Pag-spot ng engagement farming',
+    guideRateLimit: 'Rate limit ng X',
     guideComparison: 'Compared sa X-Posed',
     privacyPolicy: 'Privacy policy',
     whatIsNotCollected: 'Ano ang hindi kinokolekta',
@@ -290,10 +293,6 @@ export const fil: Dict = {
         label: 'Nakikita agad ang bansa, hindi na kailangang magbukas ng menu',
         note: 'Binabasa mula sa sariling data ng X na "About this account", hindi hinuhulaan mula sa IP address.',
       },
-      vpnWarning: {
-        label: 'Babala kapag hindi ma-verify ng X ang lokasyon',
-        note: 'Minamarkahan ng X ang ilang account bilang may lokasyong hindi nito ma-verify. Iyon ay pagtanggi ng X na kumpirmahin ang bansa — hindi patunay ng VPN, at walang sinuman dito ang makakapagpatunay niyon.',
-      },
       signupSource: {
         label: 'Pinagmulan ng sign-up — Apple, Google Play o web',
         note: '',
@@ -304,13 +303,14 @@ export const fil: Dict = {
         label: 'Itago o i-collapse ayon sa bansa at rehiyon',
         note: 'Ang pag-collapse sa likod ng button na "Ipakita" ang default dito, dahil ang timeline na tahimik na nagtatapon ng post ay timeline na hindi mo maa-audit.',
       },
-      languageFilter: {
-        label: 'Filter sa wika',
-        note: 'Ang per-post language field ng X ay sapat nang hindi reliable para ang filter na nakapatong dito ay puro bug report lang ang mabubuo. Sinadyang hindi pa ginawa.',
-      },
       allowlist: {
         label: 'Always-show allowlist at per-rule exceptions',
         note: '',
+      },
+      budgetFromHeaders: {
+        label:
+          'Sinusukat ang bilis sa totoong budget mula sa rate-limit headers ng X',
+        note: 'Binabasa ng X-Pat ang mga x-rate-limit header sa bawat tugon at ikinakalat ang mga lookup nito sa natitira sa window, na may bahaging nakatabi para sa mga account na hino-hover mo. Ang X-Posed ay nasa nakapirming 150 ms na agwat na may walong sabay na request, at binabasa lang ang reset header kapag tumama na ang 429.',
       },
       sharedCache: {
         label: 'Shared cache, para makalusot ang flags sa rate limit',
@@ -339,7 +339,7 @@ export const fil: Dict = {
     losses: {
       mature: {
         title: 'Ang X-Posed ang mas mature',
-        body: 'Mga 7,000 Chrome installs kumpara sa iilan lang namin, apat na taon ng releases, at community cache na may milyon-milyong profile habang ang sa amin ay libo-libo. Ang mas malaking cache ay talagang ibig sabihin ay mas maraming instant flags sa day one. Tunay na advantage iyan at hindi hamak na mas malaki.',
+        body: 'Mga 10,000 Chrome installs kumpara sa iilan lang namin, apat na buwan na mas nauna, at community cache na may milyon-milyong profile habang ang sa amin ay libo-libo. Ang mas malaking cache ay talagang ibig sabihin ay mas maraming instant flags sa day one. Tunay na advantage iyan at hindi hamak na mas malaki.',
       },
       surfaces: {
         title: 'Mas marami itong platform',
@@ -351,7 +351,7 @@ export const fil: Dict = {
       },
     },
     notApplicable: '—',
-    testCount: '609 tests',
+    testCount: '{count} tests',
     none: 'wala',
   },
 
@@ -468,7 +468,7 @@ export const fil: Dict = {
       differs4:
         '<b>Walang dalang identifier ang mga lookup.</b> Ang mga reads ay isang unsigned list ng handles, kaya walang pag-uugnayin ang server at hindi nito mabubuo ang "tiningnan ng install na ito ang mga account na ito". Ang pagbilang ng readers ay aabutin ng isang linya at wawakasan ang property na iyon, kaya sinadya ang published stats na mag-under count.',
       differs5:
-        'At ang rate limit ay nirarasyon imbes na pinag-uunahan: humihinto ang background work sa seventy percent ng window, kaya ang huling labinlimang lookup ay nariyan pa rin para sa mga account na talagang hino-hover mo. <a href="{href}">Ang mekanismo ay iginuhit sa homepage</a>.',
+        'At ang rate limit ay nirarasyon imbes na pinag-uunahan: humihinto ang background work sa eighty percent ng window, kaya ang huling sampung lookup ay nariyan pa rin para sa mga account na talagang hino-hover mo. <a href="{href}">Ang mekanismo ay iginuhit sa homepage</a>.',
       sourcesHeading: 'Mga source',
       sourcesLead:
         'Binasa noong {date}. Nagbabago ang install counts at features; kung may outdated man sa ibaba, error iyon at hindi posisyon, at ang <a href="{href}">issue tracker</a> ang pinakamabilis na paraan para maitama ito.',
@@ -560,6 +560,13 @@ export const fil: Dict = {
       ],
     },
 
+    rateLimit: {
+      title: 'Rate limit ng X: 50 profile lookup kada 15 minuto',
+      description:
+        'Mga 50 account lookup kada 15 minuto ang pinapayagan ng X sa isang browser. Kung paano hinahati ng X-Pat ang window na iyon, at bakit hindi ito ginagastos ng karamihan sa mga profile.',
+      faq: [],
+    },
+
     comparison: {
       title: 'Alternatibo sa X-Posed: X-Pat compared, feature kada feature',
       description:
@@ -579,7 +586,7 @@ export const fil: Dict = {
         },
         {
           q: 'Bakit tumitigil ang flag sa gitna ng thread?',
-          a: 'Pinapayagan ng X ang isang browser ng mga limampung account lookup bawat labinlimang minuto, at ang isang busy na thread ay mas marami pa riyan ang accounts. Ang mga extension na umaabot sa ceiling ay humihinto na lang sa paglalagay ng flags. Ang shared cache ang umiiwas dito — karamihan ng profile ay walang gastos na lookup dahil may ibang nag-resolve na sa kanila — at ang X-Pat ay nagrereserba pa ng huling tatlumpung porsiyento ng window para sa mga account na ikaw mismo ang nag-hover.',
+          a: 'Pinapayagan ng X ang isang browser ng mga limampung account lookup bawat labinlimang minuto, at ang isang busy na thread ay mas marami pa riyan ang accounts. Ang mga extension na umaabot sa ceiling ay humihinto na lang sa paglalagay ng flags. Ang shared cache ang umiiwas dito — karamihan ng profile ay walang gastos na lookup dahil may ibang nag-resolve na sa kanila — at ang X-Pat ay nagrereserba pa ng huling dalawampung porsiyento ng window para sa mga account na ikaw mismo ang nag-hover.',
         },
       ],
     },
