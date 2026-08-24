@@ -402,6 +402,28 @@ describe('revalidation', () => {
     expect(drain(broker, 1, FOCUSED)).toEqual(['b'])
   })
 
+  // The boundary is only ever crossed *inside* next(); a response carrying the
+  // next window's reset moves it out of reach before next() can see it.
+  it('reopens the reserve when headers roll the window past the boundary', () => {
+    const h = makeBroker(unpaced())
+    seedLedger(h.broker, {
+      limit: 50,
+      remaining: 50,
+      reset: (START + WINDOW) / 1000,
+    })
+    h.broker.offerRevalidation(['a', 'b', 'c'])
+    expect(drain(h.broker, 1, FOCUSED)).toEqual(['a', 'b'])
+
+    h.advance(WINDOW + 1)
+    seedLedger(h.broker, {
+      limit: 50,
+      remaining: 50,
+      reset: (START + 2 * WINDOW) / 1000,
+    })
+
+    expect(drain(h.broker, 1, FOCUSED)).toEqual(['c'])
+  })
+
   it('starts revalidating from a snapshot written before it existed', () => {
     const h = makeBroker(unpaced())
     const older = h.broker.toJSON()

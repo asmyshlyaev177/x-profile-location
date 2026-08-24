@@ -394,6 +394,10 @@ export async function openOptionsPage(
   return optPage
 }
 
+async function storageSettled(optPage: Page): Promise<void> {
+  await optPage.evaluate(() => chrome.storage.local.get(null))
+}
+
 /**
  * Adds a highlight keyword through the options page, the way a user would.
  *
@@ -417,6 +421,7 @@ export async function addKeyword(
   await optPage
     .locator(`button[title="Remove ${keyword}"]`)
     .waitFor({ timeout: 3_000 })
+  await storageSettled(optPage)
   await optPage.close()
 }
 
@@ -434,16 +439,17 @@ export async function removeKeyword(
   await optPage
     .locator(`button[title="Remove ${keyword}"]`)
     .waitFor({ state: 'hidden', timeout: 3_000 })
+  await storageSettled(optPage)
   await optPage.close()
 }
 
 // ---------------------------------------------------------------------------
 // The blocked-locations list
 // ---------------------------------------------------------------------------
-// Each of these opens the options page, makes one edit and closes it again —
-// the chip (or the count on it) settling is the confirmation that
-// `chrome.storage.local.set` resolved, which is what the content script is
-// listening on.
+// Each of these opens the options page, makes one edit and closes it again. The
+// chip (or the count on it) settling only says the page re-rendered — the write
+// behind it is not awaited, so `storageSettled` is what confirms the content
+// script has something to react to.
 
 /** Removes a location chip by the name it is showing. */
 export async function removeBlockedLocation(
@@ -457,6 +463,7 @@ export async function removeBlockedLocation(
 
   await remove.click()
   await expect(remove).toHaveCount(0, { timeout: 3_000 })
+  await storageSettled(optPage)
   await optPage.close()
 }
 
@@ -477,6 +484,7 @@ export async function addBlockedLocation(
   await expect(card.locator(`button[title="Remove ${location}"]`)).toBeVisible({
     timeout: 3_000,
   })
+  await storageSettled(optPage)
   await optPage.close()
 }
 
@@ -514,6 +522,7 @@ export async function setRegionMember(
   }
 
   await expect.poll(() => coverageOf(chip), { timeout: 3_000 }).not.toBe(before)
+  await storageSettled(optPage)
   await optPage.close()
 }
 
@@ -594,6 +603,7 @@ export async function setCheckboxOption(
   // The checkbox is bound to the state the onChange writes to storage, so it
   // only reads back as `enabled` once chrome.storage.local.set has been called.
   await expect(toggle).toBeChecked({ checked: enabled, timeout: 3_000 })
+  await storageSettled(optPage)
   await optPage.close()
 }
 

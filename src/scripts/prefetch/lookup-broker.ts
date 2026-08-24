@@ -333,19 +333,23 @@ export class LookupBroker {
 
   private applyHeaders(report: LookupReport, now: number): void {
     const { limit, remaining, reset, status } = report
+    const resetAt = typeof reset === 'number' && reset > 0 ? reset * 1000 : 0
     if (typeof limit === 'number' && limit > 0) this.rate.limit = limit
     if (typeof remaining === 'number' && Number.isFinite(remaining)) {
       this.rate.remaining = remaining
     }
-    if (typeof reset === 'number' && reset > 0) {
-      this.rate.windowResetAt = reset * 1000
-    }
+    if (resetAt) this.openWindow(resetAt)
     if (status === 429) {
-      this.rate.resetAt =
-        typeof reset === 'number' && reset > 0
-          ? reset * 1000
-          : now + RATE_LIMIT_RESET_DEFAULT_MS
+      this.rate.resetAt = resetAt || now + RATE_LIMIT_RESET_DEFAULT_MS
     }
+  }
+
+  /** A later reset than the one on record is a fresh window's budget. */
+  private openWindow(windowResetAt: number): void {
+    const later =
+      this.rate.windowResetAt && windowResetAt > this.rate.windowResetAt
+    if (later) this.revalidateSpent = 0
+    this.rate.windowResetAt = windowResetAt
   }
 
   /** A new window is a new chance: nothing about a handle is remembered longer. */
