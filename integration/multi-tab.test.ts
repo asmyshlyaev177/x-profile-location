@@ -14,7 +14,10 @@
  * See "Cross-tab lookup broker" in CLAUDE.md.
  */
 import type { Page } from '@playwright/test'
-import { prefetchBudget } from '../src/scripts/prefetch/prefetch-queue'
+import {
+  prefetchBudget,
+  revalidateBudget,
+} from '../src/scripts/prefetch/prefetch-queue'
 import { DEFAULT_PREFETCH_SHARE } from '../src/scripts/settings'
 import { test, expect, setSettings } from './fixtures'
 import { FEED_URL, type Lookup, serveStubX } from './x-stub'
@@ -72,6 +75,12 @@ const USER_RESERVE =
     DEFAULT_PREFETCH_SHARE,
     1,
   )
+
+/** Lookups a window sets aside for re-asking about accounts already cached. */
+const RESERVE_PER_WINDOW = revalidateBudget(
+  { remaining: RATE_LIMIT, limit: RATE_LIMIT, resetAt: 0, windowResetAt: 0 },
+  DEFAULT_PREFETCH_SHARE,
+)
 
 /**
  * Spend the share at the floor rather than one lookup every ~26 seconds. The
@@ -166,6 +175,78 @@ test('an account this tab has cached is asked about again, ahead of the queue', 
   expect(asked[0]).toBe(HANDLES[0])
   // Once — the reserve is spent, and the fresh answer is cached again.
   expect(asked.filter((name) => name === HANDLES[0])).toHaveLength(1)
+})
+
+// The reserve is per window, so it has to come back when the window does. The
+// broker only notices the boundary from inside next(), and after the reserve is
+// spent the poller is asleep for IDLE_POLL_MS — long enough for a hover, which
+// goes out without a grant, to report the *next* window's reset first. That is
+// the shape that left revalidation switched off for the rest of a session.
+test('the revalidation reserve comes back when a hover rolls the window', async ({
+  context,
+  extensionId,
+}) => {
+  // Two windows end to end, plus the 30s the poller sleeps between them.
+  test.setTimeout(180_000)
+
+  const cached = ['alpha', 'bravo', 'charlie']
+  // A window that ends in seconds rather than 15 minutes; the arithmetic under
+  // it is the shipped arithmetic.
+  let windowEndsAt = Math.ceil(Date.now() / 1000) + 3600
+  const lookups = await serveStubX(context, {
+    handles: cached,
+    answer: () => ({
+      location: 'Japan',
+      headers: {
+        'x-rate-limit-limit': String(RATE_LIMIT),
+        'x-rate-limit-remaining': String(RATE_LIMIT),
+        'x-rate-limit-reset': String(windowEndsAt),
+      },
+    }),
+    tabName: () => 'first',
+  })
+  await setSettings(context, extensionId, {
+    ...FAST,
+    backgroundPrefetch: false,
+  })
+
+  const page = await context.newPage()
+  await page.goto(FEED_URL)
+  await page.locator('article[data-testid="tweet"]').first().waitFor()
+  for (const handle of cached) await seedCached(page, handle)
+
+  // Everything the timeline holds is cached now, so the queue stays empty and
+  // the reserve is the only thing that can reach X.
+  await setSettings(context, extensionId, { ...FAST, backgroundPrefetch: true })
+  const windowA = Date.now() + 15_000
+  windowEndsAt = Math.ceil(windowA / 1000)
+  await page.reload()
+  await page.locator('article[data-testid="tweet"]').first().waitFor()
+
+  const revalidations = () =>
+    lookups.filter((l) => cached.includes(l.screenName)).length
+  await expect.poll(revalidations, { timeout: 30_000 }).toBe(RESERVE_PER_WINDOW)
+
+  // Nothing more this window: the reserve is spent and the poller is asleep.
+  await new Promise((r) =>
+    setTimeout(r, Math.max(0, windowA - Date.now()) + 1_000),
+  )
+  expect(revalidations()).toBe(RESERVE_PER_WINDOW)
+
+  // A hover is not a grant, so this response — the first carrying the new
+  // window — reaches the broker without next() ever seeing the old boundary.
+  windowEndsAt = Math.ceil(Date.now() / 1000) + 900
+  await page.evaluate(() => (window as any).hoverName('hovered'))
+  await expect
+    .poll(() => lookups.filter((l) => l.screenName === 'hovered').length, {
+      timeout: 15_000,
+    })
+    .toBe(1)
+
+  // The next idle poll is inside the new window, and it has a reserve again.
+  await expect
+    .poll(revalidations, { timeout: 60_000 })
+    .toBeGreaterThan(RESERVE_PER_WINDOW)
 })
 
 test('two tabs never spend two requests on the same account', async ({
