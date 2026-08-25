@@ -34,7 +34,7 @@ export function EngagementFarming() {
           <div class="reveal mt-14 overflow-x-auto">
             <table class="w-full min-w-[42rem] border-collapse text-start">
               <thead>
-                <tr class="border-hair-strong border-b">
+                <tr class="border-line-strong border-b">
                   <th class="t-data pe-6 pb-3">{g.colSignal}</th>
                   <th class="t-data pe-6 pb-3">{g.colTell}</th>
                   <th class="t-data pb-3">{g.colCost}</th>
@@ -44,14 +44,14 @@ export function EngagementFarming() {
                 {SIGNAL_IDS.map((id) => {
                   const s = g.signals[id]
                   return (
-                    <tr key={id} class="border-hair border-b align-top">
-                      <td class="text-text py-4 pe-6 text-[0.9375rem] font-semibold">
+                    <tr key={id} class="border-line border-b align-top">
+                      <td class="text-ink py-4 pe-6 text-[0.9375rem] font-semibold">
                         {s.signal}
                       </td>
                       <td class="text-body py-4 pe-6 text-[0.9375rem] leading-relaxed">
                         {s.tell}
                       </td>
-                      <td class="text-faint py-4 font-mono text-[0.8125rem]">
+                      <td class="text-muted py-4 font-mono text-[0.8125rem]">
                         {s.cost}
                       </td>
                     </tr>
@@ -63,7 +63,7 @@ export function EngagementFarming() {
         </div>
       </section>
 
-      <section class="bg-ink-1 hairline band relative">
+      <section class="bg-surface hairline band relative">
         <div class="shell-narrow max-w-3xl!">
           <h2 class="t-h2 reveal">{g.hiddenHeading}</h2>
           <div class="policy reveal mt-8 space-y-5">

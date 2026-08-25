@@ -38,7 +38,7 @@ export function ComparisonTeaser() {
             </p>
             <a
               href={href('/x-posed-alternative')}
-              class="text-signal reveal mt-7 inline-block text-[0.9375rem] font-semibold underline decoration-1 underline-offset-4"
+              class="text-accent reveal mt-7 inline-block text-[0.9375rem] font-semibold underline decoration-1 underline-offset-4"
             >
               {t.compareTeaser.link}
             </a>

@@ -27,7 +27,7 @@
     "test:visual": "playwright test -c playwright.visual.config.ts",
     "test:popup-window": "xvfb-run --auto-servernum node scripts/popup-window-check.mjs",
     "test:integration": "playwright test -c playwright.integration.config.ts",
-    "test:lighthouse": "pnpm --filter x-pat-landing test:lighthouse",
+    "test:audits": "pnpm --filter x-pat-landing test:audits",
     "e2e:profile": "node e2e/scripts/seed-profile.mjs",
     "test:e2e": "playwright test --retries 1",
     "shots": "SHOOT=1 E2E_HEADED=1 xvfb-run --auto-servernum playwright test e2e/screenshots.test.ts && node landing/scripts/store-canvas.mjs && cd landing && xvfb-run --auto-servernum node scripts/shoot-options.mjs",

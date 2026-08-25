@@ -1,21 +1,10 @@
 @import 'tailwindcss';
+@import '@asmyshlyaev177/design-tokens/tokens.css';
 
-/* ───────────────────────────────────────────────────────────────────────────
-   Typefaces
-
-   Archivo (Omnibus-Type) — one family, carrying display and body. Display
-   contrast comes from the weight axis alone: 850 against a 400 body.
-
-   The wdth axis is deliberately absent. Google's variable Archivo with wdth is
-   88 kB against 34 kB without, and the 54 kB sat on the critical path for a
-   headline 12% wider — it cost about a second of mobile LCP. Weight buys the
-   same presence for free, so there is no `font-stretch` anywhere below.
-
-   Azeret Mono — scoped strictly to data readouts: country names, counts,
-   limits, badge labels. Never body, never headings.
-
-   Latin-only variable subsets, self-hosted (no third-party font request).
-   ─────────────────────────────────────────────────────────────────────────── */
+/* Typefaces. Archivo carries display and body — weight axis only, no `wdth`:
+   it costs 54 kB on the critical path for a 12% wider headline, about a second
+   of mobile LCP. Azeret Mono is for data readouts, never body or headings.
+   Latin-only variable subsets, self-hosted. */
 @font-face {
   font-family: 'Archivo';
   src: url('/fonts/archivo-latin-var.woff2') format('woff2');
@@ -32,25 +21,10 @@
   font-display: swap;
 }
 
-/* ───────────────────────────────────────────────────────────────────────────
-   Scripts Archivo does not cover
-
-   Archivo ships Latin, Latin Extended and Vietnamese — no Cyrillic, no CJK, no
-   Thai, no Arabic. Left alone, those locales get per-glyph fallback: the
-   browser renders whatever Archivo has and substitutes the rest, so a Russian
-   heading mixes two typefaces mid-word and a Japanese one mixes them mid-line.
-   Naming a whole stack per script is what keeps each page in one typeface.
-
-   None of these are webfonts, deliberately. A subsetted CJK face is 2–8 MB
-   even trimmed to a common-character set, which is thirty times the entire
-   current payload and would cost more in load time than it could buy back in
-   typography — on a site whose Lighthouse budget is a hard 100. The platform
-   faces named below are the ones those systems set as their own UI font, so
-   they are already resident and already what a reader of that language expects
-   a well-set page to look like.
-
-   `:lang()` matches on the subtag, so `:lang(zh)` catches `lang="zh-Hans"`.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* Scripts Archivo does not cover. Without a whole stack per script the browser
+   falls back per glyph and a heading mixes two typefaces mid-word. Platform
+   faces, never webfonts: a subsetted CJK face is 2–8 MB against a hard
+   Lighthouse 100. `:lang()` matches the subtag, so `zh` catches `zh-Hans`. */
 :root:lang(ja) {
   --font-sans:
     'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', Meiryo,
@@ -83,9 +57,8 @@
     system-ui, sans-serif;
 }
 
-/* The monospace readouts are Latin digits and ASCII in every locale — country
-   codes, `x-rate-limit-*`, `15 of 50` — so Azeret keeps them, and only the
-   scripts whose punctuation it lacks fall back. */
+/* Readouts are Latin digits and ASCII in every locale, so Azeret keeps them;
+   only the scripts whose punctuation it lacks fall back. */
 :root:lang(ja),
 :root:lang(ko),
 :root:lang(zh),
@@ -96,29 +69,39 @@
 }
 
 @theme {
-  /* Surfaces — near-black with a cool tint toward the mark's hue, matching
-     the favicon / store tiles (#0b0b12) rather than X's pure black. */
-  --color-void: oklch(15.3% 0.015 284.5);
-  --color-ink-1: oklch(18.7% 0.018 284.5);
-  --color-ink-2: oklch(21.4% 0.022 284.4);
-  --color-ink-3: oklch(24.1% 0.025 284.4);
-  --color-hair: oklch(28.7% 0.025 284.7);
-  --color-hair-strong: oklch(35.6% 0.031 284.7);
+  /* Shared tokens (tokens.css) lifted into Tailwind so `text-ink`, `bg-surface`
+     and `border-line` exist as utilities. Tailwind v4 requires the --color-*
+     prefix to generate them; the underlying tokens keep the shared names. */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
 
-  /* Text — all ≥ 5.9:1 on every surface above */
-  --color-text: oklch(97.4% 0.005 275);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  /* A step between --ink and --muted that only a dark-only site can afford;
+     the shared ramp has no slot for it. */
   --color-body: oklch(79.9% 0.017 271.2);
-  --color-faint: oklch(67.3% 0.025 269.3);
 
-  /* Signal — the extension's own mark colour (#00d4c0). Carries the brand.
-     Deliberately NOT X's blue: cyan is our layer, blue is X's chrome. */
-  --color-signal: oklch(78.1% 0.139 183);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  /* Accent-coloured *text*. `--accent` is a fill and is Lc 59 on --surface. */
+  --color-accent-on-soft: var(--accent-on-soft);
+  --color-primary: var(--primary);
+  --color-link: var(--link);
 
-  /* Meaning colours. Three, each with one job:
-     x-blue = X's own UI inside a mockup · attention = highlight · alarm = blocked/VPN */
-  --color-xblue: oklch(66.7% 0.161 245.5);
+  /* Meaning colours, each with one job, none of them part of the shared system:
+     x-blue = X's own UI inside a mockup · attention = highlight · alarm = blocked/VPN
+
+     All three are worn as small text on a tint of themselves, so lightness is
+     raised until the worst such ground clears Lc 62 and chroma is capped at the
+     sRGB boundary for that lightness — declare more and the browser clamps it.
+     Re-derive rather than nudge by eye; see CLAUDE.md. */
+  --color-xblue: oklch(80.5% 0.108 245.5);
   --color-attention: oklch(81% 0.158 78.9);
-  --color-alarm: oklch(71% 0.182 26.2);
+  --color-alarm: oklch(81.4% 0.108 26.2);
 
   --font-sans:
     'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
@@ -129,6 +112,13 @@
 
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* cyan 183 — the extension's own mark colour, deliberately NOT X's blue */
+:root {
+  --brand-hue: 183;
+  --accent-hue: 183;
+  --neutral-hue: 284;
 }
 
 @layer base {
@@ -155,7 +145,7 @@
   }
 
   body {
-    background-color: var(--color-void);
+    background-color: var(--bg);
     color: var(--color-body);
     font-family: var(--font-sans);
     font-synthesis-weight: none;
@@ -165,13 +155,13 @@
   }
 
   ::selection {
-    background: color-mix(in oklch, var(--color-signal) 30%, transparent);
-    color: var(--color-text);
+    background: color-mix(in oklch, var(--accent) 30%, transparent);
+    color: var(--ink);
   }
 
   /* One focus treatment, everywhere. Never removed without a replacement. */
   :focus-visible {
-    outline: 2px solid var(--color-signal);
+    outline: 2px solid var(--accent);
     outline-offset: 3px;
     border-radius: 4px;
   }
@@ -180,7 +170,7 @@
   h2,
   h3,
   h4 {
-    color: var(--color-text);
+    color: var(--ink);
     text-wrap: balance;
   }
 
@@ -192,10 +182,8 @@
     max-width: 100%;
   }
 
-  /* Tailwind v4's preflight drops the UA `cursor: pointer` on buttons. Every
-     button on this site is a control, so it comes back here rather than as a
-     utility class remembered one component at a time — the gallery arrows,
-     thumbnails and "Full size" had all lost it. */
+  /* Tailwind v4's preflight drops the UA `cursor: pointer`. Every button here
+     is a control, so restore it once rather than per component. */
   button:not(:disabled) {
     cursor: pointer;
   }
@@ -215,8 +203,8 @@
     padding-inline: var(--gutter);
   }
 
-  /* Section rhythm deliberately varies: bands that carry an argument breathe,
-     bands that carry evidence sit tighter. */
+  /* Bands that carry an argument breathe; bands that carry evidence sit
+     tighter. */
   .band {
     padding-block: clamp(4.5rem, 9vw, 8.5rem);
   }
@@ -245,7 +233,7 @@
     font-weight: 700;
     line-height: 1.25;
     letter-spacing: -0.012em;
-    color: var(--color-text);
+    color: var(--ink);
   }
 
   .t-lead {
@@ -269,11 +257,10 @@
     font-weight: 500;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--color-faint);
+    color: var(--muted);
   }
 
-  /* Long-form legal prose. One place, so the policy page needs no per-element
-     classes and stays readable at 65–75ch. */
+  /* Long-form legal prose, so the policy page needs no per-element classes. */
   .policy {
     font-size: 1rem;
     line-height: 1.72;
@@ -291,43 +278,42 @@
   }
 
   .policy li::marker {
-    color: var(--color-hair-strong);
+    color: var(--line-strong);
   }
 
   .policy code {
     font-family: var(--font-mono);
     font-size: 0.875em;
-    background: var(--color-ink-2);
-    border: 1px solid var(--color-hair);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
     border-radius: 0.25rem;
     padding: 0.1em 0.35em;
-    color: var(--color-text);
+    color: var(--ink);
   }
 
   /* ── Surfaces ─────────────────────────────────────────────────────────── */
   .hairline {
-    border-top: 1px solid var(--color-hair);
+    border-top: 1px solid var(--line);
   }
 
-  /* Graticule: a fine dot lattice under a coarse lat/long grid, both faded
-     from the centre. The page is about *where* — the backdrop should say so. */
+  /* Graticule: dot lattice under a lat/long grid, faded from the centre. */
   .graticule {
     position: absolute;
     inset: 0;
     pointer-events: none;
     background-image:
       radial-gradient(
-        color-mix(in oklch, var(--color-signal) 34%, transparent) 1px,
+        color-mix(in oklch, var(--accent) 34%, transparent) 1px,
         transparent 1px
       ),
       linear-gradient(
         to right,
-        color-mix(in oklch, var(--color-hair-strong) 70%, transparent) 1px,
+        color-mix(in oklch, var(--line-strong) 70%, transparent) 1px,
         transparent 1px
       ),
       linear-gradient(
         to bottom,
-        color-mix(in oklch, var(--color-hair-strong) 70%, transparent) 1px,
+        color-mix(in oklch, var(--line-strong) 70%, transparent) 1px,
         transparent 1px
       );
     background-size:
@@ -343,8 +329,7 @@
     opacity: 0.7;
   }
 
-  /* Native <dialog>: top layer, so no stacking context can clip it, and the
-     focus trap + Escape handling come from the platform. */
+  /* Native <dialog>: top layer, plus the platform's focus trap and Escape. */
   .lightbox {
     position: fixed;
     inset: 0;
@@ -370,13 +355,13 @@
   }
 
   .lightbox::backdrop {
-    background: color-mix(in oklch, var(--color-void) 92%, transparent);
+    background: color-mix(in oklch, var(--bg) 92%, transparent);
     backdrop-filter: blur(6px);
   }
 
   .lightbox img {
     border-radius: 0.75rem;
-    border: 1px solid var(--color-hair);
+    border: 1px solid var(--line);
   }
 
   .scrollbar-none {
@@ -388,11 +373,9 @@
   }
 
   /* ── Motion ───────────────────────────────────────────────────────────── */
-  /* The hero entrance moves but never fades. Fading in from `opacity: 0` with a
-     `backwards` fill made the hero paragraph invisible for its whole delay, and
-     LCP is only recorded once an element is actually visible — that one property
-     was 88% of a 3.7s LCP. Transform is ignored by LCP, so the choreography
-     survives and the text paints on the first frame. */
+  /* Moves, never fades. LCP is recorded only once an element is visible, so a
+     `backwards` opacity fill was 88% of a 3.7s LCP; transform is ignored by
+     LCP and paints on the first frame. */
   .rise {
     animation: rise-hero 0.8s var(--ease-out-quint);
   }
@@ -403,12 +386,9 @@
     }
   }
 
-  /* Scroll reveals ride the native view timeline — no observer, no JS gate,
-     and browsers without support simply show the finished state.
-
-     Transform only, never opacity: a scroll-driven fade is a parked state, not
-     a transient one, and holding the body colour above 4.5:1 through one would
-     mean starting at 0.86 opacity — not a fade anyone can see. */
+  /* Native view timeline — no observer, no JS gate; browsers without support
+     show the finished state. Transform only: a scroll-driven fade is a parked
+     state, and holding 4.5:1 through one means starting at 0.86 opacity. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
       .reveal {
@@ -425,34 +405,22 @@
     }
   }
 
-  /* Deliberately never touches opacity: an entrance that hides its element
-     during the delay is an entrance that can ship the row invisible. The flash
-     reads as "this just arrived" without the row ever being absent. */
+  /* Never touches opacity: an entrance that hides its element during the delay
+     can ship the row invisible. */
   @keyframes flash-in {
     0% {
       transform: translate3d(-0.4rem, 0, 0);
-      background-color: color-mix(
-        in oklch,
-        var(--color-signal) 30%,
-        transparent
-      );
-      box-shadow: 0 0 0 1px
-        color-mix(in oklch, var(--color-signal) 60%, transparent);
+      background-color: color-mix(in oklch, var(--accent) 30%, transparent);
+      box-shadow: 0 0 0 1px color-mix(in oklch, var(--accent) 60%, transparent);
     }
     55% {
       transform: none;
-      background-color: color-mix(
-        in oklch,
-        var(--color-signal) 22%,
-        transparent
-      );
-      box-shadow: 0 0 0 1px
-        color-mix(in oklch, var(--color-signal) 45%, transparent);
+      background-color: color-mix(in oklch, var(--accent) 22%, transparent);
+      box-shadow: 0 0 0 1px color-mix(in oklch, var(--accent) 45%, transparent);
     }
   }
 
-  /* The one narrative beat on the page: the row the extension injects lands a
-     moment after the card around it, flashes, then settles. */
+  /* The injected row lands after the card around it, flashes, then settles. */
   .injected {
     animation: flash-in 1.4s var(--ease-out-expo) 0.55s;
     border-radius: 0.375rem;

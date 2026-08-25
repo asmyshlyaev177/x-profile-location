@@ -26,8 +26,8 @@ const SIZES = {
 
 const TONES = {
   signal:
-    'bg-signal text-void hover:bg-white focus-visible:outline-offset-4 shadow-[0_1px_0_0_rgba(255,255,255,0.3)_inset,0_14px_34px_-20px_var(--color-signal)]',
-  void: 'bg-void text-signal hover:bg-ink-3 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)]',
+    'bg-accent text-bg hover:bg-white focus-visible:outline-offset-4 shadow-[0_1px_0_0_rgba(255,255,255,0.3)_inset,0_14px_34px_-20px_var(--accent)]',
+  void: 'bg-bg text-accent hover:bg-surface-2 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)]',
 } as const
 
 export function InstallButton({

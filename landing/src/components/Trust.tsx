@@ -4,7 +4,10 @@ export function Trust() {
   const { t, href } = useI18n()
 
   return (
-    <section id="privacy" class="band hairline bg-ink-1 relative scroll-mt-24">
+    <section
+      id="privacy"
+      class="band hairline bg-surface relative scroll-mt-24"
+    >
       <div class="shell">
         <div class="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
           <div>
@@ -13,7 +16,7 @@ export function Trust() {
             <p class="t-body reveal mt-6">{t.trust.body}</p>
             <a
               href={href('/privacy-policy')}
-              class="text-signal hover:text-text reveal mt-7 inline-flex items-center gap-2 text-[0.9375rem] font-semibold underline decoration-1 underline-offset-[6px] transition-colors"
+              class="text-accent hover:text-ink reveal mt-7 inline-flex items-center gap-2 text-[0.9375rem] font-semibold underline decoration-1 underline-offset-[6px] transition-colors"
             >
               {t.trust.readPolicy}
               {/* Flipped by the RTL build: an arrow that means "onwards" points
@@ -57,11 +60,11 @@ function Column({
 }) {
   const isNever = kind === 'never'
   return (
-    <div class="reveal border-hair bg-void flex flex-col rounded-2xl border p-6">
+    <div class="reveal border-line bg-bg flex flex-col rounded-2xl border p-6">
       <h3 class="t-data flex items-center gap-2">
         <span
           class={`grid h-4 w-4 place-items-center rounded-full text-[0.625rem] font-bold ${
-            isNever ? 'bg-alarm/20 text-alarm' : 'bg-signal/20 text-signal'
+            isNever ? 'bg-alarm/20 text-alarm' : 'bg-accent/20 text-accent'
           }`}
           aria-hidden="true"
         >
@@ -69,14 +72,14 @@ function Column({
         </span>
         {title}
       </h3>
-      <ul class="divide-hair mt-4 divide-y">
+      <ul class="divide-line mt-4 divide-y">
         {items.map((it) => (
           <li key={it} class="text-body py-3 text-[0.875rem] leading-relaxed">
             {it}
           </li>
         ))}
       </ul>
-      <p class="text-faint border-hair mt-2 border-t pt-4 text-[0.8125rem] leading-relaxed">
+      <p class="text-muted border-line mt-2 border-t pt-4 text-[0.8125rem] leading-relaxed">
         {note}
       </p>
     </div>

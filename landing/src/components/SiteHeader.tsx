@@ -42,7 +42,7 @@ export function SiteHeader() {
       class="sticky top-0 z-[var(--z-sticky)] transition-colors duration-300 ease-out"
       style={
         lifted
-          ? 'background:color-mix(in oklch, var(--color-void) 82%, transparent);backdrop-filter:blur(14px) saturate(140%);border-bottom:1px solid var(--color-hair)'
+          ? 'background:color-mix(in oklch, var(--bg) 82%, transparent);backdrop-filter:blur(14px) saturate(140%);border-bottom:1px solid var(--line)'
           : 'border-bottom:1px solid transparent'
       }
     >
@@ -62,7 +62,7 @@ export function SiteHeader() {
             <a
               key={l.href}
               href={l.href}
-              class="text-faint hover:text-text text-[0.8125rem] font-medium transition-colors duration-150"
+              class="text-muted hover:text-ink text-[0.8125rem] font-medium transition-colors duration-150"
             >
               {l.label}
             </a>
@@ -81,7 +81,7 @@ export function SiteHeader() {
             rel="noopener"
             title={t.nav.sourceOnGitHub}
             aria-label={t.nav.sourceOnGitHub}
-            class="text-faint hover:text-text hover:border-hair-strong border-hair hidden size-9 items-center justify-center rounded-full border transition-colors duration-150 sm:inline-flex"
+            class="text-muted hover:text-ink hover:border-line-strong border-line hidden size-9 items-center justify-center rounded-full border transition-colors duration-150 sm:inline-flex"
           >
             <GitHubIcon />
           </a>

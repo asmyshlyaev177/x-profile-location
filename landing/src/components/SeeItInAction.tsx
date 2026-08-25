@@ -1,12 +1,7 @@
-/* ───────────────────────────────────────────────────────────────────────────
-   Features.
-
-   Deliberately not a grid of same-sized cards. The five badge variants are one
-   legend, because that is what they are — five readings of the same injected
-   row. The three things that change your timeline get room to argue for
-   themselves. Accent colour is never decorative: cyan is ours, X blue is X's,
-   amber means highlighted, red means blocked.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* Features. Not a grid of same-sized cards: the five badges are one legend —
+   five readings of the same injected row — and the three things that change
+   your timeline get room to argue. Colour is never decorative: cyan is ours,
+   X blue is X's, amber means highlighted, red means blocked. */
 
 import { SUPPORTED_ANDROID } from '../utils/browser'
 import { useT } from '../i18n/context'
@@ -52,7 +47,7 @@ const BADGES = {
     </span>
   ),
   region: (
-    <span class="text-body border-hair-strong rounded border px-1.5 py-0.5 font-mono text-[0.75rem] font-semibold">
+    <span class="text-body border-line-strong rounded border px-1.5 py-0.5 font-mono text-[0.75rem] font-semibold">
       EUR
     </span>
   ),
@@ -86,11 +81,10 @@ function Legend({ t }: { t: Dict }) {
   const ids = ['country', 'region', 'vpn', 'registration', 'cooldown'] as const
 
   return (
-    <dl class="border-hair divide-hair divide-y border-y lg:grid lg:grid-cols-5 lg:divide-x lg:divide-y-0">
+    <dl class="border-line divide-line divide-y border-y lg:grid lg:grid-cols-5 lg:divide-x lg:divide-y-0">
       {ids.map((id, i) => (
-        // A <div> inside a <dl> may contain nothing but <dt>/<dd>, so the badge
-        // lives in the <dt> alongside its label rather than in a sibling div —
-        // otherwise these stop being definition list items to assistive tech.
+        // A <div> in a <dl> may hold nothing but <dt>/<dd>, so the badge sits
+        // inside the <dt>; a sibling div stops these being list items to AT.
         <div
           key={id}
           class="reveal grid grid-cols-[7rem_1fr] items-start gap-x-5 py-5 lg:grid-cols-1 lg:px-6 lg:py-7 lg:first:ps-0 lg:last:pe-0"
@@ -98,7 +92,7 @@ function Legend({ t }: { t: Dict }) {
         >
           <dt class="flex flex-col gap-3 lg:gap-4">
             <span class="flex min-h-8 items-center">{BADGES[id]}</span>
-            <span class="t-data text-signal">
+            <span class="t-data text-accent">
               {t.features.readings[id].name}
             </span>
           </dt>
@@ -135,11 +129,11 @@ function Showcase({
         <div class="t-body mt-4 space-y-3">{children}</div>
 
         {readout && (
-          <dl class="border-hair mt-7 grid gap-x-8 gap-y-4 border-t pt-5 sm:grid-cols-3">
+          <dl class="border-line mt-7 grid gap-x-8 gap-y-4 border-t pt-5 sm:grid-cols-3">
             {readout.map(([k, v]) => (
               <div key={k}>
                 <dt class="t-data">{k}</dt>
-                <dd class="text-text mt-1.5 text-[0.8125rem] font-semibold">
+                <dd class="text-ink mt-1.5 text-[0.8125rem] font-semibold">
                   {v}
                 </dd>
               </div>
@@ -149,7 +143,7 @@ function Showcase({
       </div>
 
       <div
-        class={`bg-ink-1 border-hair relative grid min-h-64 place-items-center overflow-hidden rounded-2xl border p-6 ${flip ? 'lg:order-1' : ''}`}
+        class={`bg-surface border-line relative grid min-h-64 place-items-center overflow-hidden rounded-2xl border p-6 ${flip ? 'lg:order-1' : ''}`}
       >
         <div class="graticule opacity-30" aria-hidden="true" />
         <div class="relative">{stage}</div>
@@ -183,8 +177,8 @@ function HidePreview({ t }: { t: Dict }) {
   return (
     <div class="w-full max-w-76 space-y-2.5">
       <TweetShell />
-      <div class="border-hair bg-ink-2 flex items-center gap-2 rounded-lg border px-3 py-3">
-        <span class="text-faint text-[0.8125rem] font-semibold">
+      <div class="border-line bg-surface-2 flex items-center gap-2 rounded-lg border px-3 py-3">
+        <span class="text-muted text-[0.8125rem] font-semibold">
           {t.hero.panelHidden}
         </span>
         <span class="text-xblue border-xblue/50 ms-auto rounded-full border px-2.5 py-0.5 text-[0.6875rem] font-bold">
@@ -192,7 +186,7 @@ function HidePreview({ t }: { t: Dict }) {
         </span>
       </div>
       <TweetShell />
-      <div class="border-hair/70 flex items-center justify-center rounded-lg border border-dashed py-4">
+      <div class="border-line/70 flex items-center justify-center rounded-lg border border-dashed py-4">
         <span class="t-data">{t.features.hide.previewRemoved}</span>
       </div>
     </div>
@@ -220,14 +214,13 @@ function HighlightShowcase({ t }: { t: Dict }) {
   )
 }
 
-/** Side by side once there is room, stacked before that, so the options panel
- *  and its effect are never clipped by the stage. */
+/** Stacked until there is room, so neither panel is clipped by the stage. */
 function HighlightPreview({ t }: { t: Dict }) {
   return (
     <div class="flex flex-col items-center gap-4 sm:flex-row">
       <OptionsPopup t={t} />
       <span
-        class="text-hair-strong shrink-0 rotate-90 text-2xl sm:rotate-0 sm:rtl:-scale-x-100"
+        class="text-muted shrink-0 rotate-90 text-2xl sm:rotate-0 sm:rtl:-scale-x-100"
         aria-hidden="true"
       >
         →
@@ -236,19 +229,19 @@ function HighlightPreview({ t }: { t: Dict }) {
         <TweetShell compact />
         <div
           class="border-attention/45 rounded-lg border p-2.5"
-          style="background:color-mix(in oklch, var(--color-attention) 14%, var(--color-ink-2))"
+          style="background:color-mix(in oklch, var(--color-attention) 14%, var(--surface-2))"
         >
           <div class="flex gap-2">
-            <div class="bg-hair-strong h-5 w-5 shrink-0 rounded-full" />
+            <div class="bg-line-strong h-5 w-5 shrink-0 rounded-full" />
             <div class="flex-1 space-y-1.5">
               <div class="flex items-center gap-1.5">
-                <div class="bg-hair-strong h-1.5 w-10 rounded-full" />
+                <div class="bg-line-strong h-1.5 w-10 rounded-full" />
                 <span class="text-attention font-mono text-[0.5rem] font-bold">
                   crypto · nft
                 </span>
               </div>
-              <div class="bg-hair h-1.5 w-full rounded-full" />
-              <div class="bg-hair h-1.5 w-2/3 rounded-full" />
+              <div class="bg-line h-1.5 w-full rounded-full" />
+              <div class="bg-line h-1.5 w-2/3 rounded-full" />
             </div>
           </div>
         </div>
@@ -308,7 +301,7 @@ function OptionsPopup({ t }: { t: Dict }) {
 function CacheShowcase({ t }: { t: Dict }) {
   const c = t.features.cache
   return (
-    <div class="reveal border-hair bg-ink-1 relative overflow-hidden rounded-2xl border p-7">
+    <div class="reveal border-line bg-surface relative overflow-hidden rounded-2xl border p-7">
       <div class="graticule opacity-25" aria-hidden="true" />
       <div class="relative">
         <h3 class="t-h3 text-[1.0625rem]">{c.title}</h3>
@@ -323,13 +316,13 @@ function CacheShowcase({ t }: { t: Dict }) {
 }
 
 const arrow = (
-  <span class="text-hair-strong text-lg rtl:-scale-x-100" aria-hidden="true">
+  <span class="text-muted text-lg rtl:-scale-x-100" aria-hidden="true">
     →
   </span>
 )
 
 const contributor = (flag: string) => (
-  <span class="bg-hair ring-hair-strong relative grid h-8 w-8 place-items-center rounded-full ring-1">
+  <span class="bg-line ring-line-strong relative grid h-8 w-8 place-items-center rounded-full ring-1">
     <span class="absolute -end-1 -bottom-1 text-[0.625rem] leading-none">
       {flag}
     </span>
@@ -351,18 +344,18 @@ function CachePreview({ t }: { t: Dict }) {
       {arrow}
 
       <div class="flex flex-col items-center gap-1.5">
-        <span class="border-signal/50 bg-signal/12 grid h-11 w-11 place-items-center rounded-full border text-lg">
+        <span class="border-accent/50 bg-accent/12 grid h-11 w-11 place-items-center rounded-full border text-lg">
           🌍
         </span>
-        <span class="t-data text-signal">{t.features.cache.shared}</span>
+        <span class="t-data text-accent">{t.features.cache.shared}</span>
       </div>
 
       {arrow}
 
-      <div class="border-hair bg-ink-2 flex items-center gap-2 rounded-xl border p-2.5">
-        <span class="bg-hair h-6 w-6 shrink-0 rounded-full" />
+      <div class="border-line bg-surface-2 flex items-center gap-2 rounded-xl border p-2.5">
+        <span class="bg-line h-6 w-6 shrink-0 rounded-full" />
         <span class="text-base leading-none">🇯🇵</span>
-        <span class="text-signal border-signal/40 bg-signal/10 rounded border px-1.5 py-0.5 font-mono text-[0.625rem] font-bold">
+        <span class="text-accent border-accent/40 bg-accent/10 rounded border px-1.5 py-0.5 font-mono text-[0.625rem] font-bold">
           {t.features.cache.instant}
         </span>
       </div>
@@ -375,7 +368,7 @@ function CachePreview({ t }: { t: Dict }) {
 function SwipeShowcase({ t }: { t: Dict }) {
   const c = t.features.swipe
   return (
-    <div class="reveal border-hair bg-ink-1 relative overflow-hidden rounded-2xl border p-7">
+    <div class="reveal border-line bg-surface relative overflow-hidden rounded-2xl border p-7">
       <div class="graticule opacity-25" aria-hidden="true" />
       <div class="relative">
         <h3 class="t-h3 text-[1.0625rem]">{c.title}</h3>
@@ -394,16 +387,16 @@ function SwipeShowcase({ t }: { t: Dict }) {
 function SwipePreview() {
   return (
     <div class="relative w-52" dir="ltr">
-      <div class="border-hair bg-ink-2 rounded-lg border p-3">
+      <div class="border-line bg-surface-2 rounded-lg border p-3">
         <div class="flex gap-2">
-          <div class="bg-hair h-6 w-6 shrink-0 rounded-full" />
+          <div class="bg-line h-6 w-6 shrink-0 rounded-full" />
           <div class="flex-1 space-y-1.5">
-            <div class="bg-hair-strong h-1.5 w-16 rounded-full" />
+            <div class="bg-line-strong h-1.5 w-16 rounded-full" />
             <div class="flex items-center gap-1.5">
               <span class="text-[0.875rem] leading-none">🇧🇷</span>
               <span class="text-body text-[0.625rem]">Brazil</span>
             </div>
-            <div class="bg-hair h-1.5 w-full rounded-full" />
+            <div class="bg-line h-1.5 w-full rounded-full" />
           </div>
         </div>
       </div>
@@ -413,7 +406,7 @@ function SwipePreview() {
       >
         👉
       </span>
-      <div class="border-xblue/60 bg-void/95 absolute -bottom-7 left-1/2 -translate-x-1/2 rounded-lg border px-3 py-1 text-[0.75rem] font-semibold whitespace-nowrap text-white">
+      <div class="border-xblue/60 bg-bg/95 absolute -bottom-7 left-1/2 -translate-x-1/2 rounded-lg border px-3 py-1 text-[0.75rem] font-semibold whitespace-nowrap text-white">
         🇧🇷 Brazil
       </div>
     </div>
@@ -424,15 +417,15 @@ function SwipePreview() {
 
 function TweetShell({ compact = false }: { compact?: boolean }) {
   return (
-    <div class="border-hair bg-ink-2 rounded-lg border p-2.5">
+    <div class="border-line bg-surface-2 rounded-lg border p-2.5">
       <div class="flex gap-2">
         <div
-          class={`bg-hair-strong shrink-0 rounded-full ${compact ? 'h-5 w-5' : 'h-6 w-6'}`}
+          class={`bg-line-strong shrink-0 rounded-full ${compact ? 'h-5 w-5' : 'h-6 w-6'}`}
         />
         <div class="flex-1 space-y-1.5">
-          <div class="bg-hair-strong h-1.5 w-14 rounded-full" />
-          <div class="bg-hair h-1.5 w-full rounded-full" />
-          <div class="bg-hair h-1.5 w-3/5 rounded-full" />
+          <div class="bg-line-strong h-1.5 w-14 rounded-full" />
+          <div class="bg-line h-1.5 w-full rounded-full" />
+          <div class="bg-line h-1.5 w-3/5 rounded-full" />
         </div>
       </div>
     </div>

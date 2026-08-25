@@ -55,11 +55,11 @@ export function Footer() {
   ]
 
   return (
-    <footer class="border-hair border-t">
+    <footer class="border-line border-t">
       <div class="shell grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <Wordmark />
-          <p class="text-faint mt-4 max-w-[34ch] text-[0.8125rem] leading-relaxed">
+          <p class="text-muted mt-4 max-w-[34ch] text-[0.8125rem] leading-relaxed">
             {t.footer.tagline}
           </p>
           <p class="t-data mt-5">
@@ -75,7 +75,7 @@ export function Footer() {
                 <li key={l.label}>
                   <a
                     href={l.href}
-                    class="text-body hover:text-signal text-[0.875rem] transition-colors duration-150"
+                    class="text-body hover:text-accent text-[0.875rem] transition-colors duration-150"
                   >
                     {l.label}
                   </a>
@@ -86,11 +86,11 @@ export function Footer() {
         ))}
       </div>
 
-      <div class="shell border-hair flex flex-col gap-3 border-t py-6 sm:flex-row sm:items-center sm:justify-between">
-        <p class="text-faint text-[0.8125rem]">
+      <div class="shell border-line flex flex-col gap-3 border-t py-6 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-muted text-[0.8125rem]">
           © {new Date().getFullYear()} X-Pat
         </p>
-        <p class="text-faint text-[0.8125rem]">{t.footer.notAffiliated}</p>
+        <p class="text-muted text-[0.8125rem]">{t.footer.notAffiliated}</p>
       </div>
     </footer>
   )

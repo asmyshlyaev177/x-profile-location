@@ -8,10 +8,11 @@
     "generate:images": "node scripts/generate-images.mjs",
     "shoot:options": "node scripts/shoot-options.mjs",
     "build": "node scripts/generate-images.mjs && vite build && node scripts/flatten-routes.mjs && node scripts/minify-html.mjs",
+    "test:tokens": "check-tokens src/index.css",
     "preview": "pnpm run build && vite preview --port 5173",
     "serve": "pnpm run preview",
     "preview:lighthouse": "vite preview --port 5174 --strictPort",
-    "test:lighthouse": "playwright test -c playwright.lighthouse.config.ts",
+    "test:audits": "pnpm run test:tokens && playwright test -c playwright.audits.config.ts",
     "deploy": "wrangler pages deploy dist --project-name x-pat",
     "deploy:redirect": "wrangler pages deploy redirect --project-name x-profile-location"
   },
@@ -20,6 +21,7 @@
     "preact-render-to-string": "^6.5.0"
   },
   "devDependencies": {
+    "@asmyshlyaev177/design-tokens": "^1.1.0",
     "@playwright/test": "^1.59.1",
     "@preact/preset-vite": "^2.10.4",
     "@tailwindcss/vite": "^4.2.2",
