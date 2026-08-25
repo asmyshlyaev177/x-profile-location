@@ -28,7 +28,7 @@ export function LanguagePicker() {
     <details class="relative" data-light-dismiss>
       <summary
         aria-label={t.language.label}
-        class="text-body hover:text-text hover:border-hair-strong border-hair inline-flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-medium transition-colors duration-150 [&::-webkit-details-marker]:hidden"
+        class="text-body hover:text-ink hover:border-line-strong border-line inline-flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-medium transition-colors duration-150 [&::-webkit-details-marker]:hidden"
       >
         <GlobeIcon />
         <span lang={locale.htmlLang}>{locale.name}</span>
@@ -38,7 +38,7 @@ export function LanguagePicker() {
           mirrors, and a menu pinned to the physical right would hang off the
           side it is no longer anchored to. */}
       <ul
-        class="border-hair bg-void absolute end-0 top-11 z-[var(--z-sticky)] max-h-[70vh] w-52 overflow-y-auto rounded-xl border py-1.5 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)]"
+        class="border-line bg-bg absolute end-0 top-11 z-[var(--z-sticky)] max-h-[70vh] w-52 overflow-y-auto rounded-xl border py-1.5 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.9)]"
         aria-label={t.language.choose}
       >
         {locales.map((l) => {
@@ -60,8 +60,8 @@ export function LanguagePicker() {
                 aria-current={current ? 'true' : undefined}
                 class={`block px-4 py-2 text-[0.875rem] transition-colors duration-150 ${
                   current
-                    ? 'text-signal font-semibold'
-                    : 'text-body hover:text-text hover:bg-ink-2'
+                    ? 'text-accent font-semibold'
+                    : 'text-body hover:text-ink hover:bg-surface-2'
                 }`}
               >
                 {l.name}

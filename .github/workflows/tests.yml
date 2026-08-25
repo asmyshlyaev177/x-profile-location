@@ -6,18 +6,13 @@ on:
   pull_request:
 
 jobs:
-  tests:
+  # The extension. `landing/` is the `audits` job below.
+  extension:
     runs-on: ubuntu-latest
     steps:
-      # Every action is pinned to a **commit SHA**, with the tag it came from in
-      # the trailing comment. A tag is a movable pointer the action's owner can
-      # repoint at any time, so `@v4` is a promise to run whatever that account
-      # publishes next — and these steps hold a checkout of this repo and the
-      # runner's token. A SHA is the only reference that cannot be changed under
-      # us.
-      #
-      # The comment is the only thing that says which version a SHA is, so keep
-      # the two in step when bumping. Resolve a tag with:
+      # Actions are pinned by commit SHA — a tag is repointable by its owner and
+      # these steps hold the repo and the runner's token. Keep the trailing tag
+      # comment in step when bumping:
       #   gh api repos/actions/checkout/commits/v7.0.1 --jq .sha
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -25,9 +20,7 @@ jobs:
         with:
           version: 10
 
-      # `cache: pnpm` needs pnpm already on PATH, which is why the step above
-      # comes first. setup-node v6 limited *automatic* caching to npm; passing
-      # `cache` explicitly is unaffected and pnpm is still a supported value.
+      # `cache: pnpm` needs pnpm on PATH, hence the step order.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
@@ -36,53 +29,32 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      # Fails if any committed recording still contains a real handle that no
-      # test names. Runs before anything slower, because a capture landing
-      # unscrubbed is a privacy incident rather than a broken build — and by the
-      # time it is on a public branch it is already too late to fix quietly.
+      # Fails if a committed recording holds a real handle no test names. First,
+      # because an unscrubbed capture is a privacy incident, not a broken build.
       - name: Recordings are scrubbed
         run: pnpm scrub:check
 
       - name: Unit tests
         run: pnpm test
 
-      # Same tests, random order. Both suites keep module-level state (content.tsx
-      # settings, page-script's per-instance user buffer) that a test can mutate
-      # and the next test inherits — the kind of coupling that passes forever in
-      # declaration order and then fails once on someone else's machine. Running
-      # shuffled makes that a build failure here rather than a mystery in a
-      # contributor's first PR. If this step fails alone, the seed it prints
+      # Same tests, random order: both suites keep module-level state one test
+      # can leave for the next. If this step fails alone, the seed it prints
       # reproduces it: `npx vitest run --sequence.shuffle --sequence.seed=<seed>`.
       - name: Unit tests (random order)
         run: pnpm test:shuffle
 
-      # Layout tests for the UI the content script injects. Unlike the e2e suite
-      # below, this one needs no session and no recordings — hardcoded fixture
-      # DOM, the extension's own stylesheet over it (imported from
-      # src/scripts/styles.ts, so it is the shipped CSS and not a copy), and
-      # assertions about how a real browser laid it out. happy-dom has no layout
-      # engine, so none of it is reachable from the unit suite: it reports no
-      # boxes, resolves no cascade, and has neither the CSS Custom Highlight API
-      # nor a working ::highlight().
-      #
-      # Only chromium is downloaded — the config runs one project. The install
-      # is deliberately uncached: it is the slowest step here by far, but a
-      # stale-cache failure in a suite that exists to catch layout regressions
-      # would cost more attention than the download saves.
+      # Uncached on purpose: the slowest step here, but a stale-cache failure in
+      # a suite that exists to catch layout regressions costs more than it saves.
       - name: Install Playwright chromium
         run: pnpm exec playwright install --with-deps chromium
 
-      # Assertions are layout facts (boxes, computed styles), never pixel
-      # diffs — a screenshot baseline compares font rendering as much as
-      # layout, so it fails on any runner whose fonts differ from the author's
-      # and teaches everyone to re-baseline without looking. Keep it that way;
-      # this step is only trustworthy while it stays runner-independent.
+      # Layout facts (boxes, computed styles), never pixel diffs — a screenshot
+      # baseline fails on any runner whose fonts differ. Keep it runner-
+      # independent or this step stops being trustworthy. happy-dom has no
+      # layout engine, so none of this is reachable from the unit suite.
       - name: Visual tests
         run: pnpm test:visual
 
-      # Playwright writes an error context (DOM snapshot, resolved styles) per
-      # failure. A layout failure that only reproduces on the runner is exactly
-      # the case where that is worth having.
       - name: Upload visual test results
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -95,12 +67,10 @@ jobs:
       - name: Build extension
         run: pnpm build
 
-      # Two real x.com tabs, the built extension, the browser's own MV3 worker.
-      # It has to come after the build: the suite loads dist/chrome, so a stale
-      # one would test the previous commit. x.com itself is stubbed at its own
-      # URLs (integration/x-stub.ts), so unlike the e2e suite below there is no
-      # session and nothing recorded — and everything the lookup broker does is
-      # a property of more than one tab, which nothing above can hold two of.
+      # Two real x.com tabs, the built extension, the browser's MV3 worker —
+      # everything the lookup broker does is a property of more than one tab.
+      # After the build: the suite loads dist/chrome. x.com is stubbed at its
+      # own URLs (integration/x-stub.ts), so no session and no recordings.
       - name: Cross-context tests
         run: pnpm test:integration
 
@@ -113,15 +83,50 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-      # E2E (Playwright) runs locally, not in CI: it needs a logged-in X
-      # session and recorded fixtures that drift with X's UI. Run it with
-      # `pnpm test:e2e` in the distrobox container before a release.
+      # E2E runs locally, not here: it needs a logged-in X session and recorded
+      # fixtures that drift with X's UI. `pnpm test:e2e` before a release.
       #
-      # The session requirement is not avoidable by faking it, which is less
-      # obvious than it sounds and was measured: replay answers X's *responses*
-      # from the HARs, but X's SPA decides on the client whether it is logged in
-      # before issuing anything, and invented cookies send it down a third boot
-      # path that asks for endpoints the recordings don't hold — 96 unmatched
-      # requests against 24 for a real session, and the app shell never renders.
-      # Putting a real session in Actions secrets would leave it unavailable to
-      # fork PRs and expiring on X's schedule. Don't re-attempt the shortcut.
+      # ⚠ The session cannot be faked. X's SPA decides client-side whether it is
+      # logged in before issuing anything, so invented cookies take a boot path
+      # the recordings don't hold — 96 unmatched requests against 24. A real
+      # session in Actions secrets would be unavailable to fork PRs and would
+      # expire on X's schedule. Don't re-attempt the shortcut.
+
+  # The landing site. A job of its own because performance is a timing
+  # measurement and must not share a runner with the suites above. Unfiltered on
+  # purpose — see landing/CLAUDE.md before adding a `paths:` filter back.
+  audits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 10
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Token contract, contrast, Lighthouse. The build is the suite's own
+      # webServer step. If performance flakes here while holding locally, lower
+      # that one threshold in the spec — the other three are deterministic and
+      # are why this job exists.
+      - name: Token contract, contrast and Lighthouse
+        run: pnpm test:audits
+
+      - name: Upload audit results
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: audit-results
+          path: landing/test-results/
+          retention-days: 7
+          if-no-files-found: ignore

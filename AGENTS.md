@@ -33,7 +33,8 @@ Detail lives in the `CLAUDE.md` of the folder you are editing:
 This is a Bedframe cross-browser extension. `src/_config/bedframe.config.ts` is
 the canonical project definition and `src/manifests/*` the manifest source — keep
 the two aligned, and edit source rather than generated `dist/*`. (There is no
-`mvp.yml` here; CI is `.github/workflows/tests.yml` and `lighthouse.yml`.)
+`mvp.yml` here; CI is `.github/workflows/tests.yml`, two jobs — `extension`
+and `audits`.)
 
 Load `.claude/skills/bedframe/SKILL.md` before touching config, manifests or the
 release flow. Its `references/` cover pages, scripts, Vite, testing and publish.

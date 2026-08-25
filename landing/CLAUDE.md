@@ -1,9 +1,22 @@
-# `landing` — the site, and its Lighthouse gate
+# `landing` — the site, and its rendered-output gates
 
-`pnpm test:lighthouse` → `landing/tests/lighthouse.spec.ts`, driven by
-`landing/playwright.lighthouse.config.ts`. Everything (including the ~100 MB
-`lighthouse` dependency) lives in `landing/`; `.github/workflows/lighthouse.yml`
-runs it on changes under `landing/**` and nowhere else.
+`pnpm test:audits` is the whole gate: the token contract, then
+`tests/contrast.spec.ts`, then `tests/lighthouse.spec.ts`, driven by
+`landing/playwright.audits.config.ts`. Both specs need the same production
+build on the :5174 preview, so one config builds it once for both. Everything
+(including the ~100 MB `lighthouse` dependency) lives in `landing/`, and the
+`audits` job in `.github/workflows/tests.yml` runs it on every push and PR.
+
+⚠ **Don't add a `paths: landing/**`filter to that job.**`pnpm install`resolves the whole workspace, so the runner pays for the`lighthouse`dependency either way — a filter saves the build and the audit, not the
+download — and`landing/\*\*`does not match a root`pnpm-lock.yaml`, so a
+shared-token bump could put the site's contrast in the red with nothing red to
+show for it.
+
+Contrast runs parallel, Lighthouse serial and last: `dependencies` holds the
+project back, and its single `mode: 'serial'` describe is what pins it to one
+worker. Split that describe and two audits get a browser each. To iterate on
+one spec, filter the run:
+`pnpm exec playwright test -c playwright.audits.config.ts tests/contrast.spec.ts`.
 
 It audits the **production build**, never `vite dev`: `webServer` runs
 `pnpm build && pnpm preview:lighthouse` on **port 5174** — deliberately not 5173,
@@ -55,3 +68,48 @@ after adding tests. The hand-typed number said 609 while the suite had grown to
 `landing/public/favicon.svg`) is **not** the extension icon
 (`src/assets/icons/*.png`, blue X + question mark). Anything on the site uses the
 first; anything shown to a user as "the icon" uses the second.
+
+## Contrast
+
+Three gates, each seeing what the other two cannot.
+
+`pnpm test:tokens` (`check-tokens src/index.css`) resolves the shared ramp at
+this site's hues — 183/183/284 — and measures the 38 pairs the contract names
+against WCAG 2 AA and APCA. It proves the token file is sound, and nothing
+about which tokens a page reached for.
+
+`tests/contrast.spec.ts` walks every visible text node on every route, plus the
+screenshot lightbox, scoring each against both models via `auditContrast` from
+the design-tokens package. English only: the locale changes the font stack and
+the wrapping, not the pixels being compared.
+
+The floor is **Lc 60**, the weakest the contract grants anything at body size —
+not `--muted`'s 70. A DOM node does not say which token it used, so a stricter
+floor fails sanctioned tokens. A finding means a component chose the wrong
+colour, and the three it caught here name the rules:
+
+- **A border token is not a text colour.** `--line-strong` as an arrow glyph
+  measured 1.59:1.
+- **No alpha tints of text tokens.** A tint has no checked floor;
+  `text-muted/70`, `text-accent/90` and `text-bg/75` sat at Lc 43–59. Accent
+  text is `--accent-on-soft`, never `--accent` — that one is a fill.
+- **The meaning colours are text, so they answer to the text floor.**
+
+### Re-deriving `--color-xblue` / `--color-alarm`
+
+Both are worn as small bold labels on a tint of themselves. To move one, raise
+its OKLCH lightness at fixed hue until the **worst** ground it sits on clears
+Lc 62 (two points of margin over the suite's floor), capping chroma at the
+largest value that still round-trips through sRGB at that lightness — declare
+more and the browser clamps it, so the file stops naming the colour on screen.
+
+⚠ The worst ground is not the obvious one. X's blue chip sits _inside_ an
+alarm-tinted row on the homepage, so it is measured against a tint of a tint.
+Enumerate the grounds from the failing selectors the suite prints rather than
+assuming the flat surface.
+
+⚠ **The audit cannot await a scroll-driven animation.** `.reveal` rides
+`animation-timeline: view()`, whose `finished` promise never settles while the
+element is in range, so every page hit the 180s timeout. The helper skips any
+animation off the document timeline — that fix ships in
+`@asmyshlyaev177/design-tokens`, so the version in the lockfile matters.

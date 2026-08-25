@@ -21,7 +21,7 @@ export function AboutThisAccount() {
                 class="reveal flex flex-col sm:px-7 sm:first:ps-0 sm:last:pe-0"
                 style={`animation-delay:${i * 90}ms`}
               >
-                <span class="bg-signal text-void grid h-12 w-12 shrink-0 place-items-center rounded-full font-mono text-[0.9375rem] font-bold">
+                <span class="bg-accent text-bg grid h-12 w-12 shrink-0 place-items-center rounded-full font-mono text-[0.9375rem] font-bold">
                   {i + 1}
                 </span>
                 <h3 class="t-h3 mt-6">{s.where}</h3>
@@ -32,7 +32,7 @@ export function AboutThisAccount() {
         </div>
       </section>
 
-      <section class="bg-ink-1 hairline band relative">
+      <section class="bg-surface hairline band relative">
         <div class="shell-narrow max-w-3xl!">
           <h2 class="t-h2 reveal">{g.cantHeading}</h2>
           <div class="policy reveal mt-8 space-y-5">

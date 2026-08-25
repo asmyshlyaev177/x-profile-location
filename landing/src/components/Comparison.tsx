@@ -53,7 +53,7 @@ export function Comparison() {
       {/* The honest-broker section. It sits before the differentiators, not
           after them, so it reads as disclosure rather than as a concession
           tacked on once the selling is done. */}
-      <section class="bg-ink-1 hairline band relative">
+      <section class="bg-surface hairline band relative">
         <div class="shell">
           <h2 class="t-h2 reveal max-w-[24ch]">{g.aheadHeading}</h2>
           <ol class="mt-12 grid gap-10 sm:grid-cols-3 sm:gap-px">
@@ -91,7 +91,7 @@ export function Comparison() {
         </div>
       </section>
 
-      <section class="bg-ink-1 hairline band relative">
+      <section class="bg-surface hairline band relative">
         <div class="shell-narrow max-w-3xl!">
           <h2 class="t-h2 reveal">{g.sourcesHeading}</h2>
           <p class="t-body reveal mt-5">
@@ -105,7 +105,7 @@ export function Comparison() {
                 <a
                   href={c.storeUrl}
                   rel="noopener"
-                  class="text-signal underline decoration-1 underline-offset-4"
+                  class="text-accent underline decoration-1 underline-offset-4"
                 >
                   {c.name}
                 </a>
@@ -115,13 +115,13 @@ export function Comparison() {
                     <a
                       href={c.repoUrl}
                       rel="noopener"
-                      class="text-signal underline decoration-1 underline-offset-4"
+                      class="text-accent underline decoration-1 underline-offset-4"
                     >
                       {c.repoUrl.replace('https://github.com/', '')}
                     </a>
                   </>
                 ) : (
-                  <span class="text-faint">{g.sourceNotPublished}</span>
+                  <span class="text-muted">{g.sourceNotPublished}</span>
                 )}
               </li>
             ))}

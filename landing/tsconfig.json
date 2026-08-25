@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "tests", "playwright.lighthouse.config.ts"]
+  "include": ["src", "tests", "playwright.audits.config.ts"]
 }

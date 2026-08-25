@@ -11,7 +11,7 @@ export function HowItWorks() {
   ]
 
   return (
-    <section id="how" class="bg-ink-1 hairline band relative scroll-mt-24">
+    <section id="how" class="bg-surface hairline band relative scroll-mt-24">
       <div class="shell">
         <div class="mb-14 max-w-[52ch]">
           <h2 class="t-h2 reveal">{t.howItWorks.heading}</h2>
@@ -26,13 +26,13 @@ export function HowItWorks() {
               style={`animation-delay:${i * 90}ms`}
             >
               <div class="flex items-center gap-4 pb-6">
-                <span class="bg-signal text-void grid h-12 w-12 shrink-0 place-items-center rounded-full font-mono text-[0.9375rem] font-bold">
+                <span class="bg-accent text-bg grid h-12 w-12 shrink-0 place-items-center rounded-full font-mono text-[0.9375rem] font-bold">
                   {i + 1}
                 </span>
                 {i < steps.length - 1 && (
                   <span
                     aria-hidden="true"
-                    class="from-hair-strong h-px flex-1 bg-linear-to-r to-transparent"
+                    class="from-line-strong h-px flex-1 bg-linear-to-r to-transparent"
                   />
                 )}
               </div>
@@ -42,9 +42,9 @@ export function HowItWorks() {
 
               {/* Pushed to the bottom so the three readouts line up even when
                   the copy above them does not run to the same depth. */}
-              <dl class="border-hair mt-6 border-t pt-3 sm:mt-auto">
+              <dl class="border-line mt-6 border-t pt-3 sm:mt-auto">
                 <dt class="t-data">{s.readoutKey}</dt>
-                <dd class="text-signal mt-1 font-mono text-[0.75rem] font-medium">
+                <dd class="text-accent mt-1 font-mono text-[0.75rem] font-medium">
                   {s.readoutValue}
                 </dd>
               </dl>

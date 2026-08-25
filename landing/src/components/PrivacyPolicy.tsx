@@ -1,10 +1,10 @@
 export function PrivacyPolicy() {
   return (
-    <div class="bg-void">
+    <div class="bg-bg">
       <div class="shell-narrow max-w-3xl! py-16">
         <a
           href="/"
-          class="text-faint hover:text-signal mb-12 inline-flex items-center gap-2 text-sm font-medium transition-colors"
+          class="text-muted hover:text-accent mb-12 inline-flex items-center gap-2 text-sm font-medium transition-colors"
         >
           ← Back to home
         </a>
@@ -29,7 +29,7 @@ export function PrivacyPolicy() {
             <h2 class="t-h3 mb-3 text-[1.25rem]">Data We Do Not Collect</h2>
             <p>
               The extension does{' '}
-              <strong class="text-text font-semibold">not</strong> collect,
+              <strong class="text-ink font-semibold">not</strong> collect,
               store, or transmit:
             </p>
             <ul class="mt-3 list-inside list-disc space-y-2">
@@ -68,7 +68,7 @@ export function PrivacyPolicy() {
             </h2>
             <p>
               The extension includes an optional feature — controlled by the{' '}
-              <strong class="text-text font-semibold">
+              <strong class="text-ink font-semibold">
                 "Use shared community location cache"
               </strong>{' '}
               toggle in its options — that lets users share already-public
@@ -78,7 +78,7 @@ export function PrivacyPolicy() {
               purpose.
             </p>
             <p class="mt-3">
-              <strong class="text-text font-semibold">What is sent:</strong>
+              <strong class="text-ink font-semibold">What is sent:</strong>
             </p>
             <ul class="mt-2 list-inside list-disc space-y-2">
               <li>
@@ -98,7 +98,7 @@ export function PrivacyPolicy() {
               </li>
             </ul>
             <p class="mt-3">
-              <strong class="text-text font-semibold">
+              <strong class="text-ink font-semibold">
                 What is never sent:
               </strong>{' '}
               your X account, username, email, cookies or session tokens;
@@ -127,11 +127,11 @@ export function PrivacyPolicy() {
             <h2 class="t-h3 mb-3 text-[1.25rem]">Analytics on This Website</h2>
             <p>
               This website (the page you are reading) uses{' '}
-              <strong class="text-text font-semibold">Google Analytics</strong>{' '}
+              <strong class="text-ink font-semibold">Google Analytics</strong>{' '}
               to collect anonymous, aggregated visit statistics so we can
               understand traffic and improve the site. This applies to the
               website only — the{' '}
-              <strong class="text-text font-semibold">
+              <strong class="text-ink font-semibold">
                 browser extension itself contains no analytics, telemetry, or
                 tracking of any kind.
               </strong>
@@ -142,7 +142,7 @@ export function PrivacyPolicy() {
                 href="https://policies.google.com/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="text-signal hover:underline"
+                class="text-accent hover:underline"
               >
                 Google’s Privacy Policy
               </a>
@@ -151,7 +151,7 @@ export function PrivacyPolicy() {
                 href="https://tools.google.com/dlpage/gaoptout"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="text-signal hover:underline"
+                class="text-accent hover:underline"
               >
                 Google Analytics Opt-out Browser Add-on
               </a>
@@ -197,7 +197,7 @@ export function PrivacyPolicy() {
               Questions or requests:{' '}
               <a
                 href="mailto:asmyshlyaev177+x-ext@gmail.com"
-                class="text-signal hover:underline"
+                class="text-accent hover:underline"
               >
                 asmyshlyaev177+x-ext@gmail.com
               </a>

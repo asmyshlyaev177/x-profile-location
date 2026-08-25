@@ -30,7 +30,7 @@ export function RateBudget() {
             <p class="t-lead reveal mt-6">{t.rateBudget.lead}</p>
             <a
               href={href('/x-rate-limit')}
-              class="text-signal reveal mt-7 inline-block text-[0.9375rem] font-semibold underline decoration-1 underline-offset-4"
+              class="text-accent reveal mt-7 inline-block text-[0.9375rem] font-semibold underline decoration-1 underline-offset-4"
             >
               {t.rateBudget.link}
             </a>
@@ -66,7 +66,7 @@ const TOTAL = 50
 
 export function BudgetBar({ t }: { t: Dict }) {
   return (
-    <figure class="border-hair bg-ink-1 rounded-2xl border p-7">
+    <figure class="border-line bg-surface rounded-2xl border p-7">
       <figcaption class="t-data">{t.rateBudget.bar.caption}</figcaption>
 
       {/* 49 gaps at 3px would eat most of a phone's width and leave the ticks
@@ -80,7 +80,7 @@ export function BudgetBar({ t }: { t: Dict }) {
           <span
             key={i}
             class={`h-9 flex-1 rounded-[2px] ${
-              i < BACKGROUND_SHARE ? 'bg-signal/45' : 'bg-attention/70'
+              i < BACKGROUND_SHARE ? 'bg-accent/45' : 'bg-attention/70'
             }`}
           />
         ))}
@@ -88,20 +88,20 @@ export function BudgetBar({ t }: { t: Dict }) {
 
       <div class="mt-5 grid grid-cols-2 gap-6">
         <div>
-          <span class="bg-signal/45 me-2 inline-block h-2 w-2 rounded-[1px] align-middle" />
-          <span class="text-text text-[0.8125rem] font-semibold">
+          <span class="bg-accent/45 me-2 inline-block h-2 w-2 rounded-[1px] align-middle" />
+          <span class="text-ink text-[0.8125rem] font-semibold">
             {BACKGROUND_SHARE}
           </span>
-          <p class="text-faint mt-1 text-[0.8125rem] leading-relaxed">
+          <p class="text-muted mt-1 text-[0.8125rem] leading-relaxed">
             {t.rateBudget.bar.backgroundNote}
           </p>
         </div>
         <div>
           <span class="bg-attention/70 me-2 inline-block h-2 w-2 rounded-[1px] align-middle" />
-          <span class="text-text text-[0.8125rem] font-semibold">
+          <span class="text-ink text-[0.8125rem] font-semibold">
             {TOTAL - BACKGROUND_SHARE}
           </span>
-          <p class="text-faint mt-1 text-[0.8125rem] leading-relaxed">
+          <p class="text-muted mt-1 text-[0.8125rem] leading-relaxed">
             {t.rateBudget.bar.reservedNote}
           </p>
         </div>

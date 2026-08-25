@@ -113,8 +113,9 @@ from what is on the store.
 ## Performance
 
 All six pages score 100 across all four Lighthouse categories on **desktop**,
-and `pnpm test:lighthouse` asserts it on every change under `landing/**` — see
-**Landing site — Lighthouse** in the repo `CLAUDE.md`.
+and `pnpm test:audits` asserts it on every change under `landing/**` — see
+**Landing site — Lighthouse** in the repo `CLAUDE.md`. The same command runs the
+token contract and the rendered-contrast walk that Lighthouse cannot reach.
 
 On mobile with simulated throttling `/` reproduces at **99**, not the 100 this
 file used to claim: FCP 0.98, LCP 0.98, measured three times (August 2026). The
@@ -192,11 +193,11 @@ The in-page screenshots (`screen_1..4.png`) are still taken by hand from the liv
 pnpm dev             # vite dev server on :5173
 pnpm build           # generate images + vite build + minify HTML → dist/
 pnpm preview         # preview built dist/ on :5173
-pnpm test:lighthouse # build + preview on :5174, then audit every route
+pnpm test:audits     # build + preview on :5174, then audit every route
 pnpm deploy          # wrangler pages deploy dist/
 ```
 
-`test:lighthouse` uses **:5174** so a `pnpm dev` you left running on :5173
+`test:audits` uses **:5174** so a `pnpm dev` you left running on :5173
 cannot be picked up in place of the build — auditing the dev server is the one
 thing that suite must never do. Locally a preview already listening on :5174 is
 reused as-is, build and all; kill it to force a rebuild.

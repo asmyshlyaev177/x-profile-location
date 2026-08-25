@@ -22,8 +22,9 @@ file in that folder; read one directly when you need it first.
 This is a **Bedframe** extension: `src/_config/bedframe.config.ts` is the canonical
 project definition and `src/manifests/*` the manifest source. Load
 `.claude/skills/bedframe/SKILL.md` before touching either. Day-to-day work uses the
-`pnpm` scripts below, not `bedframe` directly; CI is `.github/workflows/tests.yml`
-and `lighthouse.yml` (Bedframe's standard `mvp.yml` release path is not set up here).
+`pnpm` scripts below, not `bedframe` directly; CI is `.github/workflows/tests.yml`, which
+runs two jobs — `extension` and `audits` (Bedframe's standard `mvp.yml` release
+path is not set up here).
 
 ---
 
@@ -149,7 +150,7 @@ pnpm build           # production build all browsers → dist/<browser>/
 pnpm test            # vitest run --coverage  (happy-dom, Istanbul)
 pnpm test:visual     # playwright layout tests — headless, no session, no HARs
 pnpm test:popup-window # the real action popup's width, under Xvfb (needs pnpm build)
-pnpm test:lighthouse # playwright + lighthouse over the built landing site
+pnpm test:audits     # token contract, contrast and lighthouse over the built landing site
 pnpm fix             # oxlint --fix, then oxfmt (that order)
 pnpm lint:dup        # jscpd over src/ and server/src/
 pnpm e2e:profile     # seed a real-browser profile for the e2e suite
@@ -183,7 +184,7 @@ callback alive.
 | `pnpm test:visual`      | Interactions and styles as expected?    | a headless browser                | yes               |
 | `pnpm test:integration` | Do the content script and worker agree? | a headless browser + `pnpm build` | yes               |
 | `pnpm test:e2e`         | Does any of it survive contact with X?  | a session and the HARs            | no                |
-| `pnpm test:lighthouse`  | Does the landing site still score 100?  | a headless browser                | `landing/**` only |
+| `pnpm test:audits`      | Does the landing site still score 100?  | a headless browser                | `landing/**` only |
 
 `pnpm test:popup-window` is the odd one out, and not a suite: it opens the **real
 browser-action popup** and checks the window keeps its width as the panel grows.

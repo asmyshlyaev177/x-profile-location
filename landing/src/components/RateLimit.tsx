@@ -49,9 +49,9 @@ export function RateLimit() {
               >
                 <h2 class="t-h3">{f.title}</h2>
                 <p class="t-body mt-2.5 max-w-[40ch]">{f.body}</p>
-                <dl class="border-hair mt-6 border-t pt-3 sm:mt-auto">
+                <dl class="border-line mt-6 border-t pt-3 sm:mt-auto">
                   <dt class="t-data">{f.readoutKey}</dt>
-                  <dd class="text-signal mt-1 font-mono text-[0.75rem] font-medium">
+                  <dd class="text-accent mt-1 font-mono text-[0.75rem] font-medium">
                     {f.readoutValue}
                   </dd>
                 </dl>

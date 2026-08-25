@@ -13,7 +13,7 @@ import { chromium, expect, test } from '@playwright/test'
 import { playAudit } from 'playwright-lighthouse'
 import desktopConfig from 'lighthouse/core/config/desktop-config.js'
 
-import { PREVIEW_URL } from '../playwright.lighthouse.config'
+import { PREVIEW_URL } from '../playwright.audits.config'
 import { localizedRoutes, routes } from '../src/routes'
 import { DEFAULT_LOCALE, localePath, locales } from '../src/i18n/locales'
 
@@ -71,21 +71,19 @@ const AUDITED = [
 ]
 
 test.describe('Lighthouse', () => {
-  // Serial: two Chrome instances auditing at once skew each other's
-  // performance numbers, and there is nothing to gain by racing short runs.
+  // Serial, and the only thing holding the audits to one worker: Playwright
+  // pins a serial describe to a single worker. Splitting this in two would give
+  // each half a browser and skew both performance scores.
   test.describe.configure({ mode: 'serial' })
 
   for (const { route, path } of AUDITED) {
     const name = path === '/' ? '/ (homepage)' : path
 
-    // No fixture parameter: this test drives its own browser, and Playwright
-    // rejects a named first argument ("First argument must use the object
-    // destructuring pattern"), leaving `{}` as the only spelling — which is
-    // itself a lint error. `test.info()` is the way out of both.
+    // No fixture parameter: a named first argument is a Playwright error and
+    // `{}` is a lint error, so `test.info()` is the way out of both.
     test(`${name} meets Lighthouse thresholds`, async () => {
       // Lighthouse drives the browser over CDP, which needs a debugging port
-      // Playwright's own `page` fixture does not expose. Offset by worker index
-      // so a future parallel run cannot collide on it.
+      // the `page` fixture does not expose. Offset so workers cannot collide.
       const port = 9333 + test.info().workerIndex
       const browser = await chromium.launch({
         args: [`--remote-debugging-port=${port}`],
@@ -102,20 +100,15 @@ test.describe('Lighthouse', () => {
           port,
           thresholds: route.noindex ? ALWAYS : INDEXABLE,
           opts: { onlyCategories: CATEGORIES },
-          // Desktop, not Lighthouse's mobile default: mobile applies a 4x CPU
-          // slowdown, which turns the performance score into a measurement of
-          // the runner. Desktop is also the audience — the install button leads
-          // to the Chrome Web Store.
+          // Desktop, not the mobile default: mobile's 4x CPU slowdown scores
+          // the runner. Desktop is also the audience — the Chrome Web Store.
           config: desktopConfig,
           disableLogs: false,
         })
 
-        // A `noindex` page cannot score 100 on SEO: `is-crawlable` is worth ~4
-        // of the category's ~23 points and it is *meant* to fail here. Rather
-        // than exempt the page and lose the rest of the category with it, name
-        // the one audit allowed to fail. That asserts both halves at once —
-        // that `noindex` in routes.ts really reached the shipped document, and
-        // that nothing else in SEO quietly regressed behind the exemption.
+        // `is-crawlable` is *meant* to fail here. Naming the one audit allowed
+        // to fail asserts both halves: that `noindex` reached the shipped
+        // document, and that nothing else in SEO regressed behind it.
         if (route.noindex) {
           const failed = lhr.categories.seo.auditRefs
             .filter((ref) => (lhr.audits[ref.id]?.score ?? 1) < 1)

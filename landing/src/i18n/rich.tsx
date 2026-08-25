@@ -28,8 +28,8 @@ import type { VNode } from 'preact'
 const TAG =
   /<(b|strong|em|br)\s*\/?>|<\/(b|strong|em)>|<a\s+href="([^"]*)">|<\/a>/
 
-const EMPHASIS_CLASS = 'text-text font-semibold'
-const LINK_CLASS = 'text-signal underline decoration-1 underline-offset-4'
+const EMPHASIS_CLASS = 'text-ink font-semibold'
+const LINK_CLASS = 'text-accent underline decoration-1 underline-offset-4'
 
 interface Frame {
   tag: 'b' | 'em' | 'a'

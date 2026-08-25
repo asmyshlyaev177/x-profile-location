@@ -23,7 +23,7 @@ export function GuideHeader({
         <h1 class="t-display rise mt-4 max-w-[20ch]">
           {g.titleLead}
           {headlineGap(locale.script, g.titleLead, g.titleAccent)}
-          <span class="text-signal">{g.titleAccent}</span>
+          <span class="text-accent">{g.titleAccent}</span>
           {g.titleRest}
         </h1>
         <p class="t-lead rise mt-7 max-w-[58ch]" style="animation-delay:120ms">

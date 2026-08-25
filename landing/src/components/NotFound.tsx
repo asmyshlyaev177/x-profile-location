@@ -23,7 +23,7 @@ export function NotFound() {
   )
 
   return (
-    <div class="bg-void">
+    <div class="bg-bg">
       <div class="shell-narrow max-w-3xl! py-24">
         <p class="t-data">Error 404</p>
         <h1 class="t-h2 mt-4">This page doesn’t exist.</h1>
@@ -37,7 +37,7 @@ export function NotFound() {
             <li key={r.path}>
               <a
                 href={r.path}
-                class="text-text hover:text-signal font-semibold transition-colors"
+                class="text-ink hover:text-accent font-semibold transition-colors"
               >
                 {metaFor(r, t).title}
               </a>
@@ -47,7 +47,7 @@ export function NotFound() {
 
         <a
           href="/"
-          class="text-faint hover:text-signal mt-14 inline-flex items-center gap-2 text-sm font-medium transition-colors"
+          class="text-muted hover:text-accent mt-14 inline-flex items-center gap-2 text-sm font-medium transition-colors"
         >
           ← Back to home
         </a>

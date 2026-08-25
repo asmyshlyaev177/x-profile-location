@@ -49,7 +49,7 @@ function Thumb({ src, class: cls }: { src: string; class?: string }) {
         alt=""
         width="160"
         height="64"
-        class={`bg-ink-1 h-16 w-full object-cover object-top ${cls ?? ''}`}
+        class={`bg-surface h-16 w-full object-cover object-top ${cls ?? ''}`}
         loading="lazy"
         decoding="async"
       />
@@ -118,7 +118,7 @@ export function Screenshots() {
             id={`shot-panel-${active}`}
             role="tabpanel"
             aria-labelledby={`shot-tab-${active}`}
-            class="bg-ink-1 border-hair relative grid h-[var(--shot-h)] place-items-center overflow-hidden rounded-2xl border p-4 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] sm:p-8"
+            class="bg-surface border-line relative grid h-[var(--shot-h)] place-items-center overflow-hidden rounded-2xl border p-4 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] sm:p-8"
             style="--shot-h:clamp(19rem,44vw,27rem)"
           >
             <div class="graticule opacity-40" aria-hidden="true" />
@@ -135,7 +135,7 @@ export function Screenshots() {
                 // row, which is indefinite, so it resolved to nothing and
                 // every shot taller than the panel was cropped by
                 // `overflow-hidden` instead of being scaled down.
-                class="border-hair/70 relative max-h-[calc(var(--shot-h)-2rem)] w-auto rounded-lg border object-contain shadow-[0_18px_50px_-24px_rgba(0,0,0,0.9)] sm:max-h-[calc(var(--shot-h)-4rem)]"
+                class="border-line/70 relative max-h-[calc(var(--shot-h)-2rem)] w-auto rounded-lg border object-contain shadow-[0_18px_50px_-24px_rgba(0,0,0,0.9)] sm:max-h-[calc(var(--shot-h)-4rem)]"
                 loading="lazy"
                 decoding="async"
               />
@@ -143,7 +143,7 @@ export function Screenshots() {
 
             <button
               type="button"
-              class="text-faint hover:text-text bg-void/70 border-hair hover:border-hair-strong absolute end-3 bottom-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.75rem] font-semibold backdrop-blur-sm transition-colors"
+              class="text-muted hover:text-ink bg-bg/70 border-line hover:border-line-strong absolute end-3 bottom-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.75rem] font-semibold backdrop-blur-sm transition-colors"
               onClick={() => setOpen(true)}
             >
               <svg
@@ -187,8 +187,8 @@ export function Screenshots() {
                   }}
                   class={`group relative min-w-28 shrink-0 basis-[calc((100%-3rem)/7)] snap-start overflow-hidden rounded-lg border transition-[border-color] duration-200 ease-out ${
                     on
-                      ? 'border-signal/70'
-                      : 'border-hair hover:border-hair-strong'
+                      ? 'border-accent/70'
+                      : 'border-line hover:border-line-strong'
                   }`}
                 >
                   {/* Dimming belongs on the image, not the button: container
@@ -199,7 +199,7 @@ export function Screenshots() {
                     class={`transition-opacity duration-200 ease-out ${on ? 'opacity-100' : 'opacity-50 group-hover:opacity-80'}`}
                   />
                   <span
-                    class={`block px-1.5 py-1.5 text-center text-[0.625rem] leading-tight font-semibold ${on ? 'bg-signal text-void' : 'bg-ink-2 text-body'}`}
+                    class={`block px-1.5 py-1.5 text-center text-[0.625rem] leading-tight font-semibold ${on ? 'bg-accent text-bg' : 'bg-surface-2 text-body'}`}
                   >
                     {s.label}
                   </span>
@@ -239,7 +239,7 @@ export function Screenshots() {
 
         <button
           type="button"
-          class="text-faint hover:text-text absolute end-5 top-4 text-2xl leading-none"
+          class="text-muted hover:text-ink absolute end-5 top-4 text-2xl leading-none"
           onClick={() => setOpen(false)}
           aria-label={t.screenshots.close}
         >
@@ -269,7 +269,7 @@ function Arrow({
       aria-label={isPrev ? t.screenshots.prev : t.screenshots.next}
       // `start`/`end` rather than `left`/`right`, and the chevron mirrors with
       // them: "previous" is the direction you read *from*, whichever that is.
-      class={`text-faint hover:text-text bg-void/70 border-hair hover:border-hair-strong absolute top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border backdrop-blur-sm transition-colors ${
+      class={`text-muted hover:text-ink bg-bg/70 border-line hover:border-line-strong absolute top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border backdrop-blur-sm transition-colors ${
         isPrev ? 'start-2 sm:start-3' : 'end-2 sm:end-3'
       }`}
     >

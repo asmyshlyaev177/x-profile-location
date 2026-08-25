@@ -22,7 +22,7 @@ export function Wordmark({ class: cls = '' }: { class?: string }) {
         height="26"
         viewBox={BRAND_MARK.viewBox}
         aria-hidden="true"
-        class="text-signal shrink-0"
+        class="text-accent shrink-0"
       >
         <rect
           width="32"
@@ -33,7 +33,7 @@ export function Wordmark({ class: cls = '' }: { class?: string }) {
         />
         <path d={BRAND_MARK.path} fill="currentColor" />
       </svg>
-      <span class="text-text text-[0.9375rem] font-bold tracking-[-0.02em]">
+      <span class="text-ink text-[0.9375rem] font-bold tracking-[-0.02em]">
         X-Pat
       </span>
     </a>
