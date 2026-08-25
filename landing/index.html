@@ -87,6 +87,27 @@
       })()
     </script>
     <script>
+      // `<details>` has no light dismiss of its own: the language menu stays
+      // open until its summary is clicked a second time. Inline here rather
+      // than as an effect in the component because hydration waits for idle,
+      // and a menu that cannot be dismissed for the first second is worse than
+      // one that never opened.
+      ;(function () {
+        var openMenu = function () {
+          return document.querySelector('details[data-light-dismiss][open]')
+        }
+        document.addEventListener('pointerdown', function (e) {
+          var el = openMenu()
+          if (el && !el.contains(e.target)) el.open = false
+        })
+        document.addEventListener('keydown', function (e) {
+          if (e.key !== 'Escape') return
+          var el = openMenu()
+          if (el) el.open = false
+        })
+      })()
+    </script>
+    <script>
       // gtag is ~87 kB, two thirds of it unused, and it blocks nothing that
       // matters — so it waits for idle rather than competing with the font and
       // the stylesheet for bandwidth during first paint.
