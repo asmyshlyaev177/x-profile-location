@@ -1,5 +1,5 @@
 /**
- * Contrast, then Lighthouse, over the production build. Rationale in CLAUDE.md.
+ * Accessibility, then Lighthouse, over the production build. Rationale in CLAUDE.md.
  */
 import { defineConfig } from '@playwright/test'
 
@@ -19,13 +19,13 @@ export default defineConfig({
   reporter: [['list']],
 
   projects: [
-    { name: 'contrast', testMatch: /contrast\.spec\.ts/ },
+    { name: 'a11y', testMatch: /a11y\.spec\.ts/ },
     // Held back so the audits have the box to themselves; `workers` stays at
     // the default because the spec's serial describe pins them to one anyway.
     {
       name: 'lighthouse',
       testMatch: /lighthouse\.spec\.ts/,
-      dependencies: ['contrast'],
+      dependencies: ['a11y'],
     },
   ],
 
