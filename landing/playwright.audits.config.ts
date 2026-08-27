@@ -20,8 +20,8 @@ export default defineConfig({
 
   projects: [
     { name: 'a11y', testMatch: /a11y\.spec\.ts/ },
-    // Held back so the audits have the box to themselves; `workers` stays at
-    // the default because the spec's serial describe pins them to one anyway.
+    // Held back so the audits get the box; `workers` stays at the default —
+    // the spec's serial describe pins them to one anyway.
     {
       name: 'lighthouse',
       testMatch: /lighthouse\.spec\.ts/,
