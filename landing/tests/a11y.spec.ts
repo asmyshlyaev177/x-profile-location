@@ -1,15 +1,11 @@
 /**
- * The accessibility gate: axe-core for structure and semantics, `auditContrast`
- * for colour. One navigation feeds both, so a route is loaded once rather than
- * once per audit.
+ * axe for structure and semantics, `auditContrast` for colour, both against one
+ * loaded route. Floors come from the package; see CLAUDE.md.
  *
- * Neither half is redundant with the Lighthouse accessibility score.
- * Lighthouse 13.4 bundles axe-core 4.12 and runs 76 audits — 66 real rules plus
- * 10 manual checklist items that never execute — against axe's 104, weighted
- * into an average rather than a per-rule verdict. It never opens the lightbox,
- * and it scores no element that holds no text node.
- *
- * Floors come from the package. See CLAUDE.md.
+ * Not covered by the Lighthouse project beside it: that runs 76 audits — 66
+ * real axe rules plus 10 manual items that never execute — against axe's 104,
+ * weighted into an average, never opens the lightbox, and scores no element
+ * without a text node.
  */
 import {
   COMPREHENSIVE_TAGS,
@@ -30,18 +26,11 @@ import { routes } from '../src/routes'
 /** English only: the locale changes the font stack, not the pixels compared. */
 const PAGES = routes.map((r) => r.path)
 
-/**
- * Rules axe declines to decide. Anything not listed fails the run, so a new
- * "needs review" finding gets looked at once rather than living unnoticed in a
- * section of the report nobody reads.
- */
-const REVIEWED_INCOMPLETE: string[] = new Set([])
+/** Rules axe declines to decide. Anything unlisted fails, so a new one gets a
+ *  decision once instead of living unread in the report. */
+const REVIEWED_INCOMPLETE = new Set<string>()
 
-/**
- * Both audits on one loaded page, every assertion soft: an axe violation must
- * not hide a contrast failure on the same page, or fixing one at a time turns
- * a single run into three.
- */
+/** Every assertion soft, so one half cannot hide the other. */
 async function auditBoth(
   page: Page,
   { root, minNodes }: { root?: string; minNodes: number },
@@ -62,8 +51,8 @@ async function auditBoth(
     .toEqual([])
 
   const { findings, unresolved } = await auditContrast(page, { root })
-  // Text over art is unmeasurable; without these a background-image covering
-  // the page would leave the suite green having measured nothing.
+  // Text over art is unmeasurable: a background-image covering the page would
+  // otherwise leave the suite green having measured nothing.
   expect.soft(findings.length).toBeGreaterThan(minNodes)
   expect.soft(unresolved).toBeLessThan(findings.length)
   expect
@@ -80,9 +69,9 @@ for (const path of PAGES) {
   })
 }
 
-/** Nothing in the lightbox is in the document flow until it opens, so
- *  Lighthouse never sees it — and `aria-dialog-name`, `aria-hidden-focus` and
- *  `nested-interactive` have nothing to say until then either. */
+/** Nothing in the lightbox exists until it opens, so Lighthouse never sees it
+ *  and `aria-dialog-name`, `aria-hidden-focus` and `nested-interactive` have
+ *  nothing to say. */
 test('the screenshot lightbox clears both', async ({ page }) => {
   await page.goto(PREVIEW_URL)
   await page
