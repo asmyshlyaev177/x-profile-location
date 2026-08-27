@@ -21,7 +21,8 @@
     "preact-render-to-string": "^6.5.0"
   },
   "devDependencies": {
-    "@asmyshlyaev177/design-tokens": "^1.1.0",
+    "@asmyshlyaev177/design-tokens": "^1.2.0",
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.59.1",
     "@preact/preset-vite": "^2.10.4",
     "@tailwindcss/vite": "^4.2.2",

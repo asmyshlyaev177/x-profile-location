@@ -1,7 +1,7 @@
 # `landing` — the site, and its rendered-output gates
 
 `pnpm test:audits` is the whole gate: the token contract, then
-`tests/contrast.spec.ts`, then `tests/lighthouse.spec.ts`, driven by
+`tests/a11y.spec.ts`, then `tests/lighthouse.spec.ts`, driven by
 `landing/playwright.audits.config.ts`. Both specs need the same production
 build on the :5174 preview, so one config builds it once for both. Everything
 (including the ~100 MB `lighthouse` dependency) lives in `landing/`, and the
@@ -12,11 +12,11 @@ download — and`landing/\*\*`does not match a root`pnpm-lock.yaml`, so a
 shared-token bump could put the site's contrast in the red with nothing red to
 show for it.
 
-Contrast runs parallel, Lighthouse serial and last: `dependencies` holds the
+The a11y suite runs parallel, Lighthouse serial and last: `dependencies` holds the
 project back, and its single `mode: 'serial'` describe is what pins it to one
 worker. Split that describe and two audits get a browser each. To iterate on
 one spec, filter the run:
-`pnpm exec playwright test -c playwright.audits.config.ts tests/contrast.spec.ts`.
+`pnpm exec playwright test -c playwright.audits.config.ts tests/a11y.spec.ts`.
 
 It audits the **production build**, never `vite dev`: `webServer` runs
 `pnpm build && pnpm preview:lighthouse` on **port 5174** — deliberately not 5173,
@@ -69,7 +69,7 @@ after adding tests. The hand-typed number said 609 while the suite had grown to
 (`src/assets/icons/*.png`, blue X + question mark). Anything on the site uses the
 first; anything shown to a user as "the icon" uses the second.
 
-## Contrast
+## Accessibility
 
 Three gates, each seeing what the other two cannot.
 
@@ -78,10 +78,17 @@ this site's hues — 183/183/284 — and measures the 38 pairs the contract name
 against WCAG 2 AA and APCA. It proves the token file is sound, and nothing
 about which tokens a page reached for.
 
-`tests/contrast.spec.ts` walks every visible text node on every route, plus the
-screenshot lightbox, scoring each against both models via `auditContrast` from
-the design-tokens package. English only: the locale changes the font stack and
-the wrapping, not the pixels being compared.
+`tests/a11y.spec.ts` runs axe and `auditContrast` against one loaded page —
+every route plus the open lightbox, English only (the locale changes the font
+stack, not the pixels). Every assertion is `expect.soft`, so one half cannot
+hide the other.
+
+- **axe** at `COMPREHENSIVE_TAGS` (WCAG 2.0/2.1/2.2 A and AA, plus
+  `best-practice`), its own contrast rules off by package default. `incomplete`
+  is asserted on, so a "needs review" finding gets a decision once instead of
+  sitting unread. Opening the lightbox is what gives `aria-dialog-name`,
+  `aria-hidden-focus` and `nested-interactive` anything to say.
+- **Rendered contrast** over every visible text node, on both models.
 
 The floor is **Lc 60**, the weakest the contract grants anything at body size —
 not `--muted`'s 70. A DOM node does not say which token it used, so a stricter
