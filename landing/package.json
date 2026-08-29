@@ -7,6 +7,7 @@
     "dev": "vite --port 5173",
     "generate:images": "node scripts/generate-images.mjs",
     "shoot:options": "node scripts/shoot-options.mjs",
+    "promo:video": "node scripts/promo-video.mjs",
     "build": "node scripts/generate-images.mjs && vite build && node scripts/flatten-routes.mjs && node scripts/minify-html.mjs",
     "test:tokens": "check-tokens src/index.css",
     "preview": "pnpm run build && vite preview --port 5173",

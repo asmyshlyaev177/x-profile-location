@@ -120,3 +120,17 @@ assuming the flat surface.
 element is in range, so every page hit the 180s timeout. The helper skips any
 animation off the document timeline — that fix ships in
 `@asmyshlyaev177/design-tokens`, so the version in the lockfile matters.
+
+## Promo video
+
+`pnpm promo:video` (this workspace) builds `extension_store/promo.mp4` — 1280×720,
+silent, ~25s — from the frames `pnpm promo:shots` writes to
+`extension_store/promo/` in the repo root.
+
+The slides are composed as a real page in Chromium (this site's fonts and the
+design-token palette, hues read out of `src/index.css` so the video cannot drift
+from the site), recorded with Playwright and transcoded to h264. Captions live
+in the script's `SLIDES`. A slide may name `video:` instead of `img:` for a clip.
+
+The Chrome Web Store takes a **YouTube URL** and no other video: there is no
+upload, and no other host is accepted. Upload it unlisted and paste the link.

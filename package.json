@@ -31,6 +31,7 @@
     "e2e:profile": "node e2e/scripts/seed-profile.mjs",
     "test:e2e": "playwright test --retries 1",
     "shots": "SHOOT=1 E2E_HEADED=1 xvfb-run --auto-servernum playwright test e2e/screenshots.test.ts && node landing/scripts/store-canvas.mjs && cd landing && xvfb-run --auto-servernum node scripts/shoot-options.mjs",
+    "promo:shots": "SHOOT=1 SHOT_DPR=2 E2E_HEADED=1 xvfb-run --auto-servernum playwright test e2e/screenshots.test.ts --grep \"promo:\"",
     "scrub": "node --max-old-space-size=6144 scripts/scrub-recordings.mjs",
     "scrub:check": "node --max-old-space-size=6144 scripts/scrub-recordings.mjs --check",
     "test:e2e:ui": "E2E_HEADED=1 playwright test --ui",

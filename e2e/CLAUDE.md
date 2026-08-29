@@ -131,3 +131,34 @@ sideloading an XPI into `<profile>/extensions/` is silently ignored (removed in
 Playwright cannot navigate to `moz-extension://` pages at all (`page.goto` never
 commits, under every wait state, headless and headed). That kills it —
 `openOptionsPage()` drives four of six spec files.
+
+## Marketing frames
+
+`screenshots.test.ts` writes two sets, both gated on `SHOOT`:
+
+- the landing and store images (`pnpm shots`), which blur who an account is and
+  keep the page otherwise as it was recorded;
+- the promo-video frames (`pnpm promo:shots`, titles prefixed `promo:`), which
+  go to `landing/extension_store/promo/` and are consumed by
+  `landing/scripts/promo-video.mjs`.
+
+The two sets are deliberately different pictures — a listing whose video replays
+its own five screenshots wastes the slot — and the promo set is fabricated
+rather than blurred. `fictionalise()` overwrites every name, handle, avatar, bio
+and follower count with a cast of invented people, leaving every `.x-loc-*` node
+(the subject of the shot) alone. `.x-loc-bio` is the one exception: the bio the
+extension restores is the account's real one.
+
+Handles are not written down anywhere here. An invented handle may belong to
+somebody, so `fictionalise` derives one in the scrubber's own `user_<hex>`
+namespace — the same shape `scripts/scrub-recordings.mjs` guarantees is
+synthetic.
+
+Two things about capturing at `SHOT_DPR=2`, both found the hard way:
+
+- **An element screenshot of a hover card comes back doubled and scaled.** The
+  card is captured through `page.screenshot({ clip })` instead (`shootCard`).
+- **The card's plate reads as translucent at 2×**, so the profile page behind it
+  prints through whatever the card says. `shootCard` hides every sibling on the
+  way up from the card and puts white behind it; the pointer-and-tooltip layer
+  is exempt by `data-shot-hint`.

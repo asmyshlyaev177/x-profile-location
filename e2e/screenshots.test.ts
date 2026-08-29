@@ -39,6 +39,11 @@ import { CLIENT_SIDE_URL, MODE, test } from './fixtures'
 import {
   CORS_HEADERS,
   hoverOwnTweet,
+  openPopupPage,
+  openPopupSection,
+  pickBioWord,
+  PRIMARY_TWEET,
+  readCachedBio,
   mockAboutAccount,
   mockSharedCache,
   TWEET_ARTICLE,
@@ -203,6 +208,7 @@ async function showHoverHint(scope: Locator, prefer?: string): Promise<void> {
     const y = r.top + r.height * 0.75 + scrollY
 
     const layer = document.createElement('div')
+    layer.dataset.shotHint = ''
     layer.style.cssText =
       'position:absolute;left:0;top:0;pointer-events:none;z-index:2147483647'
 
@@ -495,3 +501,425 @@ const setFeedRows = (context: any, id: string, on: boolean) =>
 
 const setKeywords = (context: any, id: string, words: string[]) =>
   writeSettings(context, id, { [HIGHLIGHT_KEYWORDS_KEY]: words })
+
+// --- promo video frames -----------------------------------------------------
+//
+// The video's own pictures, written to `landing/extension_store/promo/` and
+// consumed by `landing/scripts/promo-video.mjs`.
+//
+//   pnpm promo:shots
+//
+// Two rules separate these from the shots above. They are *different pictures*
+// — a listing whose video replays its own five screenshots wastes the slot —
+// and nobody in them is real: instead of blurring an account, `fictionalise`
+// replaces every name, handle, avatar, bio and follower count with invented
+// ones. Blur says "there was a person here"; a promo should not say that at all.
+//
+// Captured at 2× (`SHOT_DPR`), because a 1× capture upscaled into a 720p frame
+// is visibly soft.
+
+const PROMO = path.join(__dirname, '..', 'landing', 'extension_store', 'promo')
+
+/**
+ * The people in the video. Handles are not here and never will be: a handle
+ * that looks real may belong to someone, so `fictionalise` derives one in the
+ * scrubber's own `user_<hex>` namespace instead (see scripts/scrub-recordings.mjs).
+ */
+const CAST = [
+  {
+    name: 'Nadia Prieto',
+    bio: 'Bridge engineer. Photographs the ones I do not build.',
+    followers: '18.2K',
+    following: '412',
+  },
+  {
+    name: 'Tomás Berger',
+    bio: 'Ferment things. Occasionally on purpose.',
+    followers: '4,908',
+    following: '671',
+  },
+  {
+    name: 'Ivy Okonkwo',
+    bio: 'Archivist. Ask me about card catalogues, if you have an hour.',
+    followers: '61.4K',
+    following: '288',
+  },
+  {
+    name: 'Rune Halvorsen',
+    bio: 'Long-distance cyclist, short-distance sleeper.',
+    followers: '2,341',
+    following: '199',
+  },
+  {
+    name: 'Мария Соловьёва',
+    bio: 'Пишу о городах и о том, как они стареют.',
+    followers: '33.7K',
+    following: '526',
+  },
+  {
+    name: 'Kenji Aoyama',
+    bio: 'Weather nerd. Every forecast is a promise someone breaks.',
+    followers: '9,772',
+    following: '834',
+  },
+]
+
+/**
+ * Replaces the people, keeps the extension. Everything the shot is *for* —
+ * `.x-loc-*`, the flags, the chips, the placeholder — is untouched; everything
+ * that identifies an account is overwritten, in place, with `CAST`.
+ *
+ * `.x-loc-bio` is the one extension node that is rewritten: the restored bio it
+ * draws is the account's real one, which is exactly what must not ship.
+ */
+async function fictionalise(page: Page, bio?: string): Promise<void> {
+  await page.evaluate(
+    ({ cast, override }) => {
+      const hash = (s: string) => {
+        let h = 2166136261
+        for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619)
+        return h >>> 0
+      }
+      /** First seen, first cast member — two accounts in one frame must not
+       *  land on the same person, which a hash of the handle does not promise. */
+      const seen = new Map<string, (typeof cast)[number]>()
+      const of = (handle: string) => {
+        if (!seen.has(handle)) seen.set(handle, cast[seen.size % cast.length]!)
+        return seen.get(handle)!
+      }
+      const handleFor = (h: string) =>
+        `user_${hash(`@${h}`).toString(16).padStart(8, '0')}`
+      const avatar = (handle: string) => {
+        const person = of(handle)
+        const initials = person.name
+          .split(' ')
+          .map((w) => [...w][0])
+          .join('')
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="hsl(${hash(`av${handle}`) % 360} 44% 62%)"/><text x="32" y="42" font-family="system-ui,sans-serif" font-size="26" font-weight="600" fill="#fff" text-anchor="middle">${initials}</text></svg>`
+        return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`
+      }
+
+      /** Every extension node is the subject of the shot and stays as it is —
+       *  except the bio it restores, which is the account's real one. */
+      const mine = (node: Node) => {
+        const el = node.parentElement
+        return (
+          el?.closest('[class*="x-loc-"]') != null && !el.closest('.x-loc-bio')
+        )
+      }
+      const profileLinks = (root: Element) =>
+        [...root.querySelectorAll<HTMLAnchorElement>('a[href]')].filter((a) =>
+          /^\/[A-Za-z0-9_]{1,15}$/.test(
+            new URL(a.href, location.origin).pathname,
+          ),
+        )
+      const handleIn = (root: Element): string | null =>
+        profileLinks(root)[0]
+          ? new URL(
+              profileLinks(root)[0]!.href,
+              location.origin,
+            ).pathname.slice(1)
+          : null
+
+      /** Renames inside one element, leaving its structure alone: the first
+       *  text node carries the name, the rest of a split name is emptied. */
+      const rename = (root: Element, name: string) => {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+        let named = false
+        const nodes: Text[] = []
+        while (walker.nextNode()) nodes.push(walker.currentNode as Text)
+        for (const node of nodes) {
+          if (!node.textContent?.trim() || mine(node)) continue
+          node.textContent = named ? '' : name
+          named = true
+        }
+      }
+
+      const blocks = [
+        ...document.querySelectorAll(
+          '[data-testid="User-Name"], [data-testid="UserName"], [data-testid="HoverCard"]',
+        ),
+      ]
+      for (const block of blocks) {
+        const handle = handleIn(block)
+        if (!handle) continue
+        const person = of(handle)
+
+        // Only the profile links hold the display name. A hover card's other
+        // text is the bio, the counts and their labels — renaming those wipes
+        // the card.
+        for (const link of profileLinks(block)) {
+          if (link.textContent?.trim().startsWith('@')) continue
+          if (/\/(followers|following|verified_followers)$/.test(link.pathname))
+            continue
+          rename(link, person.name)
+        }
+
+        const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+        while (walker.nextNode()) {
+          const node = walker.currentNode as Text
+          if (mine(node)) continue
+          if (node.textContent?.trim().startsWith('@'))
+            node.textContent = `@${handleFor(handle)}`
+        }
+
+        // The innermost span holding digits — the one beside it is the label.
+        const isCount = (span: Element) =>
+          span.children.length === 0 &&
+          /^[\d.,KM]+$/.test(span.textContent ?? '')
+        for (const link of block.querySelectorAll<HTMLAnchorElement>(
+          'a[href$="/followers"], a[href$="/verified_followers"], a[href$="/following"]',
+        )) {
+          const count = link.pathname.endsWith('/following')
+            ? person.following
+            : person.followers
+          for (const span of [...link.querySelectorAll('span')].filter(isCount))
+            span.textContent = count
+        }
+      }
+
+      // A profile page labels the bio; a hover card does not, so there it is
+      // the one `dir="auto"` block that is prose — no profile link inside it,
+      // and longer than a handle.
+      const bios = [
+        ...document.querySelectorAll(
+          '[data-testid="UserDescription"], .x-loc-bio',
+        ),
+        ...[
+          ...document.querySelectorAll(
+            '[data-testid="HoverCard"] div[dir="auto"]',
+          ),
+        ].filter(
+          (el) =>
+            (el.textContent?.trim().length ?? 0) > 12 &&
+            !el.textContent!.trim().startsWith('@') &&
+            !el.querySelector('a[href^="/"]'),
+        ),
+      ]
+      for (const el of bios) {
+        const handle = handleIn(el.closest('[data-testid="HoverCard"]') ?? el)
+        el.textContent = override ?? of(handle ?? 'x').bio
+      }
+
+      // The profile image never loads in a replay — X's grey default is what is
+      // on screen — so the container is emptied and given one of ours rather
+      // than having a src swapped that nothing is reading.
+      for (const container of document.querySelectorAll<HTMLElement>(
+        '[data-testid^="UserAvatar-Container-"]',
+      )) {
+        const handle =
+          container
+            .getAttribute('data-testid')
+            ?.slice('UserAvatar-Container-'.length) || 'x'
+        const img = document.createElement('img')
+        img.src = avatar(handle)
+        img.style.cssText = 'width:100%;height:100%;display:block'
+        container.replaceChildren(img)
+        container.style.borderRadius = '50%'
+        container.style.overflow = 'hidden'
+      }
+
+      // The reply composer says nothing about the extension and eats a third of
+      // a timeline frame.
+      for (const el of document.querySelectorAll('div')) {
+        if (el.textContent?.trim() !== 'Post your reply') continue
+        // The whole composer row, avatar included: climb to the largest
+        // ancestor that still holds no post.
+        let box: HTMLElement = el as HTMLElement
+        while (box.parentElement && !box.parentElement.querySelector('article'))
+          box = box.parentElement
+        box.remove()
+        break
+      }
+
+      // Who follows whom is the recording account's own graph.
+      document
+        .querySelector(
+          '[data-testid="HoverCard"] a[href*="followers_you_follow"]',
+        )
+        ?.closest('div')
+        ?.remove()
+    },
+    { cast: CAST, override: bio },
+  )
+  await page.waitForTimeout(150)
+}
+
+/**
+ * A hover card, captured through the page rather than off the element.
+ *
+ * Two things go wrong at `SHOT_DPR=2` otherwise: an element screenshot of the
+ * card composites a stale layer — the shot comes back scaled and doubled — and
+ * the card's plate reads as translucent, so the profile page behind it shows
+ * through whatever the card says.
+ */
+async function shootCard(
+  page: Page,
+  card: Locator,
+  name: string,
+): Promise<void> {
+  // The card's plate reads as translucent at 2x, so the page behind it prints
+  // through the shot. Rather than chase which layer lost its opacity, hide
+  // everything that is not the card and put white behind it.
+  await card.evaluate((el) => {
+    document.body.style.background = '#fff'
+    for (let node = el; node.parentElement; node = node.parentElement) {
+      for (const sibling of node.parentElement.children) {
+        // The pointer and tooltip are drawn into a layer on <body>, which this
+        // walk would otherwise hide along with the page.
+        if (sibling !== node && !sibling.hasAttribute('data-shot-hint'))
+          (sibling as HTMLElement).style.visibility = 'hidden'
+      }
+    }
+  })
+  await shootPromo(page, name, (await card.boundingBox())!)
+}
+
+async function shootPromo(
+  target: Locator | Page,
+  name: string,
+  clip?: { x: number; y: number; width: number; height: number },
+): Promise<void> {
+  await target.screenshot({
+    path: path.join(PROMO, name),
+    scale: 'device',
+    ...(clip ? { clip } : {}),
+  })
+  console.log(`wrote landing/extension_store/promo/${name}`)
+}
+
+test('promo: hover card', async ({ context }) => {
+  const page = await replaying(
+    context,
+    'location.test.ts',
+    'accurate location matches About page',
+  )
+  await mockSharedCache(page, null)
+
+  const card = await hoverOwnTweet(page, 'svtv_news')
+  await fictionalise(page)
+  await showHoverHint(card)
+  await shootCard(page, card, 'hover.png')
+})
+
+test('promo: flags down a thread', async ({ context, extensionId }) => {
+  const page = await replaying(
+    context,
+    'hide-blocked.test.ts',
+    'a hover leaves the post it was opened from where it is',
+  )
+  // None of these is in the default blocked set — a collapsed post is the
+  // subject of the next frame, not this one.
+  await mockVariedCache(page, ['Poland', 'Chile', 'Vietnam', 'Norway', 'Japan'])
+  await mockAboutAccount(page, { account_based_in: 'Poland' })
+  await setFeedRows(context, extensionId, true)
+
+  await page.goto(NASA_TWEET)
+  await page
+    .locator(`${TWEET_ARTICLE} .x-loc-feed-row`)
+    .nth(2)
+    .waitFor({ timeout: 25_000 })
+
+  await mockPosts(page)
+  await fictionalise(page)
+  await showHoverHint(tweetArticles(page).nth(2))
+  const clip = await page.evaluate(() => {
+    const rects = [...document.querySelectorAll('article')]
+      .filter((a) => a.querySelector('[data-testid="tweetText"]'))
+      .map((a) => a.getBoundingClientRect())
+      .filter((r) => r.height > 40)
+      .slice(0, 3)
+    const first = rects[0]!
+    return {
+      x: Math.round(first.x),
+      y: Math.round(Math.max(first.y, 0)),
+      width: Math.round(Math.max(...rects.map((r) => r.width))),
+      height: Math.round(rects.at(-1)!.bottom - Math.max(first.y, 0)),
+    }
+  })
+  await shootPromo(page, 'feed.png', clip)
+})
+
+test('promo: a country collapsed away', async ({ context, extensionId }) => {
+  const page = await replaying(
+    context,
+    'hide-blocked.test.ts',
+    'the placeholder can spare the account, not just the post',
+  )
+  await mockVariedCache(page, ['Norway', 'India', 'Chile', 'Kenya', 'Vietnam'])
+  await mockAboutAccount(page, { account_based_in: 'Norway' })
+  await setFeedRows(context, extensionId, true)
+
+  await page.goto(NASA_TWEET)
+  await page
+    .locator('.x-loc-hidden-ph')
+    .first()
+    .waitFor({ state: 'visible', timeout: 25_000 })
+
+  await mockPosts(page)
+  await fictionalise(page)
+
+  // Wider than the listing's crop of the same feature: the bar between two
+  // posts that kept their flags is what makes it read as a filter.
+  const clip = await page.evaluate(() => {
+    const bar = document
+      .querySelector('.x-loc-hidden-ph')!
+      .getBoundingClientRect()
+    const rects = [...document.querySelectorAll('article')]
+      .filter((a) => a.querySelector('[data-testid="tweetText"]'))
+      .map((a) => a.getBoundingClientRect())
+      .filter((r) => r.height > 40)
+    const above = rects.findLast((r) => r.bottom <= bar.top + 4)
+    const below = rects.find((r) => r.top >= bar.bottom - 4)
+    const top = Math.max(above ? above.top : bar.top - 220, 0)
+    return {
+      x: Math.round(Math.min(bar.x, above?.x ?? bar.x)),
+      y: Math.round(top),
+      width: Math.round(Math.max(bar.width, above?.width ?? 0)),
+      height: Math.round((below ? below.bottom : bar.bottom) - top),
+    }
+  })
+  await shootPromo(page, 'collapsed.png', clip)
+})
+
+test('promo: a keyword, and the way out of it', async ({
+  context,
+  extensionId,
+}) => {
+  const page = await replaying(
+    context,
+    'keywords.test.ts',
+    'highlight exception button un-highlights the account, and undoes cleanly',
+  )
+  await page.goto('https://x.com/MRNFT_X/status/2053116341926629624')
+  await page.waitForResponse(/AboutAccountQuery/, { timeout: 20_000 })
+
+  const article = page.locator(PRIMARY_TWEET)
+  await article.waitFor({ timeout: 15_000 })
+
+  // The word comes from the bio the recording holds, exactly as the test does —
+  // a literal would rot the day the account edits it. The bio itself never
+  // reaches the frame: X opens no hover card for the account a page is about.
+  const keyword = pickBioWord(await readCachedBio(page, 'MRNFT_X'))
+  if (!keyword) throw new Error('no usable word in the recorded bio')
+  await setKeywords(context, extensionId, [keyword])
+
+  await article.locator('.x-loc-exc-btn').waitFor({ timeout: 15_000 })
+  await mockPostContent(
+    page,
+    'Minting a small series next week, mostly to see what breaks.',
+  )
+  await fictionalise(page)
+  await shootPromo(article, 'keyword.png')
+})
+
+test('promo: the popup', async ({ context, extensionId }) => {
+  await setKeywords(context, extensionId, ['nft', 'he/him', 'nafo'])
+  const popup = await openPopupPage(context, extensionId)
+  await openPopupSection(popup, 'Highlight keywords')
+  await popup.waitForTimeout(400)
+  // The popup is opened as an ordinary tab, so the page is 1280 wide and the
+  // panel is 360 of it.
+  await shootPromo(popup.locator('body > *').first(), 'popup.png')
+  await popup.close()
+})
