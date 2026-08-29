@@ -62,6 +62,7 @@ function makeChrome(
     },
     tabs: {
       onRemoved: on('tabs.onRemoved'),
+      onReplaced: on('tabs.onReplaced'),
       query: vi.fn().mockResolvedValue([{ id: 1 }, { id: 2 }]),
       sendMessage: vi.fn(async (tabId: number, message: unknown) => {
         sent.push({ tabId, message })
@@ -295,6 +296,22 @@ describe('tabs coming and going', () => {
     })
 
     for (const listener of env.listeners['tabs.onRemoved'] ?? []) listener(7)
+    await vi.waitFor(() => {
+      const stored = env.session.lookupBroker as { tabs: unknown[] }
+      expect(stored.tabs).toHaveLength(0)
+    })
+  })
+
+  it('forgets the id a discarded tab left behind', async () => {
+    await loadWorker()
+    await send({
+      type: MSG.ENQUEUE,
+      candidates: [{ userName: 'alice' }],
+      tab: FOCUSED,
+    })
+
+    for (const listener of env.listeners['tabs.onReplaced'] ?? [])
+      listener(9, 7)
     await vi.waitFor(() => {
       const stored = env.session.lookupBroker as { tabs: unknown[] }
       expect(stored.tabs).toHaveLength(0)

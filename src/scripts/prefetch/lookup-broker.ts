@@ -24,6 +24,11 @@ const INFLIGHT_TTL_MS = 60 * 1000
 /** Answer to a poll with nothing to hand out; tabs re-ask on it. */
 export const IDLE_POLL_MS = 30 * 1000
 
+/** A record no lifecycle event ever came for. Past any silence a live tab can
+ *  have — a frozen one runs no timers at all — because a sweep costs it its
+ *  queue. A bound on growth, not a reaper. */
+export const TAB_TTL_MS = 3 * 24 * 60 * 60 * 1000
+
 // Offers arrive ~20 a batch and drain 2 a window, and every message rewrites the
 // whole snapshot — see "Revalidation" in CLAUDE.md.
 const MAX_REVALIDATE = 10
@@ -266,6 +271,7 @@ export class LookupBroker {
     this.touch(tabId, state, now)
     this.rollWindow(now)
     this.expireInflight(now)
+    this.expireTabs(now)
 
     const gap = nextDelayMs(this.rate, this.opts, now, this.feedIsWaiting(now))
     // Spent, or paused by a 429: `gap` is already the wait for the refill.
@@ -366,6 +372,12 @@ export class LookupBroker {
     if (this.rate.resetAt && now >= this.rate.resetAt) this.rate.resetAt = 0
     for (const [handle, until] of this.asked) {
       if (until <= now) this.asked.delete(handle)
+    }
+  }
+
+  private expireTabs(now: number): void {
+    for (const [tabId, tab] of this.tabs) {
+      if (now - tab.seenAt > TAB_TTL_MS) this.dropTab(tabId)
     }
   }
 
