@@ -139,6 +139,14 @@ evicted. (`chrome.alarms` would work too, at a permission and a 30 s floor.)
 - **Hovers never go through the broker.** They fetch immediately and report after, so a
   wedged worker cannot delay the row the reader is waiting on. `prefetch-poller.ts` is the
   only caller that awaits its report.
+- **A discarded tab is a new tab.** Memory Saver gives the reload a different id, so
+  `onRemoved` only ever names the new one and the old record outlives the tab —
+  still ranked, its `high` candidates still buying `feedIsWaiting()`'s sprint gap
+  for a tab that is gone. Hence `tabs.onReplaced`, called optionally because
+  Firefox keeps the id and does not implement it. `TAB_TTL_MS` sweeps behind that,
+  at **3 days**: a bound on growth, not a reaper. A live tab may go 15 min without
+  polling (a spent window) and a frozen one far longer, and a sweep costs it its
+  queue — so the number sits past any silence rather than near it.
 - **Everything fails open.** A rejected `sendMessage` costs background lookups until the
   worker returns (`UNREACHABLE_RETRY_MS`), nothing else.
 - **A `wake()` arriving during a poll is remembered, not scheduled.** The answer on its

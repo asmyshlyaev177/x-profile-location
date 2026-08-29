@@ -4,6 +4,7 @@ import {
   type BrokerOptions,
   IDLE_POLL_MS,
   LookupBroker,
+  TAB_TTL_MS,
   type TabState,
 } from './lookup-broker'
 import { PACING_DEFAULTS } from './prefetch-queue'
@@ -180,6 +181,72 @@ describe('in-flight handles', () => {
     broker.enqueue(1, [{ userName: 'gone' }], FOCUSED)
     broker.dropTab(1)
     expect(broker.next(2, FOCUSED).waitMs).toBe(IDLE_POLL_MS)
+  })
+
+  it('drops a tab that has not polled in TAB_TTL_MS', () => {
+    const h = makeBroker(unpaced())
+    h.broker.enqueue(1, [{ userName: 'ghost' }], FOCUSED)
+    h.advance(TAB_TTL_MS + 1)
+
+    expect(h.broker.next(2, FOCUSED).waitMs).toBe(IDLE_POLL_MS)
+    expect(h.broker.__state().tabs.map((t) => t.id)).toEqual([2])
+  })
+
+  it('keeps a tab that has been quiet for less than that', () => {
+    const h = makeBroker(unpaced())
+    h.broker.enqueue(1, [{ userName: 'quiet' }], FOCUSED)
+    h.advance(TAB_TTL_MS - 1)
+
+    expect(h.broker.next(2, FOCUSED).userName).toBe('quiet')
+  })
+
+  // `next()` touches before it sweeps: the poll is what proves the tab alive.
+  it('never sweeps the tab doing the polling', () => {
+    const h = makeBroker(unpaced())
+    h.broker.enqueue(1, [{ userName: 'mine' }], FOCUSED)
+    h.advance(TAB_TTL_MS + 1)
+
+    expect(h.broker.next(1, FOCUSED).userName).toBe('mine')
+  })
+
+  // Chrome reloads a discarded tab under a new id; Firefox reuses the old one.
+  it('serves a swept tab that comes back, under either id', () => {
+    for (const returningId of [1, 99]) {
+      const h = makeBroker(unpaced())
+      h.broker.enqueue(1, [{ userName: 'ghost' }], FOCUSED)
+      h.advance(TAB_TTL_MS + 1)
+      expect(h.broker.next(2, FOCUSED).waitMs).toBe(IDLE_POLL_MS)
+
+      h.broker.enqueue(returningId, [{ userName: 'fresh' }], FOCUSED)
+      expect(h.broker.next(returningId, FOCUSED).userName).toBe('fresh')
+      // 'ghost' is not resurrected behind it.
+      expect(h.broker.next(returningId, FOCUSED).waitMs).toBe(IDLE_POLL_MS)
+    }
+  })
+
+  it('sweeps every expired tab in one pass', () => {
+    const h = makeBroker(unpaced())
+    for (const id of [1, 2, 3]) h.broker.enqueue(id, [{ userName: `t${id}` }])
+    h.advance(TAB_TTL_MS + 1)
+
+    h.broker.next(4, FOCUSED)
+    expect(h.broker.__state().tabs.map((t) => t.id)).toEqual([4])
+  })
+
+  // A ghost outlives dozens of ~30 s teardowns: if `seenAt` did not survive the
+  // snapshot its age would reset on every wake and nothing would ever sweep.
+  it('ages a tab across a worker teardown', () => {
+    const h = makeBroker(unpaced())
+    h.broker.enqueue(1, [{ userName: 'ghost' }], FOCUSED)
+    const snapshot = JSON.parse(JSON.stringify(h.broker.toJSON()))
+
+    h.advance(TAB_TTL_MS + 1)
+    const restored = LookupBroker.from(snapshot, {
+      ...unpaced(),
+      now: h.now,
+    })
+    restored.next(2, FOCUSED)
+    expect(restored.__state().tabs.map((t) => t.id)).toEqual([2])
   })
 })
 

@@ -217,13 +217,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true // reply is async
 })
 
-chrome.tabs.onRemoved.addListener((tabId) => {
-  void (async () => {
-    const state = await loadBroker()
-    state.dropTab(tabId)
-    await saveBroker(state)
-  })()
-})
+async function forgetTab(tabId: number): Promise<void> {
+  const state = await loadBroker()
+  state.dropTab(tabId)
+  await saveBroker(state)
+}
+
+chrome.tabs.onRemoved.addListener((tabId) => void forgetTab(tabId))
+
+// Memory Saver gives a discarded tab a new id, so `onRemoved` never names the
+// old one and its record outlives the tab. Optional: Firefox keeps the id and
+// has no `onReplaced`, and an unguarded call there would kill the worker.
+chrome.tabs.onReplaced?.addListener(
+  (_addedTabId, removedTabId) => void forgetTab(removedTabId),
+)
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === MSG.CLEAR_CACHE) {
