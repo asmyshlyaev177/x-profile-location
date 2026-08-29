@@ -93,6 +93,9 @@ export const test = base.extend<Fixtures>({
 
     const context = (await chromium.launchPersistentContext(userDataDir, {
       headless: !HEADED,
+      // 1 for a test run; the promo captures ask for 2, because a 1x capture
+      // upscaled into a 720p video is visibly soft.
+      deviceScaleFactor: Number(process.env.SHOT_DPR ?? 1),
       // Playwright's default headless build is the headless *shell*, a separate
       // binary with no extension support at all — under it `chrome://extensions`
       // is not even a valid URL, so the extensionId fixture fails before any
