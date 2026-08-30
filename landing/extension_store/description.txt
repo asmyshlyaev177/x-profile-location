@@ -2,19 +2,21 @@ See the country any X (Twitter) account posts from — country flag, VPN badge, 
 
 Hover a profile and the flag is there. Turn on flags in the feed and one appears next to every handle. Swipe right on mobile to reveal a location on demand.
 
+In short: an X account location checker that runs where you read — no site to visit, no handle to paste, every profile on screen checked automatically.
+
 
 WHAT YOU GET
 
 - Country flag in hover cards, on profile pages, and inline in the timeline
 - Source platform and app-store country — confirms or contradicts the stated location
 - A red VPN badge when X itself cannot verify the location
+- Copy any post as a PNG image with the flags embedded — one right-click, ready to paste anywhere
 - Filter posts by country or region — collapse them behind a "Show" button or hide them entirely
 - Highlight posts by keyword, or by accounts stacking flag emojis in their bio
 - Mark accounts younger than a threshold (90 days, 180 days, 1 year, 3 years)
 - Filter accounts by X organization affiliation (government, NGO, company badges)
 - Per-rule exception lists — exempt specific accounts from any filter without disabling the rule
 - Account facts card — verification status, account age, handle-change count, affiliation badge, protected-account indicator
-- Share a post as a PNG image with the location flag embedded — right-click menu or hover-card button
 - Swipe right to reveal, on Android and touch-screen devices
 - No login, no API key, no rate-limit errors halfway down a thread
 
@@ -46,6 +48,11 @@ You can also filter by account age, by X organization affiliation, and by accoun
 Keyword highlighting uses the CSS Highlights API — it never touches the DOM, so X's React never notices it. Emoji keywords are supported, and matching flag emojis in bios get a visible outline ring.
 
 
+COPY A POST AS A PICTURE
+
+Right-click any post — or use the button in the hover card — and it lands in your clipboard as a PNG with the flags embedded. Paste it into a reply or a chat: the location context travels with the screenshot.
+
+
 PRIVACY
 
 Never read: your cookies and session tokens, the bios and posts you scroll past, your browsing history. Not as a setting. It never reads them.
@@ -63,6 +70,8 @@ What gets sent: the handle that was looked up, its country and VPN flag, and a r
 
 The cache server is open source. You can run your own.
 
+Every install makes flags instant for everyone else — it is the one part of this that gets better the more people run it.
+
 
 PERMISSIONS
 
@@ -76,7 +85,7 @@ WHAT IT IS NOT
 Not a bot detector or engagement-farming classifier. It surfaces signals you cannot otherwise see without opening every profile one at a time — country, source platform, VPN status, account age, affiliation, verification, handle changes. What you conclude from them is yours.
 
 
-Chrome, Edge, and Brave on the desktop. Lemur Browser on Android. Firefox and Safari via their respective stores.
+Chrome, Edge, and Brave on the desktop. Kiwi Browser on Android.
 
 15 UI languages with country names in the reader's own language.
 

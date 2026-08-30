@@ -328,7 +328,7 @@ export const th: Dict = {
       },
       surfaces: {
         title: 'ลงได้มากที่กว่า',
-        body: 'Firefox desktop, Firefox for Android และแอปคู่บน iPhone ส่วน X-Pat ตอนนี้มีแต่ฝั่ง Chromium — Chrome, Edge, Brave และ Lemur บน Android Firefox อยู่ในแผน iOS ไม่อยู่',
+        body: 'Firefox desktop, Firefox for Android และแอปคู่บน iPhone ส่วน X-Pat ตอนนี้มีแต่ฝั่ง Chromium — Chrome, Edge, Brave และ Kiwi บน Android Firefox อยู่ในแผน iOS ไม่อยู่',
       },
       languageFilter: {
         title: 'มันมีตัวกรองภาษา',

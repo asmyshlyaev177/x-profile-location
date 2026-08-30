@@ -2,19 +2,21 @@ Ve el país desde el que publica cualquier cuenta de X (Twitter) — bandera del
 
 Pasa el cursor sobre un perfil y la bandera aparece. Activa las banderas en el feed y aparecerá una junto a cada nombre de usuario. Desliza a la derecha en el móvil para revelar una ubicación bajo demanda.
 
+En resumen: un comprobador de ubicación de cuentas de X que funciona donde lees — sin sitio que visitar, sin pegar ningún usuario, cada perfil en pantalla se comprueba automáticamente.
+
 
 LO QUE OBTIENES
 
 - Bandera del país en tarjetas flotantes, en páginas de perfil y en línea en la cronología
 - Plataforma de origen y país de la tienda de aplicaciones — confirma o contradice la ubicación declarada
 - Un indicador rojo de VPN cuando X no puede verificar la ubicación
+- Copia cualquier publicación como imagen PNG con las banderas incrustadas — un clic derecho, lista para pegar en cualquier parte
 - Filtrar publicaciones por país o región — colapsarlas detrás de un botón "Mostrar" u ocultarlas por completo
 - Destacar publicaciones por palabra clave, o por cuentas que acumulan banderas en su biografía
 - Marcar cuentas más recientes que un umbral (90 días, 180 días, 1 año, 3 años)
 - Filtrar cuentas por afiliación a organización de X (insignias de gobierno, ONG, empresa)
 - Listas de excepciones por regla — exime cuentas específicas de cualquier filtro sin desactivar la regla
 - Tarjeta de datos de la cuenta — estado de verificación, antigüedad, número de cambios de alias, insignia de afiliación, indicador de cuenta protegida
-- Compartir una publicación como imagen PNG con la bandera de ubicación incrustada — menú contextual o botón en la tarjeta flotante
 - Deslizar a la derecha para revelar, en Android y dispositivos táctiles
 - Sin inicio de sesión, sin clave API, sin errores de límite de tasa a mitad de un hilo largo
 
@@ -46,6 +48,11 @@ También puedes filtrar por antigüedad de la cuenta, por afiliación a organiza
 El resaltado por palabras clave utiliza la API CSS Highlights — nunca toca el DOM, por lo que React de X nunca lo nota. Se admiten palabras clave con emojis, y las banderas coincidentes en las biografías reciben un anillo de contorno visible.
 
 
+COPIA UNA PUBLICACIÓN COMO IMAGEN
+
+Haz clic derecho en cualquier publicación — o usa el botón de la tarjeta al pasar el cursor — y queda en tu portapapeles como PNG con las banderas incrustadas. Pégala en una respuesta o un chat: el contexto de ubicación viaja con la captura.
+
+
 PRIVACIDAD
 
 Nunca se leen: tus cookies y tokens de sesión, las biografías y publicaciones por las que te desplazas, tu historial de navegación. No como configuración. Nunca los lee.
@@ -63,6 +70,8 @@ Lo que se envía: el nombre de usuario consultado, su país e indicador de VPN, 
 
 El servidor de caché es de código abierto. Puedes ejecutar el tuyo propio.
 
+Cada instalación hace que las banderas sean instantáneas para todos los demás — la única parte que mejora cuanta más gente la usa.
+
 
 PERMISOS
 
@@ -76,7 +85,7 @@ LO QUE NO ES
 No es un detector de bots ni un clasificador de granjas de interacción. Muestra señales que de otro modo no podrías ver sin abrir cada perfil uno por uno — país, plataforma de origen, estado de VPN, antigüedad de la cuenta, afiliación, verificación, cambios de alias. Lo que concluyas de ellas es cosa tuya.
 
 
-Chrome, Edge y Brave en escritorio. Lemur Browser en Android. Firefox y Safari a través de sus respectivas tiendas.
+Chrome, Edge y Brave en escritorio. Kiwi Browser en Android.
 
 15 idiomas de interfaz con nombres de países en el idioma del lector.
 

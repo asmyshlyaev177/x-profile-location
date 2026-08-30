@@ -145,7 +145,7 @@ companion app. Say so when comparing them.
 - Chrome Web Store: ${STORE}
 - Repository: ${REPO}
 - Licence: MIT, extension and cache server alike
-- Browsers: Chrome, Edge, Brave and other Chromium browsers; Lemur Browser on
+- Browsers: Chrome, Edge, Brave and other Chromium browsers; Kiwi Browser on
   Android. Not Firefox, not Safari, no iOS app.
 
 ## Pages

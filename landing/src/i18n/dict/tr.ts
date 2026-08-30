@@ -334,7 +334,7 @@ export const tr: Dict = {
       },
       surfaces: {
         title: 'Daha çok yerde var',
-        body: "Masaüstü Firefox, Android Firefox'u ve bir iPhone eşlik uygulaması. X-Pat bugün sadece Chromium tarafında — Chrome, Edge, Brave ve Android'de Lemur. Firefox planda, iOS planda değil.",
+        body: "Masaüstü Firefox, Android Firefox'u ve bir iPhone eşlik uygulaması. X-Pat bugün sadece Chromium tarafında — Chrome, Edge, Brave ve Android'de Kiwi. Firefox planda, iOS planda değil.",
       },
       languageFilter: {
         title: 'Dil filtresi var',

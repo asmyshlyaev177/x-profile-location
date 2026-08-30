@@ -2,19 +2,21 @@ Veja de qual país qualquer conta do X (Twitter) publica — bandeira do país, 
 
 Passe o mouse sobre um perfil e a bandeira aparece. Ative as bandeiras no feed e uma aparece ao lado de cada nome de usuário. Deslize para a direita no celular para revelar uma localização sob demanda.
 
+Em resumo: um verificador de localização de contas do X que funciona onde você lê — sem site para visitar, sem colar nenhum usuário, cada perfil na tela é verificado automaticamente.
+
 
 O QUE VOCÊ RECEBE
 
 - Bandeira do país em cartões flutuantes, nas páginas de perfil e inline na linha do tempo
 - Plataforma de origem e país da loja de aplicativos — confirma ou contradiz a localização declarada
 - Um selo vermelho de VPN quando o próprio X não consegue verificar a localização
+- Copie qualquer post como imagem PNG com as bandeiras incorporadas — um clique direito, pronto para colar em qualquer lugar
 - Filtrar publicações por país ou região — recolhê-las atrás de um botão "Mostrar" ou ocultá-las completamente
 - Destacar publicações por palavra-chave, ou por contas que empilham bandeiras na bio
 - Marcar contas mais recentes que um limite (90 dias, 180 dias, 1 ano, 3 anos)
 - Filtrar contas por afiliação a organização do X (selos de governo, ONG, empresa)
 - Listas de exceção por regra — isentar contas específicas de qualquer filtro sem desativar a regra
 - Cartão de informações da conta — status de verificação, idade da conta, número de trocas de @, selo de afiliação, indicador de conta protegida
-- Compartilhar uma publicação como imagem PNG com a bandeira de localização incorporada — menu do botão direito ou botão no cartão flutuante
 - Deslizar para a direita para revelar, no Android e dispositivos com tela sensível ao toque
 - Sem login, sem chave de API, sem erros de limite de taxa no meio de uma thread longa
 
@@ -46,6 +48,11 @@ Você também pode filtrar por idade da conta, por afiliação a organização d
 O destaque por palavra-chave usa a API CSS Highlights — ela nunca toca o DOM, então o React do X nunca percebe. Palavras-chave com emoji são suportadas, e as bandeiras correspondentes nas bios recebem um anel de contorno visível.
 
 
+COPIE UM POST COMO IMAGEM
+
+Clique com o botão direito em qualquer post — ou use o botão do cartão ao passar o mouse — e ele vai para a área de transferência como PNG com as bandeiras incorporadas. Cole em uma resposta ou chat: o contexto de localização viaja com a captura.
+
+
 PRIVACIDADE
 
 Nunca lidos: seus cookies e tokens de sessão, as bios e publicações pelas quais você rola, seu histórico de navegação. Não como configuração. Eles nunca são lidos.
@@ -63,6 +70,8 @@ O que é enviado: o @ consultado, seu país e indicador de VPN, e um ID de insta
 
 O servidor de cache é open source. Você pode executar o seu próprio.
 
+Cada instalação torna as bandeiras instantâneas para todos os outros — a única parte que melhora quanto mais gente usa.
+
 
 PERMISSÕES
 
@@ -76,7 +85,7 @@ O QUE ELE NÃO É
 Não é um detector de bots ou classificador de farms de engajamento. Ele exibe sinais que você não pode ver de outra forma sem abrir cada perfil um por um — país, plataforma de origem, status de VPN, idade da conta, afiliação, verificação, trocas de @. O que você conclui deles é com você.
 
 
-Chrome, Edge e Brave no desktop. Lemur Browser no Android. Firefox e Safari através de suas respectivas lojas.
+Chrome, Edge e Brave no desktop. Kiwi Browser no Android.
 
 15 idiomas de interface com nomes de países no idioma do leitor.
 

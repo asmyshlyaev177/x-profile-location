@@ -334,7 +334,7 @@ export const id: Dict = {
       },
       surfaces: {
         title: 'Dia tersedia di lebih banyak platform',
-        body: 'Firefox desktop, Firefox Android, dan aplikasi pendamping iPhone. X-Pat sekarang baru Chromium — Chrome, Edge, Brave, dan Lemur di Android. Firefox direncanain, iOS nggak.',
+        body: 'Firefox desktop, Firefox Android, dan aplikasi pendamping iPhone. X-Pat sekarang baru Chromium — Chrome, Edge, Brave, dan Kiwi di Android. Firefox direncanain, iOS nggak.',
       },
       languageFilter: {
         title: 'Dia punya filter bahasa',

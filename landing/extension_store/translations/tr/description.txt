@@ -2,19 +2,21 @@ Herhangi bir X (Twitter) hesabının hangi ülkeden paylaşım yaptığını gö
 
 Bir profilin üzerine gelin, bayrak orada. Akışta bayrakları açın, her kullanıcı adının yanında bir tane belirir. Mobilde sağa kaydırarak isteğe bağlı olarak konumu görüntüleyin.
 
+Kısacası: okuduğunuz yerde çalışan bir X hesap konumu denetleyicisi — ziyaret edilecek site yok, yapıştırılacak kullanıcı adı yok, ekrandaki her profil otomatik denetlenir.
+
 
 ELDE ETTİKLERİNİZ
 
 - Fareyle üzerine gelme kartlarında, profil sayfalarında ve zaman akışında ülke bayrağı
 - Kaynak platform ve uygulama mağazası ülkesi — belirtilen konumu doğrular veya çelişir
 - X'in kendisi konumu doğrulayamadığında kırmızı VPN rozeti
+- Herhangi bir gönderiyi bayraklar gömülü PNG görseli olarak kopyalayın — tek sağ tık, her yere yapıştırmaya hazır
 - Gönderileri ülkeye veya bölgeye göre filtreleme — "Göster" düğmesinin arkasına daraltma veya tamamen gizleme
 - Gönderileri anahtar kelimeye göre veya biyografilerinde bayrak biriktiren hesaplara göre vurgulama
 - Bir eşikten daha yeni hesapları işaretleme (90 gün, 180 gün, 1 yıl, 3 yıl)
 - X kuruluş bağlılığına göre hesapları filtreleme (devlet, STK, şirket rozetleri)
 - Kural başına istisna listeleri — kuralı devre dışı bırakmadan belirli hesapları herhangi bir filtreden muaf tutma
 - Hesap bilgi kartı — doğrulama durumu, hesap yaşı, kullanıcı adı değişiklik sayısı, bağlılık rozeti, korumalı hesap göstergesi
-- Konum bayrağı gömülü PNG resmi olarak bir gönderiyi paylaşma — sağ tıklama menüsü veya fareyle üzerine gelme kartı düğmesi
 - Android ve dokunmatik ekranlı cihazlarda ortaya çıkarmak için sağa kaydırma
 - Giriş yok, API anahtarı yok, uzun bir dizinin ortasında hız sınırı hatası yok
 
@@ -46,6 +48,11 @@ Ayrıca hesap yaşına, X kuruluş bağlılığına ve biyografilerinde birden f
 Anahtar kelime vurgulama CSS Highlights API'sini kullanır — DOM'a asla dokunmaz, bu nedenle X'in React'i bunu asla fark etmez. Emoji anahtar kelimeleri desteklenir ve biyografilerdeki eşleşen bayrak emojileri görünür bir çerçeve halkası alır.
 
 
+GÖNDERİYİ GÖRSEL OLARAK KOPYALAYIN
+
+Herhangi bir gönderiye sağ tıklayın — veya üzerine gelme kartındaki düğmeyi kullanın — bayraklar gömülü bir PNG olarak panonuza gelir. Bir yanıta veya sohbete yapıştırın: konum bağlamı ekran görüntüsüyle birlikte taşınır.
+
+
 GİZLİLİK
 
 Asla okunmaz: çerezleriniz ve oturum belirteçleriniz, kaydırarak geçtiğiniz biyografiler ve gönderiler, tarama geçmişiniz. Bir ayar olarak değil. Asla okumaz.
@@ -63,6 +70,8 @@ Gönderilenler: sorgulanan kullanıcı adı, ülkesi ve VPN bayrağı ve rastgel
 
 Önbellek sunucusu açık kaynaktır. Kendinizinkini çalıştırabilirsiniz.
 
+Her kurulum bayrakları diğer herkes için anında hale getirir — kullanan arttıkça iyileşen tek kısım budur.
+
 
 İZİNLER
 
@@ -76,7 +85,7 @@ NE OLMADIĞI
 Bir bot dedektörü veya etkileşim çiftliği sınıflandırıcısı değildir. Her profili tek tek açmadan göremeyeceğiniz sinyalleri gösterir — ülke, kaynak platform, VPN durumu, hesap yaşı, bağlılık, doğrulama, kullanıcı adı değişiklikleri. Onlardan ne sonuç çıkardığınız size kalmış.
 
 
-Masaüstünde Chrome, Edge ve Brave. Android'de Lemur Browser. Firefox ve Safari kendi mağazaları aracılığıyla.
+Masaüstünde Chrome, Edge ve Brave. Android'de Kiwi Browser.
 
 Okuyucunun kendi dilinde ülke adlarıyla 15 arayüz dili.
 

@@ -31,10 +31,10 @@ export const STORES: Record<SupportedBrowser, StoreEntry> = {
 export const SUPPORTED_DESKTOP = 'Chrome · Edge · Brave'
 
 /**
- * Android browsers that run desktop Chrome extensions. Lemur is the one the
+ * Android browsers that run desktop Chrome extensions. Kiwi is the one the
  * swipe-to-reveal gesture was built against.
  */
-export const SUPPORTED_ANDROID = 'Lemur Browser'
+export const SUPPORTED_ANDROID = 'Kiwi Browser'
 
 /** Detects the current browser from the UA alone. Safe during SSR. */
 export function detectBrowser(): SupportedBrowser {

@@ -2,19 +2,21 @@ Lihat dari negara mana akun X (Twitter) memposting — bendera negara, lencana V
 
 Arahkan kursor ke profil dan benderanya muncul. Aktifkan bendera di umpan dan satu muncul di samping setiap nama pengguna. Geser ke kanan di ponsel untuk mengungkapkan lokasi sesuai permintaan.
 
+Singkatnya: pemeriksa lokasi akun X yang bekerja di tempat Anda membaca — tanpa situs yang harus dikunjungi, tanpa menempel handle, setiap profil di layar diperiksa otomatis.
+
 
 APA YANG ANDA DAPATKAN
 
 - Bendera negara di kartu hover, di halaman profil, dan sebaris di linimasa
 - Platform sumber dan negara toko aplikasi — mengonfirmasi atau bertentangan dengan lokasi yang dinyatakan
 - Lencana VPN merah ketika X sendiri tidak dapat memverifikasi lokasi
+- Salin postingan apa pun sebagai gambar PNG dengan bendera tertanam — satu klik kanan, siap ditempel di mana saja
 - Filter postingan berdasarkan negara atau wilayah — ciutkan di balik tombol "Tampilkan" atau sembunyikan sepenuhnya
 - Sorot postingan berdasarkan kata kunci, atau berdasarkan akun yang menumpuk bendera di bio mereka
 - Tandai akun yang lebih muda dari ambang batas (90 hari, 180 hari, 1 tahun, 3 tahun)
 - Filter akun berdasarkan afiliasi organisasi X (lencana pemerintah, LSM, perusahaan)
 - Daftar pengecualian per aturan — kecualikan akun tertentu dari filter apa pun tanpa menonaktifkan aturan
 - Kartu fakta akun — status verifikasi, usia akun, jumlah perubahan nama pengguna, lencana afiliasi, indikator akun yang dilindungi
-- Bagikan postingan sebagai gambar PNG dengan bendera lokasi tersemat — menu klik kanan atau tombol kartu hover
 - Geser ke kanan untuk mengungkapkan, di Android dan perangkat layar sentuh
 - Tanpa login, tanpa kunci API, tanpa kesalahan batas laju di tengah utas panjang
 
@@ -46,6 +48,11 @@ Anda juga dapat menyaring berdasarkan usia akun, afiliasi organisasi X, dan akun
 Penyorotan kata kunci menggunakan CSS Highlights API — ia tidak pernah menyentuh DOM, jadi React X tidak pernah menyadarinya. Kata kunci emoji didukung, dan bendera yang cocok di bio mendapatkan cincin garis tepi yang terlihat.
 
 
+SALIN POSTINGAN SEBAGAI GAMBAR
+
+Klik kanan postingan apa pun — atau gunakan tombol di kartu hover — dan ia masuk ke clipboard sebagai PNG dengan bendera tertanam. Tempel ke balasan atau obrolan: konteks lokasi ikut bersama tangkapan layar.
+
+
 PRIVASI
 
 Tidak pernah dibaca: cookie dan token sesi Anda, bio dan postingan yang Anda gulir, riwayat penelusuran Anda. Bukan sebagai pengaturan. Ia tidak pernah membacanya.
@@ -63,6 +70,8 @@ Apa yang dikirim: nama pengguna yang dicari, negara dan bendera VPN-nya, dan ID 
 
 Server cache bersifat open source. Anda dapat menjalankan milik Anda sendiri.
 
+Setiap pemasangan membuat bendera instan untuk semua orang lain — satu-satunya bagian yang makin baik makin banyak yang memakai.
+
 
 IZIN
 
@@ -76,7 +85,7 @@ APA YANG BUKAN
 Bukan pendeteksi bot atau pengklasifikasi penggembungan interaksi. Ia menampilkan sinyal yang tidak dapat Anda lihat tanpa membuka setiap profil satu per satu — negara, platform sumber, status VPN, usia akun, afiliasi, verifikasi, perubahan nama pengguna. Apa yang Anda simpulkan darinya adalah milik Anda.
 
 
-Chrome, Edge, dan Brave di desktop. Lemur Browser di Android. Firefox dan Safari melalui toko masing-masing.
+Chrome, Edge, dan Brave di desktop. Kiwi Browser di Android.
 
 15 bahasa UI dengan nama negara dalam bahasa pembaca.
 

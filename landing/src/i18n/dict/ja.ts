@@ -333,7 +333,7 @@ export const ja: Dict = {
       },
       surfaces: {
         title: '対応環境が多い',
-        body: 'デスクトップ版 Firefox、Android 版 Firefox、iPhone のコンパニオンアプリ。X-Pat は現在 Chromium 系のみ——Chrome、Edge、Brave、Android の Lemur——です。Firefox は予定あり、iOS はなしです。',
+        body: 'デスクトップ版 Firefox、Android 版 Firefox、iPhone のコンパニオンアプリ。X-Pat は現在 Chromium 系のみ——Chrome、Edge、Brave、Android の Kiwi——です。Firefox は予定あり、iOS はなしです。',
       },
       languageFilter: {
         title: '言語フィルターがある',

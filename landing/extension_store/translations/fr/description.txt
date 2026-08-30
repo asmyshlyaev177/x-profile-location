@@ -2,19 +2,21 @@ Voyez de quel pays publie n'importe quel compte X (Twitter) — drapeau du pays,
 
 Survolez un profil et le drapeau apparaît. Activez les drapeaux dans le fil et un apparaît à côté de chaque pseudonyme. Balayez vers la droite sur mobile pour révéler un emplacement à la demande.
 
+En bref : un vérificateur de localisation de comptes X qui fonctionne là où vous lisez — aucun site à visiter, aucun pseudo à coller, chaque profil à l'écran est vérifié automatiquement.
+
 
 CE QUE VOUS OBTENEZ
 
 - Drapeau du pays dans les cartes de survol, sur les pages de profil et en ligne dans la chronologie
 - Plateforme source et pays de l'App Store — confirme ou contredit l'emplacement déclaré
 - Un badge VPN rouge lorsque X lui-même ne peut pas vérifier l'emplacement
+- Copiez n'importe quel post en image PNG avec les drapeaux intégrés — un clic droit, prêt à coller n'importe où
 - Filtrer les publications par pays ou région — les réduire derrière un bouton « Afficher » ou les masquer entièrement
 - Surligner les publications par mot-clé, ou par les comptes qui empilent des drapeaux dans leur bio
 - Marquer les comptes plus récents qu'un seuil (90 jours, 180 jours, 1 an, 3 ans)
 - Filtrer les comptes par affiliation à une organisation X (badges gouvernement, ONG, entreprise)
 - Listes d'exceptions par règle — exempter des comptes spécifiques de n'importe quel filtre sans désactiver la règle
 - Fiche de renseignements du compte — statut de vérification, âge du compte, nombre de changements de pseudo, badge d'affiliation, indicateur de compte protégé
-- Partager une publication en image PNG avec le drapeau de localisation intégré — menu clic droit ou bouton de la carte de survol
 - Balayer vers la droite pour révéler, sur Android et les appareils tactiles
 - Pas de connexion, pas de clé API, pas d'erreurs de limite de débit au milieu d'un long fil
 
@@ -46,6 +48,11 @@ Vous pouvez également filtrer par âge du compte, par affiliation à une organi
 La surbrillance par mot-clé utilise l'API CSS Highlights — elle ne touche jamais le DOM, donc React de X ne le remarque jamais. Les mots-clés emoji sont pris en charge, et les drapeaux correspondants dans les bios reçoivent un anneau de contour visible.
 
 
+COPIER UN POST EN IMAGE
+
+Faites un clic droit sur n'importe quel post — ou utilisez le bouton de la carte au survol — et il arrive dans votre presse-papiers en PNG avec les drapeaux intégrés. Collez-le dans une réponse ou une discussion : le contexte de localisation voyage avec la capture.
+
+
 CONFIDENTIALITÉ
 
 Jamais lus : vos cookies et jetons de session, les bios et publications que vous faites défiler, votre historique de navigation. Pas comme paramètre. Ils ne sont jamais lus.
@@ -63,6 +70,8 @@ Ce qui est envoyé : le pseudonyme consulté, son pays et son indicateur VPN, et
 
 Le serveur de cache est open source. Vous pouvez exécuter le vôtre.
 
+Chaque installation rend les drapeaux instantanés pour tous les autres — la seule partie qui s'améliore à mesure que les gens l'utilisent.
+
 
 AUTORISATIONS
 
@@ -76,7 +85,7 @@ CE QU'IL N'EST PAS
 Pas un détecteur de bots ni un classificateur d'engagement artificiel. Il affiche des signaux que vous ne pourriez pas voir autrement sans ouvrir chaque profil un par un — pays, plateforme source, statut VPN, âge du compte, affiliation, vérification, changements de pseudo. Ce que vous en concluez vous appartient.
 
 
-Chrome, Edge et Brave sur ordinateur. Lemur Browser sur Android. Firefox et Safari via leurs boutiques respectives.
+Chrome, Edge et Brave sur ordinateur. Kiwi Browser sur Android.
 
 15 langues d'interface avec les noms de pays dans la langue du lecteur.
 

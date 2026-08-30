@@ -339,7 +339,7 @@ export const es: Dict = {
       },
       surfaces: {
         title: 'Está en más plataformas',
-        body: 'Firefox de escritorio, Firefox para Android y una app complementaria para iPhone. X-Pat hoy solo va en Chromium: Chrome, Edge, Brave y Lemur en Android. Firefox está en los planes, iOS no.',
+        body: 'Firefox de escritorio, Firefox para Android y una app complementaria para iPhone. X-Pat hoy solo va en Chromium: Chrome, Edge, Brave y Kiwi en Android. Firefox está en los planes, iOS no.',
       },
       languageFilter: {
         title: 'Tiene filtro por idioma',

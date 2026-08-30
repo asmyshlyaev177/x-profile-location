@@ -339,7 +339,7 @@ export const pt: Dict = {
       },
       surfaces: {
         title: 'Ele roda em mais lugares',
-        body: 'Firefox no desktop, Firefox para Android e um app complementar para iPhone. O X-Pat hoje é só Chromium — Chrome, Edge, Brave e Lemur no Android. Firefox está nos planos, iOS não.',
+        body: 'Firefox no desktop, Firefox para Android e um app complementar para iPhone. O X-Pat hoje é só Chromium — Chrome, Edge, Brave e Kiwi no Android. Firefox está nos planos, iOS não.',
       },
       languageFilter: {
         title: 'Ele tem filtro por idioma',

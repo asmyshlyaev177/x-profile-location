@@ -327,7 +327,7 @@ export const zh: Dict = {
       },
       surfaces: {
         title: '它覆盖的平台更多',
-        body: '桌面 Firefox、Android Firefox、还有 iPhone 配套应用。X-Pat 目前只限 Chromium 系——Chrome、Edge、Brave，以及 Android 上的 Lemur。Firefox 在计划中，iOS 没有。',
+        body: '桌面 Firefox、Android Firefox、还有 iPhone 配套应用。X-Pat 目前只限 Chromium 系——Chrome、Edge、Brave，以及 Android 上的 Kiwi。Firefox 在计划中，iOS 没有。',
       },
       languageFilter: {
         title: '它有语言过滤',
