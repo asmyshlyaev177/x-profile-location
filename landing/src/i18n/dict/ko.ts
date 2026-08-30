@@ -330,7 +330,7 @@ export const ko: Dict = {
       },
       surfaces: {
         title: '더 많은 플랫폼을 지원해요',
-        body: '데스크톱 Firefox, Android용 Firefox, iPhone 동반 앱까지요. X-Pat은 현재 Chromium 계열 전용이에요. Chrome, Edge, Brave, Android의 Lemur. Firefox는 계획에 있고, iOS는 없어요.',
+        body: '데스크톱 Firefox, Android용 Firefox, iPhone 동반 앱까지요. X-Pat은 현재 Chromium 계열 전용이에요. Chrome, Edge, Brave, Android의 Kiwi. Firefox는 계획에 있고, iOS는 없어요.',
       },
       languageFilter: {
         title: '언어 필터가 있어요',

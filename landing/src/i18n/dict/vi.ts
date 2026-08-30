@@ -330,7 +330,7 @@ export const vi: Dict = {
       },
       surfaces: {
         title: 'Nó có mặt trên nhiều nền hơn',
-        body: 'Firefox desktop, Firefox Android, và app iPhone đồng hành. X-Pat mới chỉ Chromium — Chrome, Edge, Brave, và Lemur trên Android. Firefox thì có kế hoạch, iOS thì không.',
+        body: 'Firefox desktop, Firefox Android, và app iPhone đồng hành. X-Pat mới chỉ Chromium — Chrome, Edge, Brave, và Kiwi trên Android. Firefox thì có kế hoạch, iOS thì không.',
       },
       languageFilter: {
         title: 'Nó có lọc ngôn ngữ',

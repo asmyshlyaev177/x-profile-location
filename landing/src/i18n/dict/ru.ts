@@ -330,7 +330,7 @@ export const ru: Dict = {
       },
       surfaces: {
         title: 'Он на большем числе платформ',
-        body: 'Firefox на десктопе, Firefox для Android и сопутствующее приложение для iPhone. X-Pat сегодня — только Chromium: Chrome, Edge, Brave и Lemur на Android. Firefox — в планах, iOS — нет.',
+        body: 'Firefox на десктопе, Firefox для Android и сопутствующее приложение для iPhone. X-Pat сегодня — только Chromium: Chrome, Edge, Brave и Kiwi на Android. Firefox — в планах, iOS — нет.',
       },
       languageFilter: {
         title: 'У него есть фильтр по языку',

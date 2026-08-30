@@ -338,7 +338,7 @@ export const de: Dict = {
       },
       surfaces: {
         title: 'Es ist auf mehr Plattformen vertreten',
-        body: 'Firefox auf dem Desktop, Firefox für Android und eine iPhone-Begleit-App. X-Pat ist aktuell nur Chromium — Chrome, Edge, Brave und Lemur auf Android. Firefox ist geplant, iOS nicht.',
+        body: 'Firefox auf dem Desktop, Firefox für Android und eine iPhone-Begleit-App. X-Pat ist aktuell nur Chromium — Chrome, Edge, Brave und Kiwi auf Android. Firefox ist geplant, iOS nicht.',
       },
       languageFilter: {
         title: 'Es hat einen Sprachfilter',

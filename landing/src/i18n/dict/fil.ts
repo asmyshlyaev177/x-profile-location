@@ -343,7 +343,7 @@ export const fil: Dict = {
       },
       surfaces: {
         title: 'Mas marami itong platform',
-        body: 'Firefox sa desktop, Firefox para sa Android, at isang companion iPhone app. Ang X-Pat ay Chromium lang sa ngayon — Chrome, Edge, Brave, at Lemur sa Android. Plano ang Firefox, ang iOS ay hindi.',
+        body: 'Firefox sa desktop, Firefox para sa Android, at isang companion iPhone app. Ang X-Pat ay Chromium lang sa ngayon — Chrome, Edge, Brave, at Kiwi sa Android. Plano ang Firefox, ang iOS ay hindi.',
       },
       languageFilter: {
         title: 'May language filter ito',

@@ -69,7 +69,7 @@ export const buildDate: string =
 export const seo = {
   /** Ignored by Google since 2009, still read by a few smaller engines. */
   keywords:
-    'X Twitter profile location, country flag extension, Twitter location checker, VPN detection Twitter, where is this Twitter user from, X profile country, hide tweets by country, collapse tweets by location, X country filter, X region filter, X location filter, filter X by keyword, block affiliated accounts X, highlight new X accounts, X account age, X about this account, engagement farming X, Twitter bot check, Chrome extension',
+    'X Twitter profile location, country flag extension, Twitter location checker, VPN detection Twitter, where is this Twitter user from, X profile country, hide tweets by country, collapse tweets by location, X country filter, X region filter, X location filter, filter X by keyword, block affiliated accounts X, highlight new X accounts, X account age, X about this account, engagement farming X, Twitter bot check, X account location finder, X account location checker, check X account location, Chrome extension',
   author: 'asmyshlyaev177',
 
   og: {
@@ -112,7 +112,7 @@ export function buildJsonLd(version: string, locale: LocaleDef, t: Dict) {
     // are one product rather than two.
     alternateName: 'X Profile Location',
     applicationCategory: 'BrowserApplication',
-    operatingSystem: 'Chrome, Edge, Brave, Lemur Browser',
+    operatingSystem: 'Chrome, Edge, Brave, Kiwi Browser',
     description: home.description,
     inLanguage: locale.htmlLang,
     url: canonicalFor(HOME, locale),

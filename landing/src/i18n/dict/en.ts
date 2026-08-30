@@ -13,7 +13,7 @@
  *    That is the point — `Dict` is derived from this object, so a missing
  *    translation is a type error rather than an English string appearing on a
  *    Japanese page.
- * 3. Brand names are not copy. "X-Pat", "X-Posed", "Chrome", "Lemur Browser"
+ * 3. Brand names are not copy. "X-Pat", "X-Posed", "Chrome", "Kiwi Browser"
  *    and the country names inside screenshot examples stay as they are in every
  *    locale.
  * 4. `pages.*.faq` is rendered visibly *and* emitted as FAQPage structured
@@ -375,7 +375,7 @@ export const en = {
       },
       surfaces: {
         title: 'It ships on more surfaces',
-        body: 'Firefox desktop, Firefox for Android, and a companion iPhone app. X-Pat is Chromium-only today — Chrome, Edge, Brave, and Lemur on Android. Firefox is planned, iOS is not.',
+        body: 'Firefox desktop, Firefox for Android, and a companion iPhone app. X-Pat is Chromium-only today — Chrome, Edge, Brave, and Kiwi on Android. Firefox is planned, iOS is not.',
       },
       languageFilter: {
         title: 'It has a language filter',
@@ -519,13 +519,22 @@ export const en = {
    */
   pages: {
     home: {
-      title: 'X-Pat — X Profile Location: see the country of any X profile',
+      title:
+        'X-Pat — X account location finder: see the country of any X profile',
       description:
-        'A country flag on every X profile, from X’s own data. VPN warnings, and hide or highlight posts by country, organisation, age or bio keyword. Free for Chrome.',
+        'Check where any X account is from — a country flag on every profile, from X’s own data. VPN warnings, hide or highlight posts by country, age or keyword.',
       faq: [
         {
           q: 'How do I see what country an X account is from?',
           a: 'X stores a country for every account and exposes it under “About this account”, but only one profile at a time and only if you open the menu. This extension reads that same field and puts the flag straight into the hover card and the timeline, so you see it without clicking anything.',
+        },
+        {
+          q: 'Is there an X account location finder or checker?',
+          a: 'That is what this extension is — an X account location checker that runs in your browser. There is no site to visit and no handle to paste: every profile you hover or scroll past is checked automatically against X’s own data, and the country appears as a flag right in the page.',
+        },
+        {
+          q: 'Can I share or screenshot a post with the flags included?',
+          a: 'Yes. Right-click any post — or use the button in the hover card — and it is copied as a PNG image with the flags embedded, ready to paste into a reply or a chat.',
         },
         {
           q: 'Can I tell if an X account is using a VPN?',

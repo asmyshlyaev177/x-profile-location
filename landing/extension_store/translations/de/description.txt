@@ -2,19 +2,21 @@ Sieh, aus welchem Land ein X-(Twitter-)Account postet — Länderflagge, VPN-Ken
 
 Fahre mit der Maus über ein Profil und die Flagge erscheint. Schalte Flaggen im Feed ein und eine erscheint neben jedem Nutzernamen. Wische auf dem Handy nach rechts, um einen Standort bei Bedarf anzuzeigen.
 
+Kurz gesagt: ein X-Account-Standort-Checker, der dort läuft, wo Sie lesen — keine Website öffnen, kein Handle einfügen, jedes Profil auf dem Bildschirm wird automatisch geprüft.
+
 
 WAS DU BEKOMMST
 
 - Länderflagge in Hover-Karten, auf Profilseiten und inline in der Timeline
 - Quellplattform und App-Store-Land — bestätigt oder widerspricht dem angegebenen Standort
 - Ein rotes VPN-Kennzeichen, wenn X selbst den Standort nicht verifizieren kann
+- Kopieren Sie jeden Post als PNG-Bild mit eingebetteten Flaggen — ein Rechtsklick, bereit zum Einfügen überall
 - Beiträge nach Land oder Region filtern — hinter einer „Anzeigen"-Schaltfläche einklappen oder vollständig ausblenden
 - Beiträge nach Schlüsselwort hervorheben oder nach Accounts, die mehrere Flaggen-Emojis in ihrer Bio stapeln
 - Accounts markieren, die jünger als ein Schwellenwert sind (90 Tage, 180 Tage, 1 Jahr, 3 Jahre)
 - Accounts nach X-Organisationszugehörigkeit filtern (Regierung, NGO, Unternehmensabzeichen)
 - Ausnahmelisten pro Regel — bestimmte Accounts von einem Filter ausnehmen, ohne die Regel zu deaktivieren
 - Account-Faktenkarte — Verifizierungsstatus, Account-Alter, Anzahl der Handle-Änderungen, Zugehörigkeitsabzeichen, Indikator für geschützte Accounts
-- Beitrag als PNG-Bild mit eingebetteter Standortflagge teilen — Rechtsklick-Menü oder Hover-Karten-Schaltfläche
 - Nach rechts wischen zum Anzeigen, auf Android und Touchscreen-Geräten
 - Kein Login, kein API-Schlüssel, keine Rate-Limit-Fehler mitten in einem langen Thread
 
@@ -46,6 +48,11 @@ Du kannst auch nach Account-Alter, X-Organisationszugehörigkeit und Accounts fi
 Die Schlüsselworthervorhebung nutzt die CSS Highlights API — sie berührt niemals das DOM, sodass React von X es nie bemerkt. Emoji-Schlüsselwörter werden unterstützt, und passende Flaggen-Emojis in Bios erhalten einen sichtbaren Umrissring.
 
 
+EINEN POST ALS BILD KOPIEREN
+
+Rechtsklick auf einen beliebigen Post — oder die Schaltfläche in der Hover-Karte — und er landet als PNG mit eingebetteten Flaggen in Ihrer Zwischenablage. Fügen Sie ihn in eine Antwort oder einen Chat ein: der Standort-Kontext reist mit dem Screenshot mit.
+
+
 DATENSCHUTZ
 
 Nie gelesen: deine Cookies und Sitzungstoken, die Bios und Beiträge, an denen du vorbeiscrollst, dein Browserverlauf. Nicht als Einstellung. Sie werden niemals gelesen.
@@ -63,6 +70,8 @@ Was gesendet wird: der abgefragte Nutzername, sein Land und VPN-Kennzeichen sowi
 
 Der Cache-Server ist Open Source. Du kannst deinen eigenen betreiben.
 
+Jede Installation macht Flaggen für alle anderen sofort verfügbar — der eine Teil, der besser wird, je mehr Leute es nutzen.
+
 
 BERECHTIGUNGEN
 
@@ -76,7 +85,7 @@ WAS SIE NICHT IST
 Kein Bot-Detektor oder Engagement-Farming-Klassifikator. Sie zeigt Signale an, die du sonst nicht sehen kannst, ohne jedes Profil einzeln zu öffnen — Land, Quellplattform, VPN-Status, Account-Alter, Zugehörigkeit, Verifizierung, Handle-Änderungen. Was du daraus schließt, ist deine Sache.
 
 
-Chrome, Edge und Brave auf dem Desktop. Lemur Browser auf Android. Firefox und Safari über ihre jeweiligen Stores.
+Chrome, Edge und Brave auf dem Desktop. Kiwi Browser auf Android.
 
 15 UI-Sprachen mit Ländernamen in der Sprache des Lesers.
 

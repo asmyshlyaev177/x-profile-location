@@ -335,7 +335,7 @@ export const ar: Dict = {
       },
       surfaces: {
         title: 'بينزل على أسطح أكتر',
-        body: 'Firefox سطح مكتب، وFirefox لأندرويد، وتطبيق iPhone مرافق. X-Pat على Chromium بس النهارده — Chrome وEdge وBrave وLemur على أندرويد. Firefox في الخطة، iOS مش في الخطة.',
+        body: 'Firefox سطح مكتب، وFirefox لأندرويد، وتطبيق iPhone مرافق. X-Pat على Chromium بس النهارده — Chrome وEdge وBrave وKiwi على أندرويد. Firefox في الخطة، iOS مش في الخطة.',
       },
       languageFilter: {
         title: 'عنده فلتر لغة',

@@ -2,19 +2,21 @@ Tingnan kung saang bansa nagpo-post ang anumang X (Twitter) account — watawat 
 
 I-hover ang isang profile at lalabas ang watawat. I-on ang mga watawat sa feed at may lalabas sa tabi ng bawat handle. Mag-swipe pakanan sa mobile upang ipakita ang lokasyon kapag kailangan.
 
+Sa madaling salita: isang X account location checker na tumatakbo mismo kung saan ka nagbabasa — walang site na bubuksan, walang handle na ipe-paste, awtomatikong sinusuri ang bawat profile sa screen.
+
 
 KUNG ANO ANG MAKUKUHA MO
 
 - Watawat ng bansa sa mga hover card, sa mga pahina ng profile, at inline sa timeline
 - Source platform at bansa ng app store — nagkukumpirma o sumasalungat sa nakasaad na lokasyon
 - Pulang badge ng VPN kapag hindi ma-verify ng X mismo ang lokasyon
+- Kopyahin ang anumang post bilang PNG na larawan na may nakalagay na mga bandila — isang right-click, handa nang i-paste kahit saan
 - I-filter ang mga post ayon sa bansa o rehiyon — i-collapse ang mga ito sa likod ng button na "Ipakita" o ganap na itago
 - I-highlight ang mga post ayon sa keyword, o ayon sa mga account na nagtatambak ng mga watawat sa kanilang bio
 - Markahan ang mga account na mas bata sa isang threshold (90 araw, 180 araw, 1 taon, 3 taon)
 - I-filter ang mga account ayon sa X organization affiliation (mga badge ng gobyerno, NGO, kumpanya)
 - Mga listahan ng exception bawat panuntunan — i-exempt ang mga partikular na account mula sa anumang filter nang hindi dini-disable ang panuntunan
 - Account facts card — status ng verification, edad ng account, bilang ng pagbabago ng handle, badge ng affiliation, indicator ng protected account
-- I-share ang isang post bilang PNG na imahe na may naka-embed na watawat ng lokasyon — right-click menu o button sa hover card
 - Mag-swipe pakanan upang ipakita, sa Android at mga touch-screen na device
 - Walang login, walang API key, walang rate-limit error sa gitna ng mahabang thread
 
@@ -46,6 +48,11 @@ Maaari ka ring mag-filter ayon sa edad ng account, X organization affiliation, a
 Ang pag-highlight ng keyword ay gumagamit ng CSS Highlights API — hindi nito kailanman ginagalaw ang DOM, kaya hindi ito napapansin ng React ng X. Sinusuportahan ang mga emoji keyword, at ang mga tumutugmang flag emoji sa mga bio ay nakakakuha ng nakikitang outline ring.
 
 
+KOPYAHIN ANG POST BILANG LARAWAN
+
+Mag-right-click sa anumang post — o gamitin ang button sa hover card — at mapupunta ito sa clipboard bilang PNG na may nakalagay na mga bandila. I-paste sa reply o chat: kasama ng screenshot ang konteksto ng lokasyon.
+
+
 PRIVACY
 
 Hindi kailanman binabasa: ang iyong cookies at session token, ang mga bio at post na ini-scroll mo, ang iyong browsing history. Hindi bilang setting. Hindi nito kailanman binabasa ang mga ito.
@@ -63,6 +70,8 @@ Kung ano ang ipinapadala: ang handle na na-lookup, ang bansa at VPN flag nito, a
 
 Ang cache server ay open source. Maaari kang magpatakbo ng sarili mo.
 
+Bawat pag-install ay ginagawang instant ang mga bandila para sa lahat — ang tanging bahagi na gumaganda habang dumarami ang gumagamit.
+
 
 MGA PERMISO
 
@@ -76,7 +85,7 @@ KUNG ANO ITO HINDI
 Hindi ito bot detector o engagement-farming classifier. Nagpapakita ito ng mga senyales na hindi mo makikita kung hindi mo bubuksan ang bawat profile isa-isa — bansa, source platform, status ng VPN, edad ng account, affiliation, verification, mga pagbabago ng handle. Kung ano ang iyong maging konklusyon mula sa mga ito ay sa iyo.
 
 
-Chrome, Edge, at Brave sa desktop. Lemur Browser sa Android. Firefox at Safari sa pamamagitan ng kani-kanilang mga store.
+Chrome, Edge, at Brave sa desktop. Kiwi Browser sa Android.
 
 15 wika ng UI na may mga pangalan ng bansa sa sariling wika ng mambabasa.
 
