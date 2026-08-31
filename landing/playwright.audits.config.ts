@@ -19,7 +19,7 @@ export default defineConfig({
   reporter: [['list']],
 
   projects: [
-    { name: 'a11y', testMatch: /a11y\.spec\.ts/ },
+    { name: 'a11y', testMatch: /(a11y|scroll)\.spec\.ts/ },
     // Held back so the audits get the box; `workers` stays at the default —
     // the spec's serial describe pins them to one anyway.
     {

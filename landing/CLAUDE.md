@@ -1,7 +1,9 @@
 # `landing` — the site, and its rendered-output gates
 
 `pnpm test:audits` is the whole gate: the token contract, then
-`tests/a11y.spec.ts`, then `tests/lighthouse.spec.ts`, driven by
+`tests/a11y.spec.ts` (plus `tests/scroll.spec.ts` in the same project —
+the homepage must load at the top; the rail's mount-time `scrollToItem`
+once shipped it ~600px down), then `tests/lighthouse.spec.ts`, driven by
 `landing/playwright.audits.config.ts`. Both specs need the same production
 build on the :5174 preview, so one config builds it once for both. Everything
 (including the ~100 MB `lighthouse` dependency) lives in `landing/`, and the

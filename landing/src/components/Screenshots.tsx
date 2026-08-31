@@ -120,7 +120,14 @@ export function Screenshots() {
   // The rail follows the big image: switching slides from the panel arrows or
   // keyboard must not leave the highlighted thumb scrolled out of sight.
   const railApi = useRef<publicApiType | null>(null)
+  const railMounted = useRef(false)
   useEffect(() => {
+    // Skip the mount run: scrollToItem is native scrollIntoView, which also
+    // scrolls the *page* to reveal the rail — the site loaded ~600px down.
+    if (!railMounted.current) {
+      railMounted.current = true
+      return
+    }
     const api = railApi.current
     if (!api) return
     api.scrollToItem(
