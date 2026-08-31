@@ -480,6 +480,25 @@ test('vpn warning', async ({ context }) => {
 
   const card = await hoverOwnTweet(page, 'zgldz')
   await blurIdentities(page)
+  // After the settle, or the second syncBioRow pass re-adds what this removes:
+  // scrubbed recordings lose bio media, so the card carries a broken-image
+  // glyph and a bio reduced to one orphan word — replay debris, not the card.
+  await page.waitForTimeout(500)
+  await card.evaluate((root) => {
+    for (const img of root.querySelectorAll('img')) {
+      if (!img.complete || img.naturalWidth === 0) img.remove()
+    }
+    for (const el of root.querySelectorAll<HTMLElement>(
+      '[data-testid="UserDescription"], .x-loc-bio',
+    )) {
+      if ((el.textContent?.trim().length ?? 0) < 8) el.remove()
+    }
+    // Whatever else the scrub left as a floating stub line.
+    for (const el of root.querySelectorAll<HTMLElement>('div, span')) {
+      if (el.childElementCount === 0 && el.textContent?.trim() === 'вид')
+        el.remove()
+    }
+  })
   // The flag, not the VPN badge: the badge already says "⚠ VPN" in words, and
   // its tooltip is a sentence that would cover half the card.
   await showHoverHint(card)
