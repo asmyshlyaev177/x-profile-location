@@ -31,7 +31,7 @@ sizes, `moveAside`, `guardSwap`, healthz polling. Policy stays in the scripts.
 The units live in git and run from `/etc/systemd/system`, so a pull that changes
 an `ExecStart=` changes nothing until they are copied and systemd is reloaded —
 which is how a `.sh` → `.ts` rename became `status=203/EXEC` on a timer that
-only fires at 23:30. `update.ts` copies **only units this box already has**, by
+only fires at 10:00 UTC. `update.ts` copies **only units this box already has**, by
 name, and reports the rest: `x-loc-heartbeat` and `x-loc-alert@` are opt-in and
 need `/etc/x-loc-alert.env`.
 
@@ -46,6 +46,16 @@ Two other things it holds:
   the units and restarts again. Only then does it exit 1, and it says which of
   the two versions is serving. Rolling back the source without the units would
   leave the box on a mismatched pair.
+
+## The auto vacuum runs last, and the order is the safety argument
+
+`backup.ts` compacts the live file (plain `VACUUM`, no stop) only when its own
+measurement crosses `XLOC_AUTO_VACUUM_PCT` (default 20, 0 = off) — and only
+after the verified archive is stored, the source has passed `integrity_check`,
+and pruning is done. A failure there is logged and swallowed: the backup has
+already succeeded, and the next nightly run retries. `.vacuum-status` records
+the **post**-vacuum live size, so the heartbeat does not keep recommending a
+vacuum that already ran.
 
 ## The two "is this copy short" baselines differ
 

@@ -2,7 +2,7 @@
 // scripts. See "Four things that look incidental" in CLAUDE.md.
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, statSync, statfsSync } from 'node:fs'
 
 export const SERVICE = 'x-loc-cache'
 export const OWNER = 'xloc'
@@ -109,6 +109,22 @@ export function humanSize(size: number): string {
   }
   const rounded = value < 10 && unit > 0 ? value.toFixed(1) : Math.round(value)
   return `${rounded}${units[unit]}`
+}
+
+/** For log lines: `1234` -> `1.2s`. */
+export function secs(ms: number): string {
+  return `${(ms / 1000).toFixed(1)}s`
+}
+
+/** Free bytes on the filesystem holding `directory`; null when unreadable, so
+ *  the caller refuses to guess. */
+export function freeBytes(directory: string): number | null {
+  try {
+    const fs = statfsSync(directory)
+    return Number(fs.bavail) * Number(fs.bsize)
+  } catch {
+    return null
+  }
 }
 
 /** Rounded, not truncated — alert.ts rounds the same two numbers for its email. */
