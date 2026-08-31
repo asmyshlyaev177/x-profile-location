@@ -617,7 +617,7 @@ sudo systemctl restart x-loc-cache && curl localhost:8787/healthz
 ```
 
 Skipping the unit copy is how a changed `ExecStart=` becomes tomorrow morning's
-`status=203/EXEC` on a timer that only fires at 23:30. Skipping `npm install`
+`status=203/EXEC` on a timer that only fires at 10:00 UTC. Skipping `npm install`
 after a Node **major** upgrade is the ABI break in step 4 — the module fails to
 load at startup, not at pull time.
 
@@ -632,7 +632,7 @@ sudo cp deploy/x-loc-backup.service deploy/x-loc-backup.timer /etc/systemd/syste
 sudo systemctl daemon-reload
 sudo systemctl enable --now x-loc-backup.timer
 
-# Take the first one now rather than finding out at 23:30 whether it works.
+# Take the first one now rather than finding out at 10:00 UTC whether it works.
 sudo systemctl start x-loc-backup.service
 systemctl status x-loc-backup.service --no-pager   # → Result: success
 ls -lh /var/lib/x-loc-cache/backups/               # → one .db.gz
@@ -768,10 +768,26 @@ Set up [Alerting](#alerting) and neither of those has to be noticed by hand.
 
 ### Compacting the database
 
-There is no scheduled `VACUUM`, and adding one would be a mistake. What there
-is instead: the nightly backup measures what a `VACUUM` would reclaim, and
-[`deploy/vacuum.ts`](deploy/vacuum.ts) reclaims it on the rare occasion the
-number says to.
+There is no _calendar_ `VACUUM`, and adding one would be a mistake. What there
+is instead: the nightly backup measures what a `VACUUM` would reclaim, and acts
+on the measurement two ways.
+
+**Automatically, inside the backup run.** When the measurement says
+`XLOC_AUTO_VACUUM_PCT` or more of the file is reclaimable (default 20, `0`
+disables), the run compacts the live database itself, right after the verified
+archive is on disk — so the worst a bad rebuild could do is what that night's
+backup restores. It is a plain `VACUUM` over a second connection: no service
+stop, writers wait behind the sub-second rebuild instead of being refused. A
+failure (locked database, disk too full) is logged and left for the next
+nightly run; the backup itself is unaffected either way.
+
+```text
+auto vacuum: 34% >= 20%, compacted the live database 7892992 -> 5214208 bytes in 0.6s
+```
+
+**By hand, for the stop-swap-verify version** —
+[`deploy/vacuum.ts`](deploy/vacuum.ts), which keeps the old file beside the
+new one and proves the service healthy before calling it done:
 
 ```bash
 sudo /opt/x-loc-cache/server/deploy/vacuum.ts        # prompts first
@@ -1056,6 +1072,8 @@ sudo journalctl -u x-loc-cache | grep 'stats ' | sed 's/.*stats //' | jq .
   "rateLimited": 0,
   "tooLarge": 0,
   "errors": 0,
+  "minMs": 1,
+  "medianMs": 2,
   "avgMs": 2.6,
   "maxMs": 41,
   "users24h": 37,
@@ -1078,6 +1096,7 @@ sudo journalctl -u x-loc-cache | grep 'stats ' | sed 's/.*stats //' | jq .
 | `statsReads`                          | `GET /v1/stats` — popups asking how much the cache holds. Its own line so `other` still means scanners                                                      |
 | `profiles` / `votes` / `dbMb`         | current totals, not window deltas                                                                                                                           |
 | `rateLimited` / `tooLarge` / `errors` | rejections; these never reached a handler, so they're excluded from the request counts above                                                                |
+| `minMs` / `medianMs` / `avgMs` / `maxMs` | fastest, median, mean and slowest handled request in the window; all `null` when idle. Median comes from a ms-resolution histogram, so it costs no sample buffer |
 
 Counters are per-window and reset when logged. `/healthz` is deliberately not
 counted — at one probe every 30 s it would be most of the traffic.
@@ -1180,7 +1199,7 @@ drift in how they take a backup. No stop, no flags: `XLOC_DB` and
 
 ```bash
 docker compose exec x-loc-cache /app/deploy/backup.ts
-# backup ok: /data/backups/x-loc-cache-20260806-182459.db.gz (4.0K, 3 profiles / 3 votes), 1 kept
+# backup ok: /data/backups/x-loc-cache-20260806-182459.db.gz (4.0K, 3 profiles / 3 votes), 1 kept — snapshot 0.3s, total 0.4s
 docker compose exec x-loc-cache ls -lh /data/backups
 ```
 

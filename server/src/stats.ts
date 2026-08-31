@@ -28,8 +28,11 @@ export interface StatsSnapshot {
   rateLimited: number
   tooLarge: number
   errors: number
+  /** Fastest, median, mean and slowest handled request; all null when idle. */
+  minMs: number | null
+  medianMs: number | null
   avgMs: number | null
-  maxMs: number
+  maxMs: number | null
 }
 
 /** A cap on junk clientIds: past any real deployment, so the count degrades to
@@ -54,6 +57,46 @@ function countArray(body: Record<string, unknown> | null, key: string): number {
   return Array.isArray(arr) ? arr.length : 0
 }
 
+interface LatencySummary {
+  minMs: number | null
+  medianMs: number | null
+  avgMs: number | null
+  maxMs: number | null
+}
+
+/** Median off a ms-resolution histogram: bounded by the slowest response ever
+ *  seen in the window, not by request volume, so no sample cap is needed. */
+function summarizeLatency(hist: Map<number, number>): LatencySummary {
+  let count = 0
+  let total = 0
+  for (const [ms, n] of hist) {
+    count += n
+    total += ms * n
+  }
+  if (count === 0) {
+    return { minMs: null, medianMs: null, avgMs: null, maxMs: null }
+  }
+  const keys = [...hist.keys()].sort((a, b) => a - b)
+  const at = (rank: number): number => {
+    let seen = 0
+    for (const ms of keys) {
+      seen += hist.get(ms)!
+      if (rank < seen) return ms
+    }
+    return keys[keys.length - 1]!
+  }
+  const medianMs =
+    count % 2 === 1
+      ? at((count - 1) / 2)
+      : (at(count / 2 - 1) + at(count / 2)) / 2
+  return {
+    minMs: keys[0]!,
+    medianMs,
+    avgMs: Math.round((total / count) * 100) / 100,
+    maxMs: keys[keys.length - 1]!,
+  }
+}
+
 export class Stats {
   #since = Date.now()
   #lookups = 0
@@ -68,9 +111,7 @@ export class Stats {
   #rateLimited = 0
   #tooLarge = 0
   #errors = 0
-  #totalMs = 0
-  #maxMs = 0
-  #timed = 0
+  #latencyHist = new Map<number, number>()
 
   /** Bodies are re-parsed here rather than threaded out of the handlers, so
    *  index.ts stays free of instrumentation for the Worker build. */
@@ -80,9 +121,8 @@ export class Stats {
     responseBody: string,
     ms: number,
   ): void {
-    this.#totalMs += ms
-    this.#timed += 1
-    if (ms > this.#maxMs) this.#maxMs = ms
+    const bucket = Math.max(0, Math.round(ms))
+    this.#latencyHist.set(bucket, (this.#latencyHist.get(bucket) ?? 0) + 1)
 
     if (pathname === '/v1/loc/batch') {
       this.#lookups += 1
@@ -140,11 +180,7 @@ export class Stats {
       rateLimited: this.#rateLimited,
       tooLarge: this.#tooLarge,
       errors: this.#errors,
-      avgMs:
-        this.#timed === 0
-          ? null
-          : Math.round((this.#totalMs / this.#timed) * 100) / 100,
-      maxMs: this.#maxMs,
+      ...summarizeLatency(this.#latencyHist),
     }
   }
 
@@ -164,9 +200,7 @@ export class Stats {
     this.#rateLimited = 0
     this.#tooLarge = 0
     this.#errors = 0
-    this.#totalMs = 0
-    this.#maxMs = 0
-    this.#timed = 0
+    this.#latencyHist.clear()
     return snap
   }
 }

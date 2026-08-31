@@ -45,7 +45,10 @@ describe('Stats', () => {
   it('computes a hit rate, and reports null rather than 0 when idle', () => {
     const idle = new Stats()
     expect(idle.snapshot().hitRate).toBeNull()
+    expect(idle.snapshot().minMs).toBeNull()
+    expect(idle.snapshot().medianMs).toBeNull()
     expect(idle.snapshot().avgMs).toBeNull()
+    expect(idle.snapshot().maxMs).toBeNull()
 
     const s = new Stats()
     s.noteRequest(
@@ -57,13 +60,45 @@ describe('Stats', () => {
     expect(s.snapshot().hitRate).toBe(0.25)
   })
 
-  it('tracks average and max latency', () => {
+  it('tracks fastest, median, average and slowest latency', () => {
     const s = new Stats()
-    s.noteRequest('/v1/loc/batch', lookupReq('a'), lookupResp(1), 10)
-    s.noteRequest('/v1/loc/batch', lookupReq('a'), lookupResp(1), 40)
+    // A skewed shape on purpose: one outlier must move max and avg, not median.
+    for (const ms of [10, 40, 2, 4, 400]) {
+      s.noteRequest('/v1/loc/batch', lookupReq('a'), lookupResp(1), ms)
+    }
     const snap = s.snapshot()
-    expect(snap.avgMs).toBe(25)
-    expect(snap.maxMs).toBe(40)
+    expect(snap.minMs).toBe(2)
+    expect(snap.medianMs).toBe(10)
+    expect(snap.avgMs).toBe(91.2)
+    expect(snap.maxMs).toBe(400)
+  })
+
+  it('takes the median between the two middle samples of an even window', () => {
+    const s = new Stats()
+    for (const ms of [1, 3, 8, 100]) {
+      s.noteRequest('/v1/loc/batch', lookupReq('a'), lookupResp(1), ms)
+    }
+    expect(s.snapshot().medianMs).toBe(5.5)
+  })
+
+  it('weights the median by how often each duration occurred', () => {
+    const s = new Stats()
+    // 1ms x5 and 500ms x2: the histogram must answer 1, not midpoint(1, 500).
+    for (const ms of [1, 1, 1, 1, 1, 500, 500]) {
+      s.noteRequest('/v1/loc/batch', lookupReq('a'), lookupResp(1), ms)
+    }
+    expect(s.snapshot().medianMs).toBe(1)
+    expect(s.snapshot().maxMs).toBe(500)
+  })
+
+  it('drains latency with the rest of the window', () => {
+    const s = new Stats()
+    s.noteRequest('/v1/loc/batch', lookupReq('a'), lookupResp(1), 40)
+    expect(s.drain().maxMs).toBe(40)
+    const fresh = s.snapshot()
+    expect(fresh.minMs).toBeNull()
+    expect(fresh.medianMs).toBeNull()
+    expect(fresh.maxMs).toBeNull()
   })
 
   it('counts rejections separately from handled requests', () => {
@@ -156,7 +191,7 @@ describe('Stats', () => {
       lookups: 0,
       lookupNames: 0,
       lookupHits: 0,
-      maxMs: 0,
+      maxMs: null,
       hitRate: null,
     })
     // The new window starts at the drain, not at construction.

@@ -2,7 +2,7 @@
 // Compact the cache database: `sudo .../deploy/vacuum.ts [-y]`, by hand and
 // never on a timer. See CLAUDE.md and "Compacting the database" in README.md.
 
-import { existsSync, statfsSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import {
@@ -10,6 +10,7 @@ import {
   SERVICE,
   bytes,
   die,
+  freeBytes,
   guardSwap,
   healthy,
   humanSize,
@@ -20,6 +21,7 @@ import {
   mv,
   reclaimPct,
   run,
+  secs,
   servicePort,
   sqlite,
   stamp,
@@ -33,17 +35,6 @@ export function parseArgs(argv: string[]): { assumeYes: boolean } | null {
   if (flag === undefined) return { assumeYes: false }
   if (flag === '-y' || flag === '--yes') return { assumeYes: true }
   return null
-}
-
-/** The rebuild sits beside the original, so this is the one script that can
- *  fill the disk the server writes to. */
-function freeBytes(directory: string): number | null {
-  try {
-    const fs = statfsSync(directory)
-    return Number(fs.bavail) * Number(fs.bsize)
-  } catch {
-    return null
-  }
 }
 
 /** Everything that must hold before the service is stopped, so a refusal costs
@@ -112,6 +103,7 @@ async function main(): Promise<void> {
   const TMP = join(dirname(DB), `vacuum-${STAMP}.db`)
   const guard = guardSwap(DB, `.replaced-${STAMP}`, TMP)
 
+  const stoppedAt = Date.now()
   run('systemctl', ['stop', SERVICE])
   guard.stopped = true
 
@@ -121,12 +113,14 @@ async function main(): Promise<void> {
   const sourceProfiles = Number(source.out)
 
   // The whole of the downtime: 0.6 s on a 236 MB database, scaling with it.
+  const rebuildStartedAt = Date.now()
   const rebuild = sqlite(
     ['-cmd', '.timeout 5000', DB, `VACUUM INTO '${TMP}'`],
     OWNER,
   )
   if (!rebuild.ok)
     die(`VACUUM INTO failed — keeping the original: ${rebuild.out}`)
+  const rebuildMs = Date.now() - rebuildStartedAt
 
   // The checks backup.ts runs on a snapshot, plus the count taken above.
   const found = inspect(TMP, OWNER)
@@ -149,6 +143,7 @@ async function main(): Promise<void> {
 
   run('systemctl', ['start', SERVICE])
   guard.stopped = false
+  const downtimeMs = Date.now() - stoppedAt
 
   if (!(await healthy(PORT))) {
     die(
@@ -161,7 +156,7 @@ async function main(): Promise<void> {
 
   const after = bytes(DB)
   console.log(
-    `compacted ${DB}: ${before} -> ${after} bytes (${reclaimPct(before, after)}% reclaimed), ${found.profiles} profiles / ${found.votes} votes`,
+    `compacted ${DB}: ${before} -> ${after} bytes (${reclaimPct(before, after)}% reclaimed), ${found.profiles} profiles / ${found.votes} votes — rebuild ${secs(rebuildMs)}, service down ${secs(downtimeMs)}`,
   )
   console.log(
     `the original is kept as ${DB}.replaced-${STAMP} — delete it once this has proven out`,

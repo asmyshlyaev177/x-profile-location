@@ -13,18 +13,20 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { createGzip } from 'node:zlib'
 import { VOTE_RETENTION_MS } from '../src/index.ts'
 import {
   bytes,
   die,
+  freeBytes,
   humanSize,
   inspect,
   liveBytes,
   loadEnvFile,
   reclaimPct,
+  secs,
   sqlite,
   stamp,
   uid,
@@ -42,6 +44,19 @@ const LEFTOVER_PARTS = new Set([
 export function parseKeep(raw: string): number | null {
   if (!/^[1-9][0-9]*$/.test(raw)) return null
   return Number(raw)
+}
+
+/** At or above this share reclaimable, the run compacts the live file too.
+ *  0 disables; a value that is not a percentage disables with a warning, since
+ *  a typo must never trigger a rebuild the operator meant to switch off. */
+export function autoVacuumPct(raw: string | undefined): number {
+  if (raw === undefined || raw.trim() === '') return 20
+  const n = Number(raw)
+  if (Number.isFinite(n) && n >= 0 && n <= 100) return n
+  console.error(
+    `XLOC_AUTO_VACUUM_PCT must be 0-100, got '${raw}' — auto vacuum disabled for this run`,
+  )
+  return 0
 }
 
 /** A root run leaves the backups directory root-owned, failing every xloc run after it. */
@@ -164,6 +179,7 @@ async function main(): Promise<void> {
 
   relaunchUnderLock(join(BACKUP_DIR, '.backup.lock'))
 
+  const startedAt = Date.now()
   const STAMP = stamp()
   const SNAP = join(BACKUP_DIR, `x-loc-cache-${STAMP}.db`)
   // Unstamped and deliberately not archive-shaped: neither the prune, the
@@ -196,6 +212,7 @@ async function main(): Promise<void> {
 
   // VACUUM INTO, *not* .backup, which never converges under load — see
   // CLAUDE.md for the measurements.
+  const snapshotStartedAt = Date.now()
   const snapshot = sqlite([
     '-cmd',
     '.timeout 5000',
@@ -203,6 +220,7 @@ async function main(): Promise<void> {
     `VACUUM INTO '${SNAP}'`,
   ])
   if (!snapshot.ok) die(`VACUUM INTO failed: ${snapshot.out}`)
+  const snapshotMs = Date.now() - snapshotStartedAt
 
   const found = inspect(SNAP)
   if (!snapshotIsGood(found, Number(baseline.out))) {
@@ -241,20 +259,61 @@ async function main(): Promise<void> {
   }
   const kept = readdirSync(BACKUP_DIR).filter((n) => ARCHIVE_RE.test(n)).length
 
-  // Only on a run that got all the way through, and as plain text: the
-  // heartbeat has to keep working when SQLite is what broke.
-  writeFileSync(
-    `${STATUS}.part`,
-    `stamp=${STAMP}\nlive_bytes=${live}\nvacuumed_bytes=${rebuilt}\n`,
-  )
-  renameSync(`${STATUS}.part`, STATUS)
-
   console.log(
-    `backup ok: ${SNAP}.gz (${humanSize(bytes(`${SNAP}.gz`))}, ${found.profiles} profiles / ${found.votes} votes), ${kept} kept`,
+    `backup ok: ${SNAP}.gz (${humanSize(bytes(`${SNAP}.gz`))}, ${found.profiles} profiles / ${found.votes} votes), ${kept} kept — snapshot ${secs(snapshotMs)}, total ${secs(Date.now() - startedAt)}`,
   )
   console.log(
     `vacuum check: ${reclaimPct(live, rebuilt)}% of the database is reclaimable (${live} live, ${rebuilt} rebuilt)`,
   )
+
+  // Compact the live file while the verified archive is already on disk, so
+  // the worst a bad rebuild can do is what tonight's backup restores. A plain
+  // VACUUM off a second connection needs no service stop; writers wait behind
+  // the sub-second rebuild (measured in README's VACUUM INTO table) instead of
+  // being refused. A failure is logged and retried by the next nightly run.
+  const liveNow = await autoVacuum(DB, live, rebuilt)
+
+  // Only on a run that got all the way through, and as plain text: the
+  // heartbeat has to keep working when SQLite is what broke.
+  writeFileSync(
+    `${STATUS}.part`,
+    `stamp=${STAMP}\nlive_bytes=${liveNow}\nvacuumed_bytes=${rebuilt}\n`,
+  )
+  renameSync(`${STATUS}.part`, STATUS)
+}
+
+/** Returns the live size the status file should record: post-VACUUM when one
+ *  ran, tonight's measurement otherwise. */
+async function autoVacuum(
+  db: string,
+  live: number,
+  rebuilt: number,
+): Promise<number> {
+  const threshold = autoVacuumPct(process.env.XLOC_AUTO_VACUUM_PCT)
+  const pct = reclaimPct(live, rebuilt)
+  if (threshold === 0 || pct < threshold) return live
+
+  const free = freeBytes(dirname(db))
+  if (free === null || free < rebuilt) {
+    console.error(
+      `auto vacuum skipped: needs ${humanSize(rebuilt)} free beside the database, ${free === null ? 'unknown' : humanSize(free)} available`,
+    )
+    return live
+  }
+
+  const vacuumStartedAt = Date.now()
+  const compacted = sqlite(['-cmd', '.timeout 15000', db, 'VACUUM;'])
+  if (!compacted.ok) {
+    console.error(
+      `auto vacuum failed (the backup itself is fine): ${compacted.out}`,
+    )
+    return live
+  }
+  const liveNow = liveBytes(db)
+  console.log(
+    `auto vacuum: ${pct}% >= ${threshold}%, compacted the live database ${live} -> ${liveNow} bytes in ${secs(Date.now() - vacuumStartedAt)}`,
+  )
+  return liveNow
 }
 
 // The tests import the helpers above; only a direct run backs anything up.

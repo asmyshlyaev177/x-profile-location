@@ -32,7 +32,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { rootRefusal } from './backup.ts'
+import { autoVacuumPct, rootRefusal } from './backup.ts'
 
 const DEPLOY = import.meta.dirname
 const SERVER = join(DEPLOY, '..')
@@ -136,6 +136,21 @@ describe('backup.ts — the run it refuses', () => {
 
   it('runs for anyone else', () => {
     expect(rootRefusal(1000, '/whatever')).toBeNull()
+  })
+})
+
+describe('backup.ts — the auto vacuum threshold', () => {
+  it('defaults to 20% and accepts an override, 0 meaning off', () => {
+    expect(autoVacuumPct(undefined)).toBe(20)
+    expect(autoVacuumPct('')).toBe(20)
+    expect(autoVacuumPct('35')).toBe(35)
+    expect(autoVacuumPct('0')).toBe(0)
+  })
+
+  it('disables on a value that is not a percentage — a typo must never vacuum', () => {
+    for (const raw of ['lots', '-5', '150', '20%']) {
+      expect(autoVacuumPct(raw)).toBe(0)
+    }
   })
 })
 
@@ -285,6 +300,8 @@ describe.skipIf(MISSING.length > 0)(
       expect(r.stderr).toBe('')
       expect(r.status).toBe(0)
       expect(r.stdout).toContain('backup ok')
+      // journalctl -u x-loc-backup answers "how long does it take" directly.
+      expect(r.stdout).toMatch(/— snapshot \d+\.\ds, total \d+\.\ds/)
 
       const [only] = archives()
       expect(only).toMatch(/^x-loc-cache-\d{8}-\d{6}\.db\.gz$/)
@@ -368,7 +385,11 @@ describe.skipIf(MISSING.length > 0)(
     it('sees the free space a mass delete leaves behind', () => {
       seed(dbPath, 600)
       emptyVotes()
-      expect(run(BACKUP, []).status).toBe(0)
+      // Measurement only: the auto vacuum below the assertions is off, so the
+      // status file records the bloated live size rather than the fixed one.
+      const r = run(BACKUP, [], { XLOC_AUTO_VACUUM_PCT: '0' })
+      expect(r.status).toBe(0)
+      expect(r.stdout).not.toContain('auto vacuum:')
 
       const status = vacuumStatus()
       const live = Number(status.live_bytes)
@@ -379,6 +400,41 @@ describe.skipIf(MISSING.length > 0)(
       // gives them back. Well past the 25% the heartbeat asks about.
       expect(pct).toBeGreaterThan(25)
       expect(Number(status.vacuumed_bytes)).toBeLessThan(live)
+    })
+
+    it('compacts the live database when the measurement crosses the threshold', () => {
+      seed(dbPath, 600)
+      emptyVotes()
+      const before = liveBytes()
+      const r = run(BACKUP, []) // default threshold: 20%
+      expect(r.status).toBe(0)
+      expect(r.stdout).toMatch(
+        /auto vacuum: \d+% >= 20%, compacted the live database \d+ -> \d+ bytes in \d+\.\ds/,
+      )
+      const after = liveBytes()
+      expect(after).toBeLessThan(before)
+
+      // The status file records the post-vacuum size, so the heartbeat does
+      // not spend a week asking for a vacuum that already ran.
+      expect(Number(vacuumStatus().live_bytes)).toBe(after)
+
+      const db = new Database(dbPath, { readonly: true })
+      expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
+      expect(db.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+        n: 600,
+      })
+      db.close()
+    })
+
+    it('a garbled threshold disables the vacuum instead of triggering it', () => {
+      seed(dbPath, 600)
+      emptyVotes()
+      const before = liveBytes()
+      const r = run(BACKUP, [], { XLOC_AUTO_VACUUM_PCT: 'lots' })
+      expect(r.status).toBe(0)
+      expect(r.stderr).toContain('XLOC_AUTO_VACUUM_PCT must be 0-100')
+      expect(r.stdout).not.toContain('auto vacuum:')
+      expect(liveBytes()).toBe(before)
     })
 
     it('never lets the status file pass for an archive', () => {
