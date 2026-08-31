@@ -136,6 +136,9 @@ export const CONTENT_CSS = `
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
   background: rgba(24, 24, 24, 0.93);
   color: #fff;
   padding: 8px 18px;
@@ -147,6 +150,20 @@ export const CONTENT_CSS = `
   user-select: none;
   white-space: nowrap;
   border: 1px solid rgba(220, 38, 38, 0.55);
+}
+/* The share nudge riding on the countdown: the moment the shared cache's value
+   is felt is the one moment the ask explains itself. */
+#${RATE_TOAST_ID} .x-loc-share-btn {
+  font: inherit;
+  color: rgb(125, 190, 250);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#${RATE_TOAST_ID} .x-loc-share-btn:hover {
+  text-decoration: underline;
 }
 #${LOCATION_TOAST_ID} {
   position: fixed;

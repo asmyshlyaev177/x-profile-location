@@ -50,6 +50,10 @@ export const tr: Dict = {
     next: 'Sonraki',
     railLabel: 'Ekranlar',
     shots: {
+      copy: {
+        label: 'Resim olarak kopyala',
+        alt: 'Bayrağın yanında Gönderi ve Hakkında kopyalama düğmeleri olan bir vurgu kartı ve yanında resim olarak kopyalanmış Bu hesap hakkında sayfası',
+      },
       hover: {
         label: "Hover'da bayrak",
         alt: 'Kullanıcı adının altına Alman bayrağı ve Almanya yazısı eklenmiş bir X kartı',
@@ -334,7 +338,7 @@ export const tr: Dict = {
       },
       surfaces: {
         title: 'Daha çok yerde var',
-        body: "Masaüstü Firefox, Android Firefox'u ve bir iPhone eşlik uygulaması. X-Pat bugün sadece Chromium tarafında — Chrome, Edge, Brave ve Android'de Kiwi. Firefox planda, iOS planda değil.",
+        body: "Masaüstü Firefox, Android Firefox'u ve bir iPhone eşlik uygulaması. X-Pat bugün sadece Chromium tarafında — Chrome, Edge, Brave ve Android'de Quetta. Firefox planda, iOS planda değil.",
       },
       languageFilter: {
         title: 'Dil filtresi var',

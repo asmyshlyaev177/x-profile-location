@@ -54,7 +54,10 @@ const readme = readFileSync(readmePath, 'utf8')
   .replace(/tests-\d+_passing/g, `tests-${extension}_passing`)
   .replace(/\d+ unit tests passing/g, `${extension} unit tests passing`)
   .replace(/runs \d+ unit tests/g, `runs ${extension} unit tests`)
-  .replace(/plus \d+ for the cache server/g, `plus ${server} for the cache server`)
+  .replace(
+    /plus \d+ for the cache server/g,
+    `plus ${server} for the cache server`,
+  )
 writeFileSync(readmePath, readme)
 
 console.log(`extension ${extension} tests, cache server ${server} tests`)

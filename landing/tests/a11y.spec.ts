@@ -74,13 +74,17 @@ for (const path of PAGES) {
  *  nothing to say. */
 test('the screenshot lightbox clears both', async ({ page }) => {
   await page.goto(PREVIEW_URL)
-  await page
-    .getByRole('button', { name: en.screenshots.fullSize })
-    .first()
-    .click()
 
   const dialog = page.locator('dialog.lightbox[open]')
-  await expect(dialog).toBeVisible()
+  // Retry the click itself: the page prerenders, so a click at `load` can land
+  // before hydration attaches the handler and simply be lost.
+  await expect(async () => {
+    await page
+      .getByRole('button', { name: en.screenshots.fullSize })
+      .first()
+      .click()
+    await expect(dialog).toBeVisible({ timeout: 1_000 })
+  }).toPass({ timeout: 15_000 })
 
   await auditBoth(page, { root: 'dialog.lightbox[open]', minNodes: 1 })
 })

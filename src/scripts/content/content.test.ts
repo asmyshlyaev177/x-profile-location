@@ -84,6 +84,7 @@ vi.mock('../snapshot', async (importOriginal) => ({
 // is *what it passes in* — which post text, for which account.
 vi.mock('../share-card', () => ({
   renderShareCard: vi.fn().mockResolvedValue(new Blob()),
+  renderAboutCard: vi.fn().mockResolvedValue(new Blob()),
   deliverShareCard: vi.fn().mockResolvedValue('clipboard'),
 }))
 
@@ -104,7 +105,14 @@ vi.mock('../prefetch/prefetch-poller', () => ({
   },
 }))
 
-import { bioProbe, isCommittedSwipe, __testResetState } from './content'
+import {
+  aboutCopyRequested,
+  bioProbe,
+  findAboutSection,
+  isCommittedSwipe,
+  maybeCopyAboutPage,
+  __testResetState,
+} from './content'
 import { fetchLocationData, setApiHeaders } from './lookup'
 import { accountChips } from './account-chips'
 import { keywordRangesIn } from './highlight'
@@ -112,7 +120,7 @@ import { locationSummaryText } from './overlays'
 import { getCached, mergeCached, clearAllCache } from '../cache/cache'
 import type { FilterRule } from '../settings'
 import { dayKey, __resetUsageMemo } from '../usage'
-import { renderShareCard } from '../share-card'
+import { renderAboutCard, renderShareCard } from '../share-card'
 import {
   contributeLocation,
   isSharedCacheConfigured,
@@ -926,6 +934,33 @@ describe('the rate-limit toast', () => {
     expect(toast()).toBeNull()
   })
 
+  it('carries a share button that opens the post composer', async () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    respondRateLimited(300)
+    await fetchLocationData('rl_share')
+
+    const share = toast()!.querySelector<HTMLButtonElement>('.x-loc-share-btn')
+    expect(share?.textContent).toBe('Share X-Pat')
+    share!.click()
+
+    const url = open.mock.calls[0]?.[0] as string
+    expect(url).toContain('https://x.com/intent/post?text=')
+    expect(decodeURIComponent(url)).toContain('https://x-pat.pages.dev')
+    // The click bubbles to the toast, so sharing also dismisses the countdown.
+    expect(toast()).toBeNull()
+  })
+
+  it('keeps the share button while the countdown ticks', async () => {
+    respondRateLimited(300)
+    await fetchLocationData('rl_ticking')
+
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(toast()!.querySelector('.x-loc-share-btn')).not.toBeNull()
+    expect(
+      toast()!.querySelector('.x-loc-rate-countdown')!.textContent,
+    ).toContain('resets in')
+  })
+
   it('stays closed for the rest of the window', async () => {
     respondRateLimited(300)
     await fetchLocationData('rl_dismissed')
@@ -962,13 +997,19 @@ describe('the rate-limit toast', () => {
 
   it('closes on Enter and Space too', async () => {
     // It went from inert pill to control, and a control a click can reach the
-    // keyboard must reach as well.
+    // keyboard must reach as well. The role sits on the countdown span, not
+    // the container — a button nested inside a role="button" is the
+    // nested-interactive trap.
     respondRateLimited(300)
     await fetchLocationData('rl_keyboard')
-    expect(toast()!.getAttribute('role')).toBe('button')
-    expect(toast()!.tabIndex).toBe(0)
+    const countdown = toast()!.querySelector<HTMLElement>(
+      '.x-loc-rate-countdown',
+    )!
+    expect(countdown.getAttribute('role')).toBe('button')
+    expect(countdown.tabIndex).toBe(0)
+    expect(toast()!.getAttribute('role')).toBeNull()
 
-    toast()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+    countdown.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
     expect(toast()).toBeNull()
   })
 
@@ -5118,7 +5159,7 @@ describe('what a snapshot leaves out', () => {
     document.body.appendChild(card)
     await flushAsync()
     await flushAsync()
-    ;(card.querySelector('.x-loc-share-btn') as HTMLButtonElement).click()
+    ;(card.querySelector('.x-loc-post-btn') as HTMLButtonElement).click()
     await flushAsync()
 
     return decorateOf(article)
@@ -5281,9 +5322,9 @@ describe('the hover-card share button', () => {
     vi.mocked(getCached).mockResolvedValue(JAPAN)
     const card = await hover('someone')
 
-    const btn = card.querySelector('.x-loc-share-btn') as HTMLButtonElement
+    const btn = card.querySelector('.x-loc-post-btn') as HTMLButtonElement
     expect(btn).not.toBeNull()
-    expect(btn.textContent).toContain('Copy')
+    expect(btn.textContent).toContain('Post')
     // In the flags row, not on a line of its own — a hover card is short on
     // vertical space and the button is an action on exactly that row.
     expect(btn.closest('.x-loc-info')).not.toBeNull()
@@ -5318,7 +5359,7 @@ describe('the hover-card share button', () => {
     link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
 
     const card = await hover('someone')
-    ;(card.querySelector('.x-loc-share-btn') as HTMLButtonElement).click()
+    ;(card.querySelector('.x-loc-post-btn') as HTMLButtonElement).click()
     await flushAsync()
     await flushAsync()
 
@@ -5335,7 +5376,7 @@ describe('the hover-card share button', () => {
   it('falls back to an account-only card when no post is in reach', async () => {
     vi.mocked(getCached).mockResolvedValue(JAPAN)
     const card = await hover('nowhere')
-    ;(card.querySelector('.x-loc-share-btn') as HTMLButtonElement).click()
+    ;(card.querySelector('.x-loc-post-btn') as HTMLButtonElement).click()
     await flushAsync()
     await flushAsync()
 
@@ -5359,7 +5400,9 @@ describe('the hover-card share button', () => {
     pushSettings({ showShareButton: false })
 
     const card = await hover('someone')
-    expect(card.querySelector('.x-loc-share-btn')).toBeNull()
+    expect(card.querySelector('.x-loc-post-btn')).toBeNull()
+    // The other button answers to its own setting, not this one.
+    expect(card.querySelector('.x-loc-about-btn')).not.toBeNull()
   })
 
   it('is not added twice when the card is reprocessed', async () => {
@@ -5370,7 +5413,115 @@ describe('the hover-card share button', () => {
     await flushAsync()
     await flushAsync()
 
-    expect(card.querySelectorAll('.x-loc-share-btn')).toHaveLength(1)
+    expect(card.querySelectorAll('.x-loc-post-btn')).toHaveLength(1)
+    expect(card.querySelectorAll('.x-loc-about-btn')).toHaveLength(1)
+  })
+
+  it('offers an About button that opens the real About page marked for copy', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+
+    const card = await hover('someone')
+    const btn = card.querySelector('.x-loc-about-btn') as HTMLButtonElement
+    expect(btn).not.toBeNull()
+    expect(btn.closest('.x-loc-info')).not.toBeNull()
+    btn.click()
+
+    // The copy happens in that tab, off the native DOM — nothing is drawn here.
+    expect(open).toHaveBeenCalledWith(
+      'https://x.com/someone/about#xpat-copy-about',
+      '_blank',
+      'noopener',
+    )
+    expect(snapshot.snapshotElement).not.toHaveBeenCalled()
+    expect(vi.mocked(renderAboutCard)).not.toHaveBeenCalled()
+    open.mockRestore()
+  })
+
+  it('the About button can be switched off on its own', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    pushSettings({ showAboutCopyButton: false })
+
+    const card = await hover('someone')
+    expect(card.querySelector('.x-loc-about-btn')).toBeNull()
+    expect(card.querySelector('.x-loc-post-btn')).not.toBeNull()
+  })
+})
+
+describe('copying the About page in its own tab', () => {
+  const LOC = { pathname: '/someone/about', hash: '#xpat-copy-about' }
+
+  function buildAboutDom() {
+    const section = document.createElement('div')
+    section.innerHTML =
+      '<div data-testid="UserAvatar-Container-someone"></div>' +
+      '<div data-testid="pivot">Date joined</div>' +
+      '<div data-testid="pivot">Account based in</div>'
+    const shell = document.createElement('main')
+    shell.appendChild(section)
+    document.body.appendChild(shell)
+    return section
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('recognises only the marked about URL', () => {
+    expect(aboutCopyRequested(LOC)).toBe('someone')
+    expect(aboutCopyRequested({ ...LOC, hash: '' })).toBeNull()
+    expect(
+      aboutCopyRequested({ pathname: '/someone', hash: '#xpat-copy-about' }),
+    ).toBeNull()
+  })
+
+  it('finds the section holding the avatar and every fact row', () => {
+    const section = buildAboutDom()
+    expect(findAboutSection()).toBe(section)
+  })
+
+  it('snapshots the native section and asks the worker to close the tab', async () => {
+    const section = buildAboutDom()
+    // The stub rejects by default to exercise fallbacks; this is the one test
+    // where the native render itself must succeed.
+    snapshot.snapshotElement.mockResolvedValueOnce(new Blob())
+
+    const run = maybeCopyAboutPage(LOC)
+    await vi.advanceTimersByTimeAsync(2000)
+    await run
+
+    expect(snapshot.snapshotElement).toHaveBeenCalled()
+    expect(snapshot.snapshotElement.mock.calls.at(-1)?.[0]).toBe(section)
+    expect(vi.mocked(renderAboutCard)).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(chromeGlobal.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'CLOSE_TAB',
+    })
+  })
+
+  it('falls back to the drawn card when the native page will not render', async () => {
+    vi.mocked(getCached).mockResolvedValue(JAPAN)
+    buildAboutDom()
+    snapshot.snapshotElement.mockRejectedValueOnce(new Error('no render'))
+
+    const run = maybeCopyAboutPage(LOC)
+    await vi.advanceTimersByTimeAsync(2000)
+    await run
+
+    const input = vi.mocked(renderAboutCard).mock.calls.at(-1)?.[0]
+    expect(input?.userName).toBe('someone')
+    expect(input?.data).toBeDefined()
+  })
+
+  it('does nothing on an unmarked page', async () => {
+    buildAboutDom()
+    await maybeCopyAboutPage({ pathname: '/someone/about', hash: '' })
+    expect(snapshot.snapshotElement).not.toHaveBeenCalled()
   })
 })
 
@@ -5556,6 +5707,46 @@ describe('the rating ask on the page', () => {
 
     await vi.advanceTimersByTimeAsync(10 * 60_000)
     expect(bar()).not.toBeNull()
+  })
+
+  it('swaps to a share ask once the rating is accepted', async () => {
+    // The one audience already proven friendly, asked for the one thing that
+    // moves installs — without a second interruption of its own.
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    seedUsage(5)
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(7000)
+
+    ;(
+      [...bar()!.querySelectorAll('button')].find(
+        (b) => b.textContent === 'Rate it ★',
+      ) as HTMLButtonElement
+    ).click()
+    await flushAsync()
+
+    expect(open.mock.calls[0]?.[0]).toContain('chromewebstore.google.com')
+    const written = vi
+      .mocked(chromeGlobal.storage.local.set)
+      .mock.calls.map((c: unknown[]) => c[0] as Record<string, unknown>)
+      .findLast((patch: Record<string, unknown>) => RATE_PROMPT_KEY in patch)
+    expect(written![RATE_PROMPT_KEY]).toMatchObject({ status: 'done' })
+
+    // The bar stays, repurposed: share and dismiss, no rating buttons left.
+    expect(bar()).not.toBeNull()
+    const labels = [...bar()!.querySelectorAll('button')].map(
+      (b) => b.textContent,
+    )
+    expect(labels).toEqual(['Share X-Pat', 'No thanks'])
+
+    ;(
+      [...bar()!.querySelectorAll('button')].find(
+        (b) => b.textContent === 'Share X-Pat',
+      ) as HTMLButtonElement
+    ).click()
+    const shareUrl = open.mock.calls[1]?.[0] as string
+    expect(shareUrl).toContain('https://x.com/intent/post?text=')
+    expect(decodeURIComponent(shareUrl)).toContain('https://x-pat.pages.dev')
+    expect(bar()).toBeNull()
   })
 
   it('asks at most once per page', async () => {

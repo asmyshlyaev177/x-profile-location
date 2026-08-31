@@ -97,6 +97,7 @@ await generate(
 /** The hand-taken screenshots shown in the gallery, by filename in public/. */
 const SHOTS = [
   'Hover_screenshot-x-profile-location.png',
+  'Copy_screenshot-x-profile-location.png',
   'VPN_screenshot-x-profile-location.png',
   'Flags_screenshot-x-profile-location.png',
   'Hidden_screenshot-x-profile-location.png',

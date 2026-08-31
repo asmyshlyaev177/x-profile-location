@@ -1,4 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'preact/hooks'
+import {
+  ScrollMenu,
+  VisibilityContext,
+  type publicApiType,
+} from 'react-horizontal-scrolling-menu'
+import 'react-horizontal-scrolling-menu/styles.css'
 import { useT } from '../i18n/context'
 import type { Dict } from '../i18n/dict/en'
 
@@ -9,6 +21,7 @@ import type { Dict } from '../i18n/dict/en'
  */
 const SHOT_IDS = [
   'blocked',
+  'copy',
   'hover',
   'vpn',
   'feed',
@@ -21,6 +34,7 @@ const SHOT_COUNT = SHOT_IDS.length
 
 const SRC: Record<(typeof SHOT_IDS)[number], string> = {
   hover: '/Hover_screenshot-x-profile-location.png',
+  copy: '/Copy_screenshot-x-profile-location.png',
   vpn: '/VPN_screenshot-x-profile-location.png',
   feed: '/Flags_screenshot-x-profile-location.png',
   blocked: '/Hidden_screenshot-x-profile-location.png',
@@ -49,6 +63,9 @@ function Thumb({ src, class: cls }: { src: string; class?: string }) {
         alt=""
         width="160"
         height="64"
+        // Not draggable: one native image-drag would swallow the rail's
+        // drag-to-scroll mid-gesture.
+        draggable={false}
         class={`bg-surface h-16 w-full object-cover object-top ${cls ?? ''}`}
         loading="lazy"
         decoding="async"
@@ -98,6 +115,21 @@ export function Screenshots() {
     return () => document.removeEventListener('keydown', onKey)
   }, [open, prev, next])
 
+  const { dragProps, dragManager, dragging } = useDragToScroll()
+
+  // The rail follows the big image: switching slides from the panel arrows or
+  // keyboard must not leave the highlighted thumb scrolled out of sight.
+  const railApi = useRef<publicApiType | null>(null)
+  useEffect(() => {
+    const api = railApi.current
+    if (!api) return
+    api.scrollToItem(
+      api.getItemElementById(SHOT_IDS[active]!),
+      'smooth',
+      'nearest',
+    )
+  }, [active])
+
   const shot = shots[active]!
 
   return (
@@ -116,7 +148,7 @@ export function Screenshots() {
 
           <div
             id={`shot-panel-${active}`}
-            role="tabpanel"
+            role="region"
             aria-labelledby={`shot-tab-${active}`}
             class="bg-surface border-line relative grid h-[var(--shot-h)] place-items-center overflow-hidden rounded-2xl border p-4 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] sm:p-8"
             style="--shot-h:clamp(19rem,44vw,27rem)"
@@ -162,50 +194,68 @@ export function Screenshots() {
             <Arrow dir="next" onClick={next} t={t} />
           </div>
 
-          {/* One rail at every width: seven fit exactly on desktop, and the
-              min-width turns it into a snap-scroller on phones. */}
-          <div
-            role="tablist"
-            aria-label={t.screenshots.railLabel}
-            class="scrollbar-none mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1"
-          >
-            {shots.map((s, i) => {
-              const on = i === active
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  id={`shot-tab-${i}`}
-                  role="tab"
-                  aria-selected={on}
-                  aria-controls={`shot-panel-${i}`}
-                  tabIndex={on ? 0 : -1}
-                  onClick={() => setActive(i)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowRight') next()
-                    if (e.key === 'ArrowLeft') prev()
-                  }}
-                  class={`group relative min-w-28 shrink-0 basis-[calc((100%-3rem)/7)] snap-start overflow-hidden rounded-lg border transition-[border-color] duration-200 ease-out ${
-                    on
-                      ? 'border-accent/70'
-                      : 'border-line hover:border-line-strong'
-                  }`}
-                >
-                  {/* Dimming belongs on the image, not the button: container
-                      opacity drags the caption down with it, which is what put
-                      the inactive labels at 3.6:1. */}
-                  <Thumb
-                    src={s.src}
-                    class={`transition-opacity duration-200 ease-out ${on ? 'opacity-100' : 'opacity-50 group-hover:opacity-80'}`}
-                  />
-                  <span
-                    class={`block px-1.5 py-1.5 text-center text-[0.625rem] leading-tight font-semibold ${on ? 'bg-accent text-bg' : 'bg-surface-2 text-body'}`}
+          {/* The rail scrolls: eight thumbs outgrew the shell, and a cut-off
+              eighth looked like the gallery ended at seven. ScrollMenu owns the
+              overflow — its arrows appear only on the side that actually has
+              more, so the edge states explain themselves.
+
+              Plain pressed-state buttons, not a tablist: ScrollMenu's wrappers
+              (scroll container, items, arrows) sit between a tablist and its
+              tabs, which axe rejects as children a tablist may not own. The
+              labelled scroll region + aria-pressed say the same thing without
+              claiming a structure the DOM doesn't have. */}
+          <div class="mt-3">
+            <ScrollMenu
+              apiRef={railApi}
+              LeftArrow={RailLeft}
+              RightArrow={RailRight}
+              scrollContainerLabel={t.screenshots.railLabel}
+              scrollContainerClassName={`scrollbar-none cursor-grab gap-2 pb-1 ${
+                dragging ? 'cursor-grabbing select-none' : ''
+              }`}
+              itemClassName="flex"
+              {...dragProps}
+            >
+              {shots.map((s, i) => {
+                const on = i === active
+                return (
+                  <button
+                    key={s.id}
+                    itemId={s.id}
+                    type="button"
+                    id={`shot-tab-${i}`}
+                    aria-pressed={on}
+                    onClick={() => {
+                      // Releasing a drag over a thumb is the drag ending, not
+                      // a pick.
+                      if (!dragManager.dragging) setActive(i)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowRight') next()
+                      if (e.key === 'ArrowLeft') prev()
+                    }}
+                    class={`group relative w-32 overflow-hidden rounded-lg border transition-[border-color] duration-200 ease-out ${
+                      on
+                        ? 'border-accent/70'
+                        : 'border-line hover:border-line-strong'
+                    }`}
                   >
-                    {s.label}
-                  </span>
-                </button>
-              )
-            })}
+                    {/* Dimming belongs on the image, not the button: container
+                        opacity drags the caption down with it, which is what put
+                        the inactive labels at 3.6:1. */}
+                    <Thumb
+                      src={s.src}
+                      class={`transition-opacity duration-200 ease-out ${on ? 'opacity-100' : 'opacity-50 group-hover:opacity-80'}`}
+                    />
+                    <span
+                      class={`block px-1.5 py-1.5 text-center text-[0.625rem] leading-tight font-semibold ${on ? 'bg-accent text-bg' : 'bg-surface-2 text-body'}`}
+                    >
+                      {s.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </ScrollMenu>
           </div>
         </div>
       </div>
@@ -251,6 +301,120 @@ export function Screenshots() {
     </section>
   )
 }
+
+/**
+ * Drag-to-scroll for mouse users, ported from the library's example app.
+ * A 5px threshold separates a drag from a click, and dragStop defers one
+ * frame so click handlers can still read `dragging` and skip selection.
+ * Touch needs none of this — the container is a real scroll container.
+ */
+class DragManager {
+  clicked = false
+  dragging = false
+  position = 0
+  resetId = 0
+
+  dragStart = (ev: { clientX: number }) => {
+    // A pending reset from the previous drag would kill this one.
+    window.cancelAnimationFrame(this.resetId)
+    this.position = ev.clientX
+    this.clicked = true
+  }
+
+  dragStop = () => {
+    // Stop applying immediately; only `dragging` waits a frame, so click
+    // handlers can still read it.
+    this.clicked = false
+    this.resetId = window.requestAnimationFrame(() => {
+      this.dragging = false
+    })
+  }
+
+  dragMove = (ev: { clientX: number }, cb: (delta: number) => void) => {
+    const newDiff = this.position - ev.clientX
+
+    if (this.clicked && Math.abs(newDiff) > 5) {
+      this.dragging = true
+      this.position = ev.clientX
+      cb(newDiff)
+    }
+  }
+}
+
+function useDragToScroll() {
+  const [dragManager] = useState(() => new DragManager())
+  const [dragging, setDragging] = useState(false)
+
+  const dragProps = {
+    onMouseDown: () => (ev: { clientX: number }) => {
+      dragManager.dragStart(ev)
+      setDragging(true)
+    },
+    onMouseUp: () => () => {
+      dragManager.dragStop()
+      setDragging(false)
+    },
+    onMouseLeave: () => () => {
+      dragManager.dragStop()
+      setDragging(false)
+    },
+    onMouseMove:
+      ({ scrollContainer }: publicApiType) =>
+      (ev: { clientX: number }) =>
+        dragManager.dragMove(ev, (delta) => {
+          if (scrollContainer.current) {
+            scrollContainer.current.scrollLeft += delta
+          }
+        }),
+  }
+
+  return { dragProps, dragManager, dragging }
+}
+
+/** Rail chevrons: both always drawn; the exhausted side is disabled, so the
+ *  rail's edges read as edges rather than as a control that comes and goes. */
+function RailChevron({ dir }: { dir: 'prev' | 'next' }) {
+  const api = useContext<publicApiType>(VisibilityContext)
+  const isPrev = dir === 'prev'
+  // Misnamed upstream: use*ArrowVisible() returns whether the EDGE item is
+  // visible — the arrow's disabled state, not its visibility.
+  const edgeItemVisible = isPrev
+    ? api.useLeftArrowVisible()
+    : api.useRightArrowVisible()
+
+  return (
+    <button
+      type="button"
+      // The rail is its own tab stop and the thumbs are focusable; a stop per
+      // side would make keyboard users walk chevrons they don't need.
+      tabIndex={-1}
+      aria-hidden="true"
+      disabled={edgeItemVisible}
+      onClick={() => (isPrev ? api.scrollPrev() : api.scrollNext())}
+      class={`text-muted hover:text-ink bg-bg/70 border-line hover:border-line-strong disabled:hover:text-muted disabled:hover:border-line self-center rounded-full border p-1.5 backdrop-blur-sm transition-colors disabled:opacity-35 ${
+        isPrev ? 'me-2' : 'ms-2'
+      }`}
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.25"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="rtl:-scale-x-100"
+        aria-hidden="true"
+      >
+        <polyline points={isPrev ? '15 18 9 12 15 6' : '9 18 15 12 9 6'} />
+      </svg>
+    </button>
+  )
+}
+
+const RailLeft = () => <RailChevron dir="prev" />
+const RailRight = () => <RailChevron dir="next" />
 
 function Arrow({
   dir,

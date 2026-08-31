@@ -95,6 +95,18 @@
   "rateAskNo": {
     "message": "不用了"
   },
+  "sharePostText": {
+    "message": "显示每个X账号从哪个国家发帖——还能隐藏你不想看的国家。X-Pat"
+  },
+  "shareCta": {
+    "message": "分享X-Pat"
+  },
+  "shareAfterRate": {
+    "message": "谢谢！发帖告诉其他人帮助更大。"
+  },
+  "shareRateLimitTitle": {
+    "message": "用户越多，共享缓存越满 — 大家遇到的频率限制就越少"
+  },
   "optionsTitle": {
     "message": "X-Pat 设置"
   },
@@ -153,10 +165,16 @@
     "message": "账号年龄、隶属徽章、认证状态、用户名变更记录和粉丝数——数据来自 X 已发送的内容，无需额外查询。"
   },
   "setCopyButton": {
-    "message": "悬停卡片上的\"复制\"按钮"
+    "message": "悬停卡片上的“帖子”复制按钮"
   },
   "setCopyButtonDesc": {
-    "message": "旗标行中的小型\"复制\"按钮。将您悬停的帖子连同旗标一起复制为图片——在浏览器中渲染，不上传任何数据。右键点击帖子也可实现相同效果。"
+    "message": "旗帜行中的小“帖子”按钮。将你悬停的帖子连同旗帜一起复制为图片 — 在你的浏览器中渲染，不上传任何内容。右键点击帖子效果相同。"
+  },
+  "setCopyAboutButton": {
+    "message": "悬停卡片上的“关于”复制按钮"
+  },
+  "setCopyAboutButtonDesc": {
+    "message": "旁边的小“关于”按钮。在标签页中短暂打开 x.com 真实的“关于此账号”页面，将其复制为图片，然后关闭标签页。不上传任何内容。"
   },
   "setExceptionButton": {
     "message": "悬停卡片上的例外按钮"
@@ -597,10 +615,31 @@
     "message": "来自 X API 的简介 — 此卡片未显示"
   },
   "shareBtn": {
-    "message": "🖼 复制"
+    "message": "🖼 帖子"
   },
   "shareBtnTitle": {
     "message": "将本帖及 X 对 @$1 的报告复制为图片"
+  },
+  "aboutBtn": {
+    "message": "👤 关于"
+  },
+  "aboutBtnTitle": {
+    "message": "将 @$1 的“关于此账号”页面复制为图片"
+  },
+  "aboutCardTitle": {
+    "message": "关于此账号"
+  },
+  "aboutRowBasedIn": {
+    "message": "账号所在地"
+  },
+  "aboutRowJoined": {
+    "message": "加入时间"
+  },
+  "aboutRowConnectedVia": {
+    "message": "连接方式"
+  },
+  "aboutRowUsernameChanges": {
+    "message": "用户名更改次数"
   },
   "toastRendering": {
     "message": "正在渲染 @$1 …"

@@ -95,6 +95,18 @@
   "rateAskNo": {
     "message": "結構です"
   },
+  "sharePostText": {
+    "message": "どのXアカウントがどの国から投稿しているかを表示 — 読みたくない国は非表示にもできます。X-Pat"
+  },
+  "shareCta": {
+    "message": "X-Patをシェア"
+  },
+  "shareAfterRate": {
+    "message": "ありがとうございます！投稿で広めていただくとさらに助かります。"
+  },
+  "shareRateLimitTitle": {
+    "message": "ユーザーが増えるほど共有キャッシュが充実 — みんなのレート制限が減ります"
+  },
   "optionsTitle": {
     "message": "X-Pat 設定"
   },
@@ -153,10 +165,16 @@
     "message": "アカウント年齢、所属バッジ、認証、ハンドル変更履歴、フォロワー数 — Xが既に送信しているデータから読み取るため、追加の検索は発生しません。"
   },
   "setCopyButton": {
-    "message": "ホバーカードに「コピー」ボタン"
+    "message": "ホバーカードの「ポスト」コピーボタン"
   },
   "setCopyButtonDesc": {
-    "message": "国旗行に小さな「コピー」ボタンを表示。ホバー元の投稿を国旗とともに画像としてコピーします — ブラウザ内で描画され、アップロードは一切ありません。投稿を右クリックしても同じ操作ができます。"
+    "message": "国旗の行にある小さな「ポスト」ボタン。ホバー元のポストを国旗ごと画像としてコピーします — ブラウザ内で描画され、何もアップロードされません。ポストを右クリックしても同じことができます。"
+  },
+  "setCopyAboutButton": {
+    "message": "ホバーカードの「概要」コピーボタン"
+  },
+  "setCopyAboutButtonDesc": {
+    "message": "その隣の小さな「概要」ボタン。x.comの本物の「このアカウントについて」ページを一瞬タブで開き、画像としてコピーしてタブを閉じます。何もアップロードされません。"
   },
   "setExceptionButton": {
     "message": "ホバーカードに例外ボタン"
@@ -597,10 +615,31 @@
     "message": "XのAPIからのプロフィール — このカードには表示されません"
   },
   "shareBtn": {
-    "message": "🖼 コピー"
+    "message": "🖼 ポスト"
   },
   "shareBtnTitle": {
     "message": "この投稿とXが@$1について報告する情報を画像としてコピー"
+  },
+  "aboutBtn": {
+    "message": "👤 概要"
+  },
+  "aboutBtnTitle": {
+    "message": "@$1の「このアカウントについて」ページを画像としてコピー"
+  },
+  "aboutCardTitle": {
+    "message": "このアカウントについて"
+  },
+  "aboutRowBasedIn": {
+    "message": "アカウントの拠点"
+  },
+  "aboutRowJoined": {
+    "message": "登録日"
+  },
+  "aboutRowConnectedVia": {
+    "message": "接続元"
+  },
+  "aboutRowUsernameChanges": {
+    "message": "ユーザー名の変更回数"
   },
   "toastRendering": {
     "message": "@$1を描画中…"

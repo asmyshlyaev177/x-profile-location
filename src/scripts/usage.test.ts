@@ -12,6 +12,8 @@ import {
   RATE_PROMPT_SNOOZE_MS,
   ratingAskDue,
   setRatePromptState,
+  SHARE_LANDING_URL,
+  shareIntentUrl,
   shouldAskForRating,
 } from './usage'
 
@@ -209,5 +211,14 @@ describe('an ask that was ignored', () => {
     await noteRatingAskShown()
 
     expect(stored.current[RATE_PROMPT_KEY]).toMatchObject({ status: 'done' })
+  })
+})
+
+describe('shareIntentUrl', () => {
+  it('prefills the composer with the text and the landing URL', () => {
+    const url = shareIntentUrl('Flags on every profile')
+    expect(url.startsWith('https://x.com/intent/post?text=')).toBe(true)
+    const text = decodeURIComponent(url.split('text=')[1]!)
+    expect(text).toBe(`Flags on every profile\n\n${SHARE_LANDING_URL}`)
   })
 })

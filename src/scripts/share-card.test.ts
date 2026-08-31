@@ -1,5 +1,11 @@
 import type { LocationData } from './cache/cache'
-import { buildShareLayout, shareChips, wrapText } from './share-card'
+import {
+  aboutRows,
+  buildAboutLayout,
+  buildShareLayout,
+  shareChips,
+  wrapText,
+} from './share-card'
 
 // A predictable stand-in for canvas text measurement: every character is 10px
 // wide. Real font metrics vary by machine, which would make the layout
@@ -84,6 +90,58 @@ describe('shareChips', () => {
     expect(
       shareChips({ location: null, locationAccurate: true, source: 'web' }),
     ).toEqual(['Web'])
+  })
+})
+
+describe('the About card', () => {
+  const FACTS = {
+    createdAt: Date.UTC(2020, 5, 15),
+    handleChanges: 3,
+  }
+
+  it('carries the same rows as x.com/<user>/about, in order', () => {
+    const rows = aboutRows(DATA, FACTS)
+    expect(rows.map((r) => r.label)).toEqual([
+      'Account based in',
+      'Joined',
+      'Connected via',
+      'Username changes',
+    ])
+    expect(rows[0].value).toBe('🇯🇵 Japan')
+    expect(rows[1].value).toBe('June 2020')
+    expect(rows[2].value).toContain('App Store')
+    expect(rows[3].value).toBe('3')
+  })
+
+  it('skips a row for a field X did not send, and keeps a zero', () => {
+    const rows = aboutRows(
+      { location: null, locationAccurate: true, source: 'web' },
+      { handleChanges: 0 },
+    )
+    expect(rows.map((r) => r.label)).toEqual([
+      'Connected via',
+      'Username changes',
+    ])
+    expect(rows[1].value).toBe('0')
+  })
+
+  it('lays out the title, the account and the VPN caveat', () => {
+    const layout = buildAboutLayout(
+      {
+        userName: 'someone',
+        displayName: 'Someone',
+        data: { ...DATA, locationAccurate: false },
+        facts: FACTS,
+      },
+      { measure: measureFont },
+    )
+    const texts = layout.ops
+      .filter((op) => op.kind === 'text')
+      .map((op) => op.text)
+    expect(texts[0]).toBe('About this account')
+    expect(texts).toContain('Someone')
+    expect(texts).toContain('@someone')
+    expect(texts).toContain('⚠ VPN')
   })
 })
 

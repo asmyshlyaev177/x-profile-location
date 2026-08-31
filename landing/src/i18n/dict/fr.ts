@@ -50,6 +50,10 @@ export const fr: Dict = {
     next: 'Capture suivante',
     railLabel: 'Captures d’écran',
     shots: {
+      copy: {
+        label: 'Copier en image',
+        alt: 'Une carte au survol avec les boutons Post et À propos près du drapeau, et à côté la page « À propos de ce compte » copiée en image',
+      },
       hover: {
         label: 'Drapeau au survol',
         alt: 'Une carte de survol X avec un drapeau allemand et le mot Allemagne sous le pseudo',
@@ -339,7 +343,7 @@ export const fr: Dict = {
       },
       surfaces: {
         title: 'Elle est disponible sur plus de plateformes',
-        body: 'Firefox pour ordinateur, Firefox pour Android, et une application compagnon pour iPhone. X-Pat est aujourd’hui limité à Chromium — Chrome, Edge, Brave, et Kiwi sur Android. Firefox est prévu, iOS ne l’est pas.',
+        body: 'Firefox pour ordinateur, Firefox pour Android, et une application compagnon pour iPhone. X-Pat est aujourd’hui limité à Chromium — Chrome, Edge, Brave, et Quetta sur Android. Firefox est prévu, iOS ne l’est pas.',
       },
       languageFilter: {
         title: 'Elle propose un filtre par langue',

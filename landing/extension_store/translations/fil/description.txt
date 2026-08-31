@@ -85,7 +85,7 @@ KUNG ANO ITO HINDI
 Hindi ito bot detector o engagement-farming classifier. Nagpapakita ito ng mga senyales na hindi mo makikita kung hindi mo bubuksan ang bawat profile isa-isa — bansa, source platform, status ng VPN, edad ng account, affiliation, verification, mga pagbabago ng handle. Kung ano ang iyong maging konklusyon mula sa mga ito ay sa iyo.
 
 
-Chrome, Edge, at Brave sa desktop. Kiwi Browser sa Android.
+Chrome, Edge, at Brave sa desktop. Quetta Browser sa Android.
 
 15 wika ng UI na may mga pangalan ng bansa sa sariling wika ng mambabasa.
 

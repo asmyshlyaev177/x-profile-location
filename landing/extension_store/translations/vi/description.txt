@@ -85,7 +85,7 @@ NÓ KHÔNG PHẢI LÀ GÌ
 Không phải là trình phát hiện bot hoặc trình phân loại nuôi tương tác. Nó hiển thị các tín hiệu mà bạn không thể thấy nếu không mở từng hồ sơ một — quốc gia, nền tảng nguồn, trạng thái VPN, tuổi tài khoản, liên kết, xác minh, thay đổi tên người dùng. Những gì bạn kết luận từ chúng là của bạn.
 
 
-Chrome, Edge và Brave trên máy tính để bàn. Kiwi Browser trên Android.
+Chrome, Edge và Brave trên máy tính để bàn. Quetta Browser trên Android.
 
 15 ngôn ngữ giao diện với tên quốc gia bằng ngôn ngữ của người đọc.
 

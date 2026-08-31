@@ -13,7 +13,7 @@
  *    That is the point — `Dict` is derived from this object, so a missing
  *    translation is a type error rather than an English string appearing on a
  *    Japanese page.
- * 3. Brand names are not copy. "X-Pat", "X-Posed", "Chrome", "Kiwi Browser"
+ * 3. Brand names are not copy. "X-Pat", "X-Posed", "Chrome", "Quetta Browser"
  *    and the country names inside screenshot examples stay as they are in every
  *    locale.
  * 4. `pages.*.faq` is rendered visibly *and* emitted as FAQPage structured
@@ -87,6 +87,10 @@ export const en = {
     next: 'Next screenshot',
     railLabel: 'Screenshots',
     shots: {
+      copy: {
+        label: 'Copy as image',
+        alt: 'A hover card with Post and About copy buttons beside the flag, and the copied About-this-account page as an image next to it',
+      },
       hover: {
         label: 'Flag on hover',
         alt: 'An X hover card with a German flag and the word Germany added below the handle',
@@ -375,7 +379,7 @@ export const en = {
       },
       surfaces: {
         title: 'It ships on more surfaces',
-        body: 'Firefox desktop, Firefox for Android, and a companion iPhone app. X-Pat is Chromium-only today — Chrome, Edge, Brave, and Kiwi on Android. Firefox is planned, iOS is not.',
+        body: 'Firefox desktop, Firefox for Android, and a companion iPhone app. X-Pat is Chromium-only today — Chrome, Edge, Brave, and Quetta on Android. Firefox is planned, iOS is not.',
       },
       languageFilter: {
         title: 'It has a language filter',

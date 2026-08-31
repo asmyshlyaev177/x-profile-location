@@ -28,6 +28,8 @@ export const RATE_LIMIT_RESET_DEFAULT_MS = LOOKUP_WINDOW_MS / 3
 export const MSG = {
   CLEAR_CACHE: 'CLEAR_CACHE',
   SHARE_POST: 'SHARE_POST',
+  /** An x-pat-opened utility tab asking to be closed (about-page copy). */
+  CLOSE_TAB: 'CLOSE_TAB',
   GET_MESSAGES: 'GET_MESSAGES',
   /** Candidates this tab saw, already filtered against its own cache. */
   ENQUEUE: 'LOOKUP_ENQUEUE',
@@ -72,6 +74,7 @@ export const USAGE_STATS_KEY = 'usageStats'
 export const RATE_PROMPT_KEY = 'ratePrompt'
 export const SHOW_ACCOUNT_CARD_KEY = 'showAccountCard'
 export const SHOW_SHARE_BUTTON_KEY = 'showShareButton'
+export const SHOW_ABOUT_COPY_KEY = 'showAboutCopyButton'
 export const BLOCKED_AFFILIATIONS_KEY = 'blockedAffiliations'
 export const ACCOUNT_AGE_KEY = 'accountAgeFilter'
 export const RULE_EXCEPTIONS_KEY = 'ruleExceptions'

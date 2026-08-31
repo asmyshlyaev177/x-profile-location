@@ -95,6 +95,18 @@
   "rateAskNo": {
     "message": "Huwag na lang"
   },
+  "sharePostText": {
+    "message": "Ipinapakita kung saang bansa nagpo-post ang bawat X account — at itinatago ang mga bansang ayaw mong basahin. X-Pat"
+  },
+  "shareCta": {
+    "message": "Ibahagi ang X-Pat"
+  },
+  "shareAfterRate": {
+    "message": "Salamat! Mas nakakatulong ang post na nagsasabi sa iba."
+  },
+  "shareRateLimitTitle": {
+    "message": "Mas maraming gumagamit, mas puno ang shared cache — mas kaunting rate limit para sa lahat"
+  },
   "optionsTitle": {
     "message": "Settings ng X-Pat"
   },
@@ -153,10 +165,16 @@
     "message": "Edad ng account, affiliate badge, verification, pagbabago ng handle at bilang ng followers — binabasa mula sa data na ipinadala na ng X, kaya walang dagdag na lookup."
   },
   "setCopyButton": {
-    "message": "Button na \"Kopyahin\" sa hover cards"
+    "message": "Button na kopyahin ang “Post” sa mga hover card"
   },
   "setCopyButtonDesc": {
-    "message": "Isang maliit na button na \"Kopyahin\" sa row ng mga bandila. Kinokopya ang post na iyong hino-hover, kasama ang mga bandila, bilang imahe — nire-render sa browser mo, walang ina-upload. Ganun din ang ginagawa ng pag-right-click sa isang post."
+    "message": "Maliit na button na “Post” sa hilera ng mga bandila. Kinokopya ang post na pinag-hover-an mo, kasama ang mga bandila, bilang larawan — nire-render sa browser mo, walang ina-upload. Ganoon din ang right-click sa isang post."
+  },
+  "setCopyAboutButton": {
+    "message": "Button na kopyahin ang “Tungkol” sa mga hover card"
+  },
+  "setCopyAboutButtonDesc": {
+    "message": "Maliit na button na “Tungkol” sa tabi nito. Sandaling binubuksan ang totoong pahina ng x.com na Tungkol sa account sa isang tab, kinokopya ito bilang larawan, at isinasara ang tab. Walang ina-upload."
   },
   "setExceptionButton": {
     "message": "Exception button sa hover cards"
@@ -597,10 +615,31 @@
     "message": "Bio mula sa API ng X — hindi ito ipinapakita ng card na ito"
   },
   "shareBtn": {
-    "message": "🖼 Kopyahin"
+    "message": "🖼 Post"
   },
   "shareBtnTitle": {
     "message": "Kopyahin ang post na ito at ang iniuulat ng X para kay @$1 bilang imahe"
+  },
+  "aboutBtn": {
+    "message": "👤 Tungkol"
+  },
+  "aboutBtnTitle": {
+    "message": "Kopyahin ang pahinang Tungkol-sa-account ni @$1 bilang larawan"
+  },
+  "aboutCardTitle": {
+    "message": "Tungkol sa account na ito"
+  },
+  "aboutRowBasedIn": {
+    "message": "Naka-base ang account sa"
+  },
+  "aboutRowJoined": {
+    "message": "Sumali"
+  },
+  "aboutRowConnectedVia": {
+    "message": "Nakakonekta sa pamamagitan ng"
+  },
+  "aboutRowUsernameChanges": {
+    "message": "Mga pagbabago ng username"
   },
   "toastRendering": {
     "message": "Nire-render si @$1 …"

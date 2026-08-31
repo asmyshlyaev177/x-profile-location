@@ -53,6 +53,10 @@ export const ja: Dict = {
     next: '次のスクリーンショット',
     railLabel: 'スクリーンショット',
     shots: {
+      copy: {
+        label: '画像としてコピー',
+        alt: '国旗の横に「ポスト」と「概要」のコピーボタンが付いたホバーカードと、その隣にコピーされた「このアカウントについて」ページの画像',
+      },
       hover: {
         label: 'ホバーで国旗',
         alt: 'X のホバーカードに、ユーザー名の下へドイツ国旗と「Germany」が追加された状態',
@@ -333,7 +337,7 @@ export const ja: Dict = {
       },
       surfaces: {
         title: '対応環境が多い',
-        body: 'デスクトップ版 Firefox、Android 版 Firefox、iPhone のコンパニオンアプリ。X-Pat は現在 Chromium 系のみ——Chrome、Edge、Brave、Android の Kiwi——です。Firefox は予定あり、iOS はなしです。',
+        body: 'デスクトップ版 Firefox、Android 版 Firefox、iPhone のコンパニオンアプリ。X-Pat は現在 Chromium 系のみ——Chrome、Edge、Brave、Android の Quetta——です。Firefox は予定あり、iOS はなしです。',
       },
       languageFilter: {
         title: '言語フィルターがある',

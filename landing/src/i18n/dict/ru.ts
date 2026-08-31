@@ -50,6 +50,10 @@ export const ru: Dict = {
     next: 'Следующий',
     railLabel: 'Скриншоты',
     shots: {
+      copy: {
+        label: 'Копия картинкой',
+        alt: 'Карточка при наведении с кнопками «Пост» и «О аккаунте» рядом с флагом, а рядом — скопированная страница «Об этом аккаунте» в виде картинки',
+      },
       hover: {
         label: 'Флаг при наведении',
         alt: 'Всплывающая карточка X с флагом Германии и словом «Германия» под именем пользователя',
@@ -330,7 +334,7 @@ export const ru: Dict = {
       },
       surfaces: {
         title: 'Он на большем числе платформ',
-        body: 'Firefox на десктопе, Firefox для Android и сопутствующее приложение для iPhone. X-Pat сегодня — только Chromium: Chrome, Edge, Brave и Kiwi на Android. Firefox — в планах, iOS — нет.',
+        body: 'Firefox на десктопе, Firefox для Android и сопутствующее приложение для iPhone. X-Pat сегодня — только Chromium: Chrome, Edge, Brave и Quetta на Android. Firefox — в планах, iOS — нет.',
       },
       languageFilter: {
         title: 'У него есть фильтр по языку',

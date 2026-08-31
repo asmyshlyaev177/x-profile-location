@@ -368,6 +368,108 @@ test('hover card', async ({ context }) => {
   await shoot(card, 'Hover_screenshot-x-profile-location.png')
 })
 
+test('about copy', async ({ context }) => {
+  const page = await replaying(
+    context,
+    'location.test.ts',
+    'accurate location matches About page',
+  )
+  await mockSharedCache(page, null)
+
+  // Left half: the hover card, cursor on the About button.
+  const card = await hoverOwnTweet(page, 'svtv_news')
+  await blurIdentities(page)
+  // The real title is a sentence and the hint clamps to the card's width; a
+  // marketing frame wants the short claim, not the truncated contract.
+  await card.evaluate((root) => {
+    root
+      .querySelector('.x-loc-about-btn')
+      ?.setAttribute('title', 'Copy the About page as an image')
+  })
+  await showHoverHint(card, '.x-loc-about-btn[title]')
+  const cardShot = (await card.screenshot({ scale: 'device' })).toString(
+    'base64',
+  )
+  await page.evaluate(() => {
+    document.querySelector('[data-shot-hint]')?.remove()
+  })
+
+  // Right half: the page that button copies — the same HAR holds it, because
+  // the borrowed test navigates there to compare answers.
+  await page.goto('https://x.com/svtv_news/about')
+  await page
+    .locator('[data-testid="pivot"]')
+    .first()
+    .waitFor({ timeout: 25_000 })
+  await page.waitForTimeout(1_000)
+
+  // The About page names the account outside any testid the blur CSS knows, so
+  // mark its header (everything before the first fact row) by hand.
+  await page.evaluate(() => {
+    const pivots = [
+      ...document.querySelectorAll<HTMLElement>('[data-testid="pivot"]'),
+    ]
+    let node = pivots[0]?.parentElement ?? null
+    while (
+      node &&
+      !(
+        node.querySelector('[data-testid^="UserAvatar-Container-"]') &&
+        pivots.every((piv) => node!.contains(piv))
+      )
+    ) {
+      node = node.parentElement
+    }
+    if (!node) return
+    node.setAttribute('data-shot-about', '')
+    // Blur the header only. A row can BE a pivot rather than contain one, and
+    // querySelector never matches the element itself.
+    for (const child of node.children) {
+      const isRow =
+        child.matches('[data-testid="pivot"]') ||
+        child.querySelector('[data-testid="pivot"]') !== null
+      if (!isRow) child.setAttribute('data-shot-blur', '')
+    }
+  })
+  await blurIdentities(page)
+  const aboutShot = (
+    await page.locator('[data-shot-about]').screenshot({ scale: 'device' })
+  ).toString('base64')
+
+  // One frame: button on the card, arrow, the image it copies. Composed in the
+  // page so the shot is a screenshot of real rendering, not a sharp collage.
+  await page.evaluate(
+    ([cardB64, aboutB64]) => {
+      document.body.innerHTML = ''
+      document.body.style.cssText = 'margin:0;background:#fff'
+      const wrap = document.createElement('div')
+      wrap.id = 'shot-copy-compose'
+      wrap.style.cssText =
+        'display:flex;align-items:center;gap:28px;padding:32px;width:max-content;background:#fff'
+
+      const framed = (b64: string, width: number) => {
+        const img = document.createElement('img')
+        img.src = `data:image/png;base64,${b64}`
+        img.style.cssText = `display:block;width:${width}px;border-radius:14px;box-shadow:0 6px 28px rgba(0,0,0,0.18)`
+        return img
+      }
+
+      const arrow = document.createElement('div')
+      arrow.textContent = '➜'
+      arrow.style.cssText =
+        'font:700 40px system-ui,sans-serif;color:#1d9bf0;flex:none'
+
+      wrap.append(framed(cardB64, 300), arrow, framed(aboutB64, 430))
+      document.body.append(wrap)
+    },
+    [cardShot, aboutShot],
+  )
+  await page.waitForTimeout(300)
+  await shoot(
+    page.locator('#shot-copy-compose'),
+    'Copy_screenshot-x-profile-location.png',
+  )
+})
+
 test('vpn warning', async ({ context }) => {
   const page = await replaying(
     context,

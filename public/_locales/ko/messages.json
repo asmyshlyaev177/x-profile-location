@@ -95,6 +95,18 @@
   "rateAskNo": {
     "message": "괜찮습니다"
   },
+  "sharePostText": {
+    "message": "모든 X 계정이 어느 나라에서 게시하는지 표시 — 읽고 싶지 않은 나라는 숨길 수도 있습니다. X-Pat"
+  },
+  "shareCta": {
+    "message": "X-Pat 공유"
+  },
+  "shareAfterRate": {
+    "message": "감사합니다! 다른 사람에게 알리는 게시물은 더 큰 도움이 됩니다."
+  },
+  "shareRateLimitTitle": {
+    "message": "사용자가 늘수록 공유 캐시가 채워져 모두의 레이트 리밋이 줄어듭니다"
+  },
   "optionsTitle": {
     "message": "X-Pat 설정"
   },
@@ -153,10 +165,16 @@
     "message": "계정 생성일, 소속 배지, 인증, 핸들 변경 이력, 팔로워 수 — X가 이미 보낸 데이터에서 읽어오므로 추가 조회 비용이 들지 않습니다."
   },
   "setCopyButton": {
-    "message": "호버 카드에 “복사” 버튼 표시"
+    "message": "호버 카드의 '게시물' 복사 버튼"
   },
   "setCopyButtonDesc": {
-    "message": "플래그 행에 작은 “복사” 버튼을 표시합니다. 호버한 게시물을 플래그와 함께 이미지로 복사하며, 브라우저에서 렌더링되고 아무것도 업로드되지 않습니다. 게시물을 우클릭해도 동일한 작업을 수행합니다."
+    "message": "국기 행에 있는 작은 '게시물' 버튼. 호버한 게시물을 국기와 함께 이미지로 복사합니다 — 브라우저에서 렌더링되며 아무것도 업로드되지 않습니다. 게시물을 마우스 오른쪽 버튼으로 클릭해도 동일합니다."
+  },
+  "setCopyAboutButton": {
+    "message": "호버 카드의 '정보' 복사 버튼"
+  },
+  "setCopyAboutButtonDesc": {
+    "message": "그 옆의 작은 '정보' 버튼. x.com의 실제 '이 계정 정보' 페이지를 탭에서 잠시 열어 이미지로 복사한 뒤 탭을 닫습니다. 아무것도 업로드되지 않습니다."
   },
   "setExceptionButton": {
     "message": "호버 카드에 예외 버튼 표시"
@@ -597,10 +615,31 @@
     "message": "X API에서 가져온 소개 — 이 카드에는 표시되지 않습니다"
   },
   "shareBtn": {
-    "message": "🖼 복사"
+    "message": "🖼 게시물"
   },
   "shareBtnTitle": {
     "message": "이 게시물과 X가 @$1에 대해 보고하는 정보를 이미지로 복사"
+  },
+  "aboutBtn": {
+    "message": "👤 정보"
+  },
+  "aboutBtnTitle": {
+    "message": "@$1의 '이 계정 정보' 페이지를 이미지로 복사"
+  },
+  "aboutCardTitle": {
+    "message": "이 계정 정보"
+  },
+  "aboutRowBasedIn": {
+    "message": "계정 기반 국가"
+  },
+  "aboutRowJoined": {
+    "message": "가입일"
+  },
+  "aboutRowConnectedVia": {
+    "message": "연결 경로"
+  },
+  "aboutRowUsernameChanges": {
+    "message": "사용자 이름 변경 횟수"
   },
   "toastRendering": {
     "message": "@$1 렌더링 중 …"

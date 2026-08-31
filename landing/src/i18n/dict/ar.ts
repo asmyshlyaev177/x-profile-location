@@ -56,6 +56,10 @@ export const ar: Dict = {
     next: 'اللي بعدها',
     railLabel: 'لقطات',
     shots: {
+      copy: {
+        label: 'نسخ كصورة',
+        alt: 'بطاقة تمرير مع زرّي نسخ «المنشور» و«نبذة» بجانب العلم، وبجانبها صورة صفحة «حول هذا الحساب» المنسوخة',
+      },
       hover: {
         label: 'العَلَم مع الهوفر',
         alt: 'كارت هوفر في X عليه عَلَم ألمانيا وكلمة ألمانيا متضافين تحت اليوزرنيم',
@@ -335,7 +339,7 @@ export const ar: Dict = {
       },
       surfaces: {
         title: 'بينزل على أسطح أكتر',
-        body: 'Firefox سطح مكتب، وFirefox لأندرويد، وتطبيق iPhone مرافق. X-Pat على Chromium بس النهارده — Chrome وEdge وBrave وKiwi على أندرويد. Firefox في الخطة، iOS مش في الخطة.',
+        body: 'Firefox سطح مكتب، وFirefox لأندرويد، وتطبيق iPhone مرافق. X-Pat على Chromium بس النهارده — Chrome وEdge وBrave وQuetta على أندرويد. Firefox في الخطة، iOS مش في الخطة.',
       },
       languageFilter: {
         title: 'عنده فلتر لغة',

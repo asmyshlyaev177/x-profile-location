@@ -19,6 +19,7 @@ import {
   SHOW_ACCOUNT_CARD_KEY,
   SHOW_EXCEPTION_BUTTON_KEY,
   SHOW_LOCATION_IN_FEED_KEY,
+  SHOW_ABOUT_COPY_KEY,
   SHOW_SHARE_BUTTON_KEY,
   USAGE_STATS_KEY,
 } from '../constants'
@@ -59,7 +60,11 @@ import type { NextInstruction } from '../prefetch/lookup-broker'
 import type { AccountFacts } from '../profile'
 import { buildSourceGlyph, classifySource, platformLabel } from '../source'
 import { noteActiveDay } from '../usage'
-import { deliverShareCard, renderShareCard } from '../share-card'
+import {
+  deliverShareCard,
+  renderAboutCard,
+  renderShareCard,
+} from '../share-card'
 import { snapshotElement } from '../snapshot'
 import { drawWatermark, WATERMARK_BAND } from '../watermark'
 import {
@@ -177,8 +182,10 @@ let hideMode: HideBlockedMode = 'off'
 let showExceptionButton = defaultSetting(SHOW_EXCEPTION_BUTTON_KEY)
 // Whether hover cards get the account-facts card under the location row.
 let showAccountCard = defaultSetting(SHOW_ACCOUNT_CARD_KEY)
-// Whether hover cards get the "Copy card" button.
+// Whether hover cards get the "Post" copy button.
 let showShareButton = defaultSetting(SHOW_SHARE_BUTTON_KEY)
+// Whether hover cards get the "About" copy button.
+let showAboutCopyButton = defaultSetting(SHOW_ABOUT_COPY_KEY)
 // Whether background location prefetching runs.
 let prefetchEnabled = defaultSetting(BACKGROUND_PREFETCH_KEY)
 chrome.storage.local
@@ -197,6 +204,7 @@ chrome.storage.local
     SHOW_EXCEPTION_BUTTON_KEY,
     SHOW_ACCOUNT_CARD_KEY,
     SHOW_SHARE_BUTTON_KEY,
+    SHOW_ABOUT_COPY_KEY,
     SHARED_CACHE_KEY,
     MIN_CONFIDENCE_KEY,
     HIDE_BLOCKED_LOCATIONS_KEY,
@@ -222,6 +230,7 @@ chrome.storage.local
     showExceptionButton = readSetting(SHOW_EXCEPTION_BUTTON_KEY, r)
     showAccountCard = readSetting(SHOW_ACCOUNT_CARD_KEY, r)
     showShareButton = readSetting(SHOW_SHARE_BUTTON_KEY, r)
+    showAboutCopyButton = readSetting(SHOW_ABOUT_COPY_KEY, r)
     hideMode = readSetting(HIDE_BLOCKED_LOCATIONS_KEY, r)
     prefetchEnabled = readSetting(BACKGROUND_PREFETCH_KEY, r)
     // The share and pacing are the broker's, so every tab spends against one set
@@ -383,6 +392,9 @@ function applyDisplayChanges(changes: StorageChanges): void {
   onSettingChange(changes, SHOW_SHARE_BUTTON_KEY, (value) => {
     showShareButton = value
   })
+  onSettingChange(changes, SHOW_ABOUT_COPY_KEY, (value) => {
+    showAboutCopyButton = value
+  })
 }
 
 function applyLookupChanges(changes: StorageChanges): void {
@@ -439,6 +451,7 @@ export function __testResetState() {
   hideMode = 'off'
   showAccountCard = defaultSetting(SHOW_ACCOUNT_CARD_KEY)
   showShareButton = defaultSetting(SHOW_SHARE_BUTTON_KEY)
+  showAboutCopyButton = defaultSetting(SHOW_ABOUT_COPY_KEY)
   showExceptionButton = defaultSetting(SHOW_EXCEPTION_BUTTON_KEY)
   prefetchEnabled = defaultSetting(BACKGROUND_PREFETCH_KEY)
 
@@ -1543,15 +1556,19 @@ function syncAccountCard(
 }
 
 /** In the flags row, not under it: a hover card is short on vertical space. */
-function syncShareButton(
+function syncShareButtons(
   card: Element,
   infoRow: HTMLElement | null,
   userName: string,
   displayName: string,
 ): void {
-  if (!showShareButton || !infoRow) return
-  if (card.querySelector('.x-loc-share-btn')) return
-  infoRow.appendChild(buildShareButton(userName, displayName))
+  if (!infoRow) return
+  if (showShareButton && !card.querySelector('.x-loc-post-btn')) {
+    infoRow.appendChild(buildShareButton(userName, displayName))
+  }
+  if (showAboutCopyButton && !card.querySelector('.x-loc-about-btn')) {
+    infoRow.appendChild(buildAboutButton(userName))
+  }
 }
 
 async function processCard(card: Element) {
@@ -1608,7 +1625,7 @@ async function processCard(card: Element) {
   syncBioRow(wrap, card, info.bio)
 
   syncAccountCard(wrap, card, infoRow, info.facts)
-  syncShareButton(card, infoRow, userName, info.displayName ?? '')
+  syncShareButtons(card, infoRow, userName, info.displayName ?? '')
 
   // The lookup may have added rules the bio alone could not offer.
   syncExceptionButton({ host: wrap, userName, data, info, place })
@@ -1780,12 +1797,7 @@ async function shareCardFor(
     source: null,
   }
 
-  const deliver = async (blob: Blob) => {
-    const where = await deliverShareCard(blob, `x-pat-${userName}.png`)
-    renderLocationToast(
-      where === 'clipboard' ? t('toastCopied') : t('toastSaved'),
-    )
-  }
+  const deliver = (blob: Blob) => deliverWithToast(blob, userName)
 
   // A collapsed post would snapshot as its placeholder, styles and all, so it
   // goes to the drawn card instead.
@@ -1828,6 +1840,132 @@ async function shareCardFor(
   }
 }
 
+/** Clipboard or download, and the toast saying which. */
+async function deliverWithToast(blob: Blob, userName: string): Promise<void> {
+  const where = await deliverShareCard(blob, `x-pat-${userName}.png`)
+  renderLocationToast(
+    where === 'clipboard' ? t('toastCopied') : t('toastSaved'),
+  )
+}
+
+// The About copy: the real x.com/<user>/about, not a redrawing of it. The
+// button opens the page in a tab marked by ABOUT_COPY_HASH; the content script
+// that loads there snapshots the rendered page and asks the worker to close
+// the tab. The drawn card (renderAboutCard) survives only as the fallback for
+// a page that failed to render.
+
+const ABOUT_COPY_HASH = '#xpat-copy-about'
+
+export function aboutCopyRequested(
+  loc: Pick<Location, 'pathname' | 'hash'>,
+): string | null {
+  if (loc.hash !== ABOUT_COPY_HASH) return null
+  const match = /^\/([A-Za-z0-9_]+)\/about\/?$/.exec(loc.pathname)
+  return match ? match[1] : null
+}
+
+/** The block the About page renders: the smallest ancestor holding the avatar
+ *  and every fact row. Nav chrome and the sticky header stay outside it. */
+export function findAboutSection(): Element | null {
+  const pivots = Array.from(document.querySelectorAll('[data-testid="pivot"]'))
+  if (pivots.length === 0) return null
+  let node: Element | null = pivots[0].parentElement
+  while (node) {
+    if (
+      node.querySelector('[data-testid^="UserAvatar-Container-"]') &&
+      pivots.every((p) => node!.contains(p))
+    ) {
+      return node
+    }
+    node = node.parentElement
+  }
+  return null
+}
+
+const ABOUT_RENDER_TIMEOUT_MS = 15_000
+/** React fills the rows in passes; the first paint is not the settled page. */
+const ABOUT_SETTLE_MS = 600
+const ABOUT_CLOSE_DELAY_MS = 1200
+
+function waitForAboutSection(): Promise<Element | null> {
+  const found = findAboutSection()
+  if (found) return Promise.resolve(found)
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      observer.disconnect()
+      resolve(null)
+    }, ABOUT_RENDER_TIMEOUT_MS)
+    const observer = new MutationObserver(() => {
+      const el = findAboutSection()
+      if (el) {
+        clearTimeout(timer)
+        observer.disconnect()
+        resolve(el)
+      }
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+  })
+}
+
+/** Runs in the tab the About button opened; a no-op everywhere else. */
+export async function maybeCopyAboutPage(
+  loc: Pick<Location, 'pathname' | 'hash'> = location,
+): Promise<void> {
+  const userName = aboutCopyRequested(loc)
+  if (!userName || !isEnabled()) return
+
+  renderLocationToast(t('toastRendering', userName), true)
+  const section = await waitForAboutSection()
+  if (section) {
+    await new Promise((resolve) => setTimeout(resolve, ABOUT_SETTLE_MS))
+  }
+
+  try {
+    if (!section) throw new Error('about page did not render')
+    const background = getComputedStyle(document.body).backgroundColor || '#fff'
+    await deliverWithToast(
+      await snapshotElement(section, {
+        background,
+        finish: {
+          height: WATERMARK_BAND,
+          draw: (ctx, size) => drawWatermark(ctx, { ...size, background }),
+        },
+      }),
+      userName,
+    )
+  } catch {
+    try {
+      const data = (await getCached(userName)) ?? {
+        location: null,
+        locationAccurate: true,
+        source: null,
+      }
+      const info = await getBioInfo(userName)
+      await deliverWithToast(
+        await renderAboutCard({
+          userName,
+          displayName: info.displayName ?? '',
+          data,
+          facts: info.facts,
+        }),
+        userName,
+      )
+    } catch {
+      // Nothing was delivered, so the tab stays: the page itself is the answer.
+      renderLocationToast(t('toastRenderFail'))
+      history.replaceState(null, '', loc.pathname)
+      return
+    }
+  }
+
+  // The tab exists only for this. A beat for the toast, and for a download
+  // fallback to leave the gate, before the worker takes it away.
+  setTimeout(() => {
+    void chrome.runtime.sendMessage({ type: MSG.CLOSE_TAB })
+  }, ABOUT_CLOSE_DELAY_MS)
+}
+
 async function shareLastRightClickedPost(): Promise<void> {
   if (!isEnabled()) return
   const article =
@@ -1849,7 +1987,7 @@ async function shareLastRightClickedPost(): Promise<void> {
 /** A second way in: a feature reachable only by right-clicking goes unfound. */
 function buildShareButton(userName: string, displayName: string): HTMLElement {
   const btn = document.createElement('button')
-  btn.className = 'x-loc-share-btn'
+  btn.className = 'x-loc-share-btn x-loc-post-btn'
   btn.type = 'button'
   btn.textContent = t('shareBtn')
   btn.title = t('shareBtnTitle', userName)
@@ -1858,6 +1996,26 @@ function buildShareButton(userName: string, displayName: string): HTMLElement {
     e.preventDefault()
     e.stopPropagation()
     void shareCardFor(userName, displayName, postElementForAccount(userName))
+  })
+
+  return btn
+}
+
+function buildAboutButton(userName: string): HTMLElement {
+  const btn = document.createElement('button')
+  btn.className = 'x-loc-share-btn x-loc-about-btn'
+  btn.type = 'button'
+  btn.textContent = t('aboutBtn')
+  btn.title = t('aboutBtnTitle', userName)
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    window.open(
+      `https://x.com/${userName}/about${ABOUT_COPY_HASH}`,
+      '_blank',
+      'noopener',
+    )
   })
 
   return btn
@@ -2221,6 +2379,7 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
 // Init
 injectStyles()
 startObserver()
+void maybeCopyAboutPage()
 startSwipeListener()
 cleanupCache()
 // Nothing is gated on this: it only redraws when the reader chose a language

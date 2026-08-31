@@ -63,6 +63,7 @@ function makeChrome(
     tabs: {
       onRemoved: on('tabs.onRemoved'),
       onReplaced: on('tabs.onReplaced'),
+      remove: vi.fn().mockResolvedValue(undefined),
       query: vi.fn().mockResolvedValue([{ id: 1 }, { id: 2 }]),
       sendMessage: vi.fn(async (tabId: number, message: unknown) => {
         sent.push({ tabId, message })
@@ -114,6 +115,24 @@ const FOCUSED = { focused: true, visible: true }
 
 beforeEach(() => {
   vi.clearAllMocks()
+})
+
+describe('closing the about-copy tab', () => {
+  it('removes exactly the tab that asked', async () => {
+    await loadWorker()
+    for (const listener of env.listeners['runtime.onMessage'] ?? []) {
+      listener({ type: MSG.CLOSE_TAB }, { tab: { id: 7 } }, () => {})
+    }
+    expect(env.chrome.tabs.remove).toHaveBeenCalledWith(7)
+  })
+
+  it('ignores the ask from anything without a tab', async () => {
+    await loadWorker()
+    for (const listener of env.listeners['runtime.onMessage'] ?? []) {
+      listener({ type: MSG.CLOSE_TAB }, {}, () => {})
+    }
+    expect(env.chrome.tabs.remove).not.toHaveBeenCalled()
+  })
 })
 
 describe('the broker over messages', () => {

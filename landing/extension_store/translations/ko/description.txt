@@ -85,7 +85,7 @@ x.com 및 twitter.com, 확장 프로그램이 실행되는 곳이기 때문입�
 봇 탐지기나 참여 농장 분류기가 아닙니다. 프로필을 하나씩 열지 않고는 볼 수 없는 신호를 표시합니다 — 국가, 소스 플랫폼, VPN 상태, 계정 연령, 소속, 인증, 핸들 변경. 이로부터 무엇을 결론 내릴지는 귀하의 몫입니다.
 
 
-데스크톱에서는 Chrome, Edge, Brave. Android에서는 Kiwi Browser.
+데스크톱에서는 Chrome, Edge, Brave. Android에서는 Quetta Browser.
 
 독자의 언어로 된 국가명과 15개 UI 언어.
 

@@ -97,7 +97,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 // The content script cannot read `_locales/` without exposing it to x.com, so
 // it asks here instead. See "Localization" in CLAUDE.md.
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Only the tab may ask this about itself — the id comes from the sender, so
+  // no page can name another tab to close.
+  if (message?.type === MSG.CLOSE_TAB && sender.tab?.id != null) {
+    void chrome.tabs.remove(sender.tab.id)
+    return undefined
+  }
   if (message?.type === MSG.GET_MESSAGES) {
     readCatalogue(String(message.locale))
       .then(sendResponse)

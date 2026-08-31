@@ -52,6 +52,7 @@ import {
   REGION_EXCLUSIONS_KEY,
   RULE_EXCEPTIONS_KEY,
   SHARED_CACHE_KEY,
+  SHOW_ABOUT_COPY_KEY,
   SHOW_ACCOUNT_CARD_KEY,
   SHOW_ADVANCED_KEY,
   SHOW_EXCEPTION_BUTTON_KEY,
@@ -236,6 +237,9 @@ export function Options() {
   const [showShareButton, setShowShareButton] = useState(
     defaultSetting(SHOW_SHARE_BUTTON_KEY),
   )
+  const [showAboutCopy, setShowAboutCopy] = useState(
+    defaultSetting(SHOW_ABOUT_COPY_KEY),
+  )
   const [exceptions, setExceptions] = useState<RuleExceptions>(
     normalizeRuleExceptions(undefined),
   )
@@ -305,6 +309,7 @@ export function Options() {
         setShowLocationInFeed(readSetting(SHOW_LOCATION_IN_FEED_KEY, result))
         setShowAccountCard(readSetting(SHOW_ACCOUNT_CARD_KEY, result))
         setShowShareButton(readSetting(SHOW_SHARE_BUTTON_KEY, result))
+        setShowAboutCopy(readSetting(SHOW_ABOUT_COPY_KEY, result))
         setExceptions(
           normalizeRuleExceptions(
             result[RULE_EXCEPTIONS_KEY],
@@ -652,6 +657,22 @@ export function Options() {
                     const next = (e.target as HTMLInputElement).checked
                     setShowShareButton(next)
                     chrome.storage.local.set({ [SHOW_SHARE_BUTTON_KEY]: next })
+                  }}
+                />
+              }
+            />
+
+            <Setting
+              label={t('setCopyAboutButton')}
+              description={t('setCopyAboutButtonDesc')}
+              control={
+                <input
+                  type="checkbox"
+                  checked={showAboutCopy}
+                  onChange={(e) => {
+                    const next = (e.target as HTMLInputElement).checked
+                    setShowAboutCopy(next)
+                    chrome.storage.local.set({ [SHOW_ABOUT_COPY_KEY]: next })
                   }}
                 />
               }

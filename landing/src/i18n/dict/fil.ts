@@ -54,6 +54,10 @@ export const fil: Dict = {
     next: 'Susunod na screenshot',
     railLabel: 'Screenshots',
     shots: {
+      copy: {
+        label: 'Kopyahin bilang larawan',
+        alt: 'Hover card na may mga button na Post at Tungkol sa tabi ng bandila, at katabi ang kinopyang pahinang Tungkol sa account bilang larawan',
+      },
       hover: {
         label: 'Flag pagka-hover',
         alt: 'Isang X hover card na may flag ng Germany at salitang Germany sa ilalim ng handle',
@@ -343,7 +347,7 @@ export const fil: Dict = {
       },
       surfaces: {
         title: 'Mas marami itong platform',
-        body: 'Firefox sa desktop, Firefox para sa Android, at isang companion iPhone app. Ang X-Pat ay Chromium lang sa ngayon — Chrome, Edge, Brave, at Kiwi sa Android. Plano ang Firefox, ang iOS ay hindi.',
+        body: 'Firefox sa desktop, Firefox para sa Android, at isang companion iPhone app. Ang X-Pat ay Chromium lang sa ngayon — Chrome, Edge, Brave, at Quetta sa Android. Plano ang Firefox, ang iOS ay hindi.',
       },
       languageFilter: {
         title: 'May language filter ito',

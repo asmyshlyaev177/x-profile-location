@@ -50,6 +50,10 @@ export const pt: Dict = {
     next: 'Próxima captura',
     railLabel: 'Capturas de tela',
     shots: {
+      copy: {
+        label: 'Copiar como imagem',
+        alt: 'Um cartão de hover com botões Post e Sobre ao lado da bandeira, e ao lado a página Sobre esta conta copiada como imagem',
+      },
       hover: {
         label: 'Bandeira ao passar o mouse',
         alt: 'Um cartão do X com uma bandeira alemã e a palavra Alemanha abaixo do @',
@@ -339,7 +343,7 @@ export const pt: Dict = {
       },
       surfaces: {
         title: 'Ele roda em mais lugares',
-        body: 'Firefox no desktop, Firefox para Android e um app complementar para iPhone. O X-Pat hoje é só Chromium — Chrome, Edge, Brave e Kiwi no Android. Firefox está nos planos, iOS não.',
+        body: 'Firefox no desktop, Firefox para Android e um app complementar para iPhone. O X-Pat hoje é só Chromium — Chrome, Edge, Brave e Quetta no Android. Firefox está nos planos, iOS não.',
       },
       languageFilter: {
         title: 'Ele tem filtro por idioma',
