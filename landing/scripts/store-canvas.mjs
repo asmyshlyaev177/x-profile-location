@@ -23,13 +23,14 @@ const HEIGHT = 800
 /** Margin around the shot, so it reads as presented rather than cropped. */
 const INSET = 50
 
-// Ordered as the listing shows them: what it draws, where it draws it, then
-// what you can do about it — filter, and copy the proof.
+// Ordered as the listing shows them: the feed with a post filtered away, the
+// copied proof, the hover card, the VPN warning. screen_5 (options, blocked
+// locations) comes from shoot-options.mjs.
 const SHOTS = [
-  ['Hover_screenshot-x-profile-location.png', 'screen_1.png'],
-  ['Flags_screenshot-x-profile-location.png', 'screen_2.png'],
-  ['Warning-screenshot-x-profile-location.png', 'screen_3.png'],
-  ['Copy_screenshot-x-profile-location.png', 'screen_4.png'],
+  ['Hidden_screenshot-x-profile-location.png', 'screen_1.png'],
+  ['Copy_screenshot-x-profile-location.png', 'screen_2.png'],
+  ['Hover_screenshot-x-profile-location.png', 'screen_3.png'],
+  ['VPN_screenshot-x-profile-location.png', 'screen_4.png'],
 ]
 
 for (const [from, to] of SHOTS) {
