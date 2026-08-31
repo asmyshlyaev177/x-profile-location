@@ -2,9 +2,10 @@
 // reply. Layout is computed apart from the drawing, which happy-dom cannot run.
 
 import type { LocationData } from './cache/cache'
+import type { AccountFacts } from './profile'
 import { canonicalLocation, flagFor } from './countries/countries'
 import { classifySource, platformLabel } from './source'
-import { t } from './i18n'
+import { t, uiLocale } from './i18n'
 import { localizedLocation } from './countries/location-names'
 import { drawWatermark } from './watermark'
 
@@ -126,6 +127,131 @@ export function shareChips(data: LocationData): string[] {
   return chips
 }
 
+export interface AboutInput {
+  userName: string
+  displayName: string
+  data: LocationData
+  facts?: Partial<AccountFacts>
+}
+
+export interface AboutRow {
+  label: string
+  value: string
+}
+
+/** The rows of x.com/<user>/about, from fields X returned; a field X did not
+ *  send has no row rather than an empty one. */
+export function aboutRows(
+  data: LocationData,
+  facts?: Partial<AccountFacts>,
+): AboutRow[] {
+  const rows: AboutRow[] = []
+  const { platform, country } = classifySource(data.source)
+
+  if (data.location) {
+    rows.push({
+      label: t('aboutRowBasedIn'),
+      value: locationChip(data.location),
+    })
+  }
+  if (facts?.createdAt) {
+    rows.push({
+      label: t('aboutRowJoined'),
+      value: new Intl.DateTimeFormat(uiLocale(), {
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date(facts.createdAt)),
+    })
+  }
+  if (country) {
+    rows.push({
+      label: t('aboutRowConnectedVia'),
+      value: `${platformLabel(platform)} · ${locationChip(country)}`,
+    })
+  } else if (platform === 'web') {
+    rows.push({ label: t('aboutRowConnectedVia'), value: t('platformWeb') })
+  }
+  if (typeof facts?.handleChanges === 'number') {
+    rows.push({
+      label: t('aboutRowUsernameChanges'),
+      value: String(facts.handleChanges),
+    })
+  }
+  return rows
+}
+
+const TITLE_FONT = '700 24px system-ui, -apple-system, sans-serif'
+const LABEL_FONT = '400 22px system-ui, -apple-system, sans-serif'
+const VALUE_FONT = '700 28px system-ui, -apple-system, sans-serif'
+
+export function buildAboutLayout(
+  input: AboutInput,
+  { measure }: LayoutOptions,
+): ShareLayout {
+  const ops: DrawOp[] = []
+  let y = PAD
+
+  ops.push({
+    kind: 'text',
+    text: t('aboutCardTitle'),
+    x: PAD,
+    y: y + 24,
+    font: TITLE_FONT,
+    color: MUTED,
+  })
+  y += 56
+
+  ops.push({
+    kind: 'text',
+    text: input.displayName || `@${input.userName}`,
+    x: PAD,
+    y: y + 30,
+    font: NAME_FONT,
+    color: FG,
+  })
+  y += 40
+
+  ops.push({
+    kind: 'text',
+    text: `@${input.userName}`,
+    x: PAD,
+    y: y + 24,
+    font: HANDLE_FONT,
+    color: MUTED,
+  })
+  y += 60
+
+  for (const row of aboutRows(input.data, input.facts)) {
+    ops.push({
+      kind: 'text',
+      text: row.label,
+      x: PAD,
+      y: y + 22,
+      font: LABEL_FONT,
+      color: MUTED,
+    })
+    y += 32
+    ops.push({
+      kind: 'text',
+      text: row.value,
+      x: PAD,
+      y: y + 28,
+      font: VALUE_FONT,
+      color: FG,
+    })
+    y += 56
+  }
+
+  if (input.data.locationAccurate === false) {
+    y += 8
+    const row = chipOps([t('vpnBadge')], y, (text) => measure(text, CHIP_FONT))
+    ops.push(...row.ops)
+    y = row.bottom
+  }
+
+  return { width: WIDTH, height: y + PAD, ops }
+}
+
 export interface LayoutOptions {
   /** Text width measurement, injected for the same reason as in wrapText. */
   measure: (text: string, font: string) => number
@@ -231,7 +357,9 @@ function chipOps(
 }
 
 /** Paint a layout onto a canvas and hand back a PNG. */
-export async function renderShareCard(input: ShareInput): Promise<Blob> {
+async function paintLayout(
+  build: (opts: LayoutOptions) => ShareLayout,
+): Promise<Blob> {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas is unavailable in this browser.')
@@ -241,7 +369,7 @@ export async function renderShareCard(input: ShareInput): Promise<Blob> {
     return ctx.measureText(text).width
   }
 
-  const layout = buildShareLayout(input, { measure })
+  const layout = build({ measure })
   // 2x for legibility at full size, applied once rather than per coordinate.
   const scale = 2
   canvas.width = layout.width * scale
@@ -278,6 +406,15 @@ export async function renderShareCard(input: ShareInput): Promise<Blob> {
       else reject(new Error('Could not encode the image.'))
     }, 'image/png')
   })
+}
+
+export function renderShareCard(input: ShareInput): Promise<Blob> {
+  return paintLayout((opts) => buildShareLayout(input, opts))
+}
+
+/** The account's About page as an image — same fields, same order as X. */
+export function renderAboutCard(input: AboutInput): Promise<Blob> {
+  return paintLayout((opts) => buildAboutLayout(input, opts))
 }
 
 /** Clipboard, falling back to a download — image writes need a live gesture.

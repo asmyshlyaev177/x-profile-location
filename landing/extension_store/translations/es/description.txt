@@ -85,7 +85,7 @@ LO QUE NO ES
 No es un detector de bots ni un clasificador de granjas de interacción. Muestra señales que de otro modo no podrías ver sin abrir cada perfil uno por uno — país, plataforma de origen, estado de VPN, antigüedad de la cuenta, afiliación, verificación, cambios de alias. Lo que concluyas de ellas es cosa tuya.
 
 
-Chrome, Edge y Brave en escritorio. Kiwi Browser en Android.
+Chrome, Edge y Brave en escritorio. Quetta Browser en Android.
 
 15 idiomas de interfaz con nombres de países en el idioma del lector.
 

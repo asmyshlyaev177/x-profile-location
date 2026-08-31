@@ -95,6 +95,18 @@
   "rateAskNo": {
     "message": "Không, cảm ơn"
   },
+  "sharePostText": {
+    "message": "Cho biết mỗi tài khoản X đăng từ quốc gia nào — và ẩn những quốc gia bạn không muốn đọc. X-Pat"
+  },
+  "shareCta": {
+    "message": "Chia sẻ X-Pat"
+  },
+  "shareAfterRate": {
+    "message": "Cảm ơn! Một bài đăng cho người khác biết còn giúp nhiều hơn."
+  },
+  "shareRateLimitTitle": {
+    "message": "Càng nhiều người dùng, bộ nhớ đệm chung càng đầy — ít giới hạn hơn cho mọi người"
+  },
   "optionsTitle": {
     "message": "Cài đặt X-Pat"
   },
@@ -153,10 +165,16 @@
     "message": "Tuổi tài khoản, huy hiệu tổ chức, xác minh, thay đổi tên người dùng và số người theo dõi — đọc từ dữ liệu X đã gửi sẵn, nên không tốn thêm lượt tra cứu."
   },
   "setCopyButton": {
-    "message": "Nút \"Sao chép\" trên thẻ di chuột"
+    "message": "Nút sao chép “Bài đăng” trên thẻ di chuột"
   },
   "setCopyButtonDesc": {
-    "message": "Một nút \"Sao chép\" nhỏ trong hàng cờ. Sao chép bài đăng bạn đang di chuột, cùng với các cờ, dưới dạng ảnh — kết xuất trong trình duyệt của bạn, không tải lên gì cả. Nhấp chuột phải vào bài đăng cũng làm điều tương tự."
+    "message": "Nút “Bài đăng” nhỏ trong hàng cờ. Sao chép bài đăng bạn di chuột từ đó, cùng với cờ, dưới dạng ảnh — được vẽ trong trình duyệt của bạn, không tải lên gì cả. Nhấp chuột phải vào bài đăng cũng làm điều tương tự."
+  },
+  "setCopyAboutButton": {
+    "message": "Nút sao chép “Giới thiệu” trên thẻ di chuột"
+  },
+  "setCopyAboutButtonDesc": {
+    "message": "Nút “Giới thiệu” nhỏ bên cạnh. Mở trang Giới thiệu về tài khoản thật trên x.com trong một tab trong giây lát, sao chép thành ảnh rồi đóng tab. Không tải lên gì cả."
   },
   "setExceptionButton": {
     "message": "Nút ngoại lệ trên thẻ di chuột"
@@ -597,10 +615,31 @@
     "message": "Tiểu sử từ API của X — thẻ này không hiển thị tiểu sử"
   },
   "shareBtn": {
-    "message": "🖼 Sao chép"
+    "message": "🖼 Bài đăng"
   },
   "shareBtnTitle": {
     "message": "Sao chép bài đăng này và những gì X báo cáo cho @$1 dưới dạng ảnh"
+  },
+  "aboutBtn": {
+    "message": "👤 Giới thiệu"
+  },
+  "aboutBtnTitle": {
+    "message": "Sao chép trang Giới thiệu về tài khoản của @$1 dưới dạng ảnh"
+  },
+  "aboutCardTitle": {
+    "message": "Giới thiệu về tài khoản này"
+  },
+  "aboutRowBasedIn": {
+    "message": "Tài khoản đặt tại"
+  },
+  "aboutRowJoined": {
+    "message": "Ngày tham gia"
+  },
+  "aboutRowConnectedVia": {
+    "message": "Kết nối qua"
+  },
+  "aboutRowUsernameChanges": {
+    "message": "Số lần đổi tên người dùng"
   },
   "toastRendering": {
     "message": "Đang kết xuất @$1 …"

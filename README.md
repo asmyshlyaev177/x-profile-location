@@ -182,7 +182,7 @@ Full text: [Privacy Policy](https://x-pat.pages.dev/privacy-policy).
 **Where [X-Posed](https://chromewebstore.google.com/detail/x-posed-account-location/oodhljjldjdhcdopjpmfgbaoibpancfk) is ahead of X-Pat:**
 
 - **X-Posed is the mature one.** Roughly 10,000 Chrome installs against our handful, a four-month head start, and a community cache holding millions of profiles where ours holds thousands. A bigger cache genuinely means more instant flags on day one. That is a real advantage and it is not close.
-- **It ships on more surfaces.** Firefox desktop, Firefox for Android, and a companion iPhone app. X-Pat is Chromium-only today — Chrome, Edge, Brave, and Kiwi on Android. Firefox is planned, iOS is not.
+- **It ships on more surfaces.** Firefox desktop, Firefox for Android, and a companion iPhone app. X-Pat is Chromium-only today — Chrome, Edge, Brave, and Quetta on Android. Firefox is planned, iOS is not.
 - **It has a language filter.** We do not, on purpose. X’s per-post language field is wrong often enough that filtering on it produces posts vanishing for no visible reason. That is a defensible call rather than a missing feature — but if filtering by language is what you came for, X-Posed has it and we do not.
 
 Full fourteen-row table, with sources: [https://x-pat.pages.dev/x-posed-alternative](https://x-pat.pages.dev/x-posed-alternative). Store listings read 2026-08-24.
@@ -194,7 +194,7 @@ Full fourteen-row table, with sources: [https://x-pat.pages.dev/x-posed-alternat
 | Browser                             |                                                                                                                  |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | Chrome, Edge, Brave, other Chromium | [Chrome Web Store](https://chromewebstore.google.com/detail/x-profile-location/mooomapkphlmpilnlcnpoilondlppbhi) |
-| Android                             | [Kiwi Browser](https://github.com/kiwibrowser/src.next/releases) — runs the Chrome build as-is                   |
+| Android                             | [Quetta Browser](https://www.quetta.net/) — runs the Chrome build as-is                                          |
 | Firefox, Safari                     | Buildable from source today; store listings not up yet                                                           |
 
 Or build it yourself — see [CONTRIBUTING.md](CONTRIBUTING.md).

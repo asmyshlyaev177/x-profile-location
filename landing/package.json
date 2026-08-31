@@ -19,7 +19,8 @@
   },
   "dependencies": {
     "preact": "^10.25.0",
-    "preact-render-to-string": "^6.5.0"
+    "preact-render-to-string": "^6.5.0",
+    "react-horizontal-scrolling-menu": "^8.3.2"
   },
   "devDependencies": {
     "@asmyshlyaev177/design-tokens": "^1.2.0",

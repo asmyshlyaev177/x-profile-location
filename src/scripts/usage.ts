@@ -13,6 +13,13 @@ export const RATE_PROMPT_IGNORED_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000
 export const REVIEW_URL =
   'https://chromewebstore.google.com/detail/mooomapkphlmpilnlcnpoilondlppbhi/reviews'
 
+export const SHARE_LANDING_URL = 'https://x-pat.pages.dev'
+
+/** X's post composer, prefilled. The landing URL rides on its own line. */
+export function shareIntentUrl(text: string): string {
+  return `https://x.com/intent/post?text=${encodeURIComponent(`${text}\n\n${SHARE_LANDING_URL}`)}`
+}
+
 export function dayKey(now: Date = new Date()): string {
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const day = String(now.getDate()).padStart(2, '0')

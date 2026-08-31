@@ -95,6 +95,18 @@
   "rateAskNo": {
     "message": "Não, obrigado"
   },
+  "sharePostText": {
+    "message": "Mostra de que país cada conta do X publica — e esconde os países que você prefere não ler. X-Pat"
+  },
+  "shareCta": {
+    "message": "Compartilhar o X-Pat"
+  },
+  "shareAfterRate": {
+    "message": "Obrigado! Um post contando aos outros ajuda ainda mais."
+  },
+  "shareRateLimitTitle": {
+    "message": "Mais usuários enchem o cache compartilhado — menos limites para todos"
+  },
   "optionsTitle": {
     "message": "Configurações do X-Pat"
   },
@@ -153,10 +165,16 @@
     "message": "Idade da conta, selo de afiliação, verificação, trocas de @ e número de seguidores — lidos dos dados que o X já envia, sem consultas extras."
   },
   "setCopyButton": {
-    "message": "Botão “Copiar” nos cards flutuantes"
+    "message": "Botão de cópia “Post” nos cartões de hover"
   },
   "setCopyButtonDesc": {
-    "message": "Um pequeno botão “Copiar” na linha de bandeiras. Copia o post de onde você passou o mouse, junto com as bandeiras, como imagem — renderizada no seu navegador, nada é enviado. Clicar com o botão direito em um post faz a mesma coisa."
+    "message": "Um pequeno botão “Post” na linha de bandeiras. Copia o post de onde você passou o mouse, junto com as bandeiras, como imagem — renderizada no seu navegador, nada é enviado. Clicar com o botão direito em um post faz o mesmo."
+  },
+  "setCopyAboutButton": {
+    "message": "Botão de cópia “Sobre” nos cartões de hover"
+  },
+  "setCopyAboutButtonDesc": {
+    "message": "Um pequeno botão “Sobre” ao lado. Abre por um momento a página real Sobre esta conta do x.com em uma aba, copia como imagem e fecha a aba. Nada é enviado."
   },
   "setExceptionButton": {
     "message": "Botão de exceção nos cards flutuantes"
@@ -597,10 +615,31 @@
     "message": "Bio da API do X — este card não mostra nenhuma"
   },
   "shareBtn": {
-    "message": "🖼 Copiar"
+    "message": "🖼 Post"
   },
   "shareBtnTitle": {
     "message": "Copiar este post e o que o X informa sobre @$1 como imagem"
+  },
+  "aboutBtn": {
+    "message": "👤 Sobre"
+  },
+  "aboutBtnTitle": {
+    "message": "Copiar a página Sobre esta conta de @$1 como imagem"
+  },
+  "aboutCardTitle": {
+    "message": "Sobre esta conta"
+  },
+  "aboutRowBasedIn": {
+    "message": "Conta baseada em"
+  },
+  "aboutRowJoined": {
+    "message": "Ingressou"
+  },
+  "aboutRowConnectedVia": {
+    "message": "Conectada via"
+  },
+  "aboutRowUsernameChanges": {
+    "message": "Mudanças de nome de usuário"
   },
   "toastRendering": {
     "message": "Renderizando @$1 …"

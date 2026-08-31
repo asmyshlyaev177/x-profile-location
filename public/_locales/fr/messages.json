@@ -95,6 +95,18 @@
   "rateAskNo": {
     "message": "Non merci"
   },
+  "sharePostText": {
+    "message": "Montre depuis quel pays publie chaque compte X — et masque les pays que vous préférez ne pas lire. X-Pat"
+  },
+  "shareCta": {
+    "message": "Partager X-Pat"
+  },
+  "shareAfterRate": {
+    "message": "Merci ! Un post pour le faire savoir aide encore plus."
+  },
+  "shareRateLimitTitle": {
+    "message": "Plus d'utilisateurs remplissent le cache partagé — moins de limites pour tous"
+  },
   "optionsTitle": {
     "message": "Réglages de X-Pat"
   },
@@ -153,10 +165,16 @@
     "message": "Âge du compte, badge d'affiliation, vérification, changements de pseudo et nombre d'abonnés — issus des données déjà envoyées par X, sans requête supplémentaire."
   },
   "setCopyButton": {
-    "message": "Bouton « Copier » sur les fiches de survol"
+    "message": "Bouton de copie « Post » sur les cartes au survol"
   },
   "setCopyButtonDesc": {
-    "message": "Un petit bouton « Copier » dans la ligne des drapeaux. Copie le post survolé avec les drapeaux sous forme d'image — rendu dans votre navigateur, rien n'est envoyé. Un clic droit sur un post fait la même chose."
+    "message": "Un petit bouton « Post » dans la rangée de drapeaux. Copie le post depuis lequel vous avez survolé, avec les drapeaux, en image — rendue dans votre navigateur, rien n'est envoyé. Un clic droit sur un post fait la même chose."
+  },
+  "setCopyAboutButton": {
+    "message": "Bouton de copie « À propos » sur les cartes au survol"
+  },
+  "setCopyAboutButtonDesc": {
+    "message": "Un petit bouton « À propos » à côté. Ouvre un instant la vraie page « À propos de ce compte » de x.com dans un onglet, la copie en image, puis ferme l'onglet. Rien n'est envoyé."
   },
   "setExceptionButton": {
     "message": "Bouton d'exception sur les fiches de survol"
@@ -597,10 +615,31 @@
     "message": "Bio issue de l'API X — cette fiche n'en affiche pas"
   },
   "shareBtn": {
-    "message": "🖼 Copier"
+    "message": "🖼 Post"
   },
   "shareBtnTitle": {
     "message": "Copier ce post et ce que X rapporte pour @$1 sous forme d'image"
+  },
+  "aboutBtn": {
+    "message": "👤 À propos"
+  },
+  "aboutBtnTitle": {
+    "message": "Copier la page « À propos de ce compte » de @$1 en image"
+  },
+  "aboutCardTitle": {
+    "message": "À propos de ce compte"
+  },
+  "aboutRowBasedIn": {
+    "message": "Compte basé en"
+  },
+  "aboutRowJoined": {
+    "message": "Inscription"
+  },
+  "aboutRowConnectedVia": {
+    "message": "Connecté via"
+  },
+  "aboutRowUsernameChanges": {
+    "message": "Changements de nom d'utilisateur"
   },
   "toastRendering": {
     "message": "Rendu de @$1 …"

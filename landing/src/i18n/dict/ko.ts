@@ -50,6 +50,10 @@ export const ko: Dict = {
     next: '다음 스크린샷',
     railLabel: '스크린샷',
     shots: {
+      copy: {
+        label: '이미지로 복사',
+        alt: "국기 옆에 게시물·정보 복사 버튼이 있는 호버 카드와 그 옆에 복사된 '이 계정 정보' 페이지 이미지",
+      },
       hover: {
         label: '호버하면 국기 표시',
         alt: '아이디 아래에 독일 국기와 "독일"이라는 글자가 추가된 X 호버 카드',
@@ -330,7 +334,7 @@ export const ko: Dict = {
       },
       surfaces: {
         title: '더 많은 플랫폼을 지원해요',
-        body: '데스크톱 Firefox, Android용 Firefox, iPhone 동반 앱까지요. X-Pat은 현재 Chromium 계열 전용이에요. Chrome, Edge, Brave, Android의 Kiwi. Firefox는 계획에 있고, iOS는 없어요.',
+        body: '데스크톱 Firefox, Android용 Firefox, iPhone 동반 앱까지요. X-Pat은 현재 Chromium 계열 전용이에요. Chrome, Edge, Brave, Android의 Quetta. Firefox는 계획에 있고, iOS는 없어요.',
       },
       languageFilter: {
         title: '언어 필터가 있어요',

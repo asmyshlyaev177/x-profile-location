@@ -95,6 +95,18 @@
   "rateAskNo": {
     "message": "Hayır, teşekkürler"
   },
+  "sharePostText": {
+    "message": "Her X hesabının hangi ülkeden paylaştığını gösterir — okumak istemediğiniz ülkeleri de gizler. X-Pat"
+  },
+  "shareCta": {
+    "message": "X-Pat'i paylaş"
+  },
+  "shareAfterRate": {
+    "message": "Teşekkürler! Başkalarına anlatan bir gönderi daha da çok yardımcı olur."
+  },
+  "shareRateLimitTitle": {
+    "message": "Daha çok kullanıcı ortak önbelleği doldurur — herkese daha az sınır"
+  },
   "optionsTitle": {
     "message": "X-Pat ayarları"
   },
@@ -153,10 +165,16 @@
     "message": "Hesap yaşı, bağlı kuruluş rozeti, doğrulama, kullanıcı adı değişiklikleri ve takipçi sayısı — X'in zaten gönderdiği verilerden okunur, ek sorgulama gerektirmez."
   },
   "setCopyButton": {
-    "message": "Hover kartlarında \"Kopyala\" düğmesi"
+    "message": "Vurgu kartlarında “Gönderi” kopyalama düğmesi"
   },
   "setCopyButtonDesc": {
-    "message": "Bayrak satırındaki küçük bir \"Kopyala\" düğmesi. Üzerine geldiğiniz gönderiyi bayraklarla birlikte bir resim olarak kopyalar — tarayıcınızda oluşturulur, hiçbir şey yüklenmez. Bir gönderiye sağ tıklamak da aynısını yapar."
+    "message": "Bayrak satırında küçük bir “Gönderi” düğmesi. Üzerine geldiğiniz gönderiyi bayraklarla birlikte resim olarak kopyalar — tarayıcınızda çizilir, hiçbir şey yüklenmez. Bir gönderiye sağ tıklamak da aynısını yapar."
+  },
+  "setCopyAboutButton": {
+    "message": "Vurgu kartlarında “Hakkında” kopyalama düğmesi"
+  },
+  "setCopyAboutButtonDesc": {
+    "message": "Yanında küçük bir “Hakkında” düğmesi. Hesabın gerçek x.com Bu hesap hakkında sayfasını bir sekmede kısaca açar, resim olarak kopyalar ve sekmeyi kapatır. Hiçbir şey yüklenmez."
   },
   "setExceptionButton": {
     "message": "Hover kartlarında istisna düğmesi"
@@ -597,10 +615,31 @@
     "message": "X'in API'sinden biyografi — bu kart biyografi göstermiyor"
   },
   "shareBtn": {
-    "message": "🖼 Kopyala"
+    "message": "🖼 Gönderi"
   },
   "shareBtnTitle": {
     "message": "Bu gönderiyi ve X'in @$1 için bildirdiklerini resim olarak kopyala"
+  },
+  "aboutBtn": {
+    "message": "👤 Hakkında"
+  },
+  "aboutBtnTitle": {
+    "message": "@$1'in Bu hesap hakkında sayfasını resim olarak kopyala"
+  },
+  "aboutCardTitle": {
+    "message": "Bu hesap hakkında"
+  },
+  "aboutRowBasedIn": {
+    "message": "Hesabın bulunduğu yer"
+  },
+  "aboutRowJoined": {
+    "message": "Katılma tarihi"
+  },
+  "aboutRowConnectedVia": {
+    "message": "Bağlantı yolu"
+  },
+  "aboutRowUsernameChanges": {
+    "message": "Kullanıcı adı değişiklikleri"
   },
   "toastRendering": {
     "message": "@$1 oluşturuluyor …"

@@ -50,6 +50,10 @@ export const vi: Dict = {
     next: 'Ảnh sau',
     railLabel: 'Ảnh chụp màn hình',
     shots: {
+      copy: {
+        label: 'Sao chép thành ảnh',
+        alt: 'Thẻ di chuột với nút sao chép Bài đăng và Giới thiệu cạnh lá cờ, bên cạnh là trang Giới thiệu về tài khoản đã sao chép thành ảnh',
+      },
       hover: {
         label: 'Cờ khi rê chuột',
         alt: 'Một thẻ hover của X có cờ Đức và chữ Đức nằm dưới tên người dùng',
@@ -330,7 +334,7 @@ export const vi: Dict = {
       },
       surfaces: {
         title: 'Nó có mặt trên nhiều nền hơn',
-        body: 'Firefox desktop, Firefox Android, và app iPhone đồng hành. X-Pat mới chỉ Chromium — Chrome, Edge, Brave, và Kiwi trên Android. Firefox thì có kế hoạch, iOS thì không.',
+        body: 'Firefox desktop, Firefox Android, và app iPhone đồng hành. X-Pat mới chỉ Chromium — Chrome, Edge, Brave, và Quetta trên Android. Firefox thì có kế hoạch, iOS thì không.',
       },
       languageFilter: {
         title: 'Nó có lọc ngôn ngữ',

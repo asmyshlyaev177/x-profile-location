@@ -50,6 +50,10 @@ export const th: Dict = {
     next: 'ภาพต่อไป',
     railLabel: 'ภาพหน้าจอ',
     shots: {
+      copy: {
+        label: 'คัดลอกเป็นรูปภาพ',
+        alt: 'การ์ดโฮเวอร์ที่มีปุ่มคัดลอก โพสต์ และ เกี่ยวกับ ข้างธง และข้าง ๆ คือหน้า เกี่ยวกับบัญชีนี้ ที่คัดลอกเป็นรูปภาพ',
+      },
       hover: {
         label: 'ธงตอน hover',
         alt: 'การ์ด X ที่มีธงเยอรมนีกับคำว่า Germany ใต้ชื่อผู้ใช้',
@@ -328,7 +332,7 @@ export const th: Dict = {
       },
       surfaces: {
         title: 'ลงได้มากที่กว่า',
-        body: 'Firefox desktop, Firefox for Android และแอปคู่บน iPhone ส่วน X-Pat ตอนนี้มีแต่ฝั่ง Chromium — Chrome, Edge, Brave และ Kiwi บน Android Firefox อยู่ในแผน iOS ไม่อยู่',
+        body: 'Firefox desktop, Firefox for Android และแอปคู่บน iPhone ส่วน X-Pat ตอนนี้มีแต่ฝั่ง Chromium — Chrome, Edge, Brave และ Quetta บน Android Firefox อยู่ในแผน iOS ไม่อยู่',
       },
       languageFilter: {
         title: 'มันมีตัวกรองภาษา',

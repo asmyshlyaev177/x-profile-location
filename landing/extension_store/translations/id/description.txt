@@ -85,7 +85,7 @@ APA YANG BUKAN
 Bukan pendeteksi bot atau pengklasifikasi penggembungan interaksi. Ia menampilkan sinyal yang tidak dapat Anda lihat tanpa membuka setiap profil satu per satu — negara, platform sumber, status VPN, usia akun, afiliasi, verifikasi, perubahan nama pengguna. Apa yang Anda simpulkan darinya adalah milik Anda.
 
 
-Chrome, Edge, dan Brave di desktop. Kiwi Browser di Android.
+Chrome, Edge, dan Brave di desktop. Quetta Browser di Android.
 
 15 bahasa UI dengan nama negara dalam bahasa pembaca.
 

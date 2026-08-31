@@ -95,6 +95,18 @@
   "rateAskNo": {
     "message": "Nein danke"
   },
+  "sharePostText": {
+    "message": "Zeigt, aus welchem Land jeder X-Account postet — und blendet die Länder aus, die Sie nicht lesen möchten. X-Pat"
+  },
+  "shareCta": {
+    "message": "X-Pat teilen"
+  },
+  "shareAfterRate": {
+    "message": "Danke! Ein Post an andere hilft noch mehr."
+  },
+  "shareRateLimitTitle": {
+    "message": "Mehr Nutzer füllen den gemeinsamen Cache — weniger Rate-Limits für alle"
+  },
   "optionsTitle": {
     "message": "X-Pat Einstellungen"
   },
@@ -153,10 +165,16 @@
     "message": "Kontoalter, Zugehörigkeitsabzeichen, Verifizierung, Handle-Änderungen und Followeranzahl — aus Daten gelesen, die X bereits sendet, kostet also keine zusätzlichen Abfragen."
   },
   "setCopyButton": {
-    "message": "„Kopieren“-Button auf Hover-Karten"
+    "message": "„Beitrag“-Kopierknopf auf Hover-Karten"
   },
   "setCopyButtonDesc": {
-    "message": "Ein kleiner „Kopieren“-Button in der Flaggen-Zeile. Kopiert den Post, über dem du warst, zusammen mit den Flaggen als Bild — im Browser gerendert, nichts wird hochgeladen. Rechtsklick auf einen Post macht dasselbe."
+    "message": "Ein kleiner „Beitrag“-Button in der Flaggenzeile. Kopiert den Beitrag, von dem aus du gehovert hast, samt Flaggen als Bild — im Browser gerendert, nichts wird hochgeladen. Rechtsklick auf einen Beitrag macht dasselbe."
+  },
+  "setCopyAboutButton": {
+    "message": "„Info“-Kopierknopf auf Hover-Karten"
+  },
+  "setCopyAboutButtonDesc": {
+    "message": "Ein kleiner „Info“-Button daneben. Öffnet kurz die echte x.com-Seite „Über diesen Account“ in einem Tab, kopiert sie als Bild und schließt den Tab. Nichts wird hochgeladen."
   },
   "setExceptionButton": {
     "message": "Ausnahme-Button auf Hover-Karten"
@@ -597,10 +615,31 @@
     "message": "Bio aus X' API — diese Karte zeigt keine an"
   },
   "shareBtn": {
-    "message": "🖼 Kopieren"
+    "message": "🖼 Beitrag"
   },
   "shareBtnTitle": {
     "message": "Diesen Post und was X für @$1 meldet als Bild kopieren"
+  },
+  "aboutBtn": {
+    "message": "👤 Info"
+  },
+  "aboutBtnTitle": {
+    "message": "Die „Über diesen Account“-Seite von @$1 als Bild kopieren"
+  },
+  "aboutCardTitle": {
+    "message": "Über diesen Account"
+  },
+  "aboutRowBasedIn": {
+    "message": "Account ansässig in"
+  },
+  "aboutRowJoined": {
+    "message": "Beigetreten"
+  },
+  "aboutRowConnectedVia": {
+    "message": "Verbunden über"
+  },
+  "aboutRowUsernameChanges": {
+    "message": "Nutzernamen-Änderungen"
   },
   "toastRendering": {
     "message": "Rendere @$1 …"

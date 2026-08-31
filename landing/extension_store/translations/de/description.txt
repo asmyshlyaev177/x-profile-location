@@ -85,7 +85,7 @@ WAS SIE NICHT IST
 Kein Bot-Detektor oder Engagement-Farming-Klassifikator. Sie zeigt Signale an, die du sonst nicht sehen kannst, ohne jedes Profil einzeln zu öffnen — Land, Quellplattform, VPN-Status, Account-Alter, Zugehörigkeit, Verifizierung, Handle-Änderungen. Was du daraus schließt, ist deine Sache.
 
 
-Chrome, Edge und Brave auf dem Desktop. Kiwi Browser auf Android.
+Chrome, Edge und Brave auf dem Desktop. Quetta Browser auf Android.
 
 15 UI-Sprachen mit Ländernamen in der Sprache des Lesers.
 

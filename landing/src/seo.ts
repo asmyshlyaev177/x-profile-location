@@ -112,7 +112,7 @@ export function buildJsonLd(version: string, locale: LocaleDef, t: Dict) {
     // are one product rather than two.
     alternateName: 'X Profile Location',
     applicationCategory: 'BrowserApplication',
-    operatingSystem: 'Chrome, Edge, Brave, Kiwi Browser',
+    operatingSystem: 'Chrome, Edge, Brave, Quetta Browser',
     description: home.description,
     inLanguage: locale.htmlLang,
     url: canonicalFor(HOME, locale),

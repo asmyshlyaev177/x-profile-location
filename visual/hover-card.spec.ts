@@ -35,26 +35,49 @@ test('the buttons keep their own width inside X’s column', async ({ page }) =>
   const card = await box(page.locator('#full'))
   const exception = await box(page.locator('#exc'))
   const share = await box(page.locator('#share'))
+  const about = await box(page.locator('#about'))
 
   expect(exception.width).toBeLessThan(card.width * 0.75)
   expect(share.width).toBeLessThan(card.width * 0.5)
+  expect(about.width).toBeLessThan(card.width * 0.5)
 })
 
-test('the copy button rides in the flags row rather than under it', async ({
+test('both copy buttons ride in the flags row rather than under it', async ({
   page,
 }) => {
-  // A hover card is short on vertical space, and the button is an action on
+  // A hover card is short on vertical space, and the buttons are actions on
   // exactly what that row shows.
   const flag = await box(page.locator('#info .x-loc-icon-flag'))
   const share = await box(page.locator('#share'))
+  const about = await box(page.locator('#about'))
 
   expect(Math.abs(centreY(flag) - centreY(share))).toBeLessThanOrEqual(4)
+  expect(Math.abs(centreY(flag) - centreY(about))).toBeLessThanOrEqual(4)
   expect(share.x).toBeGreaterThan(right(flag))
+  // Post then About, the order syncShareButtons appends them in.
+  expect(about.x).toBeGreaterThan(right(share) - 1)
+})
+
+test('the two copy buttons read as siblings, not one control', async ({
+  page,
+}) => {
+  // Same class, same recipe: a visible size or colour difference would make
+  // one look primary when neither is.
+  const share = await box(page.locator('#share'))
+  const about = await box(page.locator('#about'))
+  expect(Math.abs(share.height - about.height)).toBeLessThanOrEqual(1)
+
+  const shareColor = await styleOf(page.locator('#share'), 'color')
+  const aboutColor = await styleOf(page.locator('#about'), 'color')
+  expect(aboutColor).toBe(shareColor)
+
+  // A visible gap between them — two touching pills read as one.
+  expect(about.x - right(share)).toBeGreaterThanOrEqual(2)
 })
 
 test('nothing overflows the card it was inserted into', async ({ page }) => {
   const card = await box(page.locator('#full'))
-  for (const id of ['#info', '#card', '#exc']) {
+  for (const id of ['#info', '#card', '#exc', '#about']) {
     const piece = await box(page.locator(id))
     expect(right(piece)).toBeLessThanOrEqual(right(card) + 1)
   }

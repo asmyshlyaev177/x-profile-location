@@ -9,6 +9,7 @@ import {
   ratingAskDue,
   REVIEW_URL,
   setRatePromptState,
+  shareIntentUrl,
 } from '../usage'
 import toolbarIconUrl from '../../assets/icons/icon-32x32.png?inline'
 import { LOCATION_TOAST_ID, RATE_TOAST_ID, RATING_ASK_ID } from '../styles'
@@ -52,17 +53,37 @@ export function showRateLimitToast(force = false) {
   if (!toast) {
     toast = document.createElement('div')
     toast.id = RATE_TOAST_ID
-    // Interactive, so it needs a role, a tab stop and keys doing what a click does.
-    toast.title = t('toastDismiss')
-    toast.setAttribute('role', 'button')
-    toast.tabIndex = 0
+    // A click anywhere dismisses — including on the share button, whose click
+    // bubbles here after opening the composer.
     toast.addEventListener('click', dismissRateLimitToast)
-    toast.addEventListener('keydown', (e) => {
+
+    // The countdown is the interactive dismiss target, not the container: a
+    // button nested inside a role="button" is the nested-interactive trap.
+    const countdown = document.createElement('span')
+    countdown.className = 'x-loc-rate-countdown'
+    countdown.title = t('toastDismiss')
+    countdown.setAttribute('role', 'button')
+    countdown.tabIndex = 0
+    countdown.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
         dismissRateLimitToast()
       }
     })
+    toast.appendChild(countdown)
+
+    // The one moment the shared cache's value is felt is the one moment a
+    // share ask explains itself. Passive: always there, never a prompt.
+    const share = document.createElement('button')
+    share.type = 'button'
+    share.className = 'x-loc-share-btn'
+    share.textContent = t('shareCta')
+    share.title = t('shareRateLimitTitle')
+    share.addEventListener('click', () => {
+      window.open(shareIntentUrl(t('sharePostText')), '_blank', 'noopener')
+    })
+    toast.appendChild(share)
+
     document.body.appendChild(toast)
   }
 
@@ -77,7 +98,9 @@ export function showRateLimitToast(force = false) {
       el?.remove()
       return
     }
-    el.textContent = t('toastRateLimit', formatCountdown(remaining))
+    const countdown = el.querySelector('.x-loc-rate-countdown')
+    if (countdown)
+      countdown.textContent = t('toastRateLimit', formatCountdown(remaining))
   }
 
   tick()
@@ -177,6 +200,28 @@ function ratingAskButton(
   return btn
 }
 
+/** The bar, repurposed once the user agreed to rate: the one audience already
+ *  proven friendly, asked for the one thing that moves installs. */
+function swapToShareAsk(bar: HTMLElement): void {
+  bar.replaceChildren()
+
+  const message = document.createElement('span')
+  message.className = 'x-loc-ask-msg'
+  message.appendChild(buildBrandMark())
+  const text = document.createElement('span')
+  text.textContent = t('shareAfterRate')
+  message.appendChild(text)
+  bar.appendChild(message)
+
+  bar.appendChild(
+    ratingAskButton(t('shareCta'), false, () => {
+      window.open(shareIntentUrl(t('sharePostText')), '_blank', 'noopener')
+      dismissRatingAsk()
+    }),
+  )
+  bar.appendChild(ratingAskButton(t('rateAskNo'), true, dismissRatingAsk))
+}
+
 function showRatingAsk(): void {
   if (document.getElementById(RATING_ASK_ID)) return
 
@@ -207,7 +252,8 @@ function showRatingAsk(): void {
     ratingAskButton(t('rateAskYes'), false, () => {
       // Inside a click, so the popup blocker allows it and no worker need be awake.
       window.open(REVIEW_URL, '_blank', 'noopener')
-      answer('done')
+      void setRatePromptState('done')
+      swapToShareAsk(bar)
     }),
   )
   bar.appendChild(

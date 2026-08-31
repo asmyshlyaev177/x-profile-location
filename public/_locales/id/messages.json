@@ -95,6 +95,18 @@
   "rateAskNo": {
     "message": "Tidak, terima kasih"
   },
+  "sharePostText": {
+    "message": "Menampilkan dari negara mana setiap akun X memposting — dan menyembunyikan negara yang tidak ingin Anda baca. X-Pat"
+  },
+  "shareCta": {
+    "message": "Bagikan X-Pat"
+  },
+  "shareAfterRate": {
+    "message": "Terima kasih! Postingan untuk memberi tahu orang lain lebih membantu lagi."
+  },
+  "shareRateLimitTitle": {
+    "message": "Makin banyak pengguna mengisi cache bersama — makin sedikit rate limit untuk semua"
+  },
   "optionsTitle": {
     "message": "Pengaturan X-Pat"
   },
@@ -153,10 +165,16 @@
     "message": "Usia akun, lencana afiliasi, verifikasi, perubahan handle, dan jumlah pengikut — dibaca dari data yang sudah dikirim X, jadi tidak memerlukan pencarian tambahan."
   },
   "setCopyButton": {
-    "message": "Tombol \"Salin\" di kartu hover"
+    "message": "Tombol salin “Post” di kartu hover"
   },
   "setCopyButtonDesc": {
-    "message": "Tombol \"Salin\" kecil di baris bendera. Menyalin postingan yang Anda hover, beserta benderanya, sebagai gambar — dirender di browser Anda, tidak ada yang diunggah. Klik kanan postingan melakukan hal yang sama."
+    "message": "Tombol “Post” kecil di baris bendera. Menyalin post tempat Anda mengarahkan kursor, beserta benderanya, sebagai gambar — dirender di browser Anda, tidak ada yang diunggah. Klik kanan pada post melakukan hal yang sama."
+  },
+  "setCopyAboutButton": {
+    "message": "Tombol salin “Tentang” di kartu hover"
+  },
+  "setCopyAboutButtonDesc": {
+    "message": "Tombol “Tentang” kecil di sampingnya. Membuka sebentar halaman Tentang akun ini yang asli di x.com dalam tab, menyalinnya sebagai gambar, lalu menutup tab. Tidak ada yang diunggah."
   },
   "setExceptionButton": {
     "message": "Tombol pengecualian di kartu hover"
@@ -597,10 +615,31 @@
     "message": "Bio dari API X — kartu ini tidak menampilkannya"
   },
   "shareBtn": {
-    "message": "🖼 Salin"
+    "message": "🖼 Post"
   },
   "shareBtnTitle": {
     "message": "Salin postingan ini dan apa yang dilaporkan X untuk @$1 sebagai gambar"
+  },
+  "aboutBtn": {
+    "message": "👤 Tentang"
+  },
+  "aboutBtnTitle": {
+    "message": "Salin halaman Tentang-akun-ini milik @$1 sebagai gambar"
+  },
+  "aboutCardTitle": {
+    "message": "Tentang akun ini"
+  },
+  "aboutRowBasedIn": {
+    "message": "Akun berbasis di"
+  },
+  "aboutRowJoined": {
+    "message": "Bergabung"
+  },
+  "aboutRowConnectedVia": {
+    "message": "Terhubung melalui"
+  },
+  "aboutRowUsernameChanges": {
+    "message": "Perubahan nama pengguna"
   },
   "toastRendering": {
     "message": "Merender @$1 …"

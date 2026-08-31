@@ -31,10 +31,10 @@ export const STORES: Record<SupportedBrowser, StoreEntry> = {
 export const SUPPORTED_DESKTOP = 'Chrome · Edge · Brave'
 
 /**
- * Android browsers that run desktop Chrome extensions. Kiwi is the one the
- * swipe-to-reveal gesture was built against.
+ * Android browsers that run desktop Chrome extensions. Quetta is the current
+ * recommendation (Kiwi, the previous one, was discontinued in 2025).
  */
-export const SUPPORTED_ANDROID = 'Kiwi Browser'
+export const SUPPORTED_ANDROID = 'Quetta Browser'
 
 /** Detects the current browser from the UA alone. Safe during SSR. */
 export function detectBrowser(): SupportedBrowser {

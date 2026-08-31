@@ -127,6 +127,22 @@
     "message": "No thanks",
     "description": "Button that declines the rating request permanently."
   },
+  "sharePostText": {
+    "message": "See which country every X account posts from — and hide or collapse the ones you'd rather not read. X-Pat",
+    "description": "Prefilled text of the share post; the store link is appended by code on its own line."
+  },
+  "shareCta": {
+    "message": "Share X-Pat",
+    "description": "Button that opens X's post composer with the share text prefilled."
+  },
+  "shareAfterRate": {
+    "message": "Thanks! A post telling others helps even more.",
+    "description": "Shown in place of the rating ask right after the user agreed to rate."
+  },
+  "shareRateLimitTitle": {
+    "message": "More users fill the shared cache — fewer rate limits for everyone",
+    "description": "Tooltip on the share button inside the rate-limit countdown toast."
+  },
   "optionsTitle": {
     "message": "X-Pat settings",
     "description": "Heading of the full settings page."
@@ -195,11 +211,17 @@
     "message": "Account age, affiliate badge, verification, handle changes and follower count — read from data X already sent, so it costs no extra lookups."
   },
   "setCopyButton": {
-    "message": "“Copy” button on hover cards",
+    "message": "Copy “Post” button on hover cards",
     "description": "Setting label. The quoted word matches the button's own label — translate both together."
   },
   "setCopyButtonDesc": {
-    "message": "A small “Copy” button in the flags row. Copies the post you hovered from, together with the flags, as an image — rendered in your browser, nothing uploaded. Right-clicking a post does the same thing."
+    "message": "A small “Post” button in the flags row. Copies the post you hovered from, together with the flags, as an image — rendered in your browser, nothing uploaded. Right-clicking a post does the same thing."
+  },
+  "setCopyAboutButton": {
+    "message": "Copy “About” button on hover cards"
+  },
+  "setCopyAboutButtonDesc": {
+    "message": "A small “About” button beside it. Opens the account's real x.com About page in a tab for a moment, copies it as an image, and closes the tab. Nothing is uploaded."
   },
   "setExceptionButton": {
     "message": "Exception button on hover cards"
@@ -749,12 +771,40 @@
     "description": "Tooltip on a bio the extension restored because X's hover card omitted it."
   },
   "shareBtn": {
-    "message": "🖼 Copy",
+    "message": "🖼 Post",
     "description": "Button in the hover card's flags row. Copies the post as an image. Keep short. Translate setCopyButton to match."
   },
   "shareBtnTitle": {
     "message": "Copy this post and what X reports for @$1 as an image",
     "description": "Tooltip on the copy button. $1 is an X handle without the @."
+  },
+  "aboutBtn": {
+    "message": "👤 About",
+    "description": "Hover-card button that copies the account About card as an image. Keep it very short."
+  },
+  "aboutBtnTitle": {
+    "message": "Copy @$1's About-this-account page as an image",
+    "description": "Tooltip of that button. $1 is the @handle."
+  },
+  "aboutCardTitle": {
+    "message": "About this account",
+    "description": "Heading of the copied About card — X's own page title x.com/<user>/about."
+  },
+  "aboutRowBasedIn": {
+    "message": "Account based in",
+    "description": "Row label, as on X's About-this-account page."
+  },
+  "aboutRowJoined": {
+    "message": "Joined",
+    "description": "Row label, as on X's About-this-account page."
+  },
+  "aboutRowConnectedVia": {
+    "message": "Connected via",
+    "description": "Row label, as on X's About-this-account page."
+  },
+  "aboutRowUsernameChanges": {
+    "message": "Username changes",
+    "description": "Row label, as on X's About-this-account page."
   },
   "toastRendering": {
     "message": "Rendering @$1 …",

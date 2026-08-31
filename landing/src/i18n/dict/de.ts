@@ -50,6 +50,10 @@ export const de: Dict = {
     next: 'Nächstes Bild',
     railLabel: 'Screenshots',
     shots: {
+      copy: {
+        label: 'Als Bild kopieren',
+        alt: 'Eine Hover-Karte mit „Beitrag“- und „Info“-Kopierknöpfen neben der Flagge, daneben die kopierte „Über diesen Account“-Seite als Bild',
+      },
       hover: {
         label: 'Flagge beim Hovern',
         alt: 'Eine X-Hover-Karte mit deutscher Flagge und „Deutschland“ unter dem Handle',
@@ -338,7 +342,7 @@ export const de: Dict = {
       },
       surfaces: {
         title: 'Es ist auf mehr Plattformen vertreten',
-        body: 'Firefox auf dem Desktop, Firefox für Android und eine iPhone-Begleit-App. X-Pat ist aktuell nur Chromium — Chrome, Edge, Brave und Kiwi auf Android. Firefox ist geplant, iOS nicht.',
+        body: 'Firefox auf dem Desktop, Firefox für Android und eine iPhone-Begleit-App. X-Pat ist aktuell nur Chromium — Chrome, Edge, Brave und Quetta auf Android. Firefox ist geplant, iOS nicht.',
       },
       languageFilter: {
         title: 'Es hat einen Sprachfilter',

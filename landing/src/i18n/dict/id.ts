@@ -50,6 +50,10 @@ export const id: Dict = {
     next: 'Tangkapan berikutnya',
     railLabel: 'Tangkapan layar',
     shots: {
+      copy: {
+        label: 'Salin sebagai gambar',
+        alt: 'Kartu hover dengan tombol salin Post dan Tentang di samping bendera, dan di sebelahnya halaman Tentang akun ini yang disalin sebagai gambar',
+      },
       hover: {
         label: 'Bendera pas hover',
         alt: 'Kartu hover X dengan bendera Jerman dan kata Jerman di bawah username',
@@ -334,7 +338,7 @@ export const id: Dict = {
       },
       surfaces: {
         title: 'Dia tersedia di lebih banyak platform',
-        body: 'Firefox desktop, Firefox Android, dan aplikasi pendamping iPhone. X-Pat sekarang baru Chromium — Chrome, Edge, Brave, dan Kiwi di Android. Firefox direncanain, iOS nggak.',
+        body: 'Firefox desktop, Firefox Android, dan aplikasi pendamping iPhone. X-Pat sekarang baru Chromium — Chrome, Edge, Brave, dan Quetta di Android. Firefox direncanain, iOS nggak.',
       },
       languageFilter: {
         title: 'Dia punya filter bahasa',

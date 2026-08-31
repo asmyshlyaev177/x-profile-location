@@ -85,7 +85,7 @@ NE OLMADIĞI
 Bir bot dedektörü veya etkileşim çiftliği sınıflandırıcısı değildir. Her profili tek tek açmadan göremeyeceğiniz sinyalleri gösterir — ülke, kaynak platform, VPN durumu, hesap yaşı, bağlılık, doğrulama, kullanıcı adı değişiklikleri. Onlardan ne sonuç çıkardığınız size kalmış.
 
 
-Masaüstünde Chrome, Edge ve Brave. Android'de Kiwi Browser.
+Masaüstünde Chrome, Edge ve Brave. Android'de Quetta Browser.
 
 Okuyucunun kendi dilinde ülke adlarıyla 15 arayüz dili.
 

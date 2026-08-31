@@ -50,6 +50,10 @@ export const zh: Dict = {
     next: '下一张',
     railLabel: '截图',
     shots: {
+      copy: {
+        label: '复制为图片',
+        alt: '悬停卡片上国旗旁有“帖子”和“关于”复制按钮，旁边是复制成图片的“关于此账号”页面',
+      },
       hover: {
         label: '悬停显示国旗',
         alt: '一张 X 悬浮卡片，用户名下面多了一面德国国旗和「德国」二字',
@@ -327,7 +331,7 @@ export const zh: Dict = {
       },
       surfaces: {
         title: '它覆盖的平台更多',
-        body: '桌面 Firefox、Android Firefox、还有 iPhone 配套应用。X-Pat 目前只限 Chromium 系——Chrome、Edge、Brave，以及 Android 上的 Kiwi。Firefox 在计划中，iOS 没有。',
+        body: '桌面 Firefox、Android Firefox、还有 iPhone 配套应用。X-Pat 目前只限 Chromium 系——Chrome、Edge、Brave，以及 Android 上的 Quetta。Firefox 在计划中，iOS 没有。',
       },
       languageFilter: {
         title: '它有语言过滤',

@@ -130,7 +130,6 @@ represented at all; these answer 405 or 400 and count as `other` rather than sur
 line, so a restart loses the partial window (hence the SIGTERM flush). The distinct-installs
 figure comes from the `client_id` already in `location_votes` — no new tracking — but there
 is no index on `seen_at`, so it is a full scan: ~230ms over 5.4M votes, a synchronous
-event-loop stall. Fine once a day; never on a request path. It counts *contributors*, a
+event-loop stall. Fine once a day; never on a request path. It counts _contributors_, a
 floor on active users: counting readers would mean identifying lookups, which is exactly
 what this server promises not to be able to do.
-

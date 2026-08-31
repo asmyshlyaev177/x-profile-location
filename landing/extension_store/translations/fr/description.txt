@@ -85,7 +85,7 @@ CE QU'IL N'EST PAS
 Pas un détecteur de bots ni un classificateur d'engagement artificiel. Il affiche des signaux que vous ne pourriez pas voir autrement sans ouvrir chaque profil un par un — pays, plateforme source, statut VPN, âge du compte, affiliation, vérification, changements de pseudo. Ce que vous en concluez vous appartient.
 
 
-Chrome, Edge et Brave sur ordinateur. Kiwi Browser sur Android.
+Chrome, Edge et Brave sur ordinateur. Quetta Browser sur Android.
 
 15 langues d'interface avec les noms de pays dans la langue du lecteur.
 

@@ -85,7 +85,7 @@ O QUE ELE NÃO É
 Não é um detector de bots ou classificador de farms de engajamento. Ele exibe sinais que você não pode ver de outra forma sem abrir cada perfil um por um — país, plataforma de origem, status de VPN, idade da conta, afiliação, verificação, trocas de @. O que você conclui deles é com você.
 
 
-Chrome, Edge e Brave no desktop. Kiwi Browser no Android.
+Chrome, Edge e Brave no desktop. Quetta Browser no Android.
 
 15 idiomas de interface com nomes de países no idioma do leitor.
 
