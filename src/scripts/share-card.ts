@@ -184,6 +184,32 @@ const TITLE_FONT = '700 24px system-ui, -apple-system, sans-serif'
 const LABEL_FONT = '400 22px system-ui, -apple-system, sans-serif'
 const VALUE_FONT = '700 28px system-ui, -apple-system, sans-serif'
 
+/** The name and handle every card opens with. Returns the baseline under the
+ *  name; the gap below the handle is the caller's, and the two cards differ. */
+function pushIdentity(
+  ops: DrawOp[],
+  { userName, displayName }: { userName: string; displayName: string },
+  top: number,
+): number {
+  ops.push({
+    kind: 'text',
+    text: displayName || `@${userName}`,
+    x: PAD,
+    y: top + 30,
+    font: NAME_FONT,
+    color: FG,
+  })
+  ops.push({
+    kind: 'text',
+    text: `@${userName}`,
+    x: PAD,
+    y: top + 64,
+    font: HANDLE_FONT,
+    color: MUTED,
+  })
+  return top + 40
+}
+
 export function buildAboutLayout(
   input: AboutInput,
   { measure }: LayoutOptions,
@@ -201,24 +227,7 @@ export function buildAboutLayout(
   })
   y += 56
 
-  ops.push({
-    kind: 'text',
-    text: input.displayName || `@${input.userName}`,
-    x: PAD,
-    y: y + 30,
-    font: NAME_FONT,
-    color: FG,
-  })
-  y += 40
-
-  ops.push({
-    kind: 'text',
-    text: `@${input.userName}`,
-    x: PAD,
-    y: y + 24,
-    font: HANDLE_FONT,
-    color: MUTED,
-  })
+  y = pushIdentity(ops, input, y)
   y += 60
 
   for (const row of aboutRows(input.data, input.facts)) {
@@ -265,24 +274,7 @@ export function buildShareLayout(
   const contentWidth = WIDTH - PAD * 2
   let y = PAD
 
-  ops.push({
-    kind: 'text',
-    text: input.displayName || `@${input.userName}`,
-    x: PAD,
-    y: y + 30,
-    font: NAME_FONT,
-    color: FG,
-  })
-  y += 40
-
-  ops.push({
-    kind: 'text',
-    text: `@${input.userName}`,
-    x: PAD,
-    y: y + 24,
-    font: HANDLE_FONT,
-    color: MUTED,
-  })
+  y = pushIdentity(ops, input, y)
   y += 52
 
   // A hover card shares an *account*, so no post text is legitimate. Skipping
