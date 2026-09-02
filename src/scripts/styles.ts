@@ -14,6 +14,10 @@ export const PEOPLE_MATCH_ATTR = 'data-x-loc-cell-match'
 // Carries the rule as its value so a later one could be styled apart, though
 // they all draw the same bar today.
 export const TWEET_MARK_ATTR = 'data-x-loc-mark'
+// Set on a post, and on a quoted post, whose author the keyword/flag rule
+// fires on. Two attributes because either can match without the other.
+export const HIGHLIGHT_ATTR = 'data-x-loc-highlighted'
+export const QUOTE_HIGHLIGHT_ATTR = 'data-x-loc-quote-highlighted'
 // Set on a hover card whose account the keyword/flag rule is firing on; scopes
 // the generated emoji-keyword rules (see updateKeywordEmojiStyle).
 export const KEYWORD_MATCH_ATTR = 'data-x-loc-kw'
@@ -260,8 +264,8 @@ export const CONTENT_CSS = `
    post, on a quote card, and the rules that mark instead of hiding. One
    declaration rather than three identical ones, so they cannot drift apart —
    and so a post that matches two of them has no cascade to resolve. */
-article[data-x-loc-highlighted],
-[data-x-loc-quote-highlighted],
+article[${HIGHLIGHT_ATTR}],
+[${QUOTE_HIGHLIGHT_ATTR}],
 [${TWEET_MARK_ATTR}='age'] {
   border-left: 3px solid #f59e0b !important;
   background: rgba(245, 158, 11, 0.05) !important;

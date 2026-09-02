@@ -71,8 +71,10 @@ import {
   CONTENT_CSS,
   HIDDEN_ATTR,
   HIDDEN_PLACEHOLDER_CLASS,
+  HIGHLIGHT_ATTR,
   PEOPLE_MATCH_ATTR,
   QUOTE_HIDDEN_ATTR,
+  QUOTE_HIGHLIGHT_ATTR,
   RATE_TOAST_ID,
   TWEET_MARK_ATTR,
 } from '../styles'
@@ -165,7 +167,6 @@ import {
 } from './lookup'
 
 const PRIMARY_TWEET_ATTR = 'data-x-loc-primary-done'
-const QUOTE_HIGHLIGHT_ATTR = 'data-x-loc-quote-highlighted'
 const HIDDEN_REVEALED_ATTR = 'data-x-loc-revealed'
 // The "revealed" half of the quote pair; its hidden half is QUOTE_HIDDEN_ATTR,
 // which lives in styles.ts with the CSS written against it.
@@ -252,7 +253,7 @@ function stripAllInjections(): void {
   for (const article of Array.from(
     document.querySelectorAll<Element>(SEL_TWEET),
   )) {
-    article.removeAttribute('data-x-loc-highlighted')
+    article.removeAttribute(HIGHLIGHT_ATTR)
     article.removeAttribute(HIDDEN_ATTR)
     article.removeAttribute(TWEET_MARK_ATTR)
     article.removeAttribute(FEED_LOCATION_ATTR)
@@ -521,13 +522,13 @@ async function tryHighlightArticle(article: Element) {
 }
 
 async function tryHighlightTweet(article: Element) {
-  if (article.hasAttribute('data-x-loc-highlighted')) return
+  if (article.hasAttribute(HIGHLIGHT_ATTR)) return
   const { userName, displayName } = extractTweetUserInfo(article)
   if (!userName) return
   const info = await getBioInfo(userName)
   const name = displayName || info.displayName || ''
   if (!shouldHighlight(userName, name, info.bio)) return
-  article.setAttribute('data-x-loc-highlighted', '1')
+  article.setAttribute(HIGHLIGHT_ATTR, '1')
 }
 
 // Highlight the embedded quoted post when its author matches a keyword/flag
@@ -555,30 +556,42 @@ function rehighlightAll() {
   const articles = Array.from(document.querySelectorAll<Element>(SEL_TWEET))
   if (!hasHighlightRule()) {
     articles.forEach((a) => {
-      a.removeAttribute('data-x-loc-highlighted')
+      a.removeAttribute(HIGHLIGHT_ATTR)
       getQuotedTweetEl(a)?.removeAttribute(QUOTE_HIGHLIGHT_ATTR)
     })
     return
   }
   articles.forEach((a) => {
-    a.removeAttribute('data-x-loc-highlighted')
+    a.removeAttribute(HIGHLIGHT_ATTR)
     getQuotedTweetEl(a)?.removeAttribute(QUOTE_HIGHLIGHT_ATTR)
     tryHighlightArticle(a)
   })
 }
 
-/** For a bio that arrives after the tweets have already rendered. */
-function markHighlightedArticles(userName: string) {
+/** Everything on the page `userName` wrote: the posts, and the quoted posts
+ *  inside other people's. Both carry attributes, under different names. */
+function* postsBy(
+  userName: string,
+): Generator<{ el: Element; isQuote: boolean }> {
   const lc = userName.toLowerCase()
   for (const article of document.querySelectorAll<Element>(SEL_TWEET)) {
     if (extractTweetUserInfo(article).userName?.toLowerCase() === lc) {
-      article.setAttribute('data-x-loc-highlighted', '1')
+      yield { el: article, isQuote: false }
     }
     const quote = getQuotedTweetEl(article)
-    const quoted = quote && extractQuotedTweetUserInfo(quote).userName
-    if (quote && quoted?.toLowerCase() === lc) {
-      quote.setAttribute(QUOTE_HIGHLIGHT_ATTR, '1')
+    if (
+      quote &&
+      extractQuotedTweetUserInfo(quote).userName?.toLowerCase() === lc
+    ) {
+      yield { el: quote, isQuote: true }
     }
+  }
+}
+
+/** For a bio that arrives after the tweets have already rendered. */
+function markHighlightedArticles(userName: string) {
+  for (const { el, isQuote } of postsBy(userName)) {
+    el.setAttribute(isQuote ? QUOTE_HIGHLIGHT_ATTR : HIGHLIGHT_ATTR, '1')
   }
 }
 
@@ -803,7 +816,7 @@ function buildHiddenPlaceholder(
 ): HTMLElement {
   const ph = document.createElement('div')
   ph.className = HIDDEN_PLACEHOLDER_CLASS
-  // For hideArticle to compare against: rebuilding every refresh churned the
+  // For collapser.hide to compare against: rebuilding every refresh churned the
   // whole page, never rebuilding left it naming the wrong rule.
   ph.dataset.match = placeholderKey(match)
 
@@ -817,37 +830,66 @@ function buildHiddenPlaceholder(
   return ph
 }
 
-function hideArticle(
-  article: Element,
-  userName: string,
-  match: FilterMatch,
-  bornHidden = false,
-): void {
-  if (article.hasAttribute(HIDDEN_REVEALED_ATTR)) return
-  const schedule = bornHidden ? runNow : whenSafeToResize
-
-  if (hideMode === 'hide') {
-    // CSS takes the whole article, so this mode has no placeholder — and one
-    // left by collapse mode must go, or switching back builds a second.
-    if (isHiddenSilently(article, HIDDEN_ATTR)) return
-    schedule(article, () => {
-      article.setAttribute(HIDDEN_ATTR, 'hide')
-      ownPlaceholder(article)?.remove()
-    })
-    return
+/** One collapsible kind — a post, or the post it quotes. The two collapse
+ *  independently, so each carries its own attribute pair; everything else about
+ *  hiding, unhiding and revealing them is the same. */
+function collapser(hiddenAttr: string, revealedAttr: string) {
+  // "Show" reveals the target and never re-hides it; the marker lives only as
+  // long as the DOM node. Immediate, not parked: the user is waiting on it.
+  const reveal = (target: Element): void => {
+    cancelPendingResize(target)
+    target.removeAttribute(hiddenAttr)
+    target.setAttribute(revealedAttr, '1')
   }
 
-  // Build a placeholder only when there is none, or the one there names a rule
-  // no longer catching this post — that keeps rule changes off other posts.
-  if (isCollapsedFor(article, HIDDEN_ATTR, match)) return
-  schedule(article, () => {
-    article.setAttribute(HIDDEN_ATTR, 'collapse')
-    ownPlaceholder(article)?.remove()
-    article.appendChild(
-      buildHiddenPlaceholder(article, userName, match, revealArticle),
-    )
-  })
+  const unhide = (target: Element): void => {
+    cancelPendingResize(target)
+    if (!target.hasAttribute(hiddenAttr)) return
+    whenSafeToResize(target, () => {
+      target.removeAttribute(hiddenAttr)
+      target.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
+    })
+  }
+
+  const hide = (
+    target: Element,
+    userName: string,
+    match: FilterMatch,
+    bornHidden = false,
+  ): void => {
+    if (target.hasAttribute(revealedAttr)) return
+    const schedule = bornHidden ? runNow : whenSafeToResize
+
+    if (hideMode === 'hide') {
+      // CSS takes the whole target, so this mode has no placeholder — and one
+      // left by collapse mode must go, or switching back builds a second.
+      if (isHiddenSilently(target, hiddenAttr)) return
+      schedule(target, () => {
+        target.setAttribute(hiddenAttr, 'hide')
+        ownPlaceholder(target)?.remove()
+      })
+      return
+    }
+
+    // Build a placeholder only when there is none, or the one there names a rule
+    // no longer catching this post — that keeps rule changes off other posts.
+    if (isCollapsedFor(target, hiddenAttr, match)) return
+    schedule(target, () => {
+      target.setAttribute(hiddenAttr, 'collapse')
+      ownPlaceholder(target)?.remove()
+      target.appendChild(
+        buildHiddenPlaceholder(target, userName, match, reveal),
+      )
+    })
+  }
+
+  return { hide, unhide, reveal }
 }
+
+const post = collapser(HIDDEN_ATTR, HIDDEN_REVEALED_ATTR)
+// The quote collapses alone: taking the whole row would remove a post the
+// reader never filtered.
+const quotedPost = collapser(QUOTE_HIDDEN_ATTR, QUOTE_REVEALED_ATTR)
 
 /** The placeholder this target owns — a direct child. A descendant query would
  *  also find a collapsed quote's, and answer for the wrong post. */
@@ -875,68 +917,6 @@ function isCollapsedFor(
   return ownPlaceholder(target)?.dataset.match === placeholderKey(match)
 }
 
-function unhideArticle(article: Element): void {
-  cancelPendingResize(article)
-  if (!article.hasAttribute(HIDDEN_ATTR)) return
-  whenSafeToResize(article, () => {
-    article.removeAttribute(HIDDEN_ATTR)
-    article.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
-  })
-}
-
-// "Show" reveals the post and never re-hides it; the marker lives only as long
-// as the DOM node. Immediate, not parked: the user is waiting on it.
-function revealArticle(article: Element): void {
-  cancelPendingResize(article)
-  article.removeAttribute(HIDDEN_ATTR)
-  article.setAttribute(HIDDEN_REVEALED_ATTR, '1')
-}
-
-// The quote collapses alone: taking the whole row would remove a post the
-// reader never filtered.
-
-function hideQuote(
-  quote: Element,
-  userName: string,
-  match: FilterMatch,
-  bornHidden = false,
-): void {
-  if (quote.hasAttribute(QUOTE_REVEALED_ATTR)) return
-  const schedule = bornHidden ? runNow : whenSafeToResize
-
-  if (hideMode === 'hide') {
-    if (isHiddenSilently(quote, QUOTE_HIDDEN_ATTR)) return
-    schedule(quote, () => {
-      quote.setAttribute(QUOTE_HIDDEN_ATTR, 'hide')
-      ownPlaceholder(quote)?.remove()
-    })
-    return
-  }
-  if (isCollapsedFor(quote, QUOTE_HIDDEN_ATTR, match)) return
-  schedule(quote, () => {
-    quote.setAttribute(QUOTE_HIDDEN_ATTR, 'collapse')
-    ownPlaceholder(quote)?.remove()
-    quote.appendChild(
-      buildHiddenPlaceholder(quote, userName, match, revealQuote),
-    )
-  })
-}
-
-function unhideQuote(quote: Element): void {
-  cancelPendingResize(quote)
-  if (!quote.hasAttribute(QUOTE_HIDDEN_ATTR)) return
-  whenSafeToResize(quote, () => {
-    quote.removeAttribute(QUOTE_HIDDEN_ATTR)
-    quote.querySelector(`.${HIDDEN_PLACEHOLDER_CLASS}`)?.remove()
-  })
-}
-
-function revealQuote(quote: Element): void {
-  cancelPendingResize(quote)
-  quote.removeAttribute(QUOTE_HIDDEN_ATTR)
-  quote.setAttribute(QUOTE_REVEALED_ATTR, '1')
-}
-
 /** Collapse a just-inserted post in the microtask it arrived in, so it is never
  *  laid out at full height — worth 2188px of scroll, see CLAUDE.md. */
 function applyKnownHide(article: Element): void {
@@ -946,7 +926,7 @@ function applyKnownHide(article: Element): void {
   if (quote && !quote.hasAttribute(QUOTE_HIDDEN_ATTR)) {
     const quoted = extractQuotedTweetUserInfo(quote).userName
     const known = quoted ? knownHideVerdict(quoted) : null
-    if (known && quoted) hideQuote(quote, quoted, known, true)
+    if (known && quoted) quotedPost.hide(quote, quoted, known, true)
   }
 
   if (article.matches(SEL_PRIMARY_TWEET)) return
@@ -955,7 +935,7 @@ function applyKnownHide(article: Element): void {
   if (!userName) return
   // undefined (never judged) and null (judged, not hidden) both mean "leave it".
   const known = knownHideVerdict(userName)
-  if (known) hideArticle(article, userName, known, true)
+  if (known) post.hide(article, userName, known, true)
 }
 
 async function tryHideQuote(article: Element) {
@@ -969,7 +949,7 @@ async function tryHideQuote(article: Element) {
   if (!userName) return
 
   const match = hideMatchFor(userName, await getCached(userName))
-  if (match) hideQuote(quote, userName, match)
+  if (match) quotedPost.hide(quote, userName, match)
 }
 
 async function tryHideArticle(article: Element) {
@@ -986,7 +966,7 @@ async function tryHideArticle(article: Element) {
   if (!userName) return
 
   const match = hideMatchFor(userName, await getCached(userName))
-  if (match) hideArticle(article, userName, match)
+  if (match) post.hide(article, userName, match)
 }
 
 // For data arriving after the posts did — a cache hit, a resolved prefetch.
@@ -1008,14 +988,14 @@ function hideTweetsForUser(
       !quote.hasAttribute(QUOTE_REVEALED_ATTR) &&
       !quote.hasAttribute(QUOTE_HIDDEN_ATTR)
     ) {
-      hideQuote(quote, userName, match)
+      quotedPost.hide(quote, userName, match)
     }
 
     if (article.matches(SEL_PRIMARY_TWEET)) return
     if (article.hasAttribute(HIDDEN_REVEALED_ATTR)) return
     if (article.hasAttribute(HIDDEN_ATTR)) return
     if (extractTweetUserInfo(article).userName?.toLowerCase() !== lc) return
-    hideArticle(article, userName, match)
+    post.hide(article, userName, match)
   })
 }
 
@@ -1072,16 +1052,16 @@ function setMark(target: Element, match: FilterMatch | null): void {
 
 function applyPostVerdict(v: PostVerdict): void {
   if (v.articleHide && v.userName) {
-    hideArticle(v.article, v.userName, v.articleHide)
+    post.hide(v.article, v.userName, v.articleHide)
   } else {
-    unhideArticle(v.article)
+    post.unhide(v.article)
   }
 
   if (v.quote) {
     if (v.quoteHide && v.quoteUserName) {
-      hideQuote(v.quote, v.quoteUserName, v.quoteHide)
+      quotedPost.hide(v.quote, v.quoteUserName, v.quoteHide)
     } else {
-      unhideQuote(v.quote)
+      quotedPost.unhide(v.quote)
     }
     setMark(v.quote, v.quoteMark)
   }
@@ -1140,20 +1120,8 @@ async function tryMarkQuote(article: Element) {
 function markTweetsForUser(userName: string, data: LocationData): void {
   const match = markMatchFor(userName, data)
   if (!match) return
-  const lc = userName.toLowerCase()
-  for (const article of Array.from(
-    document.querySelectorAll<Element>(SEL_TWEET),
-  )) {
-    if (extractTweetUserInfo(article).userName?.toLowerCase() === lc) {
-      article.setAttribute(TWEET_MARK_ATTR, match.rule)
-    }
-    const quote = getQuotedTweetEl(article)
-    if (
-      quote &&
-      extractQuotedTweetUserInfo(quote).userName?.toLowerCase() === lc
-    ) {
-      quote.setAttribute(TWEET_MARK_ATTR, match.rule)
-    }
+  for (const { el } of postsBy(userName)) {
+    el.setAttribute(TWEET_MARK_ATTR, match.rule)
   }
 }
 
@@ -1887,22 +1855,21 @@ const ABOUT_RENDER_TIMEOUT_MS = 15_000
 const ABOUT_SETTLE_MS = 600
 const ABOUT_CLOSE_DELAY_MS = 1200
 
-function waitForAboutSection(): Promise<Element | null> {
+async function waitForAboutSection(): Promise<Element | null> {
   const found = findAboutSection()
-  if (found) return Promise.resolve(found)
+  if (found) return found
 
   return new Promise((resolve) => {
-    const timer = setTimeout(() => {
+    const settle = (el: Element | null) => {
       observer.disconnect()
-      resolve(null)
-    }, ABOUT_RENDER_TIMEOUT_MS)
+      resolve(el)
+    }
+    const timer = setTimeout(() => settle(null), ABOUT_RENDER_TIMEOUT_MS)
     const observer = new MutationObserver(() => {
       const el = findAboutSection()
-      if (el) {
-        clearTimeout(timer)
-        observer.disconnect()
-        resolve(el)
-      }
+      if (!el) return
+      clearTimeout(timer)
+      settle(el)
     })
     observer.observe(document.body, { childList: true, subtree: true })
   })

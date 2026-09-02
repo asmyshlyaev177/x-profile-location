@@ -67,7 +67,7 @@ async function createShareMenu(): Promise<void> {
   chrome.contextMenus.create({
     id: 'share-post',
     title: t('menuSharePost'),
-    contexts: ['page', 'selection', 'link', 'image'],
+    contexts: ['page', 'link', 'image'],
     documentUrlPatterns: [...X_TAB_PATTERNS],
   })
 }
