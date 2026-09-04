@@ -82,6 +82,9 @@ test('the sitemap lists the indexed pages and nothing else', async ({
     .flatMap((l) => localizedRoutes.map((r) => localePath(l.code, r.path)))
     .sort()
   expect(listed).toEqual(expected)
+  expect(xml.match(/<changefreq>[^<]*/g)).toEqual(
+    expected.map(() => '<changefreq>monthly'),
+  )
 })
 
 test('the head carries no keywords tag', async ({ request }) => {

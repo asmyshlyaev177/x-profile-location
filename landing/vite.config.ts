@@ -320,6 +320,9 @@ export default defineConfig({
       // plugin's default is `new Date()`, which stamps every URL with the build
       // time and tells a crawler the whole site changed whenever any of it did.
       lastmod: routeLastmods,
+      // The plugin's default claims `daily`; these pages move a few times a
+      // quarter, and a hint a crawler can see is false is one it discounts.
+      changefreq: 'monthly',
       // `robotsTxt()` below writes robots.txt instead — this plugin's schema
       // cannot express `Content-Signal`, and its write would clobber ours.
       generateRobotsTxt: false,
