@@ -14,7 +14,7 @@ import { playAudit } from 'playwright-lighthouse'
 import desktopConfig from 'lighthouse/core/config/desktop-config.js'
 
 import { PREVIEW_URL } from '../playwright.audits.config'
-import { localizedRoutes, routes } from '../src/routes'
+import { routes } from '../src/routes'
 import { DEFAULT_LOCALE, localePath, locales } from '../src/i18n/locales'
 
 /**
@@ -61,12 +61,13 @@ const INDEXABLE = { ...ALWAYS, seo: 100 }
  * component the guide pages use and several they do not.
  */
 const AUDITED = [
-  ...routes.map((route) => ({ route, path: route.path })),
+  ...routes.map((route) => ({ path: route.path, noindex: !!route.noindex })),
   ...locales
     .filter((l) => l.code !== DEFAULT_LOCALE)
     .map((l) => ({
-      route: localizedRoutes[0]!,
       path: localePath(l.code, '/'),
+      // An unindexed locale ships `noindex` on every page, like the policy.
+      noindex: !l.indexed,
     })),
 ]
 
@@ -76,7 +77,7 @@ test.describe('Lighthouse', () => {
   // each half a browser and skew both performance scores.
   test.describe.configure({ mode: 'serial' })
 
-  for (const { route, path } of AUDITED) {
+  for (const { path, noindex } of AUDITED) {
     const name = path === '/' ? '/ (homepage)' : path
 
     // No fixture parameter: a named first argument is a Playwright error and
@@ -98,7 +99,7 @@ test.describe('Lighthouse', () => {
         const { lhr } = await playAudit({
           page,
           port,
-          thresholds: route.noindex ? ALWAYS : INDEXABLE,
+          thresholds: noindex ? ALWAYS : INDEXABLE,
           opts: { onlyCategories: CATEGORIES },
           // Desktop, not the mobile default: mobile's 4x CPU slowdown scores
           // the runner. Desktop is also the audience — the Chrome Web Store.
@@ -109,7 +110,7 @@ test.describe('Lighthouse', () => {
         // `is-crawlable` is *meant* to fail here. Naming the one audit allowed
         // to fail asserts both halves: that `noindex` reached the shipped
         // document, and that nothing else in SEO regressed behind it.
-        if (route.noindex) {
+        if (noindex) {
           const failed = lhr.categories.seo.auditRefs
             .filter((ref) => (lhr.audits[ref.id]?.score ?? 1) < 1)
             .map((ref) => ref.id)

@@ -45,6 +45,20 @@ export interface LocaleDef {
   /** `og:locale`, which wants `language_TERRITORY` rather than a bare tag. */
   ogLocale: string
   script: Script
+  /**
+   * `false` keeps the locale out of the index: `noindex` on its pages, no
+   * hreflang or sitemap entry. It is still built, still in the language menu
+   * and still offered to a matching browser. Set from Search Console demand:
+   * a locale is indexed at ~5 impressions a month. The rest were fifty-odd
+   * near-duplicate pages on a month-old host — the shape Google's
+   * scaled-content policy describes — and the site lost index admission a
+   * week after they shipped (Aug 2026).
+   */
+  indexed: boolean
+  /** "Read this page in <language>", in that language, for `LanguageSuggest`. */
+  suggest: string
+  /** Its dismiss control, same language. */
+  dismiss: string
 }
 
 export const DEFAULT_LOCALE = 'en'
@@ -70,6 +84,9 @@ export const locales: LocaleDef[] = [
     name: 'English',
     ogLocale: 'en_US',
     script: 'latin',
+    indexed: true,
+    suggest: 'Read this page in English',
+    dismiss: 'Dismiss',
   },
   {
     code: 'ja',
@@ -78,6 +95,9 @@ export const locales: LocaleDef[] = [
     name: '日本語',
     ogLocale: 'ja_JP',
     script: 'japanese',
+    indexed: false,
+    suggest: '日本語で読む',
+    dismiss: '閉じる',
   },
   {
     code: 'es',
@@ -86,6 +106,9 @@ export const locales: LocaleDef[] = [
     name: 'Español',
     ogLocale: 'es_ES',
     script: 'latin',
+    indexed: false,
+    suggest: 'Leer esta página en español',
+    dismiss: 'Cerrar',
   },
   {
     code: 'ar',
@@ -94,6 +117,9 @@ export const locales: LocaleDef[] = [
     name: 'العربية',
     ogLocale: 'ar_AR',
     script: 'arabic',
+    indexed: true,
+    suggest: 'اقرأ هذه الصفحة بالعربية',
+    dismiss: 'إغلاق',
   },
   {
     code: 'id',
@@ -102,6 +128,9 @@ export const locales: LocaleDef[] = [
     name: 'Bahasa Indonesia',
     ogLocale: 'id_ID',
     script: 'latin',
+    indexed: false,
+    suggest: 'Baca halaman ini dalam bahasa Indonesia',
+    dismiss: 'Tutup',
   },
   {
     code: 'fr',
@@ -110,6 +139,9 @@ export const locales: LocaleDef[] = [
     name: 'Français',
     ogLocale: 'fr_FR',
     script: 'latin',
+    indexed: false,
+    suggest: 'Lire cette page en français',
+    dismiss: 'Fermer',
   },
   {
     code: 'de',
@@ -118,6 +150,9 @@ export const locales: LocaleDef[] = [
     name: 'Deutsch',
     ogLocale: 'de_DE',
     script: 'latin',
+    indexed: true,
+    suggest: 'Diese Seite auf Deutsch lesen',
+    dismiss: 'Schließen',
   },
   {
     code: 'tr',
@@ -126,6 +161,9 @@ export const locales: LocaleDef[] = [
     name: 'Türkçe',
     ogLocale: 'tr_TR',
     script: 'latin',
+    indexed: false,
+    suggest: 'Bu sayfayı Türkçe oku',
+    dismiss: 'Kapat',
   },
   {
     // Brazilian, not European: Brazil is the larger X audience by a wide
@@ -136,6 +174,9 @@ export const locales: LocaleDef[] = [
     name: 'Português',
     ogLocale: 'pt_BR',
     script: 'latin',
+    indexed: false,
+    suggest: 'Ler esta página em português',
+    dismiss: 'Fechar',
   },
   {
     code: 'ru',
@@ -144,6 +185,9 @@ export const locales: LocaleDef[] = [
     name: 'Русский',
     ogLocale: 'ru_RU',
     script: 'cyrillic',
+    indexed: true,
+    suggest: 'Читать эту страницу по-русски',
+    dismiss: 'Закрыть',
   },
   {
     code: 'th',
@@ -152,6 +196,9 @@ export const locales: LocaleDef[] = [
     name: 'ไทย',
     ogLocale: 'th_TH',
     script: 'thai',
+    indexed: true,
+    suggest: 'อ่านหน้านี้เป็นภาษาไทย',
+    dismiss: 'ปิด',
   },
   {
     code: 'ko',
@@ -160,6 +207,9 @@ export const locales: LocaleDef[] = [
     name: '한국어',
     ogLocale: 'ko_KR',
     script: 'korean',
+    indexed: false,
+    suggest: '이 페이지를 한국어로 읽기',
+    dismiss: '닫기',
   },
   {
     // Simplified only. `zh-Hans` rather than `zh-CN`, because the split that
@@ -170,6 +220,9 @@ export const locales: LocaleDef[] = [
     name: '简体中文',
     ogLocale: 'zh_CN',
     script: 'chinese',
+    indexed: false,
+    suggest: '用简体中文阅读此页',
+    dismiss: '关闭',
   },
   {
     code: 'fil',
@@ -178,6 +231,9 @@ export const locales: LocaleDef[] = [
     name: 'Filipino',
     ogLocale: 'tl_PH',
     script: 'latin',
+    indexed: false,
+    suggest: 'Basahin ang pahinang ito sa Filipino',
+    dismiss: 'Isara',
   },
   {
     code: 'vi',
@@ -186,6 +242,9 @@ export const locales: LocaleDef[] = [
     name: 'Tiếng Việt',
     ogLocale: 'vi_VN',
     script: 'latin',
+    indexed: false,
+    suggest: 'Đọc trang này bằng tiếng Việt',
+    dismiss: 'Đóng',
   },
 ]
 
@@ -236,7 +295,30 @@ export function headlineGap(
 
 export const localeCodes: string[] = locales.map((l) => l.code)
 
+/** The locales a crawler is told about — see `LocaleDef.indexed`. */
+export const indexedLocales: LocaleDef[] = locales.filter((l) => l.indexed)
+
+/** localStorage key of the reader's language choice; `index.html` reads it too. */
+export const LANG_KEY = 'xpat-lang'
+
 const BY_CODE = new Map(locales.map((l) => [l.code, l]))
+
+// Two primary subtags are still emitted under their superseded codes: Android
+// and older browsers report Tagalog as `tl` rather than `fil`, and Java-derived
+// stacks report Indonesian as `in` rather than `id`.
+const ALIAS: Record<string, string> = { tl: 'fil', in: 'id' }
+
+/** The first shipping locale a browser's language list names, if any. */
+export function detectLocale(
+  languages: readonly string[],
+): LocaleDef | undefined {
+  for (const tag of languages) {
+    const primary = String(tag).toLowerCase().split('-')[0] ?? ''
+    const hit = BY_CODE.get(ALIAS[primary] ?? primary)
+    if (hit) return hit
+  }
+  return undefined
+}
 
 export function localeByCode(code: string): LocaleDef | undefined {
   return BY_CODE.get(code)

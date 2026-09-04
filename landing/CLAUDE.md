@@ -71,6 +71,36 @@ after adding tests. The hand-typed number said 609 while the suite had grown to
 (`src/assets/icons/*.png`, blue X + question mark). Anything on the site uses the
 first; anything shown to a user as "the icon" uses the second.
 
+## Indexing
+
+The site lost its Google index on 2026-08-22 — impressions 47/day to 0,
+indexed pages ~40 to 6, the homepage "Crawled - currently not indexed" — three
+weeks after the move from `x-profile-location.pages.dev` and days after fifteen
+LLM-translated locales of five pages shipped. Nothing in the head was wrong;
+Google's live test was clean. What changed in response, all pinned by
+`tests/seo.spec.ts`:
+
+- **`LocaleDef.indexed`** (`src/i18n/locales.ts`). Only `en`, `de`, `ar`, `ru`
+  and `th` are indexed — the locales with Search Console demand. The rest are
+  built and in the menu but ship `noindex`, appear in no hreflang cluster
+  (`seo.ts` iterates `indexedLocales`) and are excluded from the sitemap
+  (`vite.config.ts`). Flip the flag when a locale earns impressions.
+- **No language redirect.** `index.html` used to send a non-English browser
+  from `/` to `/<lang>` before paint; Google's guidance forbids auto-redirecting
+  between language versions. `LanguageSuggest.tsx` offers the detected language
+  as a fixed toast instead, client-only so the prerendered document never
+  carries it. A choice made in the picker still redirects `/` — that is the
+  reader's, not the browser's.
+- **No `meta keywords`**, and the privacy-policy link on translated pages is
+  bare `/privacy-policy` (the localised path 404ed on all fourteen).
+- **`scripts/build-date.mjs` unshallows the clone.** Cloudflare Pages builds
+  from one commit, so every route fell back to the HEAD date and the sitemap
+  stamped all 75 URLs with a version bump.
+
+The old host's 301s and the Search Console change of address (started
+2026-08-01, 180-day window) stay untouched; do not start a custom-domain move
+inside it.
+
 ## Accessibility
 
 Three gates, each seeing what the other two cannot.

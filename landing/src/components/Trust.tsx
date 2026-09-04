@@ -1,7 +1,7 @@
 import { useI18n } from '../i18n/context'
 
 export function Trust() {
-  const { t, href } = useI18n()
+  const { t } = useI18n()
 
   return (
     <section
@@ -14,8 +14,10 @@ export function Trust() {
             <h2 class="t-h2 reveal">{t.trust.heading}</h2>
             <p class="t-lead reveal mt-6">{t.trust.lead}</p>
             <p class="t-body reveal mt-6">{t.trust.body}</p>
+            {/* Bare, not `href()`: the policy exists only in English, and the
+                localised path 404ed on every translated page. */}
             <a
-              href={href('/privacy-policy')}
+              href="/privacy-policy"
               class="text-accent hover:text-ink reveal mt-7 inline-flex items-center gap-2 text-[0.9375rem] font-semibold underline decoration-1 underline-offset-[6px] transition-colors"
             >
               {t.trust.readPolicy}
