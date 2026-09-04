@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 import sitemap from 'vite-plugin-sitemap'
 import { siteUrl } from './src/seo'
 import { localizedRoutes, prerenderPathsFor, routes } from './src/routes'
-import { localeCodes, localePath } from './src/i18n/locales'
+import { LANG_KEY, localeCodes, localePath, locales } from './src/i18n/locales'
 import {
   getContentLastModified,
   getRouteLastmods,
@@ -153,10 +153,21 @@ function localeCodesHtml(): PluginOption {
   return {
     name: 'locale-codes-html',
     transformIndexHtml(html) {
-      return html.replace('%LOCALE_CODES%', localeCodes.join(','))
+      return html
+        .replace('%LOCALE_CODES%', localeCodes.join(','))
+        .replace('%LANG_KEY%', LANG_KEY)
     },
   }
 }
+
+/**
+ * Every page of every locale that asks not to be indexed — see
+ * `LocaleDef.indexed`. Kept out of the sitemap for the same reason the
+ * `noindex` routes are.
+ */
+const unindexedPaths = locales
+  .filter((l) => !l.indexed)
+  .flatMap((l) => localizedRoutes.map((r) => localePath(l.code, r.path)))
 
 /**
  * Writes the AI discovery file set into `dist/`.
@@ -301,7 +312,10 @@ export default defineConfig({
       // prerendered page including the localised ones, and passing the same
       // list again had it union the two without deduplicating — every URL
       // appeared twice in the sitemap.
-      exclude: routes.filter((r) => r.noindex).map((r) => r.path),
+      exclude: [
+        ...routes.filter((r) => r.noindex).map((r) => r.path),
+        ...unindexedPaths,
+      ],
       // Per-URL dates, from the commits that touched each page's sources. The
       // plugin's default is `new Date()`, which stamps every URL with the build
       // time and tells a crawler the whole site changed whenever any of it did.

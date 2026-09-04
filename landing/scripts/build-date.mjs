@@ -44,6 +44,17 @@ export function getContentLastModified() {
 }
 
 /**
+ * Cloudflare Pages builds from a shallow clone, where `git log` knows one
+ * commit, no source has a date, and every route falls back to HEAD — the
+ * deployed sitemap stamped all 75 URLs with a version-bump commit. Deepen once
+ * if the remote allows it; when it does not, the fallback stands.
+ */
+function ensureHistory() {
+  if (git('rev-parse --is-shallow-repository').trim() !== 'true') return
+  git('fetch --unshallow --quiet')
+}
+
+/**
  * Newest commit date per tracked file under `landing/`, keyed by path relative
  * to that directory.
  *
@@ -52,6 +63,7 @@ export function getContentLastModified() {
  * two-second build into a twenty-second one as the site grows.
  */
 function fileDates() {
+  ensureHistory()
   // `--relative` emits paths relative to the landing package, matching the
   // `sources` entries in routes.ts.
   const log = git('log --relative --format=%x00%cI --name-only -- src public')

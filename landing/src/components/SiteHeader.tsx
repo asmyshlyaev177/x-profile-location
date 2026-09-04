@@ -3,6 +3,7 @@ import { GITHUB_REPO_URL } from '../utils/constants'
 import { InstallButton } from './InstallButton'
 import { Wordmark } from './Wordmark'
 import { LanguagePicker } from './LanguagePicker'
+import { LanguageSuggest } from './LanguageSuggest'
 import { useI18n } from '../i18n/context'
 
 export function SiteHeader() {
@@ -38,57 +39,60 @@ export function SiteHeader() {
   }, [])
 
   return (
-    <header
-      class="sticky top-0 z-[var(--z-sticky)] transition-colors duration-300 ease-out"
-      style={
-        lifted
-          ? 'background:color-mix(in oklch, var(--bg) 82%, transparent);backdrop-filter:blur(14px) saturate(140%);border-bottom:1px solid var(--line)'
-          : 'border-bottom:1px solid transparent'
-      }
-    >
-      <div class="shell flex h-[var(--header-h)] items-center justify-between gap-6">
-        <Wordmark />
+    <>
+      <LanguageSuggest />
+      <header
+        class="sticky top-0 z-(--z-sticky) transition-colors duration-300 ease-out"
+        style={
+          lifted
+            ? 'background:color-mix(in oklch, var(--bg) 82%, transparent);backdrop-filter:blur(14px) saturate(140%);border-bottom:1px solid var(--line)'
+            : 'border-bottom:1px solid transparent'
+        }
+      >
+        <div class="shell flex h-(--header-h) items-center justify-between gap-6">
+          <Wordmark />
 
-        {/* Five links plus a wordmark plus a button only breathe from ~1024px;
-            below that the install CTA is the only thing that matters anyway.
-            The language picker stays at every width — someone reading the
-            wrong language cannot use the page at all, which is a worse
-            problem than a cramped nav. */}
-        <nav
-          aria-label={t.nav.sections}
-          class="hidden items-center gap-7 lg:flex"
-        >
-          {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              class="text-muted hover:text-ink text-[0.8125rem] font-medium transition-colors duration-150"
-            >
-              {l.label}
-            </a>
-          ))}
-        </nav>
-
-        <div class="flex items-center gap-3">
-          <LanguagePicker />
-
-          {/* Icon-only, and kept at every width: "there is a repo" is the
-              claim, and it reads from the mark alone. The label lives in
-              `aria-label` and the tooltip. */}
-          <a
-            href={GITHUB_REPO_URL}
-            target="_blank"
-            rel="noopener"
-            title={t.nav.sourceOnGitHub}
-            aria-label={t.nav.sourceOnGitHub}
-            class="text-muted hover:text-ink hover:border-line-strong border-line hidden size-9 items-center justify-center rounded-full border transition-colors duration-150 sm:inline-flex"
+          {/* Five links plus a wordmark plus a button only breathe from ~1024px;
+              below that the install CTA is the only thing that matters anyway.
+              The language picker stays at every width — someone reading the
+              wrong language cannot use the page at all, which is a worse
+              problem than a cramped nav. */}
+          <nav
+            aria-label={t.nav.sections}
+            class="hidden items-center gap-7 lg:flex"
           >
-            <GitHubIcon />
-          </a>
-          <InstallButton size="sm" placement="header" />
+            {links.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                class="text-muted hover:text-ink text-[0.8125rem] font-medium transition-colors duration-150"
+              >
+                {l.label}
+              </a>
+            ))}
+          </nav>
+
+          <div class="flex items-center gap-3">
+            <LanguagePicker />
+
+            {/* Icon-only, and kept at every width: "there is a repo" is the
+                claim, and it reads from the mark alone. The label lives in
+                `aria-label` and the tooltip. */}
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noopener"
+              title={t.nav.sourceOnGitHub}
+              aria-label={t.nav.sourceOnGitHub}
+              class="text-muted hover:text-ink hover:border-line-strong border-line hidden size-9 items-center justify-center rounded-full border transition-colors duration-150 sm:inline-flex"
+            >
+              <GitHubIcon />
+            </a>
+            <InstallButton size="sm" placement="header" />
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   )
 }
 

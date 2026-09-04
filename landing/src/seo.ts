@@ -2,8 +2,8 @@ import { metaFor, routes, type RouteDef } from './routes'
 import { CHROME_STORE_URL } from './utils/constants'
 import {
   defaultLocale,
+  indexedLocales,
   localePath,
-  locales,
   type LocaleDef,
 } from './i18n/locales'
 import type { Dict } from './i18n/dict/en'
@@ -67,9 +67,6 @@ export const buildDate: string =
  * `routes.ts` when there was only one language.
  */
 export const seo = {
-  /** Ignored by Google since 2009, still read by a few smaller engines. */
-  keywords:
-    'X Twitter profile location, country flag extension, Twitter location checker, VPN detection Twitter, where is this Twitter user from, X profile country, hide tweets by country, collapse tweets by location, X country filter, X region filter, X location filter, filter X by keyword, block affiliated accounts X, highlight new X accounts, X account age, X about this account, engagement farming X, Twitter bot check, X account location finder, X account location checker, check X account location, Chrome extension',
   author: 'asmyshlyaev177',
 
   og: {
@@ -168,19 +165,22 @@ function jsonLdEl(data: unknown) {
 }
 
 /**
- * `hreflang` for every language this page exists in, plus `x-default`.
+ * `hreflang` for every *indexed* language this page exists in, plus
+ * `x-default`.
  *
- * Emitted on all fifteen documents and listing all fifteen — the annotation is
- * only valid if it is reciprocal, and a page that names its alternates without
- * being named back by them is ignored. `x-default` points at English, which is
- * both the default and the version served from the bare path.
+ * Emitted on each indexed document and listing the same set — the annotation
+ * is only valid if it is reciprocal, and a page that names its alternates
+ * without being named back by them is ignored. A `noindex` locale is left out
+ * on both sides for the same reason: an alternate Google may not index is one
+ * it reports as an error. `x-default` points at English, which is both the
+ * default and the version served from the bare path.
  *
  * Pages with no dictionary entry (the privacy policy, the 404) exist in one
  * language, so they get nothing: an `hreflang` set of one is noise.
  */
 function alternateEls(route: RouteDef) {
   if (!route.dictKey) return []
-  const links = locales.map((l) => ({
+  const links = indexedLocales.map((l) => ({
     type: 'link',
     props: {
       rel: 'alternate',
@@ -208,6 +208,7 @@ export function buildHeadElements(
 ) {
   const canonical = canonicalFor(route, locale)
   const { title, description, faq } = metaFor(route, t)
+  const indexable = !route.noindex && locale.indexed
 
   // Nothing below the fold matters for a page we're asking not to be indexed.
   if (route.noindex) {
@@ -225,11 +226,12 @@ export function buildHeadElements(
       content: 'VGWeNcrEVDQA07xz1L_6VZjcMEip0kTWdxxpIEmmbKc',
     }),
     metaEl({ name: 'description', content: description }),
-    metaEl({ name: 'keywords', content: seo.keywords }),
     metaEl({ name: 'author', content: seo.author }),
+    // An unindexed locale keeps the rest of its head — the page is still
+    // shared and previewed — and only declines the index.
     metaEl({
       name: 'robots',
-      content: 'index, follow, max-image-preview:large',
+      content: indexable ? 'index, follow, max-image-preview:large' : 'noindex',
     }),
 
     // Open Graph
@@ -265,8 +267,8 @@ export function buildHeadElements(
 
   // `og:locale:alternate` is the Open Graph half of the same statement the
   // hreflang block makes, and Facebook/LinkedIn read it rather than hreflang.
-  if (route.dictKey) {
-    for (const l of locales) {
+  if (route.dictKey && indexable) {
+    for (const l of indexedLocales) {
       if (l.code === locale.code) continue
       elements.push(
         metaEl({ property: 'og:locale:alternate', content: l.ogLocale }),
@@ -274,7 +276,7 @@ export function buildHeadElements(
     }
   }
 
-  elements.push(...alternateEls(route))
+  if (indexable) elements.push(...alternateEls(route))
 
   if (faq.length) elements.push(jsonLdEl(buildFaqJsonLd(route, locale, t)))
 
