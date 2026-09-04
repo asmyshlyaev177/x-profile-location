@@ -37,9 +37,22 @@ function git(args) {
   }
 }
 
-/** ISO-8601 date of the HEAD commit, or now when git is unavailable. */
+/**
+ * ISO-8601 date of the newest commit that touched the site's own files, or
+ * now when git is unavailable.
+ *
+ * Scoped, not HEAD: this package shares a repository with the extension, and
+ * a version bump there is not a change to any page here — yet `dateModified`,
+ * `og:updated_time` and the sitemap's fallback all moved on every one. HEAD
+ * is the fallback for a clone that could not be deepened (see
+ * `ensureHistory`), where a path-scoped log may find nothing.
+ */
 export function getContentLastModified() {
-  const iso = git('log -1 --format=%cI').trim()
+  ensureHistory()
+  const iso = (
+    git('log -1 --format=%cI -- src public index.html') ||
+    git('log -1 --format=%cI')
+  ).trim()
   return iso ? new Date(iso).toISOString() : new Date().toISOString()
 }
 
