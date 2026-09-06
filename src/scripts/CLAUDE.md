@@ -209,7 +209,7 @@ HIGHLIGHT_FLAGS_KEY = 'highlightFlags'
 SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed' // default ON
 HIDE_BLOCKED_LOCATIONS_KEY = 'hideBlockedLocations' // 'off' | 'collapse' | 'hide'; default 'collapse'
 BACKGROUND_PREFETCH_KEY = 'backgroundPrefetch' // default ON
-PREFETCH_SHARE_KEY = 'prefetchShare' // default 0.8
+PREFETCH_SHARE_KEY = 'prefetchShare' // default 0.85
 PREFETCH_PACING_KEY = 'prefetchPacing' // 'spread' | 'instant'; default 'spread'
 SHARED_CACHE_KEY = 'sharedCacheEnabled' // default ON (inert without CACHE_API_BASE); master switch for prefetch
 

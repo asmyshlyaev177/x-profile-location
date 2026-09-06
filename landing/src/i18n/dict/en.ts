@@ -163,20 +163,20 @@ export const en = {
       },
       spread: {
         title: 'Spread, not sprinted',
-        body: 'Roughly one lookup every 22 seconds, recomputed each time — stretching when you hover a lot, tightening when the window refills.',
+        body: 'Roughly one lookup every 21 seconds, recomputed each time — stretching when you hover a lot, tightening when the window refills.',
         readoutKey: 'Pace',
         readoutValue: 'window ÷ budget',
       },
       hovers: {
         title: 'Hovers always win',
-        body: 'Background work stops at 80%, so the rest of the window is there for accounts you actually point at.',
+        body: 'Background work stops at 85%, so the rest of the window is there for accounts you actually point at.',
         readoutKey: 'Reserved',
-        readoutValue: '10 of 50',
+        readoutValue: '8 of 50',
       },
     },
     bar: {
       caption: 'One 15-minute window',
-      alt: 'Fifty lookups per window: forty available to background prefetching, ten reserved for the accounts you hover.',
+      alt: 'Fifty lookups per window: forty-two available to background prefetching, eight reserved for the accounts you hover.',
       backgroundNote:
         'background, trickled out across the full fifteen minutes',
       reservedNote:
@@ -281,7 +281,7 @@ export const en = {
   compareTeaser: {
     heading: 'Already using one of the others?',
     lead: 'About twenty extensions put a flag next to a handle. The differences that matter are not on the feature list — they are in what the shared cache is allowed to do, and in what happens when X’s fifty lookups run out.',
-    body: 'This one paces itself against the real budget in X’s own response headers and holds ten lookups back for the accounts you hover, so a busy thread finishes filling in instead of stopping halfway. The full table covers fourteen rows and names the three things X-Posed does better than this extension.',
+    body: 'This one paces itself against the real budget in X’s own response headers and holds eight lookups back for the accounts you hover, so a busy thread finishes filling in instead of stopping halfway. The full table covers fourteen rows and names the three things X-Posed does better than this extension.',
     link: 'See the full comparison →',
   },
 
@@ -507,7 +507,7 @@ export const en = {
         '<b>Lookups carry no identifier.</b> Reads are an unsigned list of handles, so the server has nothing to join them against and cannot build “this install looked at these accounts”. Counting readers would take one line and would end that property, which is why the published stats undercount on purpose.',
       /** `{href}` is the homepage's rate-limit section, localised. */
       differs5:
-        'And the rate limit is rationed rather than raced: background work stops at eighty percent of the window, so the last ten lookups are still there for accounts you actually hover. <a href="{href}">The mechanism is drawn out on the homepage</a>.',
+        'And the rate limit is rationed rather than raced: background work stops at eighty-five percent of the window, so the last eight lookups are still there for accounts you actually hover. <a href="{href}">The mechanism is drawn out on the homepage</a>.',
       sourcesHeading: 'Sources',
       /** `{date}` the scrape date, `{href}` the issue tracker. */
       sourcesLead:

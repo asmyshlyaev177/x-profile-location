@@ -4,6 +4,7 @@ import {
   BACKGROUND_PREFETCH_KEY,
   BLOCKED_AFFILIATIONS_KEY,
   BLOCKED_COUNTRIES_KEY,
+  DEFAULT_PREFETCH_SHARE,
   EXTENSION_ENABLED_KEY,
   HIDE_BLOCKED_LOCATIONS_KEY,
   HIGHLIGHT_EXCEPTIONS_KEY,
@@ -85,10 +86,12 @@ export function normalizeSharedCacheCount(
   return { n: Math.floor(n), at }
 }
 
-export const DEFAULT_PREFETCH_SHARE = 0.8
+export { DEFAULT_PREFETCH_SHARE }
 
 /** The shares the options page offers, as fractions. */
-export const PREFETCH_SHARE_CHOICES = [0.3, 0.5, 0.7, 0.8, 0.9] as const
+export const PREFETCH_SHARE_CHOICES = [
+  0.3, 0.5, 0.7, 0.8, 0.85, 0.9, 0.95,
+] as const
 
 // Hand-rolled because bare Number() turns null, '' and objects alike into 0.
 export function finiteNumber(value: unknown): number | null {

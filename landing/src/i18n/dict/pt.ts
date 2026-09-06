@@ -126,20 +126,20 @@ export const pt: Dict = {
       },
       spread: {
         title: 'Dosado, não disparado de uma vez',
-        body: 'Mais ou menos uma consulta a cada 22 segundos, recalculada sempre — alivia quando você passa muito o mouse, aperta quando a janela vai recompondo.',
+        body: 'Mais ou menos uma consulta a cada 21 segundos, recalculada sempre — alivia quando você passa muito o mouse, aperta quando a janela vai recompondo.',
         readoutKey: 'Ritmo',
         readoutValue: 'janela ÷ limite',
       },
       hovers: {
         title: 'O mouse sempre tem prioridade',
-        body: 'O trabalho em segundo plano para nos 80%, então o resto da janela fica reservado para as contas em que você realmente passar o mouse.',
+        body: 'O trabalho em segundo plano para nos 85%, então o resto da janela fica reservado para as contas em que você realmente passar o mouse.',
         readoutKey: 'Reservado',
-        readoutValue: '10 de 50',
+        readoutValue: '8 de 50',
       },
     },
     bar: {
       caption: 'Uma janela de 15 minutos',
-      alt: 'Cinquenta consultas por janela: quarenta disponíveis para pré-carregamento em segundo plano, dez reservadas para as contas em que você passa o mouse.',
+      alt: 'Cinquenta consultas por janela: quarenta e duas disponíveis para pré-carregamento em segundo plano, oito reservadas para as contas em que você passa o mouse.',
       backgroundNote:
         'em segundo plano, pingadas ao longo dos quinze minutos inteiros',
       reservedNote:
@@ -243,7 +243,7 @@ export const pt: Dict = {
   compareTeaser: {
     heading: 'Já usa alguma das outras?',
     lead: 'Cerca de vinte extensões colocam uma bandeira ao lado de um @. As diferenças que importam não estão na lista de recursos — estão no que o cache compartilhado tem permissão para fazer, e no que acontece quando as cinquenta consultas do X acabam.',
-    body: 'Esta aqui se ritma pelo orçamento real que vem nos cabeçalhos de resposta do X e guarda dez consultas para as contas em que você passa o mouse, então uma thread cheia termina de preencher em vez de parar no meio. A tabela completa tem catorze linhas e mostra as três coisas que o X-Posed faz melhor do que esta extensão.',
+    body: 'Esta aqui se ritma pelo orçamento real que vem nos cabeçalhos de resposta do X e guarda oito consultas para as contas em que você passa o mouse, então uma thread cheia termina de preencher em vez de parar no meio. A tabela completa tem catorze linhas e mostra as três coisas que o X-Posed faz melhor do que esta extensão.',
     link: 'Ver a comparação completa →',
   },
 
@@ -468,7 +468,7 @@ export const pt: Dict = {
       differs4:
         '<b>As consultas não carregam identificador.</b> As leituras são uma lista de @ sem assinatura, então o servidor não tem nada para cruzar e não consegue montar um "esta instalação olhou estas contas". Contar leitores levaria uma linha de código e acabaria com essa propriedade, e é por isso que as estatísticas publicadas propositalmente subestimam.',
       differs5:
-        'E o limite é racionado em vez de disputado: o trabalho em segundo plano para em oitenta por cento da janela, então as últimas dez consultas continuam disponíveis para as contas em que você realmente passa o mouse. <a href="{href}">O mecanismo está desenhado na página inicial</a>.',
+        'E o limite é racionado em vez de disputado: o trabalho em segundo plano para em oitenta e cinco por cento da janela, então as últimas oito consultas continuam disponíveis para as contas em que você realmente passa o mouse. <a href="{href}">O mecanismo está desenhado na página inicial</a>.',
       sourcesHeading: 'Fontes',
       sourcesLead:
         'Lido em {date}. Números de instalação e recursos mudam; se algo abaixo estiver desatualizado, é erro, não posição, e o <a href="{href}">rastreador de issues</a> é o jeito mais rápido de mandar corrigir.',

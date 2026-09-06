@@ -21,6 +21,8 @@ export const LOOKUP_LIMIT_PER_WINDOW = 50
 export const LOOKUP_WINDOW_MINUTES = 15
 export const LOOKUP_WINDOW_MS = LOOKUP_WINDOW_MINUTES * 60 * 1000
 
+export const DEFAULT_PREFETCH_SHARE = 0.85
+
 /** How long a 429 pauses lookups when X sends no `x-rate-limit-reset`. */
 export const RATE_LIMIT_RESET_DEFAULT_MS = LOOKUP_WINDOW_MS / 3
 

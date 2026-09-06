@@ -126,20 +126,20 @@ export const fr: Dict = {
       },
       spread: {
         title: 'Étalé, pas épuisé d’un coup',
-        body: 'Environ une consultation toutes les 22 secondes, recalculée en continu — le rythme se détend quand vous survolez beaucoup, se resserre quand la fenêtre se recharge.',
+        body: 'Environ une consultation toutes les 21 secondes, recalculée en continu — le rythme se détend quand vous survolez beaucoup, se resserre quand la fenêtre se recharge.',
         readoutKey: 'Rythme',
         readoutValue: 'fenêtre ÷ quota',
       },
       hovers: {
         title: 'Le survol l’emporte toujours',
-        body: 'Le travail d’arrière-plan s’arrête à 80 %, si bien que le reste de la fenêtre est réservé aux comptes que vous survolez vous-même.',
+        body: 'Le travail d’arrière-plan s’arrête à 85 %, si bien que le reste de la fenêtre est réservé aux comptes que vous survolez vous-même.',
         readoutKey: 'Réservé',
-        readoutValue: '10 sur 50',
+        readoutValue: '8 sur 50',
       },
     },
     bar: {
       caption: 'Une fenêtre de 15 minutes',
-      alt: 'Cinquante consultations par fenêtre : quarante disponibles pour le préchargement en arrière-plan, dix réservées aux comptes que vous survolez.',
+      alt: 'Cinquante consultations par fenêtre : quarante-deux disponibles pour le préchargement en arrière-plan, huit réservées aux comptes que vous survolez.',
       backgroundNote:
         'en arrière-plan, réparties tout au long des quinze minutes',
       reservedNote:
@@ -243,7 +243,7 @@ export const fr: Dict = {
   compareTeaser: {
     heading: 'Vous utilisez déjà l’une des autres ?',
     lead: 'Une vingtaine d’extensions placent un drapeau à côté d’un pseudo. Les différences qui comptent ne sont pas dans la liste des fonctionnalités — elles sont dans ce que le cache partagé a le droit de faire, et dans ce qui se passe quand les cinquante consultations de X sont épuisées.',
-    body: 'Celle-ci se cale sur le budget réel annoncé par les en-têtes de réponse de X et garde dix consultations pour les comptes que vous survolez : un fil chargé finit de se remplir au lieu de s’arrêter à mi-chemin. Le tableau complet couvre quatorze lignes et nomme les trois domaines où X-Posed fait mieux que cette extension.',
+    body: 'Celle-ci se cale sur le budget réel annoncé par les en-têtes de réponse de X et garde huit consultations pour les comptes que vous survolez : un fil chargé finit de se remplir au lieu de s’arrêter à mi-chemin. Le tableau complet couvre quatorze lignes et nomme les trois domaines où X-Posed fait mieux que cette extension.',
     link: 'Voir la comparaison complète →',
   },
 
@@ -468,7 +468,7 @@ export const fr: Dict = {
       differs4:
         '<b>Les consultations ne portent aucun identifiant.</b> Les lectures sont une liste de pseudos non signée : le serveur n’a rien pour les recouper et ne peut pas construire un « cette installation a regardé ces comptes ». Compter les lecteurs tiendrait en une ligne de code et anéantirait cette propriété, raison pour laquelle les statistiques publiées sous-estiment volontairement.',
       differs5:
-        'Et le quota est rationné plutôt que disputé : le travail d’arrière-plan s’arrête à quatre-vingts pour cent de la fenêtre, si bien que les dix dernières consultations restent disponibles pour les comptes que vous survolez vous-même. <a href="{href}">Le mécanisme est détaillé sur la page d’accueil</a>.',
+        'Et le quota est rationné plutôt que disputé : le travail d’arrière-plan s’arrête à quatre-vingt-cinq pour cent de la fenêtre, si bien que les huit dernières consultations restent disponibles pour les comptes que vous survolez vous-même. <a href="{href}">Le mécanisme est détaillé sur la page d’accueil</a>.',
       sourcesHeading: 'Sources',
       sourcesLead:
         'Consulté le {date}. Les chiffres d’installation et les fonctionnalités évoluent ; si quelque chose ci-dessous n’est plus à jour, c’est une erreur et non une position, et le <a href="{href}">suivi des tickets</a> est le moyen le plus rapide de la faire corriger.',

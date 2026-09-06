@@ -126,20 +126,20 @@ export const vi: Dict = {
       },
       spread: {
         title: 'Trải đều, không chạy hộc tốc',
-        body: 'Tầm một lần tra mỗi 22 giây, tính lại liên tục — giãn khi bạn rê chuột nhiều, siết khi cửa sổ đầy lại.',
+        body: 'Tầm một lần tra mỗi 21 giây, tính lại liên tục — giãn khi bạn rê chuột nhiều, siết khi cửa sổ đầy lại.',
         readoutKey: 'Tốc độ',
         readoutValue: 'cửa sổ ÷ hạn mức',
       },
       hovers: {
         title: 'Rê chuột luôn thắng',
-        body: 'Tác vụ nền dừng ở 80%, để chừa lại cho mấy tài khoản bạn thực sự chỉ vào.',
+        body: 'Tác vụ nền dừng ở 85%, để chừa lại cho mấy tài khoản bạn thực sự chỉ vào.',
         readoutKey: 'Dự phòng',
-        readoutValue: '10 trong 50',
+        readoutValue: '8 trong 50',
       },
     },
     bar: {
       caption: 'Một cửa sổ 15 phút',
-      alt: 'Năm chục lần tra mỗi cửa sổ: bốn mươi cho prefetch nền, mười giữ lại cho tài khoản bạn rê chuột.',
+      alt: 'Năm chục lần tra mỗi cửa sổ: bốn mươi hai cho prefetch nền, tám giữ lại cho tài khoản bạn rê chuột.',
       backgroundNote: 'nền, nhỏ giọt suốt mười lăm phút',
       reservedNote:
         'giữ lại, để cú rê chuột không bao giờ là cái request làm bạn hết sạch',
@@ -241,7 +241,7 @@ export const vi: Dict = {
   compareTeaser: {
     heading: 'Đang xài một cái khác rồi à?',
     lead: 'Khoảng hai chục extension nhét cờ cạnh tên người dùng. Mấy cái khác biệt đáng kể thì không nằm trong danh sách tính năng — mà nằm ở chuyện cache chung được phép làm gì, và ở chuyện gì xảy ra khi năm mươi lượt tra cứu của X hết sạch.',
-    body: 'Cái này tự giữ nhịp theo hạn mức thật lấy từ chính response header của X và chừa lại mười lượt cho tài khoản bạn rê chuột, nên một thread đông vẫn điền xong thay vì đứng giữa chừng. Bảng đầy đủ có mười bốn dòng và chỉ đích danh ba thứ X-Posed làm tốt hơn extension này.',
+    body: 'Cái này tự giữ nhịp theo hạn mức thật lấy từ chính response header của X và chừa lại tám lượt cho tài khoản bạn rê chuột, nên một thread đông vẫn điền xong thay vì đứng giữa chừng. Bảng đầy đủ có mười bốn dòng và chỉ đích danh ba thứ X-Posed làm tốt hơn extension này.',
     link: 'Xem so sánh đầy đủ →',
   },
 
@@ -459,7 +459,7 @@ export const vi: Dict = {
       differs4:
         '<b>Tra cứu không mang định danh.</b> Lượt đọc là danh sách tên không ký, nên server chẳng có gì để ghép và không thể dựng kiểu "máy này đã xem mấy tài khoản này". Đếm người đọc tốn một dòng code và sẽ phá cái tính chất đó, thành ra số liệu công bố cố ý đếm thiếu.',
       differs5:
-        'Và rate limit được chia khẩu phần chứ không chạy đua: tác vụ nền dừng ở 80% cửa sổ, nên mười lần cuối vẫn còn cho tài khoản bạn rê chuột. <a href="{href}">Cơ chế vẽ rõ ở trang chủ</a>.',
+        'Và rate limit được chia khẩu phần chứ không chạy đua: tác vụ nền dừng ở 85% cửa sổ, nên tám lần cuối vẫn còn cho tài khoản bạn rê chuột. <a href="{href}">Cơ chế vẽ rõ ở trang chủ</a>.',
       sourcesHeading: 'Nguồn',
       sourcesLead:
         'Đọc ngày {date}. Số cài và tính năng thay đổi; nếu bên dưới có gì cũ là lỗi chứ không phải lập trường, và <a href="{href}">issue tracker</a> là cách nhanh nhất để sửa.',

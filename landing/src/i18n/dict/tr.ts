@@ -126,20 +126,20 @@ export const tr: Dict = {
       },
       spread: {
         title: 'Yayılıyor, patlamıyor',
-        body: 'Kabaca her 22 saniyede bir sorgu, her seferinde yeniden hesaplanıyor — çok bakınca esniyor, pencere yeniden dolunca sıkılaşıyor.',
+        body: 'Kabaca her 21 saniyede bir sorgu, her seferinde yeniden hesaplanıyor — çok bakınca esniyor, pencere yeniden dolunca sıkılaşıyor.',
         readoutKey: 'Tempo',
         readoutValue: 'pencere ÷ bütçe',
       },
       hovers: {
         title: 'Hover her zaman kazanır',
-        body: "Arka plan işi %80'te duruyor, pencerenin geri kalanı gerçekten üzerine gittiğin hesaplara kalsın diye.",
+        body: "Arka plan işi %85'te duruyor, pencerenin geri kalanı gerçekten üzerine gittiğin hesaplara kalsın diye.",
         readoutKey: 'Ayrılan',
-        readoutValue: "50'de 10",
+        readoutValue: "50'de 8",
       },
     },
     bar: {
       caption: '15 dakikalık tek bir pencere',
-      alt: 'Pencere başına elli sorgu: kırkı arka planda ön yüklemeye açık, onu üzerine geldiğin hesaplara ayrılmış.',
+      alt: 'Pencere başına elli sorgu: kırk ikisi arka planda ön yüklemeye açık, sekizi üzerine geldiğin hesaplara ayrılmış.',
       backgroundNote: 'arka plan, on beş dakikaya yayıla yayıla',
       reservedNote:
         'kenarda tutuluyor, bir hover hiçbir zaman seni sıfırlayan istek olmasın diye',
@@ -241,7 +241,7 @@ export const tr: Dict = {
   compareTeaser: {
     heading: 'Zaten başka birini mi kullanıyorsun?',
     lead: 'Yaklaşık yirmi eklenti kullanıcı adının yanına bayrak koyuyor. Asıl fark özellik listesinde değil — ortak önbelleğin neye izni olduğunda ve X’in elli sorgusu bittiğinde ne olduğunda.',
-    body: "Bu eklenti hızını X'in kendi yanıt başlıklarındaki gerçek bütçeye göre ayarlıyor ve üzerine gittiğin hesaplar için on sorgu saklı tutuyor; kalabalık bir başlık yarıda kalmak yerine sonuna kadar doluyor. Tam tablo on dört satır ve X-Posed'un bu eklentiden daha iyi yaptığı üç şeyi açık açık söylüyor.",
+    body: "Bu eklenti hızını X'in kendi yanıt başlıklarındaki gerçek bütçeye göre ayarlıyor ve üzerine gittiğin hesaplar için sekiz sorgu saklı tutuyor; kalabalık bir başlık yarıda kalmak yerine sonuna kadar doluyor. Tam tablo on dört satır ve X-Posed'un bu eklentiden daha iyi yaptığı üç şeyi açık açık söylüyor.",
     link: 'Tam karşılaştırmayı gör →',
   },
 
@@ -463,7 +463,7 @@ export const tr: Dict = {
       differs4:
         '<b>Sorgular kimlik taşımaz.</b> Okumalar imzasız bir kullanıcı adı listesidir, sunucunun onları birbirine bağlayacak hiçbir şeyi yoktur, "bu kurulum şu hesaplara baktı" gibi bir bilgi inşa edemez. Okuyucuları saymak tek satır sürer ve bu özelliği anında bitirir, yayınlanan istatistiklerin bilerek düşük olması bu yüzden.',
       differs5:
-        'İstek sınırı da yarışılmak yerine karnelenir: arka plan işi pencerenin yüzde sekseninde durur, son on sorgu gerçekten üzerine gittiğin hesaplar için kalır. <a href="{href}">Mekanizma ana sayfada çizili halde</a>.',
+        'İstek sınırı da yarışılmak yerine karnelenir: arka plan işi pencerenin yüzde seksen beşinde durur, son sekiz sorgu gerçekten üzerine gittiğin hesaplar için kalır. <a href="{href}">Mekanizma ana sayfada çizili halde</a>.',
       sourcesHeading: 'Kaynaklar',
       sourcesLead:
         '{date} tarihinde okundu. Kurulum sayıları ve özellikler değişir; aşağıda bir şey güncelliğini yitirmişse bu bir duruş değil hatadır, düzeltmenin en hızlı yolu <a href="{href}">sorun takipçisidir</a>.',

@@ -1,5 +1,5 @@
 // Type-only, so this module keeps its runtime independence from everything else.
-import { LOOKUP_WINDOW_MS } from '../constants'
+import { DEFAULT_PREFETCH_SHARE, LOOKUP_WINDOW_MS } from '../constants'
 import type { PrefetchPacing } from '../settings'
 // The candidate queue and the pacing arithmetic behind background lookups. No
 // timers, no fetching, no rate-limit state — see "Cross-tab lookup broker".
@@ -48,7 +48,7 @@ export interface PacingOptions {
 }
 
 export const PACING_DEFAULTS: Required<PacingOptions> = {
-  reserveFraction: 0.8,
+  reserveFraction: DEFAULT_PREFETCH_SHARE,
   pacing: 'spread',
   minSpacingMs: 1500,
   maxSpacingMs: 2 * 60 * 1000,
