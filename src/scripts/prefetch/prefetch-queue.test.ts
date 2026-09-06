@@ -316,7 +316,7 @@ describe('revalidateBudget', () => {
 
   it('falls back to the default share for a non-finite one', () => {
     expect(revalidateBudget(rate(), Number.NaN)).toBe(
-      revalidateBudget(rate(), 0.8),
+      revalidateBudget(rate(), 0.85),
     )
   })
 
@@ -334,9 +334,9 @@ describe('nextDelayMs', () => {
   const NOW = 1_000_000
   const WINDOW = LOOKUP_WINDOW_MS
 
-  // Real-world shape at the shipped defaults: 50/15min with a 0.8 share → 40
-  // background lookups to spread over 15 minutes ≈ one every 22s, with the last
-  // 10 of the window held back for the user's hovers.
+  // Real-world shape at the shipped defaults: 50/15min with a 0.85 share → 42
+  // background lookups to spread over 15 minutes ≈ one every 21s, with the last
+  // 8 of the window held back for the user's hovers.
   const paced = (over: Partial<RateState> = {}): RateState => ({
     remaining: 50,
     limit: 50,
@@ -345,35 +345,35 @@ describe('nextDelayMs', () => {
     ...over,
   })
   const opts = (over: PacingOptions = {}) => ({ ...PACING_DEFAULTS, ...over })
-  // Past the sprint: half the 40-lookup share is gone — well past the quarter
-  // it covers — so the trickle answers, with 20 left to spread.
+  // Past the sprint: 20 of the 42-lookup share are gone — well past the quarter
+  // it covers — so the trickle answers, with 22 left to spread.
   const cruising = (over: Partial<RateState> = {}) =>
     paced({ remaining: 30, ...over })
 
   it('divides the remaining window by the remaining budget', () => {
-    expect(nextDelayMs(cruising(), opts(), NOW)).toBe(WINDOW / 20)
+    expect(nextDelayMs(cruising(), opts(), NOW)).toBe(WINDOW / 22)
   })
 
   it('assumes a full window when X has not told us the reset time yet', () => {
     expect(nextDelayMs(cruising({ windowResetAt: 0 }), opts(), NOW)).toBe(
-      WINDOW / 20,
+      WINDOW / 22,
     )
   })
 
   it('stretches the gap as manual hovers eat the shared budget', () => {
-    // user spent 5 more → 15 left of the prefetch share rather than 20
+    // user spent 5 more → 17 left of the prefetch share rather than 22
     expect(nextDelayMs(cruising({ remaining: 25 }), opts(), NOW)).toBe(
-      WINDOW / 15,
+      WINDOW / 17,
     )
   })
 
   it('shrinks the gap as the window winds down', () => {
     const twoMinutesLeft = NOW + 13 * 60 * 1000
-    expect(nextDelayMs(cruising(), opts(), twoMinutesLeft)).toBe(120_000 / 20)
+    expect(nextDelayMs(cruising(), opts(), twoMinutesLeft)).toBe(120_000 / 22)
   })
 
   it('never paces faster than minSpacingMs', () => {
-    const tenSecondsLeft = NOW + WINDOW - 10_000 // budget 20 → 500ms
+    const tenSecondsLeft = NOW + WINDOW - 10_000 // budget 22 → 455ms
     expect(
       nextDelayMs(cruising(), opts({ minSpacingMs: 1500 }), tenSecondsLeft),
     ).toBe(1500)
@@ -383,7 +383,7 @@ describe('nextDelayMs', () => {
     // budget 1; an even spread would park for ~15 minutes
     expect(
       nextDelayMs(
-        paced({ remaining: 11 }),
+        paced({ remaining: 9 }),
         opts({ maxSpacingMs: 120_000 }),
         NOW,
       ),
@@ -392,9 +392,7 @@ describe('nextDelayMs', () => {
 
   it('waits for the window to roll over when out of budget', () => {
     // exactly the user's reserved share → budget 0
-    expect(nextDelayMs(paced({ remaining: 10 }), opts(), NOW)).toBe(
-      WINDOW + 500,
-    )
+    expect(nextDelayMs(paced({ remaining: 8 }), opts(), NOW)).toBe(WINDOW + 500)
   })
 
   it('waits out a hard backoff before anything else', () => {
@@ -418,21 +416,22 @@ describe('nextDelayMs', () => {
     // The tier is the whole point: a thread's replies are what waits, and
     // sprinting them would spend the feed's head start on the wrong queue.
     it('is the feed queue’s alone', () => {
-      expect(nextDelayMs(paced(), opts(), NOW, false)).toBe(WINDOW / 40)
+      expect(nextDelayMs(paced(), opts(), NOW, false)).toBe(WINDOW / 42)
     })
 
     it('is off unless the caller asks for it', () => {
-      expect(nextDelayMs(paced(), opts(), NOW)).toBe(WINDOW / 40)
+      expect(nextDelayMs(paced(), opts(), NOW)).toBe(WINDOW / 42)
     })
 
     it('hands over to the spread the moment that quarter is gone', () => {
-      // 40 remaining = 30 of the 40-lookup share left, so 10 have gone. The
-      // boundary itself is the trickle's: the sprint cannot spend past its share.
-      expect(nextDelayMs(paced({ remaining: 41 }), opts(), NOW, true)).toBe(
+      // A quarter of the 42-lookup share is 10.5, so the handover falls between
+      // 40 remaining (32 of the share left) and 39 (31). The boundary itself is
+      // the trickle's: the sprint cannot spend past its share.
+      expect(nextDelayMs(paced({ remaining: 40 }), opts(), NOW, true)).toBe(
         3000,
       )
-      expect(nextDelayMs(paced({ remaining: 40 }), opts(), NOW, true)).toBe(
-        WINDOW / 30,
+      expect(nextDelayMs(paced({ remaining: 39 }), opts(), NOW, true)).toBe(
+        WINDOW / 31,
       )
     })
 
@@ -448,7 +447,7 @@ describe('nextDelayMs', () => {
 
     it('is skippable, leaving the plain spread', () => {
       expect(nextDelayMs(paced(), opts({ sprintShare: 0 }), NOW, true)).toBe(
-        WINDOW / 40,
+        WINDOW / 42,
       )
     })
 
@@ -474,7 +473,7 @@ describe('nextDelayMs', () => {
     })
 
     it('still stops at the share and waits for the window', () => {
-      expect(nextDelayMs(paced({ remaining: 10 }), instant, NOW)).toBe(
+      expect(nextDelayMs(paced({ remaining: 8 }), instant, NOW)).toBe(
         WINDOW + 500,
       )
     })

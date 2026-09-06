@@ -13,16 +13,16 @@ The budget it spends is the 50 / 15 min in [`../CLAUDE.md`](../CLAUDE.md).
 
 ## The queue and the pace
 
-- Uses at most **80%** of the window (`reserveFraction`, user-settable), stopping once
+- Uses at most **85%** of the window (`reserveFraction`, user-settable), stopping once
   `remaining` reaches the reserved share.
 - **Paced**: `nextDelayMs()` recomputes `msLeftInWindow / budget` before every lookup
-  (≈22 s), clamped to `[1.5 s, 2 min]` — self-correcting, since hovers stretch the gap
+  (≈21 s), clamped to `[1.5 s, 2 min]` — self-correcting, since hovers stretch the gap
   and a rolled-over window shrinks it. `pacing: 'instant'` opts out (same share, spent at
   `minSpacingMs`).
 - **The first `sprintShare` goes out at `sprintSpacingMs`, and only for `high`** — a
-  quarter at 3 s, so 10 of the 40 land in the first half-minute rather than over four.
+  quarter at 3 s, so 10 of the 42 land in the first half-minute rather than over four.
   The rest still covers the window and `msLeftInWindow / budget` absorbs the sprint
-  (≈29 s after, not a hole). Measured against the **share**, so it holds at any
+  (≈27 s after, not a hole). Measured against the **share**, so it holds at any
   `reserveFraction`; the budget spent is unchanged. Sits after the `'instant'` branch,
   never below `minSpacingMs`. The tier gate is the broker's: `sprintable` defaults
   **off** and `feedIsWaiting()` turns it on only while a tab holds a `high` candidate not
@@ -35,8 +35,8 @@ The budget it spends is the 50 / 15 min in [`../CLAUDE.md`](../CLAUDE.md).
   replay buffer alike; `low → high` promotes, never the reverse.
 - Overflow sheds the **oldest batch of whichever queue is longer**, `low` on a tie.
   Emptying `low` first wiped out every reply author behind a scrolled feed: `high`
-  outproduces it by far and the pair drains at one per ~22 s.
-- **`MAX_QUEUE` is 1000 per tab: a backstop, not a pace.** Drain is 40 per 15 min, so
+  outproduces it by far and the pair drains at one per ~21 s.
+- **`MAX_QUEUE` is 1000 per tab: a backstop, not a pace.** Drain is 42 per 15 min, so
   1000 is ~6 h of backlog and more only stores names whose turn never comes. The ceiling
   is that the **whole broker snapshot is re-serialized into `chrome.storage.session` on
   every message**, awaited. Measured 2026-08-15 on a loaded `dist/chrome`: 1000 per tab is
@@ -66,7 +66,7 @@ the state in which this end will never look it up first-hand — so
 `location_confidence` had no way to climb past the client that first reported it.
 
 **5% of the share goes to accounts already known** — `revalidateBudget()`,
-floored down, and at least 1. At the shipped defaults that is 2 of the 40
+floored down, and at least 1. At the shipped defaults that is 2 of the 42
 lookups a window. The reserve is measured against the _share_, not against
 what is left of it, so it does not shrink as the window is spent.
 
@@ -89,7 +89,7 @@ grant would resolve from the cache, report `spent: false`, and buy nothing.
   counts are the common case, and a fixed order would re-offer the same names
   for the whole session while the rest of the feed is never re-asked about.
 - **Ahead of the queues, not behind them.** Behind, it would never happen on the
-  readers it is for: a scrolled feed outproduces a trickle of one per ~22s, so
+  readers it is for: a scrolled feed outproduces a trickle of one per ~21s, so
   `high` is rarely empty. Ahead, it costs the feed the first two lookups of a
   window and nothing after.
 - **Accounts answered this session are never offered.** They already cost a

@@ -587,11 +587,12 @@ test('a run of manual hovers stretches the gap between background lookups', asyn
   await waitForPaced(3)
   const gapBefore = lastGap()
 
-  // Twenty accounts the user looked up by hand, none of them queued. Hovers do
-  // not go through the broker at all — the only thing that carries their cost
-  // back is the window X reports afterwards.
+  // Accounts the user looked up by hand, none of them queued. Hovers do not go
+  // through the broker at all — the only thing that carries their cost back is
+  // the window X reports afterwards. Half the window, so the stretch is well
+  // clear of the gap's own jitter at any shipped share.
   const before = paced().length
-  const hovered = Array.from({ length: 20 }, (_, i) => `hover${i}`)
+  const hovered = Array.from({ length: 26 }, (_, i) => `hover${i}`)
   await tabs.first.evaluate(
     (names) => (window as any).hoverSeries(names, 80),
     hovered,
@@ -603,7 +604,7 @@ test('a run of manual hovers stretches the gap between background lookups', asyn
         timeout: 30_000,
       },
     )
-    .toBe(20)
+    .toBe(hovered.length)
 
   // Three more paced lookups, not one: the first was already asleep on the old
   // gap when the hovers landed, so the gap after *it* is the first one computed
@@ -611,7 +612,7 @@ test('a run of manual hovers stretches the gap between background lookups', asyn
   await waitForPaced(before + 3)
   const gapAfter = lastGap()
 
-  // Twenty of the share gone means far fewer lookups to spread over what is
-  // left of the window, and the trickle slows to match without being told.
+  // Most of the share gone means far fewer lookups to spread over what is left
+  // of the window, and the trickle slows to match without being told.
   expect(gapAfter).toBeGreaterThan(gapBefore * 1.5)
 })

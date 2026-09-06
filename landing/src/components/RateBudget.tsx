@@ -50,8 +50,8 @@ export function RateBudget() {
 /* ── The window, drawn to scale ────────────────────────────────────────────
    Fifty ticks because the claim is a specific number and a generic progress
    bar would be a decoration instead of an argument. The split is the shipped
-   default: 40 for background work, the last 10 held back
-   (`DEFAULT_PREFETCH_SHARE = 0.8`).
+   default: 42 for background work, the last 8 held back
+   (`DEFAULT_PREFETCH_SHARE = 0.85`, floored to whole lookups).
 
    The numbers in the copy around it are the shipped defaults from
    `src/scripts/countries.ts` (LOOKUP_LIMIT_PER_WINDOW, LOOKUP_WINDOW_MINUTES,
@@ -61,7 +61,7 @@ export function RateBudget() {
    static site for three integers.
    ───────────────────────────────────────────────────────────────────────── */
 
-const BACKGROUND_SHARE = 40
+const BACKGROUND_SHARE = 42
 const TOTAL = 50
 
 export function BudgetBar({ t }: { t: Dict }) {

@@ -130,20 +130,20 @@ export const fil: Dict = {
       },
       spread: {
         title: 'Sinusukat, hindi sinusugod',
-        body: 'Mga isang lookup kada 22 seconds, nire-recompute sa tuwing kailangan — humahabà kapag madalas kang mag-hover, humihigpit kapag napupuno uli ang window.',
+        body: 'Mga isang lookup kada 21 seconds, nire-recompute sa tuwing kailangan — humahabà kapag madalas kang mag-hover, humihigpit kapag napupuno uli ang window.',
         readoutKey: 'Pace',
         readoutValue: 'window ÷ budget',
       },
       hovers: {
         title: 'Laging panalo ang hover',
-        body: 'Humihinto sa 80% ang background work, kaya nandiyan pa ang natitirang window para sa mga account na talagang tinututukan mo.',
+        body: 'Humihinto sa 85% ang background work, kaya nandiyan pa ang natitirang window para sa mga account na talagang tinututukan mo.',
         readoutKey: 'Nakareserba',
-        readoutValue: '10 sa 50',
+        readoutValue: '8 sa 50',
       },
     },
     bar: {
       caption: 'Isang 15-minutong window',
-      alt: 'Limampung lookup kada window: apatnapu ang puwede para sa background prefetching, sampu ang nakareserba para sa mga ina-hover mong account.',
+      alt: 'Limampung lookup kada window: apatnapu’t dalawa ang puwede para sa background prefetching, walo ang nakareserba para sa mga ina-hover mong account.',
       backgroundNote:
         'background, dahan-dahang binibitawan sa buong labinlimang minuto',
       reservedNote:
@@ -248,7 +248,7 @@ export const fil: Dict = {
   compareTeaser: {
     heading: 'May ginagamit ka na bang iba?',
     lead: 'Mga dalawampung extension ang naglalagay ng flag sa tabi ng handle. Ang mga pagkakaibang may halaga ay wala sa listahan ng features — nasa kung ano ang pinapayagang gawin ng shared cache, at sa kung ano ang nangyayari kapag naubos na ang limampung lookup ng X.',
-    body: 'Sinusukat nitong isa ang sarili niyang bilis sa totoong budget na galing mismo sa response headers ng X, at may nakatabing sampung lookup para sa mga account na hino-hover mo — kaya natatapos punan ang isang matraping thread sa halip na huminto sa kalagitnaan. Labing-apat na hilera ang sinasaklaw ng buong table at pinapangalanan ang tatlong bagay na mas magaling gawin ng X-Posed kaysa sa extension na ito.',
+    body: 'Sinusukat nitong isa ang sarili niyang bilis sa totoong budget na galing mismo sa response headers ng X, at may nakatabing walong lookup para sa mga account na hino-hover mo — kaya natatapos punan ang isang matraping thread sa halip na huminto sa kalagitnaan. Labing-apat na hilera ang sinasaklaw ng buong table at pinapangalanan ang tatlong bagay na mas magaling gawin ng X-Posed kaysa sa extension na ito.',
     link: 'Tingnan ang buong comparison →',
   },
 
@@ -472,7 +472,7 @@ export const fil: Dict = {
       differs4:
         '<b>Walang dalang identifier ang mga lookup.</b> Ang mga reads ay isang unsigned list ng handles, kaya walang pag-uugnayin ang server at hindi nito mabubuo ang "tiningnan ng install na ito ang mga account na ito". Ang pagbilang ng readers ay aabutin ng isang linya at wawakasan ang property na iyon, kaya sinadya ang published stats na mag-under count.',
       differs5:
-        'At ang rate limit ay nirarasyon imbes na pinag-uunahan: humihinto ang background work sa eighty percent ng window, kaya ang huling sampung lookup ay nariyan pa rin para sa mga account na talagang hino-hover mo. <a href="{href}">Ang mekanismo ay iginuhit sa homepage</a>.',
+        'At ang rate limit ay nirarasyon imbes na pinag-uunahan: humihinto ang background work sa eighty-five percent ng window, kaya ang huling walong lookup ay nariyan pa rin para sa mga account na talagang hino-hover mo. <a href="{href}">Ang mekanismo ay iginuhit sa homepage</a>.',
       sourcesHeading: 'Mga source',
       sourcesLead:
         'Binasa noong {date}. Nagbabago ang install counts at features; kung may outdated man sa ibaba, error iyon at hindi posisyon, at ang <a href="{href}">issue tracker</a> ang pinakamabilis na paraan para maitama ito.',

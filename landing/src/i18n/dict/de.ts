@@ -128,20 +128,20 @@ export const de: Dict = {
       },
       spread: {
         title: 'Verteilt, nicht gesprintet',
-        body: 'Etwa eine Abfrage alle 22 Sekunden, jedes Mal neu berechnet — dehnt sich, wenn du viel hoverst, und zieht sich zusammen, wenn das Fenster wieder voll ist.',
+        body: 'Etwa eine Abfrage alle 21 Sekunden, jedes Mal neu berechnet — dehnt sich, wenn du viel hoverst, und zieht sich zusammen, wenn das Fenster wieder voll ist.',
         readoutKey: 'Takt',
         readoutValue: 'Fenster ÷ Budget',
       },
       hovers: {
         title: 'Hovers gehen immer vor',
-        body: 'Hintergrundarbeit stoppt bei 80 %, damit der Rest des Fensters für die Konten bleibt, auf die du wirklich zeigst.',
+        body: 'Hintergrundarbeit stoppt bei 85 %, damit der Rest des Fensters für die Konten bleibt, auf die du wirklich zeigst.',
         readoutKey: 'Reserviert',
-        readoutValue: '10 von 50',
+        readoutValue: '8 von 50',
       },
     },
     bar: {
       caption: 'Ein 15-Minuten-Fenster',
-      alt: 'Fünfzig Abfragen pro Fenster: vierzig für Hintergrund-Vorabladen, zehn reserviert für deine Hovers.',
+      alt: 'Fünfzig Abfragen pro Fenster: zweiundvierzig für Hintergrund-Vorabladen, acht reserviert für deine Hovers.',
       backgroundNote: 'Hintergrund, über die vollen fünfzehn Minuten verteilt',
       reservedNote:
         'zurückgehalten, damit kein Hover je die Abfrage ist, die dich leerlaufen lässt',
@@ -245,7 +245,7 @@ export const de: Dict = {
   compareTeaser: {
     heading: 'Nutzt du schon eine andere?',
     lead: 'Etwa zwanzig Erweiterungen setzen eine Flagge neben ein Handle. Die Unterschiede, auf die es ankommt, stehen nicht in der Funktionsliste — sondern darin, was der geteilte Cache darf und was passiert, wenn Xʼ fünfzig Abfragen aufgebraucht sind.',
-    body: 'Diese hier taktet sich am echten Budget aus Xʼ eigenen Response-Headern und hält zehn Abfragen für die Konten zurück, die du hoverst — ein voller Thread füllt sich also zu Ende, statt auf halber Strecke stehen zu bleiben. Die ganze Tabelle hat vierzehn Zeilen und nennt die drei Dinge, die X-Posed besser macht.',
+    body: 'Diese hier taktet sich am echten Budget aus Xʼ eigenen Response-Headern und hält acht Abfragen für die Konten zurück, die du hoverst — ein voller Thread füllt sich also zu Ende, statt auf halber Strecke stehen zu bleiben. Die ganze Tabelle hat vierzehn Zeilen und nennt die drei Dinge, die X-Posed besser macht.',
     link: 'Zum vollständigen Vergleich →',
   },
 
@@ -467,7 +467,7 @@ export const de: Dict = {
       differs4:
         '<b>Abfragen tragen keine Kennung.</b> Lesezugriffe sind eine unsignierte Handle-Liste — der Server hat nichts, womit er verknüpfen könnte, und kann kein „diese Installation hat diese Konten angesehen" aufbauen. Leser zu zählen wäre eine Zeile Code und würde diese Eigenschaft sofort zerstören. Deshalb zählen die veröffentlichten Statistiken mit Absicht zu niedrig.',
       differs5:
-        'Und das Ratenlimit wird rationiert statt verheizt: Hintergrundarbeit stoppt bei achtzig Prozent des Fensters, die letzten zehn Abfragen bleiben für die Konten, die du wirklich hoverst. <a href="{href}">Der Mechanismus ist auf der Startseite aufgezeichnet</a>.',
+        'Und das Ratenlimit wird rationiert statt verheizt: Hintergrundarbeit stoppt bei fünfundachtzig Prozent des Fensters, die letzten acht Abfragen bleiben für die Konten, die du wirklich hoverst. <a href="{href}">Der Mechanismus ist auf der Startseite aufgezeichnet</a>.',
       sourcesHeading: 'Quellen',
       sourcesLead:
         'Gelesen am {date}. Installationszahlen und Funktionen ändern sich. Falls etwas nicht mehr stimmt, ist das ein Fehler, keine Absicht — und der <a href="{href}">Issue-Tracker</a> der schnellste Weg zur Korrektur.',

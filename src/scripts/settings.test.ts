@@ -136,7 +136,7 @@ describe('importSettings', () => {
 
     expect(store[BLOCKED_COUNTRIES_KEY]).toEqual(['United States', 'Czechia'])
     expect(store[HIDE_BLOCKED_LOCATIONS_KEY]).toBe('collapse')
-    expect(store[PREFETCH_SHARE_KEY]).toBe(0.9)
+    expect(store[PREFETCH_SHARE_KEY]).toBe(0.95)
     expect(store[ACCOUNT_AGE_KEY]).toEqual({ enabled: true, days: 180 })
     expect(store[ALWAYS_SHOW_KEY]).toEqual(['someone'])
     expect(store[EXTENSION_ENABLED_KEY]).toBe(true)
@@ -343,8 +343,8 @@ describe('settingsFileName', () => {
 
 // Moved here with the vocabulary they cover — countries.ts is country data now.
 describe('normalizePrefetchShare', () => {
-  it('defaults to 80% when nothing usable is stored', () => {
-    expect(DEFAULT_PREFETCH_SHARE).toBe(0.8)
+  it('defaults to 85% when nothing usable is stored', () => {
+    expect(DEFAULT_PREFETCH_SHARE).toBe(0.85)
     for (const stored of [undefined, null, '', 'nonsense', NaN, {}, []]) {
       expect(normalizePrefetchShare(stored)).toBe(DEFAULT_PREFETCH_SHARE)
     }
@@ -363,7 +363,8 @@ describe('normalizePrefetchShare', () => {
   it('snaps anything else to the nearest choice', () => {
     expect(normalizePrefetchShare(0.72)).toBe(0.7)
     expect(normalizePrefetchShare(0.44)).toBe(0.5)
-    expect(normalizePrefetchShare(0.83)).toBe(0.8)
+    expect(normalizePrefetchShare(0.83)).toBe(0.85)
+    expect(normalizePrefetchShare(0.81)).toBe(0.8)
     // Ties go to the smaller share — leaving more room for the user's hovers.
     expect(normalizePrefetchShare(0.4)).toBe(0.3)
     expect(normalizePrefetchShare(0.75)).toBe(0.7)
@@ -372,8 +373,8 @@ describe('normalizePrefetchShare', () => {
   it('never lets an out-of-range value take the whole window', () => {
     expect(normalizePrefetchShare(0)).toBe(0.3)
     expect(normalizePrefetchShare(-5)).toBe(0.3)
-    expect(normalizePrefetchShare(1)).toBe(0.9)
-    expect(normalizePrefetchShare(1000)).toBe(0.9)
+    expect(normalizePrefetchShare(1)).toBe(0.95)
+    expect(normalizePrefetchShare(1000)).toBe(0.95)
   })
 })
 

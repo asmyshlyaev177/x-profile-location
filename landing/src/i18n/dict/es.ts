@@ -126,20 +126,20 @@ export const es: Dict = {
       },
       spread: {
         title: 'Dosificado, no a toda pastilla',
-        body: 'Más o menos una consulta cada 22 segundos, recalculada sobre la marcha: se estira cuando pasas mucho el ratón y se encoge cuando la ventana se va recargando.',
+        body: 'Más o menos una consulta cada 21 segundos, recalculada sobre la marcha: se estira cuando pasas mucho el ratón y se encoge cuando la ventana se va recargando.',
         readoutKey: 'Ritmo',
         readoutValue: 'ventana ÷ presupuesto',
       },
       hovers: {
         title: 'El hover siempre tiene prioridad',
-        body: 'El trabajo en segundo plano se corta al 80%, así que el resto de la ventana se reserva para las cuentas sobre las que tú pasas el ratón.',
+        body: 'El trabajo en segundo plano se corta al 85%, así que el resto de la ventana se reserva para las cuentas sobre las que tú pasas el ratón.',
         readoutKey: 'Reservado',
-        readoutValue: '10 de 50',
+        readoutValue: '8 de 50',
       },
     },
     bar: {
       caption: 'Una ventana de 15 minutos',
-      alt: 'Cincuenta consultas por ventana: cuarenta para precarga en segundo plano, diez reservadas para las cuentas sobre las que pasas el ratón.',
+      alt: 'Cincuenta consultas por ventana: cuarenta y dos para precarga en segundo plano, ocho reservadas para las cuentas sobre las que pasas el ratón.',
       backgroundNote:
         'en segundo plano, repartidas a lo largo de los quince minutos',
       reservedNote:
@@ -242,7 +242,7 @@ export const es: Dict = {
   compareTeaser: {
     heading: '¿Ya usas alguna de las otras?',
     lead: 'Hay unas veinte extensiones que ponen una bandera al lado de un @. Las diferencias que importan no están en la lista de funciones: están en lo que la caché compartida tiene permiso para hacer, y en qué pasa cuando se agotan las cincuenta consultas de X.',
-    body: 'Esta se marca el ritmo con el presupuesto real que viene en las cabeceras de respuesta de X y reserva diez consultas para las cuentas sobre las que pasas el ratón, así que un hilo cargado termina de rellenarse en vez de pararse a medias. La tabla completa tiene catorce filas y señala las tres cosas que X-Posed hace mejor que esta extensión.',
+    body: 'Esta se marca el ritmo con el presupuesto real que viene en las cabeceras de respuesta de X y reserva ocho consultas para las cuentas sobre las que pasas el ratón, así que un hilo cargado termina de rellenarse en vez de pararse a medias. La tabla completa tiene catorce filas y señala las tres cosas que X-Posed hace mejor que esta extensión.',
     link: 'Ver la comparativa completa →',
   },
 
@@ -468,7 +468,7 @@ export const es: Dict = {
       differs4:
         '<b>Las consultas no llevan identificador.</b> Las lecturas son una lista sin firmar de @, así que el servidor no tiene con qué cruzarlas y no puede construir «esta instalación ha mirado estas cuentas». Contar lectores sería una línea de código y acabaría con esa propiedad; por eso las estadísticas públicas subestiman a propósito.',
       differs5:
-        'Y el límite se raciona en lugar de echar una carrera: el trabajo en segundo plano se corta al ochenta por ciento de la ventana, así que las últimas diez consultas se quedan para las cuentas sobre las que tú pasas el ratón. <a href="{href}">El mecanismo está detallado en la página principal</a>.',
+        'Y el límite se raciona en lugar de echar una carrera: el trabajo en segundo plano se corta al ochenta y cinco por ciento de la ventana, así que las últimas ocho consultas se quedan para las cuentas sobre las que tú pasas el ratón. <a href="{href}">El mecanismo está detallado en la página principal</a>.',
       sourcesHeading: 'Fuentes',
       sourcesLead:
         'Consultado el {date}. Las cifras de instalaciones y las funciones cambian con el tiempo; si algo de aquí abajo está desactualizado, es un error, no una postura, y el <a href="{href}">gestor de incidencias</a> es la vía más rápida para corregirlo.',

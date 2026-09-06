@@ -346,7 +346,7 @@ describe('revalidation', () => {
     const { broker } = makeBroker(unpaced())
     broker.offerRevalidation(['a', 'b', 'c', 'd', 'e'])
 
-    // 50 * 0.8 = 40 a window, of which 2.
+    // 50 * 0.85 = 42 a window, of which 2.
     expect(drain(broker, 1, FOCUSED)).toEqual(['a', 'b'])
   })
 
@@ -444,7 +444,7 @@ describe('revalidation', () => {
   // The reserve is a slice of prefetch's share, not an allowance beside it.
   it('stops with the rest of prefetch at the user’s reserve', () => {
     const { broker } = makeBroker(unpaced())
-    seedLedger(broker, { limit: 50, remaining: 10 })
+    seedLedger(broker, { limit: 50, remaining: 8 })
     broker.offerRevalidation(['cached'])
 
     expect(broker.next(1, FOCUSED).userName).toBeUndefined()
@@ -669,10 +669,10 @@ describe('pacing', () => {
       PACING_DEFAULTS.sprintSpacingMs,
     )
 
-    // Past the sprint: 30 of 50 left is 20 of the 40 prefetch may have.
+    // Past the sprint: 30 of 50 left is 22 of the 42 prefetch may have.
     h.broker.report({ userName: 'b', spent: true, ok: true, remaining: 30 })
     h.broker.enqueue(1, [{ userName: 'c' }], FOCUSED)
-    expect(h.broker.next(1, FOCUSED).waitMs).toBe(PACING_DEFAULTS.windowMs / 20)
+    expect(h.broker.next(1, FOCUSED).waitMs).toBe(PACING_DEFAULTS.windowMs / 22)
   })
 
   it('never sprints a thread’s replies, however fresh the window', () => {
@@ -682,7 +682,7 @@ describe('pacing', () => {
     h.broker.report({ userName: 'r1', spent: true, ok: true, remaining: 49 })
     h.broker.enqueue(1, [{ userName: 'r2', priority: 'low' }], FOCUSED)
 
-    expect(h.broker.next(1, FOCUSED).waitMs).toBe(PACING_DEFAULTS.windowMs / 39)
+    expect(h.broker.next(1, FOCUSED).waitMs).toBe(PACING_DEFAULTS.windowMs / 41)
   })
 
   it('sprints as soon as a feed account is queued behind the replies', () => {
@@ -714,7 +714,7 @@ describe('pacing', () => {
     // it — and the reply is what the next grant will actually be.
     h.broker.report({ userName: 'seen', spent: true, ok: true, remaining: 48 })
 
-    expect(h.broker.next(1, FOCUSED).waitMs).toBe(PACING_DEFAULTS.windowMs / 38)
+    expect(h.broker.next(1, FOCUSED).waitMs).toBe(PACING_DEFAULTS.windowMs / 40)
   })
 
   it('makes the second tab wait out the first tab’s gap', () => {
@@ -725,9 +725,9 @@ describe('pacing', () => {
     expect(h.broker.next(1, FOCUSED).userName).toBe('a')
     h.broker.report({ userName: 'a', spent: true, ok: true, remaining: 49 })
 
-    // 49 remaining → budget 39 over a full window. Two tabs polling does not
+    // 49 remaining → budget 41 over a full window. Two tabs polling does not
     // make that two lookups; the second is told to wait the same gap.
-    const gap = PACING_DEFAULTS.windowMs / 39
+    const gap = PACING_DEFAULTS.windowMs / 41
     const instruction = h.broker.next(2, VISIBLE)
     expect(instruction.userName).toBeUndefined()
     expect(instruction.waitMs).toBe(gap)
@@ -745,7 +745,7 @@ describe('pacing', () => {
     h.advance(10_000)
     h.broker.enqueue(1, [{ userName: 'b' }], FOCUSED)
     expect(h.broker.next(1, FOCUSED).waitMs).toBe(
-      PACING_DEFAULTS.windowMs / 39 - 10_000,
+      PACING_DEFAULTS.windowMs / 41 - 10_000,
     )
   })
 
@@ -858,7 +858,7 @@ describe('toJSON / from', () => {
     h.broker.report({ userName: 'a', spent: true, ok: true, remaining: 29 })
 
     expect(roundTrip(h.broker, h.now).next(1, FOCUSED).waitMs).toBe(
-      PACING_DEFAULTS.windowMs / 19,
+      PACING_DEFAULTS.windowMs / 21,
     )
   })
 

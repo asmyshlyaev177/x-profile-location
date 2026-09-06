@@ -126,20 +126,20 @@ export const id: Dict = {
       },
       spread: {
         title: 'Disebar, bukan digas',
-        body: 'Sekitar sekali ngecek tiap 22 detik, dihitung ulang tiap kali — melar pas kamu banyak hover, ngerapat pas jendela keisi lagi.',
+        body: 'Sekitar sekali ngecek tiap 21 detik, dihitung ulang tiap kali — melar pas kamu banyak hover, ngerapat pas jendela keisi lagi.',
         readoutKey: 'Ritme',
         readoutValue: 'jendela ÷ jatah',
       },
       hovers: {
         title: 'Hover selalu menang',
-        body: 'Kerja latar berhenti di 80%, jadi sisa jendela masih ada buat akun yang beneran kamu tuju.',
+        body: 'Kerja latar berhenti di 85%, jadi sisa jendela masih ada buat akun yang beneran kamu tuju.',
         readoutKey: 'Dicadangkan',
-        readoutValue: '10 dari 50',
+        readoutValue: '8 dari 50',
       },
     },
     bar: {
       caption: 'Satu jendela 15 menit',
-      alt: 'Lima puluh pengecekan per jendela: empat puluh buat prefetch latar, sepuluh dicadangkan buat akun yang kamu hover.',
+      alt: 'Lima puluh pengecekan per jendela: empat puluh dua buat prefetch latar, delapan dicadangkan buat akun yang kamu hover.',
       backgroundNote: 'latar, ditetesin sepanjang lima belas menit penuh',
       reservedNote:
         'ditahan, biar hover nggak pernah jadi request yang nguras jatah kamu',
@@ -241,7 +241,7 @@ export const id: Dict = {
   compareTeaser: {
     heading: 'Udah pakai yang lain?',
     lead: 'Sekitar dua puluh ekstensi naro bendera di samping username. Perbedaan yang penting bukan di daftar fitur — tapi di apa yang boleh dilakukan cache bareng, dan di apa yang kejadian pas lima puluh pengecekan dari X habis.',
-    body: 'Yang ini ngatur tempo sendiri berdasarkan jatah asli dari header respons X, dan nyisain sepuluh pengecekan buat akun yang kamu hover, jadi thread rame tetap kelar keisi, bukan berhenti di tengah. Tabel lengkapnya ada empat belas baris dan nyebutin tiga hal yang X-Posed lakuin lebih baik dari ekstensi ini.',
+    body: 'Yang ini ngatur tempo sendiri berdasarkan jatah asli dari header respons X, dan nyisain delapan pengecekan buat akun yang kamu hover, jadi thread rame tetap kelar keisi, bukan berhenti di tengah. Tabel lengkapnya ada empat belas baris dan nyebutin tiga hal yang X-Posed lakuin lebih baik dari ekstensi ini.',
     link: 'Lihat perbandingan lengkap →',
   },
 
@@ -463,7 +463,7 @@ export const id: Dict = {
       differs4:
         '<b>Pengecekan nggak bawa pengenal sama sekali.</b> Pembacaan berupa daftar username tanpa tanda tangan, jadi server nggak punya apa-apa buat ngegabunginnya dan nggak bisa ngebangun "install ini ngelihat akun-akun ini". Menghitung pembaca cuma satu baris kode dan bakal ngakhirin sifat itu, makanya statistik yang dipublikasi sengaja lebih rendah.',
       differs5:
-        'Dan batas lajunya dijatah, bukan diserobot: kerja latar berhenti di delapan puluh persen jendela, jadi sepuluh pengecekan terakhir masih ada buat akun yang beneran kamu hover. <a href="{href}">Mekanismenya digambarin di beranda</a>.',
+        'Dan batas lajunya dijatah, bukan diserobot: kerja latar berhenti di delapan puluh lima persen jendela, jadi delapan pengecekan terakhir masih ada buat akun yang beneran kamu hover. <a href="{href}">Mekanismenya digambarin di beranda</a>.',
       sourcesHeading: 'Sumber',
       sourcesLead:
         'Dibaca pada {date}. Jumlah install dan fitur berubah; kalau ada yang kedaluwarsa di bawah, itu kekeliruan bukan sikap, dan <a href="{href}">pelacak isu</a> cara paling cepet buat ngebenerinnya.',
