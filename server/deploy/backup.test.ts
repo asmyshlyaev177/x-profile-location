@@ -26,12 +26,15 @@ import {
   readdirSync,
   rmSync,
   statSync,
+  statfsSync,
+  truncateSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { isOutOfSpace } from './alert.ts'
 import { autoVacuumPct, rootRefusal } from './backup.ts'
 
 const DEPLOY = import.meta.dirname
@@ -95,6 +98,13 @@ function stubs(
     chmodSync(file, 0o755)
   }
   return { PATH: `${binDir}:${process.env.PATH}`, ...extra }
+}
+
+/** The real sqlite3, for stubs that intercept one query and pass the rest. */
+function realSqlite3(): string {
+  return spawnSync('sh', ['-c', 'command -v sqlite3'], {
+    encoding: 'utf8',
+  }).stdout.trim()
 }
 
 function seed(file: string, profiles: number): void {
@@ -345,6 +355,34 @@ describe.skipIf(MISSING.length > 0)(
       expect(kept[1]).toMatch(/^x-loc-cache-20\d{6}-\d{6}\.db\.gz$/)
     })
 
+    it('keeps five archives by default — ten days at one run every other day', () => {
+      seed(dbPath, 20)
+      mkdirSync(backupDir, { recursive: true })
+      for (const stamp of [
+        '20200101-000000',
+        '20210101-000000',
+        '20220101-000000',
+        '20230101-000000',
+        '20240101-000000',
+        '20250101-000000',
+      ]) {
+        writeFileSync(join(backupDir, `x-loc-cache-${stamp}.db.gz`), 'old')
+      }
+      expect(run(BACKUP, []).status).toBe(0)
+
+      // archives() lists oldest first: the two 2020/2021 stamps aged out and
+      // tonight's is the newest of the five.
+      const kept = archives()
+      expect(kept).toHaveLength(5)
+      expect(kept.slice(0, 4)).toEqual([
+        'x-loc-cache-20220101-000000.db.gz',
+        'x-loc-cache-20230101-000000.db.gz',
+        'x-loc-cache-20240101-000000.db.gz',
+        'x-loc-cache-20250101-000000.db.gz',
+      ])
+      expect(kept[4]).toMatch(/^x-loc-cache-20\d{6}-\d{6}\.db\.gz$/)
+    })
+
     it('rejects a non-numeric XLOC_BACKUP_KEEP instead of silently never pruning', () => {
       // A value that is not a count must stop the run, not fall through to a
       // comparison that quietly reads as "keep nothing" or "prune nothing".
@@ -402,39 +440,32 @@ describe.skipIf(MISSING.length > 0)(
       expect(Number(status.vacuumed_bytes)).toBeLessThan(live)
     })
 
-    it('compacts the live database when the measurement crosses the threshold', () => {
+    it('never touches the live database itself, whatever it measures', () => {
       seed(dbPath, 600)
       emptyVotes()
       const before = liveBytes()
       const r = run(BACKUP, []) // default threshold: 20%
       expect(r.status).toBe(0)
-      expect(r.stdout).toMatch(
-        /auto vacuum: \d+% >= 20%, compacted the live database \d+ -> \d+ bytes in \d+\.\ds/,
-      )
-      const after = liveBytes()
-      expect(after).toBeLessThan(before)
 
-      // The status file records the post-vacuum size, so the heartbeat does
-      // not spend a week asking for a vacuum that already ran.
-      expect(Number(vacuumStatus().live_bytes)).toBe(after)
+      // A live in-place VACUUM holds the write lock for its whole duration, and
+      // this process runs as xloc and cannot stop the service around it. It
+      // records the measurement; x-loc-vacuum.service acts on it.
+      expect(liveBytes()).toBe(before)
+      expect(r.stdout).toContain('vacuum check:')
 
-      const db = new Database(dbPath, { readonly: true })
-      expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
-      expect(db.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
-        n: 600,
-      })
-      db.close()
+      const status = vacuumStatus()
+      expect(Number(status.live_bytes)).toBe(before)
+      expect(Number(status.vacuumed_bytes)).toBeLessThan(before)
     })
 
-    it('a garbled threshold disables the vacuum instead of triggering it', () => {
+    it('reports a garbled threshold from the run that measures it', () => {
       seed(dbPath, 600)
       emptyVotes()
-      const before = liveBytes()
       const r = run(BACKUP, [], { XLOC_AUTO_VACUUM_PCT: 'lots' })
       expect(r.status).toBe(0)
+      // Caught here rather than only in vacuum.ts, which runs afterwards: this
+      // is the log an operator reads when a backup looks wrong.
       expect(r.stderr).toContain('XLOC_AUTO_VACUUM_PCT must be 0-100')
-      expect(r.stdout).not.toContain('auto vacuum:')
-      expect(liveBytes()).toBe(before)
     })
 
     it('never lets the status file pass for an archive', () => {
@@ -532,6 +563,129 @@ describe.skipIf(MISSING.length > 0)(
     })
   },
 )
+
+describe.skipIf(MISSING.length > 0)('backup.ts — the disk preflight', () => {
+  /** The same number the script reads, from the same filesystem. */
+  function free(): number {
+    const fs = statfsSync(backupDir)
+    return Number(fs.bavail) * Number(fs.bsize)
+  }
+
+  /** Sizes are read with stat(), so a hole drives the preflight without ever
+   *  filling a real disk. */
+  function sparseArchive(stamp: string, size: number): void {
+    const file = join(backupDir, `x-loc-cache-${stamp}.db.gz`)
+    writeFileSync(file, '')
+    truncateSync(file, size)
+  }
+
+  const MB = 1024 * 1024
+
+  it('trades the oldest archives for the run, and only as many as it needs', () => {
+    seed(dbPath, 200)
+    mkdirSync(backupDir, { recursive: true })
+    // Tonight's archive is estimated from the newest on disk, so an outsized
+    // one is what puts the run past the space it has.
+    sparseArchive('20260105-000000', free() + 100 * MB)
+    for (const old of ['20260104', '20260103', '20260102', '20260101']) {
+      sparseArchive(`${old}-000000`, 500 * MB)
+    }
+
+    // Rotation is a separate prune; a high keep leaves only the preflight's.
+    const r = run(BACKUP, [], { XLOC_BACKUP_KEEP: '20' })
+    expect(r.status).toBe(0)
+    expect(r.stderr).toContain('pruned x-loc-cache-20260101-000000.db.gz')
+    expect(r.stderr).not.toContain('20260102')
+
+    const kept = archives()
+    expect(kept.slice(0, 4)).toEqual([
+      'x-loc-cache-20260102-000000.db.gz',
+      'x-loc-cache-20260103-000000.db.gz',
+      'x-loc-cache-20260104-000000.db.gz',
+      'x-loc-cache-20260105-000000.db.gz',
+    ])
+    expect(kept[4]).toMatch(/^x-loc-cache-20\d{6}-\d{6}\.db\.gz$/)
+  })
+
+  it('refuses the run rather than pruning down to the last archive', () => {
+    seed(dbPath, 200)
+    mkdirSync(backupDir, { recursive: true })
+    const before = liveBytes()
+    sparseArchive('20260105-000000', free() * 2)
+    for (const old of ['20260104', '20260103', '20260102', '20260101']) {
+      sparseArchive(`${old}-000000`, 1024)
+    }
+
+    const r = run(BACKUP, [])
+    expect(r.status).not.toBe(0)
+    expect(r.stderr).toContain('not enough disk for a backup')
+    // Checked against the classifier rather than a copy of its strings: this is
+    // the difference between an OUT OF DISK email and a generic one.
+    expect(isOutOfSpace(r.stderr)).toBe(true)
+
+    // MIN_KEEP survivors, no new archive, and nothing half-written.
+    expect(archives()).toEqual([
+      'x-loc-cache-20260104-000000.db.gz',
+      'x-loc-cache-20260105-000000.db.gz',
+    ])
+    expect(
+      readdirSync(backupDir).filter(
+        (f) => f.endsWith('.part') || f.endsWith('.db'),
+      ),
+    ).toEqual([])
+    expect(liveBytes()).toBe(before)
+  })
+
+  it('never spends the corruption evidence to make room', () => {
+    // It is not an archive and never counts as one, so a shortfall must not
+    // reach the copy closest to the onset of a fault.
+    seed(dbPath, 200)
+    mkdirSync(backupDir, { recursive: true })
+    const evidence = join(backupDir, 'corrupt-evidence.db.gz')
+    writeFileSync(evidence, 'evidence')
+    sparseArchive('20260103-000000', free() * 2)
+    sparseArchive('20260102-000000', 1024)
+    sparseArchive('20260101-000000', 1024)
+
+    expect(run(BACKUP, []).status).not.toBe(0)
+    expect(existsSync(evidence)).toBe(true)
+    expect(archives()).toHaveLength(2)
+  })
+
+  it('reports a disk that filled after the preflight passed as a disk problem', () => {
+    // The estimate comes from the newest archive, and another process can eat
+    // the difference while the snapshot is being written. SQLite's own words
+    // have to reach the classifier, or that night gets a generic email.
+    seed(dbPath, 200)
+    const r = run(
+      BACKUP,
+      [],
+      stubs({
+        sqlite3: `
+case "$*" in
+  *"VACUUM INTO"*)
+    echo "Error: near line 1: database or disk is full" >&2
+    exit 1 ;;
+esac
+exec ${realSqlite3()} "$@"`,
+      }),
+    )
+
+    expect(r.status).not.toBe(0)
+    expect(isOutOfSpace(r.stderr)).toBe(true)
+    expect(archives()).toEqual([])
+  })
+
+  it('takes the backup when the disk has room, however few archives there are', () => {
+    // spaceNeeded() budgets twice the live file with nothing to estimate from.
+    // A fresh box must still get its first backup.
+    seed(dbPath, 200)
+    const r = run(BACKUP, [])
+    expect(r.status).toBe(0)
+    expect(r.stderr).toBe('')
+    expect(archives()).toHaveLength(1)
+  })
+})
 
 describe.skipIf(MISSING.length > 0)(
   'backup.ts — a database it must not trust',
@@ -789,16 +943,113 @@ describe.skipIf(MISSING.length > 0)('vacuum.ts', () => {
     )
   }
 
-  /** The real sqlite3, for stubs that intercept one query and pass the rest. */
-  function realSqlite3(): string {
-    return spawnSync('sh', ['-c', 'command -v sqlite3'], {
-      encoding: 'utf8',
-    }).stdout.trim()
-  }
-
   function replaced(): string[] {
     return readdirSync(dir).filter((f) => f.includes('.replaced-'))
   }
+
+  it('--if-needed rebuilds off the backup measurement, and only past it', () => {
+    seed(dbPath, 600)
+    emptyVotes()
+    const log = join(dir, 'systemctl.log')
+
+    // No measurement yet: a rebuild is the last thing to do to a database no
+    // backup has a verified copy of.
+    const cold = run(VACUUM, ['--if-needed'], vacuumStubs(log))
+    expect(cold.status).toBe(0)
+    expect(cold.stdout).toContain('no measurement')
+
+    expect(run(BACKUP, []).status).toBe(0)
+    const bloated = liveBytes()
+    expect(Number(vacuumStatus().live_bytes)).toBe(bloated)
+
+    const r = run(VACUUM, ['--if-needed'], vacuumStubs(log))
+    expect(r.stderr).toBe('')
+    expect(r.status).toBe(0)
+    expect(r.stdout).toContain('reclaimable')
+    expect(r.stdout).toContain('healthz ok')
+    expect(liveBytes()).toBeLessThan(bloated)
+
+    // The measurement it acted on is refreshed, so a second trigger is a no-op
+    // rather than a second rebuild.
+    expect(Number(vacuumStatus().live_bytes)).toBe(liveBytes())
+    const again = run(VACUUM, ['--if-needed'], vacuumStubs(log))
+    expect(again.status).toBe(0)
+    expect(again.stdout).toContain('under the 20% threshold')
+    expect(liveBytes()).toBe(liveBytes())
+  })
+
+  it('--if-needed does nothing when the threshold is switched off', () => {
+    seed(dbPath, 600)
+    emptyVotes()
+    expect(run(BACKUP, []).status).toBe(0)
+    const before = liveBytes()
+
+    const r = run(VACUUM, ['--if-needed'], {
+      ...vacuumStubs(join(dir, 'systemctl.log')),
+      XLOC_AUTO_VACUUM_PCT: '0',
+    })
+    expect(r.status).toBe(0)
+    expect(liveBytes()).toBe(before)
+  })
+
+  it('--if-needed hands the refreshed measurement back to xloc', () => {
+    // Written as root. Left root-owned it fails every backup after it, which
+    // is the whole class of failure the vacuum unit is otherwise free of.
+    seed(dbPath, 600)
+    emptyVotes()
+    expect(run(BACKUP, []).status).toBe(0)
+
+    const log = join(dir, 'systemctl.log')
+    expect(run(VACUUM, ['--if-needed'], vacuumStubs(log)).status).toBe(0)
+    expect(readFileSync(log, 'utf8')).toContain(
+      `chown xloc:xloc ${join(backupDir, '.vacuum-status')}`,
+    )
+  })
+
+  it('never creates the backups directory it was pointed at', () => {
+    // Same reason, one step worse: a root-owned *directory* there cannot be
+    // written to at all, and nothing in the backup path can repair it.
+    seed(dbPath, 600)
+    emptyVotes()
+    const absent = join(dir, 'no-backups-here')
+
+    const r = run(VACUUM, ['-y'], {
+      ...vacuumStubs(join(dir, 'systemctl.log')),
+      XLOC_BACKUP_DIR: absent,
+    })
+    expect(r.status).toBe(0)
+    expect(r.stdout).toContain('compacted')
+    expect(existsSync(absent)).toBe(false)
+  })
+
+  it('--if-needed still refuses a corrupt database, unattended', () => {
+    // systemd triggers this path now, so it runs with nobody watching. A
+    // rebuild carries the fault across and destroys what a restore needs.
+    seed(dbPath, 600)
+    emptyVotes()
+    expect(run(BACKUP, []).status).toBe(0)
+
+    const log = join(dir, 'systemctl.log')
+    const r = run(
+      VACUUM,
+      ['--if-needed'],
+      vacuumStubs(log, {
+        sqlite3: `
+case "$*" in
+  *"${dbPath}"*integrity_check* | *integrity_check*"${dbPath}"*)
+    echo "*** in database main ***"
+    echo "wrong # of entries in index sqlite_autoindex_profiles_1"
+    exit 0 ;;
+esac
+exec ${realSqlite3()} "$@"`,
+      }),
+    )
+
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('do NOT compact it')
+    expect(existsSync(log)).toBe(false) // the service was never stopped
+    expect(replaced()).toEqual([])
+  })
 
   it('rebuilds the database, verifies it, and keeps the original beside it', () => {
     seed(dbPath, 600)

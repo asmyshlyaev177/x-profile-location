@@ -623,14 +623,17 @@ load at startup, not at pull time.
 
 ### Backups
 
-Nightly, verified, rotated. Three files in [`deploy/`](deploy/) wire it up:
+Every other day, verified, rotated. Three files in [`deploy/`](deploy/) wire it up:
 
 ```bash
 cd /opt/x-loc-cache/server
 sudo apt install -y sqlite3    # already there if you did step 9
-sudo cp deploy/x-loc-backup.service deploy/x-loc-backup.timer /etc/systemd/system/
+sudo cp deploy/x-loc-backup.service deploy/x-loc-backup.timer \
+       deploy/x-loc-vacuum.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now x-loc-backup.timer
+# x-loc-vacuum is NOT enabled: x-loc-backup pulls it in with OnSuccess=.
+# See "Compacting the database".
 
 # Take the first one now rather than finding out at 10:00 UTC whether it works.
 sudo systemctl start x-loc-backup.service
@@ -639,7 +642,7 @@ ls -lh /var/lib/x-loc-cache/backups/               # → one .db.gz
 systemctl list-timers x-loc-backup --no-pager      # → a NEXT / LEFT time
 ```
 
-Only the two unit files are copied. `backup.ts` runs in place from the checkout
+Only the three unit files are copied. `backup.ts` runs in place from the checkout
 (`ExecStart=/opt/x-loc-cache/server/deploy/backup.ts`, through its `node`
 shebang), so `git pull` updates it along with the rest of the server and there is
 nothing to re-copy. Beyond `sqlite3` it needs `flock`, already on any Ubuntu; it
@@ -660,12 +663,48 @@ of each one.
 
 Each run ([`deploy/backup.ts`](deploy/backup.ts)) takes a snapshot with
 `VACUUM INTO`, verifies it, gzips it, checks the live database, and only then
-prunes to the newest `XLOC_BACKUP_KEEP` (default 7). Nothing here needs the
+prunes to the newest `XLOC_BACKUP_KEEP` (default 5). Nothing here needs the
 server stopped, and none of it runs on the server's event loop.
 
 Rebuilding the file is also the only way to know how much of it is free space,
 so each run writes that down on the way past — see
 [Compacting the database](#compacting-the-database).
+
+**The run preflights the disk, and pays for it with the oldest archives.** A
+snapshot is the largest thing this box writes, and the peak is two files at once:
+`gzipTo` puts the archive beside the snapshot and deletes the snapshot only after
+the rename. So the budget is the live file plus one archive — the newest one on
+disk is the estimate, and until there is one the archive is assumed
+incompressible. Short of that, the run deletes the oldest archives until it has
+room, **never going below two**, and only then refuses:
+
+```text
+disk preflight: pruned x-loc-cache-20260801-100000.db.gz to make room
+```
+
+If it still does not fit, the run backs nothing up, fails the unit, and
+[Alerting](#alerting) sends an `OUT OF DISK` email naming what it needs and what
+it has. Nothing is left half-written: the exit handler sweeps the partial
+snapshot, and the surviving archives are untouched.
+
+Two, not one, because a single surviving archive is one bad archive away from
+having no restore at all. Trading old history for tonight's copy is the right way
+round — a restore reaches for the newest — but trading away the last redundancy
+is not, so a shortfall past that point fails the unit and backs nothing up rather
+than deleting its way out. `VACUUM INTO` would otherwise discover a full disk
+only after spending the minutes it takes to fill it; at 3 GB that is 44 s of
+snapshot thrown away.
+
+**Why every other day and not nightly.** `OnCalendar=*-*-1/2` — odd days. At the
+sizes where this matters a run costs a snapshot, a gzip and the disk to hold
+both, and 48 hours of loss is a fair trade for a best-effort cache that clients
+rebuild anyway. `XLOC_BACKUP_KEEP` came down from 7 to **5** with it: at one run
+every other day that is still 10 days of history, more than the week the old
+nightly default bought, on a disk where each archive is the thing most likely to
+crowd out the next snapshot. The heartbeat's staleness threshold moved to 72h to
+match, which still fires on one genuinely skipped run.
+The month boundary occasionally puts two runs on consecutive days. An extra
+backup is harmless.
 
 **Why `VACUUM INTO` and not `.backup`.** Both are consistent against a live WAL
 database where a plain `cp` reads torn pages mid-write, but SQLite's backup API
@@ -704,8 +743,8 @@ evidence — **one** copy, gzipped, at `backups/corrupt-evidence.db.gz`.
 
 That it is one and not one-per-night is deliberate, and was a bug before it was
 a feature. Whatever fails verification is usually permanent, so the branch runs
-again every night; a stamped, uncompressed file per run added a
-database-sized file nightly to the disk the live database writes to. A full
+again on every run; a stamped, uncompressed file per run added a
+database-sized file to the disk the live database writes to. A full
 disk turns "corrupt but still serving reads" into "cannot accept a single
 contribution" — with `/healthz` still green, since it never touches the
 database — and leaves no room for `restore.ts` to unpack into. The first copy
@@ -757,7 +796,7 @@ downtime — then swaps the database in atomically, restarts, and confirms
 `/healthz` plus the row counts. Whatever was in place is kept beside it as
 `*.replaced-<stamp>`; delete those once the restore has proven out.
 
-Corruption announces itself in one of two places: the nightly backup unit
+Corruption announces itself in one of two places: the backup unit
 failing its integrity check, or `SQLITE_CORRUPT` in
 `journalctl -u x-loc-cache`. Either way, don't repair in place — restore the
 newest good backup. The loss is bounded at a day of contributions, and losing
@@ -769,21 +808,63 @@ Set up [Alerting](#alerting) and neither of those has to be noticed by hand.
 ### Compacting the database
 
 There is no _calendar_ `VACUUM`, and adding one would be a mistake. What there
-is instead: the nightly backup measures what a `VACUUM` would reclaim, and acts
+is instead: the backup run measures what a `VACUUM` would reclaim, and acts
 on the measurement two ways.
 
-**Automatically, inside the backup run.** When the measurement says
+**Automatically, after the backup run.** When the measurement says
 `XLOC_AUTO_VACUUM_PCT` or more of the file is reclaimable (default 20, `0`
-disables), the run compacts the live database itself, right after the verified
-archive is on disk — so the worst a bad rebuild could do is what that night's
-backup restores. It is a plain `VACUUM` over a second connection: no service
-stop, writers wait behind the sub-second rebuild instead of being refused. A
-failure (locked database, disk too full) is logged and left for the next
-nightly run; the backup itself is unaffected either way.
+disables), the database is rebuilt — no operator, no threshold on size, no case
+where it gives up and leaves a note. `x-loc-backup.service` carries
+`OnSuccess=x-loc-vacuum.service`, so the rebuild follows a **verified archive**
+and never a failed backup: the worst a bad rebuild can do is what that run's
+backup restores.
 
 ```text
-auto vacuum: 34% >= 20%, compacted the live database 7892992 -> 5214208 bytes in 0.6s
+34% of /var/lib/x-loc-cache/x-loc-cache.db is reclaimable — rebuilding, which stops x-loc-cache for the duration
+healthz ok
+compacted /var/lib/x-loc-cache/x-loc-cache.db: 7892992 -> 5214208 bytes (34% reclaimed), 236327 profiles / 247831 votes — rebuild 0.6s, service down 1.2s
 ```
+
+It is [`deploy/vacuum.ts`](deploy/vacuum.ts) with `--if-needed`: the same
+stop-swap-verify path as the by-hand run, gated on the measurement the backup
+just wrote. Under the threshold it prints one line and exits. It also rewrites
+that measurement afterwards, so a rebuild is never repeated and the heartbeat
+stops asking.
+
+**Why a stop and swap rather than a live `VACUUM`.** This used to be a plain
+in-place `VACUUM` over a second connection, which reads as the gentler option
+and is the opposite. Measured by driving real contributions through the handler
+while a second process ran each operation:
+
+| Second process | Database | Writes completed | p50 | Refused |
+| ---------------------------- | -------- | ------------------ | ------- | ------- |
+| `VACUUM INTO` (the snapshot) | 603 MB | 10,984 in 3.0 s | 0.1 ms | 0 |
+| `VACUUM INTO` (the snapshot) | 10.2 GB | 441,690 in 47.3 s | 0.1 ms | 0 |
+| `VACUUM` (in place) | 603 MB | 2 in 4.8 s | 4819 ms | 0 |
+| `VACUUM` (in place) | 10.2 GB | 25 in 130.4 s | 5006 ms | 20 |
+
+The snapshot is free **at any size**, which is why taking a backup never needs a
+stop and never did. It reads one WAL snapshot, so writers do not see it: 441,690
+contributions landed during a 47-second snapshot of a 10.2 GB database at a
+0.1 ms p50, none refused. Its one cost is a deferred WAL checkpoint for the
+duration, so the WAL grows by whatever arrives in the window; the retention pass
+truncates it on its next run.
+
+The in-place `VACUUM` degrades exactly where the snapshot does not. It holds the
+write lock for the whole rebuild, and because better-sqlite3 is synchronous a
+writer parked on `busy_timeout` stalls the event loop — so reads and `/healthz`
+go down with it, not just contributions. At 603 MB that is 4.8 s of dead server,
+inside the 5 s busy window by luck. At 10.2 GB it is **130 seconds in which 25
+writes were attempted and 20 returned 500**, one blocked for 30 s. Three
+consecutive failures open the client's ten-minute circuit breaker, so the tick
+costs far more than the two minutes it occupied.
+
+The stop-swap is strictly better on both counts. It is the `VACUUM INTO` time
+rather than roughly twice it — 47 s against 130 s on that 10.2 GB file — and the
+service is *down* rather than wedged, so requests get an immediate 502 from Caddy
+instead of hanging for five seconds and then failing anyway. Whatever was in
+place stays as `*.replaced-<stamp>`, and `/healthz` has to answer before the run
+calls itself done.
 
 **By hand, for the stop-swap-verify version** —
 [`deploy/vacuum.ts`](deploy/vacuum.ts), which keeps the old file beside the
@@ -810,7 +891,7 @@ not come back. Those are events. So this is triggered by a measurement, not a
 calendar.
 
 **The measurement is free.** `backup.ts` already rebuilds the whole database
-every night — that is what `VACUUM INTO` does to produce the snapshot. So the
+on every run — that is what `VACUUM INTO` does to produce the snapshot. So the
 snapshot's size _is_ what a compacted database would weigh, and the gap
 between it and the live file is what a `VACUUM` would hand back. Not an
 estimate: the same operation produces the prediction and, later, the result.
@@ -907,17 +988,24 @@ is what makes it cover the failures a script cannot report about its own death
 service only reaches a failed state once systemd gives up restarting it, so an
 email from that one means a crash loop, not a blip.
 
-The subject distinguishes the two things worth knowing apart:
+The subject distinguishes the three things worth knowing apart:
 
 ```text
-[x-pat-cache] x-loc-backup.service failed on vps-1     ← the run broke
-[x-pat-cache] DATABASE CORRUPTION on vps-1             ← the data is suspect
+[x-pat-cache] x-loc-backup.service failed on vps-1        ← the run broke
+[x-pat-cache] DATABASE CORRUPTION on vps-1                ← the data is suspect
+[x-pat-cache] OUT OF DISK on vps-1 — no backup taken      ← there is no room
 ```
 
-The second is chosen by matching what `backup.ts` prints when verification
-fails, and a corruption email leads with the restore command and the fact that
-nothing was pruned. A test asserts those strings still exist in `backup.ts`, so
-rewording a message there cannot silently downgrade the alert.
+The last two are chosen by matching what the run prints, and each leads with its
+own instruction rather than the generic one. Corruption leads with the restore
+command and the fact that nothing was pruned. Out of disk leads with `df`, and
+says explicitly **not** to free space by deleting the archives that are left —
+the preflight already deleted every one it was allowed to, and what survives is
+the restore you still have. It also says the server is still serving, because a
+full backup disk is not an outage and should not be read at 2am as one.
+
+A test asserts those strings still exist in `backup.ts`, so rewording a message
+there cannot silently downgrade the alert.
 
 Credentials use the ordinary nodemailer variable names
 ([`deploy/x-loc-alert.env.example`](deploy/x-loc-alert.env.example)) — copy
@@ -952,8 +1040,10 @@ Total on disk:   271.4 MB
 DB reclaimable:  3% (11.8 MB of 402.5 MB)
 ```
 
-Past 48 hours without a fresh archive the subject becomes
+Past 72 hours without a fresh archive the subject becomes
 `backups are STALE`, which catches a timer that stopped without ever failing.
+That threshold is set by the every-other-day timer, not chosen freely: a healthy
+newest archive reaches 48h by design, and one skipped run reaches 96h.
 
 `DB reclaimable` is the one number here that is not about backups — see
 [Compacting the database](#compacting-the-database). At or above
@@ -981,6 +1071,12 @@ every operation the server performs against it. Defaults: **2M profiles / 5.4M
 votes / 603 MB**, 10k distinct installs. Sizing rationale is in
 [`bench/load.ts`](bench/load.ts) — profiles grow far slower than users because
 timelines overlap heavily, and votes are capped at 10 per handle.
+
+`--profiles` and `--users` size the generated database, and it reads
+`XLOC_CACHE_MB` / `XLOC_MMAP_MB` from the environment like the server does, so a
+run can stand in for a smaller box. `--keep` leaves the file for a second run
+against the same data. Put `TMPDIR` on a real disk — a tmpfs `/tmp` charges the
+database to the same memory the run is measuring.
 
 Measured on Node 24.10, `cache_size` 256 MB, `mmap` 512 MB. The numbers that
 matter are the **single-core** column — a Ryzen 7 7735HS pinned to one core with
@@ -1037,12 +1133,89 @@ Two slow operations, both once a day and both deliberate:
 - **The retention pass** at 199 ms, for the same reason and with the same
   verdict.
 
-**Memory holds.** With a 603 MB database, RSS reads ~900 MB, which looks alarming
-against `MemoryMax=640M` — but the run completes unharmed under exactly that
-cgroup limit, with latencies unchanged. Most of that RSS is `mmap`'d file pages,
-which are file-backed and reclaimed under pressure rather than counted against an
-OOM. The 256 MB `cache_size` is the part that is genuinely anonymous. Raise the
-two together or not at all.
+**Memory holds, and the swapfile is why.** With a 603 MB database, RSS reads
+~900 MB, which looks alarming against `MemoryMax=640M` — but the run completes
+unharmed under exactly that cgroup limit. Most of that RSS is `mmap`'d file
+pages, which are file-backed and reclaimed under pressure rather than counted
+against an OOM. The 256 MB `cache_size` is the part that is genuinely anonymous.
+Raise the two together or not at all.
+
+What the limit costs depends entirely on whether step 3's swapfile is there.
+Same 603 MB database, same core, page cache dropped before each run so the
+process has to fault the file in itself:
+
+| | no cgroup limit | `MemoryMax=640M`, swap | `MemoryMax=640M`, no swap |
+| ------------------------ | --------------- | ---------------------- | ------------------------- |
+| lookup 100 names, p50 | 0.44 ms | 0.44 ms | 12.14 ms |
+| contribute 50, p50 | 1.84 ms | 2.15 ms | 13.43 ms |
+| `COUNT(*)` both, p95 | 60 ms | 1275 ms | 2847 ms |
+| retention pass | 1041 ms | 4364 ms | 7452 ms |
+| RSS | 890 MB | 641 MB | 677 MB |
+
+Swap keeps the **request path** at its unconstrained latency: the anonymous page
+cache is what gets paged out, and the hot b-tree pages stay mapped. Without it
+the kernel has nothing to reclaim but those mapped pages, so every lookup
+re-faults from disk and the whole table degrades 5-30x. The retention pass
+slows either way — it walks 5.4M rows that no longer fit — and at 7.5 s without
+swap it exceeds the client's 5 s abort, which is three failures away from
+opening its ten-minute circuit breaker. **Do not skip step 3.**
+
+Both maintenance stalls scale with the votes table, so they are the growth
+signal to watch, not RSS. At the size a small deployment actually reaches —
+600k profiles / 1.6M votes / 170 MB, on a box sharing its RAM with something
+else (`XLOC_CACHE_MB=128` under `MemoryMax=320M`) — the retention pass is
+691 ms and lookups are 0.41 ms.
+
+#### Where it breaks: 10M profiles
+
+Not memory, and not the request path. Same box, same core, `MemoryMax=640M`
+with swap, page cache dropped, against **10M profiles / 27.2M votes /
+3084 MB** — a database three times the size of the machine's RAM:
+
+| Operation | 600k / 170 MB | 2M / 603 MB | 10M / 3084 MB |
+| ------------------------------ | ------------- | ----------- | ------------- |
+| lookup 100 names, p50 | 0.41 ms | 0.44 ms | 0.47 ms |
+| lookup 100 names, p95 | 0.84 ms | 2.21 ms | 9.03 ms |
+| contribute 50, p50 | 3.35 ms | 2.15 ms | 6.79 ms |
+| `COUNT(DISTINCT client_id)` | 89 ms | 223 ms | 5098 ms |
+| `COUNT(*)` both tables | 2 ms | 7 ms | 18346 ms |
+| retention pass | 691 ms | 4364 ms | 45847 ms |
+| RSS | 373 MB | 641 MB | 577 MB |
+
+Lookups and contributions barely move — both are primary-key seeks, and their
+cost is the batch size, not the table. RSS does not move either: it is bounded
+by `XLOC_CACHE_MB` plus whatever mapped pages the cgroup will hold, so a
+database can exceed RAM by any factor without an OOM.
+
+What breaks is the **once-a-day maintenance, and it breaks together**.
+Retention (46 s), the two `COUNT(DISTINCT client_id)` scans (5 s each) and
+`COUNT(*)` (18 s) all land in the same tick, and better-sqlite3 is synchronous —
+so that is **~75 seconds in which the process answers nothing at all**,
+`/healthz` included, because it is one event loop. The client aborts at 5 s and
+opens a ten-minute circuit breaker after three failures, so every install that
+hovers during the daily tick loses the shared cache for ten minutes. At
+2M/603 MB the same tick is ~10 s: bad, survivable. At 10M it is an outage.
+
+The backup run gets expensive at the same point but degrades gracefully,
+being `Nice=10` and `IOSchedulingClass=idle` in its own process: `VACUUM INTO`
+44 s, gzip 68 s, a 662 MB archive. Disk is then the ceiling — 3.0 GB live plus a
+transient 3.0 GB snapshot plus the five kept archives is ~9.2 GB, and auto-vacuum wants
+another 3.0 GB free on top. A 25 GB instance disk holds that; the vote cap is
+what keeps it from being 10x worse, since 10M profiles at `VOTE_CAP` rather than
+the measured 2.7 votes each would be ~11 GB live.
+
+That peak is why the run preflights the disk and why the timer is every other
+day rather than nightly — see "Backups".
+
+Two fixes, neither worth building before the numbers demand it. Retention wants
+chunked deletion *plus* the `seen_at` index (chunking alone re-scans per chunk;
+see "Indexes: don't add any"). The stats scans want dropping, or moving off the
+serving process — the free per-window `users` count costs nothing and is derived
+from the clientId already on the wire.
+
+Getting there means 167k new handles a day sustained for 60 days, against ~10k
+today: retention bounds `profiles` at the distinct handles seen inside the
+window, so this is a traffic ceiling, not a slow leak.
 
 ### Usage stats
 
@@ -1209,15 +1382,31 @@ with the same caveat as the bare-metal deploy. Verification, rotation and the
 corruption monitor all behave as described under [Backups](#backups);
 `XLOC_BACKUP_KEEP` goes in `compose.yaml`'s `environment:` block.
 
+**No automatic compaction in a container.** `vacuum.ts` stops and starts a
+systemd unit, which does not exist in here, so `x-loc-vacuum.service` has no
+container equivalent. The measurement still happens on every backup and the
+heartbeat still reports it; acting on it means recreating the container around a
+rebuild, which is the host's job:
+
+```bash
+docker compose stop
+docker run --rm -v x-loc-cache-data:/data alpine:3 \
+  sh -c 'apk add --no-cache sqlite >/dev/null && sqlite3 /data/x-loc-cache.db "VACUUM;"'
+docker compose start
+```
+
 There is no timer inside the container. Schedule it from the host, which is
 also where the exit status is visible:
 
 ```bash
 # /etc/cron.d/x-loc-backup
-17 4 * * * root docker compose -f /opt/x-loc-cache/server/compose.yaml exec -T x-loc-cache /app/deploy/backup.ts
+17 4 1-31/2 * * root docker compose -f /opt/x-loc-cache/server/compose.yaml exec -T x-loc-cache /app/deploy/backup.ts
 ```
 
-`-T` is required: without it `exec` wants a TTY and fails under cron.
+`-T` is required: without it `exec` wants a TTY and fails under cron. `1-31/2` is
+odd days, matching `x-loc-backup.timer`'s `*-*-1/2` on the bare-metal deploy —
+cron has no equivalent of `Persistent=true`, so a box down at 04:17 skips that
+run rather than catching up on boot.
 
 ### Restore (container)
 

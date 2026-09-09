@@ -39,7 +39,7 @@ services:
       # There is no timer in here — the host schedules it; see "Backups
       # (container)" in README.md. XLOC_BACKUP_DIR is set in the image and
       # should stay inside /data, the only path that outlives the container.
-      XLOC_BACKUP_KEEP: '7'
+      XLOC_BACKUP_KEEP: '5'
 
     # ~80 MB Node baseline + XLOC_CACHE_MB + request buffers. Matches
     # MemoryMax in deploy/x-loc-cache.service.

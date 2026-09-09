@@ -47,15 +47,33 @@ Two other things it holds:
   the two versions is serving. Rolling back the source without the units would
   leave the box on a mismatched pair.
 
-## The auto vacuum runs last, and the order is the safety argument
+## Compaction is a stop and a swap, and it is not backup.ts's job
 
-`backup.ts` compacts the live file (plain `VACUUM`, no stop) only when its own
-measurement crosses `XLOC_AUTO_VACUUM_PCT` (default 20, 0 = off) — and only
-after the verified archive is stored, the source has passed `integrity_check`,
-and pruning is done. A failure there is logged and swallowed: the backup has
-already succeeded, and the next nightly run retries. `.vacuum-status` records
-the **post**-vacuum live size, so the heartbeat does not keep recommending a
-vacuum that already ran.
+`backup.ts` measures and records; it never touches the live file. The rebuild is
+`vacuum.ts --if-needed`, which `x-loc-backup.service` pulls in with
+`OnSuccess=x-loc-vacuum.service` — so it runs only after a **verified archive**
+exists, which is the copy a bad rebuild would be restored from. Nothing puts it
+on a timer.
+
+Do not put the in-place `VACUUM` back into `backup.ts`. It reads as the gentler
+option and is the opposite: `VACUUM INTO` costs the server nothing (one WAL read
+snapshot — 441,690 contributions landed during a 47 s snapshot of a 10.2 GB
+database, none refused), while a plain `VACUUM` holds the write lock for the
+whole rebuild, and better-sqlite3 is synchronous, so a writer parked on
+`busy_timeout` freezes reads and `/healthz` with it. Measured on that same
+10.2 GB file: 130 s, 20 of 25 writes refused with 500. The stop-swap costs the
+`VACUUM INTO` time instead (47 s), and a stopped service returns an immediate 502
+rather than hanging every request for five seconds first. `backup.ts` also runs
+as xloc and cannot drive systemctl, which is why `x-loc-vacuum.service` is the
+one unit here that runs as root.
+
+`.vacuum-status` is the handoff, and **both** scripts write it — the format lives
+in `alert.ts` beside its reader. `backup.ts` records what it measured;
+`vacuum.ts` overwrites it with the size it rebuilt to, or the heartbeat keeps
+recommending a compaction that already ran and the next `OnSuccess=` repeats it.
+`vacuum.ts` never creates the backups directory and chowns the status file back
+to xloc: it is root, and a root-owned file or directory there fails every backup
+after it.
 
 ## The two "is this copy short" baselines differ
 
@@ -74,11 +92,21 @@ fires and an evidence copy is kept — for a good backup.
 
 ## What each script refuses to do
 
-**`backup.ts`** runs snapshot → verify → compress → check the source → prune, and prunes
-**only on a clean run**, so neither a corrupt source nor a bad snapshot can age out the
-archives you are about to need. It keeps ONE compressed corruption-evidence copy, not one
-per night — whatever lands there is usually permanent, and it shares a disk with the live
-database.
+**`backup.ts`** runs preflight → snapshot → verify → compress → check the source → prune,
+and the **rotation** prunes **only on a clean run**, so neither a corrupt source nor a bad
+snapshot can age out the archives you are about to need. It keeps ONE compressed
+corruption-evidence copy, not one per run — whatever lands there is usually permanent, and
+it shares a disk with the live database.
+
+The **disk preflight is the one prune that runs before anything is verified**, because its
+whole job is to make room for the thing that would do the verifying. It is bounded instead:
+oldest first, never below `MIN_KEEP` (2), and only when `freeBytes` says the run would not
+fit. Do not fold it into the rotation and do not let it reach the last two archives — a
+single survivor is one bad archive away from no restore at all, and the run is supposed to
+fail there rather than delete its way forward. `spaceNeeded` budgets the live file **plus
+one archive** because `gzipTo` writes the `.gz` beside the snapshot and removes the
+snapshot only after the rename; drop that second term and the preflight passes runs that
+then run out of disk mid-compress.
 
 - **`VACUUM INTO`, not the `.backup` API.** `.backup` restarts whenever another connection
   writes, so it never converges under load: 236 MB, 0.2 s idle against 58 s at 10
@@ -145,6 +173,13 @@ Stubs are executable shims on PATH (`stubs()` in `backup.test.ts`). The load-bea
 ones: `id: echo 0` to reach the root paths, `sudo: shift 2; exec "$@"` to pass
 through, `sqlite3` wrappers that intercept one query and `exec` the real binary for
 the rest, and `mv` failing only on the swap's source name.
+
+The disk preflight is driven by **sparse archives**, not a full disk: it sizes the
+run with `stat()`, so a hole of `statfs().bavail * 2` puts a run past the space it
+has while costing no blocks. Real `ENOSPC` mid-snapshot is a `sqlite3` stub instead,
+and the assertion runs backup.ts's own stderr through `isOutOfSpace` rather than
+re-stating its words — the two drifting apart downgrades an OUT OF DISK email to a
+generic one.
 
 What the suite pins, and what breaking it would cost: pruning never runs on a
 failed verify; the evidence file is one copy however many nights fail, and never

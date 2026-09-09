@@ -160,13 +160,16 @@ const fresh = (() => {
 })()
 
 console.log(`db: ${DB_PATH}${fresh ? ' (generating)' : ' (reusing)'}`)
-const db = openDatabase({ path: DB_PATH, cacheMb: 256, mmapMb: 512 })
+// Same knobs as the deployment, so a run can stand in for a smaller box.
+const CACHE_MB = Number(process.env.XLOC_CACHE_MB ?? 256)
+const MMAP_MB = Number(process.env.XLOC_MMAP_MB ?? 512)
+const db = openDatabase({ path: DB_PATH, cacheMb: CACHE_MB, mmapMb: MMAP_MB })
 const env: Env = { DB: db }
 if (fresh) generate(db)
 
 const sizeMb = statSync(DB_PATH).size / (1024 * 1024)
 console.log(
-  `size: ${sizeMb.toFixed(0)} MB  |  page cache: 256 MB  |  users: ${USERS.toLocaleString()}\n`,
+  `size: ${sizeMb.toFixed(0)} MB  |  page cache: ${CACHE_MB} MB  |  mmap: ${MMAP_MB} MB  |  users: ${USERS.toLocaleString()}\n`,
 )
 
 const results: Result[] = []

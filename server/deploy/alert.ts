@@ -3,9 +3,16 @@
 
 import { spawnSync } from 'node:child_process'
 import { hostname } from 'node:os'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import {
+  readFileSync,
+  renameSync,
+  writeFileSync,
+  readdirSync,
+  statSync,
+} from 'node:fs'
 import { join } from 'node:path'
 import nodemailer from 'nodemailer'
+import { MIN_KEEP } from './backup.ts'
 
 export interface AlertConfig {
   host: string
@@ -23,6 +30,15 @@ export interface AlertConfig {
 export const CORRUPTION_MARKERS = [
   'the LIVE database failed integrity_check',
   'snapshot verification FAILED',
+] as const
+
+/** A full disk fails in several voices: our preflight, SQLite, the kernel. */
+export const OUT_OF_SPACE_MARKERS = [
+  'not enough disk for a backup',
+  'database or disk is full',
+  'ENOSPC',
+  'No space left on device',
+  'no space left on device',
 ] as const
 
 /** Absent config is not a failure; half-written config is. */
@@ -67,6 +83,10 @@ export function isCorruption(journal: string): boolean {
   return CORRUPTION_MARKERS.some((m) => journal.includes(m))
 }
 
+export function isOutOfSpace(journal: string): boolean {
+  return OUT_OF_SPACE_MARKERS.some((m) => journal.includes(m))
+}
+
 function runText(cmd: string, args: string[]): string {
   try {
     const r = spawnSync(cmd, args, { encoding: 'utf8', timeout: 15_000 })
@@ -88,33 +108,63 @@ export interface FailureInput {
   journal: string
 }
 
+/** Corruption outranks a full disk: a corrupt run can report ENOSPC on the way
+ *  down, and the restore is the more urgent instruction. */
+type FailureKind = 'corruption' | 'out-of-space' | 'other'
+
+function classifyFailure(journal: string): FailureKind {
+  if (isCorruption(journal)) return 'corruption'
+  if (isOutOfSpace(journal)) return 'out-of-space'
+  return 'other'
+}
+
+const SUBJECTS: Record<FailureKind, (input: FailureInput) => string> = {
+  corruption: (i) => `DATABASE CORRUPTION on ${i.host}`,
+  'out-of-space': (i) => `OUT OF DISK on ${i.host} — no backup taken`,
+  other: (i) => `${i.unit} failed on ${i.host}`,
+}
+
+/** Lead with what to do. A failure email read on a phone should say whether
+ *  this can wait until morning before it says anything else. */
+const LEADS: Record<FailureKind, (input: FailureInput) => string[]> = {
+  corruption: () => [
+    'The integrity check failed. Do NOT repair in place.',
+    '',
+    'Restore the newest verified backup:',
+    '  ls -lh /var/lib/x-loc-cache/backups/',
+    '  sudo /opt/x-loc-cache/server/deploy/restore.ts <newest>.db.gz',
+    '',
+    'Backups were NOT pruned on this run, so the full history is intact.',
+  ],
+  'out-of-space': () => [
+    'No backup was taken: the disk cannot hold one.',
+    '',
+    'The run already deleted the oldest archives to try to fit, and stopped',
+    `at ${MIN_KEEP} archives — those are the restores you still have, so do`,
+    'not clear space by removing them.',
+    '',
+    'Check what is using the disk:',
+    '  df -h /var/lib/x-loc-cache',
+    '  du -sh /var/lib/x-loc-cache/* | sort -h',
+    '',
+    'The server keeps serving and keeps accepting contributions; it is the',
+    'backup that is stopped, and it retries on the next run.',
+  ],
+  other: (i) => [
+    `${i.unit} entered a failed state.`,
+    '',
+    'If this is x-loc-backup.service, no verified snapshot was taken —',
+    'the previous archives are untouched, but the run produced no new one.',
+  ],
+}
+
 export function buildFailureMessage(
   input: FailureInput,
   prefix: string,
 ): { subject: string; text: string } {
-  const corrupt = isCorruption(input.journal)
-  const subject = corrupt
-    ? `${prefix} DATABASE CORRUPTION on ${input.host}`
-    : `${prefix} ${input.unit} failed on ${input.host}`
-
-  // Lead with what to do. A failure email read on a phone should say whether
-  // this can wait until morning before it says anything else.
-  const lead = corrupt
-    ? [
-        'The integrity check failed. Do NOT repair in place.',
-        '',
-        'Restore the newest verified backup:',
-        '  ls -lh /var/lib/x-loc-cache/backups/',
-        '  sudo /opt/x-loc-cache/server/deploy/restore.ts <newest>.db.gz',
-        '',
-        'Backups were NOT pruned on this run, so the full history is intact.',
-      ]
-    : [
-        `${input.unit} entered a failed state.`,
-        '',
-        'If this is x-loc-backup.service, no verified snapshot was taken —',
-        'the previous archives are untouched, but tonight has no new one.',
-      ]
+  const kind = classifyFailure(input.journal)
+  const subject = `${prefix} ${SUBJECTS[kind](input)}`
+  const lead = LEADS[kind](input)
 
   return {
     subject,
@@ -201,7 +251,21 @@ export const VACUUM_STATUS_FILE = '.vacuum-status'
  *  a stop and rebuild. Should fire rarely — see CLAUDE.md. */
 export const DEFAULT_VACUUM_ALERT_PCT = 25
 
-/** The two sizes last night's backup left behind — a measurement of what a
+/** Whole file then rename, so the heartbeat never reads a partial one. Lives
+ *  beside its reader because backup.ts and vacuum.ts both write it. */
+export function writeVacuumStatus(
+  backupDir: string,
+  status: { stamp: string; liveBytes: number; vacuumedBytes: number },
+): void {
+  const path = join(backupDir, VACUUM_STATUS_FILE)
+  writeFileSync(
+    `${path}.part`,
+    `stamp=${status.stamp}\nlive_bytes=${status.liveBytes}\nvacuumed_bytes=${status.vacuumedBytes}\n`,
+  )
+  renameSync(`${path}.part`, path)
+}
+
+/** The two sizes the last backup left behind — a measurement of what a
  *  VACUUM would reclaim, read from text so no SQLite is opened. */
 export function readVacuumStatus(backupDir: string): VacuumStatus | null {
   let raw: string
@@ -251,7 +315,8 @@ export interface ReportInput {
   stats: BackupStats
   host: string
   when: string
-  /** Older than this and the heartbeat reports STALE instead of healthy. */
+  /** STALE past this: above the 48h a healthy every-other-day timer reaches by
+   *  design, below the 96h one skipped run produces. */
   staleAfterHours?: number
   /** What the last backup measured; null until one has run since this shipped. */
   vacuum?: VacuumStatus | null
@@ -267,7 +332,7 @@ export function buildReportMessage(
     stats,
     host,
     when,
-    staleAfterHours = 48,
+    staleAfterHours = 72,
     vacuum = null,
     vacuumAlertPct = DEFAULT_VACUUM_ALERT_PCT,
   } = input
@@ -312,7 +377,7 @@ export function buildReportMessage(
         ? [
             '',
             `A VACUUM would return ${mb(vacuum!.liveBytes - vacuum!.vacuumedBytes)} MB. That is measured, not`,
-            'estimated: the nightly backup rebuilds the database to snapshot it,',
+            'estimated: the backup run rebuilds the database to snapshot it,',
             'so the snapshot is what a compacted file weighs. To reclaim it:',
             '  sudo /opt/x-loc-cache/server/deploy/vacuum.ts',
             'It stops the service for the rebuild, verifies the result before',

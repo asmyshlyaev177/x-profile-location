@@ -1,6 +1,6 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// Nightly snapshot, verified and rotated, as the xloc user and never root. The
-// order of the steps is load-bearing — see CLAUDE.md.
+// Every-other-day snapshot, verified and rotated, as the xloc user and never
+// root. The order of the steps is load-bearing — see CLAUDE.md.
 
 import { spawnSync } from 'node:child_process'
 import {
@@ -11,11 +11,11 @@ import {
   readdirSync,
   renameSync,
   rmSync,
-  writeFileSync,
 } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { createGzip } from 'node:zlib'
+import { writeVacuumStatus } from './alert.ts'
 import { VOTE_RETENTION_MS } from '../src/index.ts'
 import {
   bytes,
@@ -46,9 +46,9 @@ export function parseKeep(raw: string): number | null {
   return Number(raw)
 }
 
-/** At or above this share reclaimable, the run compacts the live file too.
- *  0 disables; a value that is not a percentage disables with a warning, since
- *  a typo must never trigger a rebuild the operator meant to switch off. */
+/** At or above this share reclaimable, `vacuum.ts --if-needed` rebuilds after
+ *  this run. 0 disables; a non-percentage disables with a warning, since a typo
+ *  must never trigger a rebuild the operator meant to switch off. */
 export function autoVacuumPct(raw: string | undefined): number {
   if (raw === undefined || raw.trim() === '') return 20
   const n = Number(raw)
@@ -85,6 +85,43 @@ export function snapshotIsGood(found: Inspection, baseline: number): boolean {
     found.votes !== null &&
     found.profiles >= baseline
   )
+}
+
+/** The disk preflight never prunes below this: one surviving archive is one bad
+ *  archive away from no restore at all. */
+export const MIN_KEEP = 2
+
+/** Snapshot and archive exist together, so budget both. The archive is
+ *  estimated from the newest on disk, and assumed incompressible without one. */
+export function spaceNeeded(
+  live: number,
+  newestArchive: number | null,
+): number {
+  return live + (newestArchive ?? live)
+}
+
+/** Oldest first, enough to reach `needed`. Takes them newest-first, and stops
+ *  at MIN_KEEP so a shortfall is the caller's to report. */
+export function archivesToReclaim(
+  archives: { name: string; size: number }[],
+  free: number,
+  needed: number,
+): string[] {
+  const doomed: string[] = []
+  let available = free
+  for (let i = archives.length - 1; i >= MIN_KEEP && available < needed; i--) {
+    doomed.push(archives[i]!.name)
+    available += archives[i]!.size
+  }
+  return doomed
+}
+
+/** Newest first with sizes — the order both prunes read. */
+function archiveSizes(dir: string): { name: string; size: number }[] {
+  return readdirSync(dir)
+    .filter((n) => ARCHIVE_RE.test(n))
+    .sort((a, b) => b.localeCompare(a))
+    .map((name) => ({ name, size: bytes(join(dir, name)) }))
 }
 
 /** Names embed a UTC timestamp, so lexical order is age order: newest first. */
@@ -158,6 +195,35 @@ async function keepEvidence(snapshot: string, evidence: string): Promise<void> {
   )
 }
 
+/** `VACUUM INTO` discovers a full disk only after spending the time. Trades the
+ *  oldest archives for this run's — a restore reaches for the newest — but never
+ *  the last MIN_KEEP. */
+function makeRoomForSnapshot(backupDir: string, dbFile: string): void {
+  const free = freeBytes(backupDir)
+  if (free === null) return
+  const needed = spaceNeeded(
+    liveBytes(dbFile),
+    archiveSizes(backupDir)[0]?.size ?? null,
+  )
+  if (free >= needed) return
+
+  let freed = 0
+  for (const name of archivesToReclaim(archiveSizes(backupDir), free, needed)) {
+    const archive = join(backupDir, name)
+    freed += bytes(archive)
+    rmSync(archive, { force: true })
+    console.error(`disk preflight: pruned ${name} to make room`)
+  }
+  if (free + freed >= needed) return
+
+  die(
+    `not enough disk for a backup: needs ${humanSize(needed)} in ${backupDir},` +
+      ` ${humanSize(free + freed)} available with ${MIN_KEEP} archive(s) kept.`,
+    'Nothing was backed up. Free space, or move XLOC_BACKUP_DIR to another disk',
+    '(that needs a ReadWritePaths= drop-in — see "Backups" in README.md).',
+  )
+}
+
 async function main(): Promise<void> {
   loadEnvFile()
 
@@ -168,7 +234,7 @@ async function main(): Promise<void> {
   const refusal = rootRefusal(uid(), process.argv[1] ?? '')
   if (refusal) die(...refusal)
 
-  const keep = parseKeep(process.env.XLOC_BACKUP_KEEP ?? '7')
+  const keep = parseKeep(process.env.XLOC_BACKUP_KEEP ?? '5')
   if (keep === null) {
     die(
       `XLOC_BACKUP_KEEP must be a positive integer without a leading zero, got '${process.env.XLOC_BACKUP_KEEP}'`,
@@ -185,8 +251,6 @@ async function main(): Promise<void> {
   // Unstamped and deliberately not archive-shaped: neither the prune, the
   // sweep, the kept-count nor restore.ts's listing may treat it as one.
   const EVIDENCE = join(BACKUP_DIR, 'corrupt-evidence.db.gz')
-  // For the weekly heartbeat. Dotfile for the same reason as .backup.lock.
-  const STATUS = join(BACKUP_DIR, '.vacuum-status')
 
   for (const name of readdirSync(BACKUP_DIR).filter(isOrphan)) {
     rmSync(join(BACKUP_DIR, name), { force: true })
@@ -207,6 +271,8 @@ async function main(): Promise<void> {
   ] as const) {
     process.on(signal, () => process.exit(code))
   }
+
+  makeRoomForSnapshot(BACKUP_DIR, DB)
 
   const baseline = sqlite([DB, baselineQuery(Date.now())])
 
@@ -266,54 +332,18 @@ async function main(): Promise<void> {
     `vacuum check: ${reclaimPct(live, rebuilt)}% of the database is reclaimable (${live} live, ${rebuilt} rebuilt)`,
   )
 
-  // Compact the live file while the verified archive is already on disk, so
-  // the worst a bad rebuild can do is what tonight's backup restores. A plain
-  // VACUUM off a second connection needs no service stop; writers wait behind
-  // the sub-second rebuild (measured in README's VACUUM INTO table) instead of
-  // being refused. A failure is logged and retried by the next nightly run.
-  const liveNow = await autoVacuum(DB, live, rebuilt)
+  // The rebuild belongs to x-loc-vacuum.service: an in-place VACUUM holds the
+  // write lock throughout, and this runs as xloc and cannot stop the service.
+  // Parsed here anyway, so a bad value is reported by the run that measures.
+  autoVacuumPct(process.env.XLOC_AUTO_VACUUM_PCT)
 
   // Only on a run that got all the way through, and as plain text: the
   // heartbeat has to keep working when SQLite is what broke.
-  writeFileSync(
-    `${STATUS}.part`,
-    `stamp=${STAMP}\nlive_bytes=${liveNow}\nvacuumed_bytes=${rebuilt}\n`,
-  )
-  renameSync(`${STATUS}.part`, STATUS)
-}
-
-/** Returns the live size the status file should record: post-VACUUM when one
- *  ran, tonight's measurement otherwise. */
-async function autoVacuum(
-  db: string,
-  live: number,
-  rebuilt: number,
-): Promise<number> {
-  const threshold = autoVacuumPct(process.env.XLOC_AUTO_VACUUM_PCT)
-  const pct = reclaimPct(live, rebuilt)
-  if (threshold === 0 || pct < threshold) return live
-
-  const free = freeBytes(dirname(db))
-  if (free === null || free < rebuilt) {
-    console.error(
-      `auto vacuum skipped: needs ${humanSize(rebuilt)} free beside the database, ${free === null ? 'unknown' : humanSize(free)} available`,
-    )
-    return live
-  }
-
-  const vacuumStartedAt = Date.now()
-  const compacted = sqlite(['-cmd', '.timeout 15000', db, 'VACUUM;'])
-  if (!compacted.ok) {
-    console.error(
-      `auto vacuum failed (the backup itself is fine): ${compacted.out}`,
-    )
-    return live
-  }
-  const liveNow = liveBytes(db)
-  console.log(
-    `auto vacuum: ${pct}% >= ${threshold}%, compacted the live database ${live} -> ${liveNow} bytes in ${secs(Date.now() - vacuumStartedAt)}`,
-  )
-  return liveNow
+  writeVacuumStatus(BACKUP_DIR, {
+    stamp: STAMP,
+    liveBytes: live,
+    vacuumedBytes: rebuilt,
+  })
 }
 
 // The tests import the helpers above; only a direct run backs anything up.
