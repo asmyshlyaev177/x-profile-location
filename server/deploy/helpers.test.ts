@@ -18,11 +18,14 @@ import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
+  MIN_KEEP,
   archivesToPrune,
+  archivesToReclaim,
   baselineQuery,
   isOrphan,
   parseKeep,
   snapshotIsGood,
+  spaceNeeded,
 } from './backup.ts'
 import {
   bytes,
@@ -37,7 +40,7 @@ import {
   type Inspection,
 } from './lib.ts'
 import { availableArchives } from './restore.ts'
-import { parseArgs } from './vacuum.ts'
+import { needsRebuild, parseArgs } from './vacuum.ts'
 
 const SERVER = join(import.meta.dirname, '..')
 const HAS_SQLITE = spawnSync('sh', ['-c', 'command -v sqlite3']).status === 0
@@ -66,6 +69,63 @@ describe('parseKeep', () => {
     for (const raw of ['0', '-1', '3.5', '007', '1e3', ' 7 ', '', 'seven']) {
       expect(parseKeep(raw)).toBeNull()
     }
+  })
+})
+
+describe('spaceNeeded', () => {
+  it('budgets for the snapshot and its archive existing at once', () => {
+    // gzipTo writes the .gz beside the snapshot and only then deletes it.
+    expect(spaceNeeded(1000, 220)).toBe(1220)
+  })
+
+  it('assumes the archive is incompressible until there is one to measure', () => {
+    expect(spaceNeeded(1000, null)).toBe(2000)
+  })
+})
+
+describe('archivesToReclaim', () => {
+  // Newest first, the order both prunes read.
+  const archives = [
+    { name: 'x-loc-cache-20260105-100000.db.gz', size: 100 },
+    { name: 'x-loc-cache-20260104-100000.db.gz', size: 100 },
+    { name: 'x-loc-cache-20260103-100000.db.gz', size: 100 },
+    { name: 'x-loc-cache-20260102-100000.db.gz', size: 100 },
+    { name: 'x-loc-cache-20260101-100000.db.gz', size: 100 },
+  ]
+
+  it('frees nothing when there is already room', () => {
+    expect(archivesToReclaim(archives, 500, 400)).toEqual([])
+  })
+
+  it('drops the oldest first, and only as many as the shortfall needs', () => {
+    expect(archivesToReclaim(archives, 100, 250)).toEqual([
+      'x-loc-cache-20260101-100000.db.gz',
+      'x-loc-cache-20260102-100000.db.gz',
+    ])
+  })
+
+  it('never goes below MIN_KEEP, even when that leaves the run short', () => {
+    // One surviving archive is one bad archive away from no restore at all, so
+    // the shortfall is the caller's to report rather than this function's to
+    // delete its way out of.
+    expect(archivesToReclaim(archives, 0, 100_000)).toHaveLength(
+      archives.length - MIN_KEEP,
+    )
+    expect(archivesToReclaim(archives.slice(0, MIN_KEEP), 0, 100_000)).toEqual(
+      [],
+    )
+    expect(archivesToReclaim([], 0, 100_000)).toEqual([])
+  })
+
+  it('counts each archive by its own size, not an average', () => {
+    const uneven = [
+      { name: 'x-loc-cache-20260103-100000.db.gz', size: 10 },
+      { name: 'x-loc-cache-20260102-100000.db.gz', size: 10 },
+      { name: 'x-loc-cache-20260101-100000.db.gz', size: 900 },
+    ]
+    expect(archivesToReclaim(uneven, 0, 500)).toEqual([
+      'x-loc-cache-20260101-100000.db.gz',
+    ])
   })
 })
 
@@ -224,17 +284,67 @@ describe.skipIf(!HAS_SQLITE)('baselineQuery', () => {
 
 describe('parseArgs', () => {
   it('understands no flag and both spellings of yes', () => {
-    expect(parseArgs([])).toEqual({ assumeYes: false })
-    expect(parseArgs(['-y'])).toEqual({ assumeYes: true })
-    expect(parseArgs(['--yes'])).toEqual({ assumeYes: true })
+    expect(parseArgs([])).toEqual({ assumeYes: false, ifNeeded: false })
+    expect(parseArgs(['-y'])).toEqual({ assumeYes: true, ifNeeded: false })
+    expect(parseArgs(['--yes'])).toEqual({ assumeYes: true, ifNeeded: false })
+  })
+
+  it('takes --if-needed, in either order, and never prompts for it', () => {
+    // The unit runs it with no terminal, so the conditional run cannot be one
+    // that stops to ask.
+    expect(parseArgs(['--if-needed'])).toEqual({
+      assumeYes: true,
+      ifNeeded: true,
+    })
+    expect(parseArgs(['--if-needed', '-y'])).toEqual({
+      assumeYes: true,
+      ifNeeded: true,
+    })
+    expect(parseArgs(['-y', '--if-needed'])).toEqual({
+      assumeYes: true,
+      ifNeeded: true,
+    })
   })
 
   it('refuses anything else, rather than ignoring it', () => {
     // '--force' reads as consent; running the interactive path instead would
     // be surprising, and running the compaction would be worse.
-    for (const argv of [['--force'], ['-y', 'extra'], ['-Y'], ['yes'], ['']]) {
+    for (const argv of [
+      ['--force'],
+      ['-y', 'extra'],
+      ['-Y'],
+      ['yes'],
+      [''],
+      ['--if-needed', '--if-needed'],
+      ['-y', '-y'],
+    ]) {
       expect(parseArgs(argv)).toBeNull()
     }
+  })
+})
+
+describe('needsRebuild', () => {
+  const status = (pct: number) => ({
+    liveBytes: 1000,
+    vacuumedBytes: 1000 - pct * 10,
+    reclaimPct: pct,
+    stamp: '20260101-100000',
+  })
+
+  it('rebuilds only at or past the threshold', () => {
+    expect(needsRebuild(status(19), 20)).toBe(false)
+    expect(needsRebuild(status(20), 20)).toBe(true)
+    expect(needsRebuild(status(34), 20)).toBe(true)
+  })
+
+  it('never rebuilds without a measurement', () => {
+    // No status file means no backup has verified this database, and a rebuild
+    // is the last thing to do to a file nothing has a good copy of.
+    expect(needsRebuild(null, 20)).toBe(false)
+  })
+
+  it('honours XLOC_AUTO_VACUUM_PCT=0 as off', () => {
+    expect(needsRebuild(status(90), 0)).toBe(false)
   })
 })
 

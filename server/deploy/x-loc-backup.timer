@@ -3,14 +3,18 @@
 #  sudo systemctl enable --now x-loc-backup.timer
 
 [Unit]
-Description=Daily x-loc-cache database backup
+Description=Every-other-day x-loc-cache database backup
 
 [Timer]
 # 10:00 UTC = 14:00 in Tbilisi (GMT+4, no DST) = early morning across the US,
 # where most of the audience is — the quietest window for the auto vacuum the
 # backup run may perform. Pinned to UTC so the box's own timezone cannot move
 # it, and so snapshot *filenames* (stamped UTC by backup.ts) match the hour.
-OnCalendar=*-*-* 10:00:00 UTC
+#
+# Odd days: a run costs a snapshot, a gzip and the disk to hold both, and 48h of
+# loss is a fair trade for a cache clients rebuild anyway. The month boundary
+# occasionally puts two on consecutive days, which is harmless.
+OnCalendar=*-*-1/2 10:00:00 UTC
 # No RandomizedDelaySec: this is a time somebody chose, and jitter would only
 # smear it across the following hour. The usual reason for it — spreading many
 # machines off a round hour — does not apply to one box on a bespoke time.

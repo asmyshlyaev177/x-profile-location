@@ -5,6 +5,13 @@
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
+import { autoVacuumPct } from './backup.ts'
+import {
+  VACUUM_STATUS_FILE,
+  readVacuumStatus,
+  writeVacuumStatus,
+  type VacuumStatus,
+} from './alert.ts'
 import {
   OWNER,
   SERVICE,
@@ -28,13 +35,32 @@ import {
   uid,
 } from './lib.ts'
 
+export interface VacuumArgs {
+  assumeYes: boolean
+  /** Never prompts: the x-loc-vacuum unit runs it with no terminal. */
+  ifNeeded: boolean
+}
+
 /** `null` for anything this does not understand, so it reports rather than runs. */
-export function parseArgs(argv: string[]): { assumeYes: boolean } | null {
-  const [flag, ...rest] = argv
-  if (rest.length > 0) return null
-  if (flag === undefined) return { assumeYes: false }
-  if (flag === '-y' || flag === '--yes') return { assumeYes: true }
-  return null
+export function parseArgs(argv: string[]): VacuumArgs | null {
+  let assumeYes = false
+  let ifNeeded = false
+  for (const flag of argv) {
+    if ((flag === '-y' || flag === '--yes') && !assumeYes) assumeYes = true
+    else if (flag === '--if-needed' && !ifNeeded) ifNeeded = true
+    else return null
+  }
+  return { assumeYes: assumeYes || ifNeeded, ifNeeded }
+}
+
+/** Rebuild only on a measurement a verified backup left behind, past the same
+ *  threshold it was recorded against. */
+export function needsRebuild(
+  status: VacuumStatus | null,
+  threshold: number,
+): boolean {
+  if (status === null || threshold === 0) return false
+  return status.reclaimPct >= threshold
 }
 
 /** Everything that must hold before the service is stopped, so a refusal costs
@@ -86,6 +112,25 @@ async function confirmOrExit(dbFile: string): Promise<void> {
   process.exit(1)
 }
 
+/** Logged either way: unattended, so the journal is the only place a decision
+ *  not to rebuild shows up. */
+function wantedByLastBackup(backupDir: string, dbFile: string): boolean {
+  const status = readVacuumStatus(backupDir)
+  const threshold = autoVacuumPct(process.env.XLOC_AUTO_VACUUM_PCT)
+  if (!needsRebuild(status, threshold)) {
+    console.log(
+      status === null
+        ? `nothing to do: no measurement in ${backupDir} — has a backup run?`
+        : `nothing to do: ${status.reclaimPct}% reclaimable, under the ${threshold}% threshold`,
+    )
+    return false
+  }
+  console.log(
+    `${status!.reclaimPct}% of ${dbFile} is reclaimable — rebuilding, which stops ${SERVICE} for the duration`,
+  )
+  return true
+}
+
 async function main(): Promise<void> {
   loadEnvFile()
 
@@ -93,7 +138,12 @@ async function main(): Promise<void> {
   const PORT = servicePort()
 
   const args = parseArgs(process.argv.slice(2))
-  if (args === null) die(`usage: ${process.argv[1]} [-y]`)
+  if (args === null) die(`usage: ${process.argv[1]} [-y] [--if-needed]`)
+
+  const BACKUP_DIR =
+    process.env.XLOC_BACKUP_DIR ?? '/var/lib/x-loc-cache/backups'
+
+  if (args.ifNeeded && !wantedByLastBackup(BACKUP_DIR, DB)) return
 
   const before = preflight(DB)
   if (!args.assumeYes) await confirmOrExit(DB)
@@ -155,6 +205,17 @@ async function main(): Promise<void> {
   console.log('healthz ok')
 
   const after = bytes(DB)
+  // Refresh, or the heartbeat keeps asking for a compaction that already ran.
+  // Never creates the directory, and hands the file back: this is root, and
+  // root-owned state there fails every xloc backup after it.
+  if (existsSync(BACKUP_DIR)) {
+    writeVacuumStatus(BACKUP_DIR, {
+      stamp: STAMP,
+      liveBytes: after,
+      vacuumedBytes: after,
+    })
+    run('chown', [`${OWNER}:${OWNER}`, join(BACKUP_DIR, VACUUM_STATUS_FILE)])
+  }
   console.log(
     `compacted ${DB}: ${before} -> ${after} bytes (${reclaimPct(before, after)}% reclaimed), ${found.profiles} profiles / ${found.votes} votes — rebuild ${secs(rebuildMs)}, service down ${secs(downtimeMs)}`,
   )

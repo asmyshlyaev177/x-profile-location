@@ -14,6 +14,10 @@ Documentation=https://github.com/asmyshlyaev177/x-profile-location
 # Email on any failure — including the ones backup.ts cannot report about
 # itself, like an OOM kill. Inert until /etc/x-loc-alert.env exists.
 OnFailure=x-loc-alert@%n.service
+# Compaction only after a verified archive exists, so the worst a bad rebuild
+# can do is what this run restores. Needs systemd 249+ (Ubuntu 22.04 ships 249);
+# older, put `vacuum.ts --if-needed` on its own timer after 10:00 UTC.
+OnSuccess=x-loc-vacuum.service
 
 [Service]
 Type=oneshot

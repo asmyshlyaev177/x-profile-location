@@ -10,6 +10,7 @@ import { createServer } from 'node:net'
 import type { AddressInfo, Server, Socket } from 'node:net'
 import {
   readFileSync,
+  readdirSync,
   mkdtempSync,
   rmSync,
   writeFileSync,
@@ -30,6 +31,8 @@ import {
   readConfig,
   readVacuumStatus,
   send,
+  isOutOfSpace,
+  writeVacuumStatus,
 } from './alert.ts'
 
 const BASE = {
@@ -106,6 +109,30 @@ describe('classifying a failure', () => {
   })
 })
 
+describe('isOutOfSpace', () => {
+  it('recognises the preflight refusing for want of disk', () => {
+    expect(
+      isOutOfSpace(
+        'not enough disk for a backup: needs 6.0G in /var/lib/x-loc-cache/backups, 1.2G available with 2 archive(s) kept.',
+      ),
+    ).toBe(true)
+  })
+
+  it("recognises SQLite's own full-disk error", () => {
+    // The preflight can pass and the disk still fill — another process, or a
+    // snapshot larger than the estimate the newest archive gave.
+    expect(isOutOfSpace('VACUUM INTO failed: database or disk is full')).toBe(
+      true,
+    )
+    expect(isOutOfSpace('Error: ENOSPC: no space left on device')).toBe(true)
+  })
+
+  it('does not fire on an ordinary failure', () => {
+    expect(isOutOfSpace('flock not found — install util-linux')).toBe(false)
+    expect(isOutOfSpace('')).toBe(false)
+  })
+})
+
 describe('buildFailureMessage', () => {
   const input = {
     unit: 'x-loc-backup.service',
@@ -146,6 +173,40 @@ describe('buildFailureMessage', () => {
 
   it('honours a custom subject prefix', () => {
     expect(buildFailureMessage(input, '[prod]').subject).toMatch(/^\[prod\] /)
+  })
+  it('leads a disk failure with what to free, not with the generic line', () => {
+    const m = buildFailureMessage(
+      {
+        unit: 'x-loc-backup.service',
+        host: 'vps-1',
+        when: 'now',
+        properties: 'Result=exit-code',
+        journal:
+          'not enough disk for a backup: needs 6.0G in /var/lib/x-loc-cache/backups, 1.2G available with 2 archive(s) kept.',
+      },
+      '[x]',
+    )
+    expect(m.subject).toContain('OUT OF DISK')
+    expect(m.text).toContain('df -h')
+    // The archives that survived are the ones a restore needs; say so before
+    // someone reaches for rm.
+    expect(m.text).toContain('2 archives')
+    expect(m.text).not.toContain('DATABASE CORRUPTION')
+  })
+
+  it('escalates a full disk that also tore the database', () => {
+    // A disk that filled mid-write can leave a torn database, so both markers
+    // land in one journal. Corruption is the one that must not wait.
+    const m = buildFailureMessage(
+      {
+        ...input,
+        journal:
+          'not enough disk for a backup: needs 6.0G\nthe LIVE database failed integrity_check — it is corrupt.',
+      },
+      '[x]',
+    )
+    expect(m.subject).toContain('DATABASE CORRUPTION')
+    expect(m.text).toContain('Do NOT repair in place')
   })
 })
 
@@ -237,10 +298,27 @@ describe('the weekly heartbeat', () => {
       totalMb: 1,
     }
     const base = { stats, host: 'vps-1', when: 'now' }
-    expect(buildReportMessage(base, '[x]').subject).toContain('healthy') // 48h default
+    expect(buildReportMessage(base, '[x]').subject).toContain('healthy') // 72h default
     expect(
       buildReportMessage({ ...base, staleAfterHours: 24 }, '[x]').subject,
     ).toContain('STALE')
+  })
+
+  it('allows a whole every-other-day gap before calling backups stale', () => {
+    // The timer runs on odd days, so a healthy newest archive reaches 48h by
+    // design and a little past it when a run starts late. The threshold has to
+    // clear that and still fire on one genuinely skipped run.
+    const at = (newestAgeHours: number) =>
+      buildReportMessage(
+        {
+          stats: { count: 1, newest: 'x.db.gz', newestAgeHours, totalMb: 1 },
+          host: 'vps-1',
+          when: 'now',
+        },
+        '[x]',
+      ).subject
+    expect(at(50)).toContain('healthy')
+    expect(at(96)).toContain('STALE')
   })
 
   it('treats a missing backups directory as stale, not as a crash', () => {
@@ -274,6 +352,36 @@ describe('the vacuum measurement', () => {
       reclaimPct: 25,
       stamp: '20260806-233000',
     })
+  })
+
+  it('round-trips what backup.ts and vacuum.ts write', () => {
+    // Two scripts write this file and a third reads it, so the format is only
+    // ever correct as a pair.
+    dir = mkdtempSync(join(tmpdir(), 'x-loc-vac-'))
+    writeVacuumStatus(dir, {
+      stamp: '20260101-100000',
+      liveBytes: 1000,
+      vacuumedBytes: 700,
+    })
+    expect(readVacuumStatus(dir)).toEqual({
+      liveBytes: 1000,
+      vacuumedBytes: 700,
+      reclaimPct: 30,
+      stamp: '20260101-100000',
+    })
+
+    // vacuum.ts records the same size twice after a rebuild. That has to read
+    // back as nothing left to reclaim, or the heartbeat asks again every week.
+    writeVacuumStatus(dir, {
+      stamp: '20260101-110000',
+      liveBytes: 700,
+      vacuumedBytes: 700,
+    })
+    expect(readVacuumStatus(dir)!.reclaimPct).toBe(0)
+
+    // The `.part` is in backup.ts's orphan sweep, but only a run that gets that
+    // far removes it; the rename is what keeps one from lingering at all.
+    expect(readdirSync(dir)).toEqual([VACUUM_STATUS_FILE])
   })
 
   it('reports nothing at all when no backup has measured yet', () => {
