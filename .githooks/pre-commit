@@ -22,3 +22,15 @@ if git diff --cached --name-only --diff-filter=ACM | grep -q '^e2e/recordings/';
     git add -- "$f"
   done
 fi
+
+# The VPS runs the committed server bundle, so a server/src change committed
+# without a rebuild deploys the old code, and /healthz still passes.
+if git diff --cached --name-only | grep -qE '^server/(src/|build\.ts$|package\.json$)'; then
+  # The build reads the working tree, so an unstaged edit there would ship in it.
+  if ! git diff --quiet -- server/src server/build.ts server/package.json ':!server/src/*.test.ts'; then
+    echo "pre-commit: stage or stash the rest of server/src first — the bundle is built from the working tree" >&2
+    exit 1
+  fi
+  server/build.ts || exit 1
+  git add server/dist
+fi

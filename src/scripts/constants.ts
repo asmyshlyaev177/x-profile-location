@@ -1,3 +1,9 @@
+import {
+  LOOKUP_LIMIT_PER_WINDOW,
+  LOOKUP_WINDOW_MINUTES,
+  LOOKUP_WINDOW_MS,
+} from '../../server/src/x-lookup-budget'
+
 export const EVENTS = {
   HEADERS_CAPTURED: 'x-loc-headers-captured',
   REQUEST_HEADERS: 'x-loc-request-headers',
@@ -15,11 +21,9 @@ export const X_TAB_PATTERNS = [
   '*://twitter.com/*',
 ] as const
 
-// Measured live; the real budget comes from the x-rate-limit-* headers.
-// Everything that counts in windows derives from these.
-export const LOOKUP_LIMIT_PER_WINDOW = 50
-export const LOOKUP_WINDOW_MINUTES = 15
-export const LOOKUP_WINDOW_MS = LOOKUP_WINDOW_MINUTES * 60 * 1000
+// Everything that counts in windows derives from these. Written down in the
+// server package, which sizes each install's contribution budget from them.
+export { LOOKUP_LIMIT_PER_WINDOW, LOOKUP_WINDOW_MINUTES, LOOKUP_WINDOW_MS }
 
 export const DEFAULT_PREFETCH_SHARE = 0.85
 

@@ -137,6 +137,6 @@
     "builtin": true
   },
   "globals": {},
-  "ignorePatterns": [],
+  "ignorePatterns": ["server/dist/**"],
   "jsPlugins": ["eslint-plugin-sonarjs"]
 }

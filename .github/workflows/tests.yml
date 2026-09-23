@@ -92,6 +92,32 @@ jobs:
       # session in Actions secrets would be unavailable to fork PRs and would
       # expire on X's schedule. Don't re-attempt the shortcut.
 
+  # The cache server, a package of its own: the extension's `pnpm test` is rooted
+  # at src/ and never runs this suite. The suite also fails when the committed
+  # bundle in server/dist no longer matches server/src.
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 10
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --filter x-pat-cache
+
+      - name: Typecheck
+        run: pnpm --filter x-pat-cache typecheck
+
+      - name: Unit tests
+        run: pnpm --filter x-pat-cache test
+
   # The landing site. A job of its own because performance is a timing
   # measurement and must not share a runner with the suites above. Unfiltered on
   # purpose — see landing/CLAUDE.md before adding a `paths:` filter back.

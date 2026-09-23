@@ -26,8 +26,9 @@ services:
       - x-loc-data:/data
 
     environment:
-      # SQLite page-cache ceiling; raise with mem_limit below, never alone.
-      XLOC_CACHE_MB: '256'
+      # SQLite page-cache ceiling; raise with mem_limit below, never alone. Reads
+      # go through mmap, so a bigger one mostly duplicates the OS page cache.
+      XLOC_CACHE_MB: '16'
       # Address space, not resident memory — safe above free RAM.
       XLOC_MMAP_MB: '512'
       # Per-IP requests per minute. Generous because one IP is not one user
@@ -41,8 +42,8 @@ services:
       # should stay inside /data, the only path that outlives the container.
       XLOC_BACKUP_KEEP: '5'
 
-    # ~80 MB Node baseline + XLOC_CACHE_MB + request buffers. Matches
-    # MemoryMax in deploy/x-loc-cache.service.
+    # ~75 MB of Node and XLOC_CACHE_MB under load; the rest is room for mmap'd
+    # database pages. Matches MemoryMax in deploy/x-loc-cache.service.
     mem_limit: 640m
 
     # Our SIGTERM handler drains, checkpoints WAL and exits, with a 5s internal

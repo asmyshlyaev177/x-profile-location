@@ -4,8 +4,10 @@ import {
   CONTRIB_HANDLE_LIMIT,
   CONTRIB_WINDOW_MS,
   MAX_TRACKED_CLIENTS,
+  __countTrackedClients,
   __resetContribLimit,
 } from './contrib-limit.ts'
+import { LOOKUP_LIMIT_PER_WINDOW } from './x-lookup-budget.ts'
 
 function handles(n: number, prefix = 'u'): string[] {
   return Array.from({ length: n }, (_, i) => `${prefix}${i}`)
@@ -17,10 +19,14 @@ beforeEach(() => {
 
 describe('admitContributions', () => {
   it('admits everything an honest client can produce', () => {
-    // X caps an install at ~50 lookups per window, so a real client never gets
-    // close to the limit. If this test ever needs changing, the limit is wrong.
-    const accepted = admitContributions('c1', handles(50), 0)
-    expect(accepted).toHaveLength(50)
+    // One X lookup per handle, but X's window resets on its own clock: a full
+    // budget spent just before a reset and another just after both land in one
+    // budget window here. If this test ever needs changing, the limit is wrong.
+    const beforeReset = handles(LOOKUP_LIMIT_PER_WINDOW, 'a')
+    const afterReset = handles(LOOKUP_LIMIT_PER_WINDOW, 'b')
+
+    expect(admitContributions('c1', beforeReset, 0)).toEqual(beforeReset)
+    expect(admitContributions('c1', afterReset, 120_000)).toEqual(afterReset)
   })
 
   it('caps distinct handles per window and preserves order', () => {
@@ -44,7 +50,9 @@ describe('admitContributions', () => {
 
   it('starts a fresh budget once the window has elapsed', () => {
     admitContributions('c1', handles(CONTRIB_HANDLE_LIMIT), 0)
-    expect(admitContributions('c1', ['later'], 1000)).toEqual([])
+    expect(admitContributions('c1', ['later'], CONTRIB_WINDOW_MS - 1)).toEqual(
+      [],
+    )
 
     expect(admitContributions('c1', ['later'], CONTRIB_WINDOW_MS)).toEqual([
       'later',
@@ -97,5 +105,32 @@ describe('admitContributions', () => {
     // Still holding its two spent handles, so a repeat is free and the budget
     // was not silently reset.
     expect(admitContributions('keepme', ['u0', 'u1'], 0)).toEqual(['u0', 'u1'])
+  })
+
+  // An expired budget admits exactly what no budget would, so holding it is
+  // memory for nothing: ~60 bytes a handle, 29 MB for 10k clients x 50.
+  it('forgets clients whose window has passed', () => {
+    for (let i = 0; i < 1000; i++) {
+      admitContributions(`client${i}`, handles(50), 0)
+    }
+    expect(__countTrackedClients()).toBe(1000)
+
+    admitContributions('late', ['u0'], CONTRIB_WINDOW_MS)
+
+    expect(__countTrackedClients()).toBe(1)
+  })
+
+  it('keeps clients that are still inside their window', () => {
+    admitContributions('expired', ['u0'], 0)
+    admitContributions('current', handles(CONTRIB_HANDLE_LIMIT), 1000)
+    const lastMsOfCurrent = 1000 + CONTRIB_WINDOW_MS - 1
+
+    admitContributions('late', ['u0'], lastMsOfCurrent)
+
+    expect(__countTrackedClients()).toBe(2)
+    // Its spent budget survived the sweep, so it is still capped.
+    expect(admitContributions('current', ['fresh'], lastMsOfCurrent)).toEqual(
+      [],
+    )
   })
 })

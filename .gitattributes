@@ -1,1 +1,2 @@
 /e2e/recordings/*.json binary
+server/dist/** linguist-generated=true

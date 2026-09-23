@@ -273,12 +273,12 @@ Other notes:
   entry** (0.3/0.5/0.7/0.9, compared in whole percent so ties go to the smaller), so
   storage, UI and content script can never hold a value the `<select>` can't display.
   `LOOKUP_LIMIT_PER_WINDOW` (50), `LOOKUP_WINDOW_MINUTES` (15) and the derived
-  `LOOKUP_WINDOW_MS` live in `constants.ts` — the one place the window is written
-  down. `RATE_LIMIT_RESET_DEFAULT_MS`, the broker's `windowMs`, the community
-  cache's re-query guard and the manual refetch throttle all derive from it, so a
-  measurement that moves moves once. (`server/src/contrib-limit.ts` keeps its own
-  `CONTRIB_WINDOW_MS`: the backend is a separate package and imports nothing from
-  `src/`.)
+  `LOOKUP_WINDOW_MS` live in `server/src/x-lookup-budget.ts`, re-exported by
+  `constants.ts` — the one place the window is written down. `RATE_LIMIT_RESET_DEFAULT_MS`,
+  the broker's `windowMs`, the community cache's re-query guard, the manual refetch
+  throttle and the server's per-install contribution budget all derive from it, so a
+  measurement that moves moves once. The file sits in `server/` because the VPS and the
+  Docker build see only that directory; the backend still imports nothing from `src/`.
 
 Default blocked regions on install (service-worker.ts): `['Africa', 'India', 'South Asia',
 'Nigeria', 'Pakistan', 'Bangladesh']`. ⚠️ This now **expands** — with `REGION_MEMBERS`,

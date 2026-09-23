@@ -81,12 +81,16 @@ fill the window rather than out-number every honest vote ever cast.
 
 What actually bounds an honest client is X, not this server: an install gets
 ~50 `AboutAccountQuery` lookups per 15 minutes, so it physically cannot report
-many distinct handles. A poisoner skips that step, which is what makes the two
+many distinct handles. Both numbers live in
+[`src/x-lookup-budget.ts`](src/x-lookup-budget.ts), which the extension paces its
+lookups on too. A poisoner skips that step, which is what makes the two
 paragraphs above weaker than they look.
 
 [`src/contrib-limit.ts`](src/contrib-limit.ts) caps how many **distinct handles**
-one `clientId` may contribute per 15-minute window (200 — four times what X
-allows an honest client). Over-budget entries are dropped silently and the
+one `clientId` may contribute per 15-minute window: 110, or 2.2 times X's budget.
+X's window resets on its own clock, so one window here can hold a full X budget
+spent just before a reset and another just after, which is 100 honest handles at
+most; 2.2 adds 10% to that. Over-budget entries are dropped silently and the
 response is still `{ ok: true }`, so a poisoner gets no signal telling it when to
 rotate. Re-reporting a handle the client already paid for is free, since that is
 what an expired entry read again and a genuine relocation both look like.
@@ -208,16 +212,17 @@ $5/mo and lifts it to 50M rows written/month.
 
 ## Deploy: Node + SQLite on a VPS
 
-Sized for the smallest boxes: one process, one file, no build step. Storage is
+Sized for the smallest boxes: one process, one file, nothing to build on the box. Storage is
 the first ceiling and lands around **10k users** with the vote cap in place;
 1 TB/month of bandwidth covers roughly 50k. (Prefer a container? Skip to
 [Deploy: Docker](#deploy-docker) — steps 1, 2 and 7 still apply.)
 
-**Requirements:** Node **≥ 22.6** and a domain pointed at the box. The server
-runs its TypeScript sources directly — nothing to compile, nothing to bundle —
-via `--experimental-strip-types`, which the unit file passes unconditionally. The
-flag is _required_ on 22.6–22.17 and _accepted and silent_ on 22.18+ and 24+,
-where stripping is already the default. Verified on 22.12.0 and 24.10.0.
+**Requirements:** Node **≥ 22.6** and a domain pointed at the box. The service
+runs `dist/node-server.js`, the sources bundled by `pnpm build` and committed, so
+a `git pull` is the whole deploy. The scripts in `deploy/` run their TypeScript
+directly via `--experimental-strip-types` in their shebangs: the flag is
+_required_ on 22.6–22.17 and _accepted and silent_ on 22.18+ and 24+, where
+stripping is already the default. Verified on 22.12.0 and 24.10.0.
 
 The walkthrough below is written against **Vultr + Ubuntu 22.04**, but only steps
 1 and 2 are provider-specific. Each step ends with something to verify before
@@ -253,8 +258,8 @@ the reverse proxy.
 
 ### 3. Swap
 
-Vultr instances ship with none, and 1 GB of RAM plus a 256 MB SQLite page cache
-is close enough to the edge that a spike becomes an OOM kill rather than a
+Vultr instances ship with none, and 1 GB of RAM shared by the service, Caddy and
+the OS is close enough to the edge that a spike becomes an OOM kill rather than a
 slowdown:
 
 ```bash
@@ -518,8 +523,12 @@ Every knob is an `XLOC_*` environment variable, documented inline in
 [`deploy/x-loc-cache.env.example`](deploy/x-loc-cache.env.example). The two that
 matter on a small box:
 
-- `XLOC_CACHE_MB` (default 256) — SQLite's page cache. Real resident memory once
-  the database outgrows it; keep it in step with `MemoryMax` in the unit file.
+- `XLOC_CACHE_MB` (default 16) — SQLite's page cache, in memory the kernel cannot
+  reclaim. Reads inside `XLOC_MMAP_MB` bypass it; only writes and the retention
+  pass fill it, so a bigger one mostly holds a second copy of pages the OS
+  already caches. 256 held ~200 MB more at 600k profiles and was no faster
+  (`XLOC_CACHE_MB=256 pnpm bench` against the default, `rss` line). Keep it in
+  step with `MemoryMax` in the unit file.
 - `XLOC_MMAP_MB` (default 512) — memory-mapped I/O ceiling. Address space backed
   by the OS page cache, so it is reclaimable and can safely exceed free RAM.
 
@@ -1078,7 +1087,8 @@ run can stand in for a smaller box. `--keep` leaves the file for a second run
 against the same data. Put `TMPDIR` on a real disk — a tmpfs `/tmp` charges the
 database to the same memory the run is measuring.
 
-Measured on Node 24.10, `cache_size` 256 MB, `mmap` 512 MB. The numbers that
+Measured on Node 24.10, `cache_size` 256 MB (the default then; it is 16 MB now,
+see "Tuning"), `mmap` 512 MB. The numbers that
 matter are the **single-core** column — a Ryzen 7 7735HS pinned to one core with
 `taskset -c 0` under a 640 MB cgroup, standing in for a 1 vCPU VPS:
 
@@ -1137,8 +1147,10 @@ Two slow operations, both once a day and both deliberate:
 ~900 MB, which looks alarming against `MemoryMax=640M` — but the run completes
 unharmed under exactly that cgroup limit. Most of that RSS is `mmap`'d file
 pages, which are file-backed and reclaimed under pressure rather than counted
-against an OOM. The 256 MB `cache_size` is the part that is genuinely anonymous.
-Raise the two together or not at all.
+against an OOM. The 256 MB `cache_size` was the part that is genuinely
+anonymous, and the table below shows swap paging it out at no cost to the request
+path, which is why the default is 16 MB now. Raise it and the limit together or
+not at all.
 
 What the limit costs depends entirely on whether step 3's swapfile is there.
 Same 603 MB database, same core, page cache dropped before each run so the
@@ -1500,7 +1512,11 @@ pnpm typecheck
 pnpm dev         # local Worker at http://localhost:8787 (uses local D1)
 pnpm db:init:local
 pnpm start       # local Node+SQLite server, db in ./data (XLOC_* env vars apply)
+pnpm build       # bundle src/ into dist/node-server.js; commit it with the change
 ```
+
+The service runs the committed bundle, never `src/`, so a change to `src/` needs
+`pnpm build` in the same commit. `pnpm test` fails until it has one.
 
 [`src/sqlite.test.ts`](src/sqlite.test.ts) drives `worker.fetch` through a real
 in-memory SQLite database, so it covers the handlers and the D1 adapter together

@@ -26,11 +26,12 @@ Type=simple
 User=xloc
 Group=xloc
 WorkingDirectory=/opt/x-loc-cache/server
-# --experimental-strip-types is what lets Node execute the .ts sources with no
-# build step. It is required on Node 22.6–22.17 and harmless (accepted, silent)
-# on 22.18+ and 24+, where stripping is already the default — so this one command
-# line works across every supported version. Verified on 22.12.0 and 24.10.0.
-ExecStart=/usr/bin/node --experimental-strip-types src/node-server.ts
+# dist/node-server.js is src/ bundled by `pnpm build` and committed, so a pull
+# brings the code and a rollback brings back the bundle that matches it. Running
+# the .ts directly costs ~20 MB: Node keeps its WebAssembly type stripper loaded.
+# --max-semi-space-size=1 caps V8's young generation: left alone it grew to
+# 32-64 MB under load and kept it, and the cap measured no slower in pnpm bench.
+ExecStart=/usr/bin/node --max-semi-space-size=1 dist/node-server.js
 EnvironmentFile=/etc/x-loc-cache.env
 
 # The server closes the listener, checkpoints WAL and exits on SIGTERM; give it
@@ -43,11 +44,11 @@ RestartSec=2
 # systemd creates and chowns /var/lib/x-loc-cache — point XLOC_DB inside it.
 StateDirectory=x-loc-cache
 
-# Memory ceiling. Budget on a 1 GB box: ~80 MB Node baseline + XLOC_CACHE_MB of
-# SQLite page cache (256 MB by default) + request buffers. Raise this and
-# XLOC_CACHE_MB together, never one alone. XLOC_MMAP_MB is not part of this
-# budget in practice — those pages are file-backed and the kernel reclaims them
-# under pressure.
+# Memory ceiling. Anonymous memory — Node plus XLOC_CACHE_MB of SQLite page
+# cache — measured 73 MB after 20k requests and a retention pass at 600k
+# profiles. The rest is room for mmap'd database pages, which are file-backed and
+# reclaimed first, so lowering this evicts them sooner and saves nothing. Raise
+# this and XLOC_CACHE_MB together, never one alone.
 MemoryMax=640M
 
 # Hardening. Nothing here needs privileges: one listening socket on loopback and

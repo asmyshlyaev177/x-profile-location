@@ -166,7 +166,9 @@ ignores `onlyBuiltDependencies` and the `pnpm` field in `package.json`. Switchin
 pnpm majors over an existing `node_modules` aborts a non-TTY install with
 `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`. That error is about the version
 mismatch, not the dependency you're adding, and `CI=true` "fixes" it only by
-letting the wipe happen.
+letting the wipe happen. The one exception is the VPS, which installs `server/`
+with npm: npm 12 reads `allowScripts` in `server/package.json` instead, so a
+server dependency that needs a build script goes in both.
 
 ⚠️ **Run `pnpm test`, not `vitest run`.** They are not the same command: `pnpm test`
 adds `--coverage`, and the instrumentation exposes failures a bare `vitest run`
