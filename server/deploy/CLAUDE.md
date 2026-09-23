@@ -47,6 +47,18 @@ Two other things it holds:
   the two versions is serving. Rolling back the source without the units would
   leave the box on a mismatched pair.
 
+`allowScripts` in `server/package.json` is for this script's `npm install`. npm 12
+blocks dependency install scripts unless they are listed there, and without its
+script better-sqlite3 has no native module, so every install refuses to restart.
+It is a name, not a pinned version, because the box resolves `^12` fresh each
+time. Checked with npm 12.0.2, 2026-09-23.
+
+It builds nothing, on purpose. The service runs `dist/node-server.js`, which is
+committed, so a pull or a reset already leaves the bundle that matches the tree.
+A build step here would need a build tool installed past `--omit=dev`. It would
+also break the first deploy that added it, because the `update.ts` doing that
+pull is the old one.
+
 ## Compaction is a stop and a swap, and it is not backup.ts's job
 
 `backup.ts` measures and records; it never touches the live file. The rebuild is

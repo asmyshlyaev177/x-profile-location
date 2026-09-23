@@ -12,6 +12,7 @@
     "db:init": "wrangler d1 execute x-loc-cache --remote --file=./schema.sql",
     "db:init:local": "wrangler d1 execute x-loc-cache --local --file=./schema.sql",
     "start": "node --experimental-strip-types --env-file-if-exists=.env src/node-server.ts",
+    "build": "node --experimental-strip-types build.ts",
     "update": "sudo ./deploy/update.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -26,11 +27,15 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "25.5.0",
     "@types/nodemailer": "^6.4.15",
+    "esbuild": "0.27.3",
     "typescript": "6.0.2",
     "vitest": "4.1.2",
     "wrangler": "^3.99.0"
   },
   "engines": {
     "node": ">=22.6"
+  },
+  "allowScripts": {
+    "better-sqlite3": true
   }
 }

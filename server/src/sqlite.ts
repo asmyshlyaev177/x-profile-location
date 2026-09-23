@@ -10,7 +10,8 @@ import type { Db, DbBoundStatement, DbStatement } from './db-types.ts'
 export interface SqliteConfig {
   /** File path, or ':memory:' for tests. */
   path: string
-  /** SQLite page cache ceiling. Real resident memory once the DB is big enough. */
+  /** SQLite page cache ceiling, in anonymous memory. Reads inside mmapMb bypass
+   *  it; writes and the retention DELETE's write cursors fill it. */
   cacheMb: number
   /** Address space backed by the OS page cache, reclaimed under pressure —
    *  safe well above free RAM, unlike cacheMb. */
@@ -18,7 +19,9 @@ export interface SqliteConfig {
 }
 
 export const DEFAULT_SQLITE_CONFIG = {
-  cacheMb: 256,
+  // Past this it copies pages the OS already caches for mmap: 256 held ~200 MB
+  // more at 600k profiles for no speed-up, while 2 doubled the retention pass.
+  cacheMb: 16,
   mmapMb: 512,
   busyTimeoutMs: 5000,
 } as const

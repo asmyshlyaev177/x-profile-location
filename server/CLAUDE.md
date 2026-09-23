@@ -31,7 +31,8 @@ Two consequences:
 
 ## Tests
 
-`pnpm test` is the unit suite (fast, CI). `pnpm test:deploy` is the deploy scripts
+`pnpm test` is the unit suite (fast, CI's `server` job — the extension's root `pnpm test`
+never runs it). `pnpm test:deploy` is the deploy scripts
 against real databases — separate config, never CI, see `deploy/CLAUDE.md`.
 
 `src/sqlite.test.ts` drives `worker.fetch` through a real in-memory SQLite
@@ -82,8 +83,10 @@ rotate its id.
 ## The contribution budget (contrib-limit.ts)
 
 `POST /v1/loc` trusts whatever a client sends. That is fine while the expensive part —
-actually looking a handle up on X — is what bounds a client, and it is: X allows ~50
-lookups per 15 minutes, so an honest client cannot report many distinct handles. A
+actually looking a handle up on X — is what bounds a client, and it is: X allows
+`LOOKUP_LIMIT_PER_WINDOW` (50) lookups per `LOOKUP_WINDOW_MS` (15 minutes), so an honest
+client cannot report many distinct handles. Both live in `x-lookup-budget.ts`, which the
+extension imports too, so a new measurement moves both sides at once. A
 poisoner skips that step and posts any number under a fresh `clientId` per burst, and
 open-sourcing publishes the endpoint and its body shape.
 
@@ -93,12 +96,26 @@ scale with the ids they have to manufacture and rotate. Re-reporting a handle al
 contributed this window is free: that is what an honest client does when a location
 changes, and it cannot grow the table.
 
+**The cap is `LOOKUP_LIMIT_PER_WINDOW × 2.2`, 110.** X's window is fixed and resets on
+its own clock, while a budget window here starts at the client's first contribution. One
+budget window can therefore hold a full X budget spent just before a reset and another
+just after: 100 honest handles, never more while X allows 50. 2.2 is those two plus 10%
+headroom; at exactly 50 the second budget is dropped silently.
+
 Held **in memory**, not in SQLite: counting a client's recent handles would need an index
 on `client_id`, and schema.sql has the measurements for why a second index there is the
 wrong trade — to defend a guardrail, not a security boundary. Node is one process, so the
 count is exact; on Workers each isolate keeps its own, which weakens but does not break
-it. `MAX_TRACKED_CLIENTS` stops the guard itself becoming a memory-exhaustion vector;
-an evicted client's budget resets, which is where it would be with no guard at all.
+it. An evicted client's budget resets, which is where it would be with no guard at all.
+
+Memory, measured 2026-09-23 (~60 B per handle held):
+
+- Budgets whose window has passed are dropped as they reach the front of the map, since
+  an expired budget admits exactly what no budget would. Before that, 10k clients × 50
+  handles held 29 MB for good.
+- `MAX_TRACKED_CLIENTS` bounds one window at 50k clients × 110 handles, ~330 MB: under
+  `MemoryMax` beside the server's ~75 MB, but most of it. At the old cap of 200 it was
+  ~560 MB, above it.
 
 If legitimate users start hitting the limit, raise it rather than letting it drop data.
 
@@ -133,3 +150,27 @@ is no index on `seen_at`, so it is a full scan: ~230ms over 5.4M votes, a synchr
 event-loop stall. Fine once a day; never on a request path. It counts _contributors_, a
 floor on active users: counting readers would mean identifying lookups, which is exactly
 what this server promises not to be able to do.
+
+**The service runs `dist/node-server.js`, and git carries it.** `pnpm build` bundles
+`src/` with esbuild; the result is committed because the VPS deploys by `git pull` and
+installs with `--omit=dev`, so it has no build tool, and a rollback to any commit brings
+back the bundle that matches it. `bundle.test.ts` fails when the bundle no longer matches
+`src/`, and runs it under plain `node` with type stripping off.
+
+**Memory is set by three knobs, not by the data.** Measured 2026-09-23 on a 600k-profile
+copy after 20k requests and a retention pass; anonymous memory went from 340 MB to 73 MB.
+
+- `XLOC_CACHE_MB` 16, not 256. With `mmap_size` covering the file, reads never enter
+  SQLite's page cache; writes and the retention `DELETE`'s write cursors do. At 256,
+  20k lookups added 24 MB in all and that one retention pass 91 MB. It held ~200 MB more
+  in Node, Bun and Go alike, and `pnpm bench` p50s did not move. At 2 the retention pass
+  doubled. Re-check: `XLOC_CACHE_MB=256 pnpm bench` against the default, `rss` line.
+- `--max-semi-space-size=1` in `ExecStart`. V8 grew the young generation to 32-64 MB
+  under load and kept it; `pnpm bench` p50s did not move with the cap.
+- The bundle, not `.ts`: Node loads its type stripper (swc built to WASM) for the first
+  `.ts` file and keeps it, ~20 MB. An idle process is 50 MB RSS as `.js`, 70 MB as `.ts`;
+  under load, 73 MB anonymous as the bundle, 89 MB as `.ts`.
+- Other runtimes on the same database, load and cache (anonymous MB): Go + mattn/go-sqlite3
+  49, Go + modernc 64, Deno 71, Node as `.js` with the V8 flag 74, Bun 79, txiki.js 87.
+  Go's 25 MB does not pay for a second implementation of `index.ts`, which the Worker
+  still runs.

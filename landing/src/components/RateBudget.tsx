@@ -53,9 +53,10 @@ export function RateBudget() {
    default: 42 for background work, the last 8 held back
    (`DEFAULT_PREFETCH_SHARE = 0.85`, floored to whole lookups).
 
-   The numbers in the copy around it are the shipped defaults from
-   `src/scripts/countries.ts` (LOOKUP_LIMIT_PER_WINDOW, LOOKUP_WINDOW_MINUTES,
-   DEFAULT_PREFETCH_SHARE) — written into the dictionaries the same way
+   The numbers in the copy around it are the shipped defaults:
+   LOOKUP_LIMIT_PER_WINDOW and LOOKUP_WINDOW_MINUTES from
+   `server/src/x-lookup-budget.ts`, DEFAULT_PREFETCH_SHARE from
+   `src/scripts/constants.ts` — written into the dictionaries the same way
    HowItWorks writes the 30-day cache, since the landing site is its own
    package and importing across would drag the extension's module graph into a
    static site for three integers.

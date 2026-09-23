@@ -50,9 +50,12 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/node_modules ./node_modules
-# schema.sql sits beside src/ because openDatabase() reads it at
-# `import.meta.dirname/../schema.sql`. Keep this layout.
+# schema.sql sits beside dist/ and src/ because openDatabase() reads it at
+# `import.meta.dirname/../schema.sql` from either. Keep this layout.
 COPY package.json schema.sql ./
+# dist/ is the committed bundle the server runs; src/ stays for backup.ts,
+# which imports VOTE_RETENTION_MS from it.
+COPY dist ./dist
 COPY src ./src
 # The same files the systemd units run — not container-specific copies, so the
 # two deploy shapes cannot drift in how they back up or how they alert.
@@ -92,7 +95,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # installs its own handler to drain connections and checkpoint WAL, which is
 # exactly what `docker stop` needs. No init shim required.
 #
-# --experimental-strip-types is accepted silently on Node 24 (stripping is
-# already the default); it is kept so this line stays identical to the systemd
-# unit's ExecStart, which must support 22.6+.
-CMD ["node", "--experimental-strip-types", "src/node-server.ts"]
+# The same command line as the systemd unit's ExecStart, which says why each
+# part is there; keep the two identical.
+CMD ["node", "--max-semi-space-size=1", "dist/node-server.js"]

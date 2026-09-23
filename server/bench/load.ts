@@ -5,7 +5,11 @@ import { rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import worker, { type Env } from '../src/index.ts'
-import { openDatabase, type SqliteDb } from '../src/sqlite.ts'
+import {
+  DEFAULT_SQLITE_CONFIG,
+  openDatabase,
+  type SqliteDb,
+} from '../src/sqlite.ts'
 
 const DEFAULTS = {
   // Distinct anonymous installs. The figure the sizing question is asked in.
@@ -161,8 +165,10 @@ const fresh = (() => {
 
 console.log(`db: ${DB_PATH}${fresh ? ' (generating)' : ' (reusing)'}`)
 // Same knobs as the deployment, so a run can stand in for a smaller box.
-const CACHE_MB = Number(process.env.XLOC_CACHE_MB ?? 256)
-const MMAP_MB = Number(process.env.XLOC_MMAP_MB ?? 512)
+const CACHE_MB = Number(
+  process.env.XLOC_CACHE_MB ?? DEFAULT_SQLITE_CONFIG.cacheMb,
+)
+const MMAP_MB = Number(process.env.XLOC_MMAP_MB ?? DEFAULT_SQLITE_CONFIG.mmapMb)
 const db = openDatabase({ path: DB_PATH, cacheMb: CACHE_MB, mmapMb: MMAP_MB })
 const env: Env = { DB: db }
 if (fresh) generate(db)

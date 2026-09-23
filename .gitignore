@@ -9,6 +9,9 @@ lerna-debug.log*
 
 node_modules
 dist
+# The server's bundle is committed: the VPS deploys by git pull and has no build
+# tool. See "The Node deployment" in server/CLAUDE.md.
+!server/dist/
 dist-ssr
 *.local
 
