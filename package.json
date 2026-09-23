@@ -88,13 +88,6 @@
     "email": "asmyshlyaev177+x-ext@gmail.com",
     "url": "https://x-pat.pages.dev/"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "workerd"
-    ]
-  },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,css,html,json}": "oxfmt --no-error-on-unmatched-pattern",
     "*.{js,jsx,ts,tsx}": "oxlint --fix"

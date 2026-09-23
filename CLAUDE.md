@@ -160,11 +160,13 @@ pnpm test:e2e        # playwright, headless (E2E_HEADED=1 to watch it)
 **`pnpm fix` lints before it formats.** `oxlint --fix` rewrites code, so formatting
 first leaves the rewrite unformatted.
 
-**Use pnpm 11 for `pnpm install`.** `node_modules` was written by pnpm 11, but
-nvm's `pnpm` on `PATH` is 10.x and shadows it; installing with 10 aborts with
+**Approve dependency build scripts in `allowBuilds` (`pnpm-workspace.yaml`) only.**
+Local `pnpm` (nvm) is 12.x and CI pins 10.x. Both read `allowBuilds`, but pnpm 11+
+ignores `onlyBuiltDependencies` and the `pnpm` field in `package.json`. Switching
+pnpm majors over an existing `node_modules` aborts a non-TTY install with
 `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`. That error is about the version
-mismatch, not about the dependency you're adding — and `CI=true` "fixes" it only
-by letting the wipe happen. Run `/home/alex/.local/share/pnpm/bin/pnpm install`.
+mismatch, not the dependency you're adding, and `CI=true` "fixes" it only by
+letting the wipe happen.
 
 ⚠️ **Run `pnpm test`, not `vitest run`.** They are not the same command: `pnpm test`
 adds `--coverage`, and the instrumentation exposes failures a bare `vitest run`

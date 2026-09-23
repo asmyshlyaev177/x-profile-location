@@ -5,11 +5,7 @@ packages:
 allowBuilds:
   better-sqlite3: true
   esbuild: true
-  sharp: true
+  # Runs from the prebuilt @img/sharp-* binary. The install script only compiles from source,
+  # which sharp attempts whenever a system libvips exists, and fails without node-addon-api.
+  sharp: false
   workerd: true
-
-onlyBuiltDependencies:
-  - better-sqlite3
-  - esbuild
-  - sharp
-  - workerd
