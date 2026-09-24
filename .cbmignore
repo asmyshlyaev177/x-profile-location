@@ -1,0 +1,2 @@
+# codebase-memory-mcp skips every directory named "deploy" by default, but this one holds the cache server's backup, vacuum, alert and update code.
+!server/deploy/
