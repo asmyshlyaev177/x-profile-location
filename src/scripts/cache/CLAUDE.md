@@ -54,11 +54,11 @@ X's rate limit instead. Pinned by "does not lock a failed batch out of the retry
 request not driven by someone reading a timeline, so the only one that could arrive as a
 crowd. Four things keep it cheap and none work without the others: it runs only while the
 popup is open, and never while paused or with the cache off (that setting is a decision
-not to talk to that server); `COUNT_POLL_MS` is 30s, under the server's `max-age`, so
-roughly every other ask never leaves the machine, and it re-asks only while
+not to talk to that server); `COUNT_POLL_MS` is 60s, under the server's `max-age`, so
+two asks in three never leave a browser that honours it, and it re-asks only while
 `document.visibilityState` is `'visible'` (it exists for the Android build, where the
-panel opens as a tab); the server memoises for 60s behind `Cache-Control: public,
-max-age=60`; and the figure is remembered under `SHARED_CACHE_COUNT_KEY` so the panel
+panel opens as a tab); the server memoises for 3 minutes behind `Cache-Control: public,
+max-age=180`; and the figure is remembered under `SHARED_CACHE_COUNT_KEY` so the panel
 opens with a number, written only when it moves, since every write wakes the worker and
 each open tab's storage listener. `at` is therefore when the number last _moved_, and one
 that hasn't in a week is dropped rather than shown. A server that 404s reads as "no
@@ -73,7 +73,7 @@ inside that window never leaves the browser, and the server memoises the count f
 same window — so what does get through costs one `COUNT(*)` between every reader.
 
 It sits **outside the circuit breaker** on purpose. The breaker exists to stop a
-scrolling timeline retrying a struggling server; this asks at most twice a minute, and
+scrolling timeline retrying a struggling server; this asks at most once a minute, and
 must not go blank because lookups in another tab tripped it.
 
 The remembered answer's `at` is when the number last _moved_: a count that has stood

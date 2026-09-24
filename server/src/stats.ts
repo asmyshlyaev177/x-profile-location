@@ -1,6 +1,22 @@
 // Request counters for the Node deployment: in-process, per window, no per-IP
 // accounting ever. See "Stats cost what they measure" in CLAUDE.md.
 
+import { ROUTES, routeOf, type Route } from './index.ts'
+
+/** What a request counts as: the route that served it, a CORS preflight for
+ *  one of those routes, or anything else. */
+export type RequestKind = Route | 'preflight' | 'other'
+
+/** `method` and `pathname` as the router reads them, from the parsed URL. */
+export function requestKind(method: string, pathname: string): RequestKind {
+  // The extension posts JSON from x.com, so browsers send these ahead of its
+  // POSTs. The router answers OPTIONS on any path; elsewhere it is a scanner.
+  if (method === 'OPTIONS') {
+    return ROUTES.some((r) => r.path === pathname) ? 'preflight' : 'other'
+  }
+  return routeOf(method, pathname) ?? 'other'
+}
+
 export interface StatsSnapshot {
   /** ISO timestamp the window opened. */
   since: string
@@ -23,6 +39,8 @@ export interface StatsSnapshot {
   usersCapped?: true
   /** GET /v1/stats — popups asking how much the cache holds */
   statsReads: number
+  /** OPTIONS to those paths — the CORS preflights ahead of the extension's POSTs */
+  preflights: number
   /** requests to anything else (404s, probes, scanners) */
   other: number
   rateLimited: number
@@ -107,6 +125,7 @@ export class Stats {
   #clients = new Set<string>()
   #clientsCapped = false
   #statsReads = 0
+  #preflights = 0
   #other = 0
   #rateLimited = 0
   #tooLarge = 0
@@ -116,7 +135,7 @@ export class Stats {
   /** Bodies are re-parsed here rather than threaded out of the handlers, so
    *  index.ts stays free of instrumentation for the Worker build. */
   noteRequest(
-    pathname: string,
+    kind: RequestKind,
     requestBody: string,
     responseBody: string,
     ms: number,
@@ -124,27 +143,34 @@ export class Stats {
     const bucket = Math.max(0, Math.round(ms))
     this.#latencyHist.set(bucket, (this.#latencyHist.get(bucket) ?? 0) + 1)
 
-    if (pathname === '/v1/loc/batch') {
-      this.#lookups += 1
-      this.#lookupNames += countArray(parseBody(requestBody), 'usernames')
-      this.#lookupHits += countArray(parseBody(responseBody), 'profiles')
-    } else if (pathname === '/v1/loc') {
-      const body = parseBody(requestBody)
-      this.#contributions += 1
-      this.#contributedEntries += countArray(body, 'entries')
-      // Counted from the clientId already on the wire; the SQL equivalent is a
-      // ~230ms full scan that stalls the event loop. See bench/load.ts.
-      const cid = body?.clientId
-      if (typeof cid === 'string' && cid !== '') {
+    switch (kind) {
+      case 'lookup':
+        this.#lookups += 1
+        this.#lookupNames += countArray(parseBody(requestBody), 'usernames')
+        this.#lookupHits += countArray(parseBody(responseBody), 'profiles')
+        return
+      case 'contribution': {
+        const body = parseBody(requestBody)
+        this.#contributions += 1
+        this.#contributedEntries += countArray(body, 'entries')
+        // Counted from the clientId already on the wire; the SQL equivalent is a
+        // ~230ms full scan that stalls the event loop. See bench/load.ts.
+        const cid = body?.clientId
+        if (typeof cid !== 'string' || cid === '') return
         if (this.#clients.size < MAX_TRACKED_CLIENTS) this.#clients.add(cid)
         else this.#clientsCapped = true
+        return
       }
-    } else if (pathname === '/v1/stats') {
-      // On its own, not in `other`: that is what says how much scanner traffic
-      // this box takes, and popups asking for a number would drown it.
-      this.#statsReads += 1
-    } else {
-      this.#other += 1
+      case 'stats':
+        // On its own, not in `other`: that is what says how much scanner traffic
+        // this box takes, and popups asking for a number would drown it.
+        this.#statsReads += 1
+        return
+      case 'preflight':
+        this.#preflights += 1
+        return
+      case 'other':
+        this.#other += 1
     }
   }
 
@@ -176,6 +202,7 @@ export class Stats {
       users: this.#clients.size,
       ...(this.#clientsCapped ? { usersCapped: true as const } : {}),
       statsReads: this.#statsReads,
+      preflights: this.#preflights,
       other: this.#other,
       rateLimited: this.#rateLimited,
       tooLarge: this.#tooLarge,
@@ -196,6 +223,7 @@ export class Stats {
     this.#clients.clear()
     this.#clientsCapped = false
     this.#statsReads = 0
+    this.#preflights = 0
     this.#other = 0
     this.#rateLimited = 0
     this.#tooLarge = 0

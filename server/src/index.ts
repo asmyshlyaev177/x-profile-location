@@ -22,7 +22,7 @@ const VOTE_CAP_SLACK = 5
 
 // How long /v1/stats reuses a count, and how long clients are told to. Not a
 // nicety — see "Two queries that look wrong" in CLAUDE.md.
-const STATS_TTL_MS = 60_000
+const STATS_TTL_MS = 180_000
 
 interface Served {
   u: string
@@ -340,7 +340,22 @@ export function consensusWrites(
   return writes
 }
 
-// Router
+// Router. The table is exported so the Node server's stats count a request
+// under the route that served it, not under its path.
+export const ROUTES = [
+  { route: 'lookup', method: 'POST', path: '/v1/loc/batch' },
+  { route: 'contribution', method: 'POST', path: '/v1/loc' },
+  { route: 'stats', method: 'GET', path: '/v1/stats' },
+] as const
+
+export type Route = (typeof ROUTES)[number]['route']
+
+/** Null for a method and path no route serves, which the router answers 404. */
+export function routeOf(method: string, pathname: string): Route | null {
+  const match = ROUTES.find((r) => r.method === method && r.path === pathname)
+  return match?.route ?? null
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     if (req.method === 'OPTIONS') {
@@ -348,16 +363,16 @@ export default {
     }
     const url = new URL(req.url)
     try {
-      if (req.method === 'POST' && url.pathname === '/v1/loc/batch') {
-        return await handleBatch(req, env)
+      switch (routeOf(req.method, url.pathname)) {
+        case 'lookup':
+          return await handleBatch(req, env)
+        case 'contribution':
+          return await handleContribute(req, env)
+        case 'stats':
+          return await handleStats(env, Date.now())
+        case null:
+          return cors(new Response('Not found', { status: 404 }))
       }
-      if (req.method === 'POST' && url.pathname === '/v1/loc') {
-        return await handleContribute(req, env)
-      }
-      if (req.method === 'GET' && url.pathname === '/v1/stats') {
-        return await handleStats(env, Date.now())
-      }
-      return cors(new Response('Not found', { status: 404 }))
     } catch {
       return json({ error: 'internal' }, 500)
     }

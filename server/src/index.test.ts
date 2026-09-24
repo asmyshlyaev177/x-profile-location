@@ -13,6 +13,7 @@ const MAX_BATCH = 100
 const MAX_FIELD_LEN = 60
 const VOTE_CAP = 10
 const VOTE_CAP_SLACK = 5
+const STATS_TTL_MS = 3 * 60 * 1000
 
 function vote(username: string, seen_at: number, location = 'France') {
   return {
@@ -440,14 +441,38 @@ describe('GET /v1/stats', () => {
     expect(all).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps one count for the whole window, whatever the client caches', async () => {
+    // Cache-Control only asks: a client that ignores it, or a scanner, still
+    // costs one COUNT(*) a window here — a full scan, and better-sqlite3 holds
+    // every other request while it runs.
+    vi.useFakeTimers()
+    try {
+      const start = Date.UTC(2026, 8, 24)
+      vi.setSystemTime(start)
+      const { env, all } = countingEnv(7)
+      await ask(env)
+      vi.setSystemTime(start + STATS_TTL_MS - 1)
+      await ask(env)
+      expect(all).toHaveBeenCalledTimes(1)
+
+      vi.setSystemTime(start + STATS_TTL_MS)
+      await ask(env)
+      expect(all).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('tells the browser how long to hold on to the answer', async () => {
-    // Half of what the popup asks for while it is open never leaves the
-    // browser. Set on this response only — `json()` is shared with the batch
+    // A saving where the browser honours it, not the protection, which is the
+    // memo above. Set on this response only — `json()` is shared with the batch
     // lookup, which must not be cacheable.
     const { env } = countingEnv(1)
     const resp = await ask(env)
 
-    expect(resp.headers.get('Cache-Control')).toBe('public, max-age=60')
+    expect(resp.headers.get('Cache-Control')).toBe(
+      `public, max-age=${STATS_TTL_MS / 1000}`,
+    )
     expect(resp.headers.get('Access-Control-Allow-Origin')).toBe('*')
   })
 

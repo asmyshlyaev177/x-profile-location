@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { Stats } from './stats'
+import worker from './index'
+import { openDatabase } from './sqlite'
+import { requestKind, Stats } from './stats'
 
 const lookupReq = (...names: string[]) => JSON.stringify({ usernames: names })
 const lookupResp = (n: number) =>
@@ -8,14 +10,14 @@ const lookupResp = (n: number) =>
 describe('Stats', () => {
   it('separates lookups, contributions and everything else', () => {
     const s = new Stats()
-    s.noteRequest('/v1/loc/batch', lookupReq('a', 'b', 'c'), lookupResp(2), 5)
+    s.noteRequest('lookup', lookupReq('a', 'b', 'c'), lookupResp(2), 5)
     s.noteRequest(
-      '/v1/loc',
+      'contribution',
       JSON.stringify({ clientId: 'c1', entries: [{ u: 'a' }, { u: 'b' }] }),
       '{"ok":true}',
       3,
     )
-    s.noteRequest('/wp-login.php', '', 'Not found', 1)
+    s.noteRequest('other', '', 'Not found', 1)
 
     const snap = s.snapshot()
     expect(snap.lookups).toBe(1)
@@ -31,15 +33,33 @@ describe('Stats', () => {
     // endpoint and the only one a client polls, so counting it there would
     // leave `other` saying nothing.
     const s = new Stats()
-    s.noteRequest('/v1/stats', '', '{"profiles":44210}', 1)
-    s.noteRequest('/v1/stats', '', '{"profiles":44210}', 1)
-    s.noteRequest('/wp-login.php', '', 'Not found', 1)
+    s.noteRequest('stats', '', '{"profiles":44210}', 1)
+    s.noteRequest('stats', '', '{"profiles":44210}', 1)
+    s.noteRequest('other', '', 'Not found', 1)
 
     const snap = s.snapshot()
     expect(snap.statsReads).toBe(2)
     expect(snap.other).toBe(1)
     expect(s.drain().statsReads).toBe(2)
     expect(s.snapshot().statsReads).toBe(0)
+  })
+
+  it('counts CORS preflights on their own line', () => {
+    // The extension posts JSON from x.com, so each browser sends an OPTIONS
+    // ahead of its POSTs (Chrome at most every 2 h). Counted under the POST's
+    // route they inflated lookups and contributions, and they are the
+    // extension's own traffic, so `other` would stop meaning scanners.
+    const s = new Stats()
+    s.noteRequest('preflight', '', '', 0)
+    s.noteRequest('preflight', '', '', 0)
+
+    const snap = s.snapshot()
+    expect(snap.preflights).toBe(2)
+    expect(
+      snap.lookups + snap.contributions + snap.statsReads + snap.other,
+    ).toBe(0)
+    expect(s.drain().preflights).toBe(2)
+    expect(s.snapshot().preflights).toBe(0)
   })
 
   it('computes a hit rate, and reports null rather than 0 when idle', () => {
@@ -51,12 +71,7 @@ describe('Stats', () => {
     expect(idle.snapshot().maxMs).toBeNull()
 
     const s = new Stats()
-    s.noteRequest(
-      '/v1/loc/batch',
-      lookupReq('a', 'b', 'c', 'd'),
-      lookupResp(1),
-      1,
-    )
+    s.noteRequest('lookup', lookupReq('a', 'b', 'c', 'd'), lookupResp(1), 1)
     expect(s.snapshot().hitRate).toBe(0.25)
   })
 
@@ -64,7 +79,7 @@ describe('Stats', () => {
     const s = new Stats()
     // A skewed shape on purpose: one outlier must move max and avg, not median.
     for (const ms of [10, 40, 2, 4, 400]) {
-      s.noteRequest('/v1/loc/batch', lookupReq('a'), lookupResp(1), ms)
+      s.noteRequest('lookup', lookupReq('a'), lookupResp(1), ms)
     }
     const snap = s.snapshot()
     expect(snap.minMs).toBe(2)
@@ -76,7 +91,7 @@ describe('Stats', () => {
   it('takes the median between the two middle samples of an even window', () => {
     const s = new Stats()
     for (const ms of [1, 3, 8, 100]) {
-      s.noteRequest('/v1/loc/batch', lookupReq('a'), lookupResp(1), ms)
+      s.noteRequest('lookup', lookupReq('a'), lookupResp(1), ms)
     }
     expect(s.snapshot().medianMs).toBe(5.5)
   })
@@ -85,7 +100,7 @@ describe('Stats', () => {
     const s = new Stats()
     // 1ms x5 and 500ms x2: the histogram must answer 1, not midpoint(1, 500).
     for (const ms of [1, 1, 1, 1, 1, 500, 500]) {
-      s.noteRequest('/v1/loc/batch', lookupReq('a'), lookupResp(1), ms)
+      s.noteRequest('lookup', lookupReq('a'), lookupResp(1), ms)
     }
     expect(s.snapshot().medianMs).toBe(1)
     expect(s.snapshot().maxMs).toBe(500)
@@ -93,7 +108,7 @@ describe('Stats', () => {
 
   it('drains latency with the rest of the window', () => {
     const s = new Stats()
-    s.noteRequest('/v1/loc/batch', lookupReq('a'), lookupResp(1), 40)
+    s.noteRequest('lookup', lookupReq('a'), lookupResp(1), 40)
     expect(s.drain().maxMs).toBe(40)
     const fresh = s.snapshot()
     expect(fresh.minMs).toBeNull()
@@ -110,7 +125,13 @@ describe('Stats', () => {
     const snap = s.snapshot()
     expect(snap).toMatchObject({ rateLimited: 2, tooLarge: 1, errors: 1 })
     // Rejections never reached a handler, so they are not "requests".
-    expect(snap.lookups + snap.contributions + snap.other).toBe(0)
+    expect(
+      snap.lookups +
+        snap.contributions +
+        snap.statsReads +
+        snap.preflights +
+        snap.other,
+    ).toBe(0)
   })
 
   // A malformed or truncated body must not throw out of the counters and take
@@ -118,7 +139,7 @@ describe('Stats', () => {
   it('survives bodies that are not the JSON it expects', () => {
     const s = new Stats()
     for (const body of ['', 'not json', '{', '[]', 'null', '{"usernames":5}']) {
-      s.noteRequest('/v1/loc/batch', body, body, 1)
+      s.noteRequest('lookup', body, body, 1)
     }
     const snap = s.snapshot()
     expect(snap.lookups).toBe(6)
@@ -135,7 +156,7 @@ describe('Stats', () => {
     it('counts each install once, however often it contributes', () => {
       const s = new Stats()
       for (const c of ['a', 'b', 'a', 'c', 'b', 'a']) {
-        s.noteRequest('/v1/loc', contrib(c), '{"ok":true}', 1)
+        s.noteRequest('contribution', contrib(c), '{"ok":true}', 1)
       }
       const snap = s.snapshot()
       expect(snap.users).toBe(3)
@@ -146,7 +167,7 @@ describe('Stats', () => {
     it('ignores a missing or non-string clientId', () => {
       const s = new Stats()
       for (const c of [undefined, null, '', 42, { id: 'x' }]) {
-        s.noteRequest('/v1/loc', contrib(c), '{"ok":true}', 1)
+        s.noteRequest('contribution', contrib(c), '{"ok":true}', 1)
       }
       expect(s.snapshot().users).toBe(0)
     })
@@ -154,7 +175,7 @@ describe('Stats', () => {
     it('lookups contribute no identity, so they never move the count', () => {
       const s = new Stats()
       s.noteRequest(
-        '/v1/loc/batch',
+        'lookup',
         JSON.stringify({ usernames: ['a'], clientId: 'sneaky' }),
         lookupResp(1),
         1,
@@ -165,7 +186,7 @@ describe('Stats', () => {
     it('caps the tracked set and flags the count as a floor', () => {
       const s = new Stats()
       for (let i = 0; i < 50_050; i++) {
-        s.noteRequest('/v1/loc', contrib(`c${i}`), '{"ok":true}', 0)
+        s.noteRequest('contribution', contrib(`c${i}`), '{"ok":true}', 0)
       }
       const snap = s.snapshot()
       expect(snap.users).toBe(50_000)
@@ -174,7 +195,7 @@ describe('Stats', () => {
 
     it('resets on drain, so windows do not accumulate installs', () => {
       const s = new Stats()
-      s.noteRequest('/v1/loc', contrib('a'), '{"ok":true}', 1)
+      s.noteRequest('contribution', contrib('a'), '{"ok":true}', 1)
       expect(s.drain().users).toBe(1)
       expect(s.snapshot().users).toBe(0)
     })
@@ -182,7 +203,7 @@ describe('Stats', () => {
 
   it('drain() returns the window and starts a new one', () => {
     const s = new Stats()
-    s.noteRequest('/v1/loc/batch', lookupReq('a', 'b'), lookupResp(2), 7)
+    s.noteRequest('lookup', lookupReq('a', 'b'), lookupResp(2), 7)
     const first = s.drain()
     expect(first).toMatchObject({ lookups: 1, lookupNames: 2, lookupHits: 2 })
 
@@ -198,5 +219,63 @@ describe('Stats', () => {
     expect(Date.parse(second.since)).toBeGreaterThanOrEqual(
       Date.parse(first.since),
     )
+  })
+})
+
+describe('requestKind', () => {
+  it.each([
+    ['POST', '/v1/loc/batch', 'lookup'],
+    ['POST', '/v1/loc', 'contribution'],
+    ['GET', '/v1/stats', 'stats'],
+    ['OPTIONS', '/v1/loc/batch', 'preflight'],
+    ['OPTIONS', '/v1/loc', 'preflight'],
+    ['OPTIONS', '/v1/stats', 'preflight'],
+    // The router answers OPTIONS on any path; off the API it is a scanner.
+    ['OPTIONS', '/wp-login.php', 'other'],
+    // The API's paths under another method are 404s or 405s, not its routes.
+    ['GET', '/v1/loc', 'other'],
+    ['GET', '/v1/loc/batch', 'other'],
+    ['HEAD', '/v1/stats', 'other'],
+    ['POST', '/v1/stats', 'other'],
+    ['DELETE', '/v1/loc', 'other'],
+    ['TRACE', '/v1/loc', 'other'],
+    ['POST', '/v1/loc/', 'other'],
+  ] as const)('%s %s is %s', (method, pathname, kind) => {
+    expect(requestKind(method, pathname)).toBe(kind)
+  })
+
+  // What the counters rest on: a request counts under a route exactly when the
+  // router served it, and a preflight is an OPTIONS for a path it serves.
+  it('agrees with the router on every method and path', async () => {
+    const env = {
+      DB: openDatabase({ path: ':memory:', cacheMb: 1, mmapMb: 0 }),
+    }
+    const methods = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE']
+    const paths = ['/v1/loc/batch', '/v1/loc', '/v1/stats', '/v1/loc/', '/']
+    for (const path of paths) {
+      let isServedPath = false
+      for (const method of methods) {
+        const hasBody = method !== 'GET' && method !== 'HEAD'
+        const res = await worker.fetch(
+          new Request(`http://localhost${path}`, {
+            method,
+            body: hasBody ? '{}' : undefined,
+          }),
+          env,
+        )
+        const kind = requestKind(method, path)
+        expect(res.ok, `${method} ${path}: ${res.status}, ${kind}`).toBe(
+          kind !== 'other',
+        )
+        isServedPath ||= res.ok
+      }
+      const preflight = new Request(`http://localhost${path}`, {
+        method: 'OPTIONS',
+      })
+      expect((await worker.fetch(preflight, env)).status).toBe(204)
+      expect(requestKind('OPTIONS', path)).toBe(
+        isServedPath ? 'preflight' : 'other',
+      )
+    }
   })
 })

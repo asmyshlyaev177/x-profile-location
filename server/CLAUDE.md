@@ -66,7 +66,7 @@ a table scan (5.3ms against 0.05ms over 200k rows), and better-sqlite3 is synchr
 that gap is an event-loop stall.
 
 The count is memoised for `STATS_TTL_MS` and clients are told the same, so the endpoint
-costs one `COUNT` per minute rather than one per reader. `COUNT(*)` is a full scan (7.8ms
+costs one `COUNT` per 3 minutes rather than one per reader. `COUNT(*)` is a full scan (7.8ms
 at 10k-user scale, README "Benchmarks") — the memo is not a nicety.
 
 **The consensus recompute has no date filter.** `scheduled()` physically deletes votes

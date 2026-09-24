@@ -519,8 +519,8 @@ describe('how much the community cache holds', () => {
 
   it('keeps asking while the panel is open', async () => {
     // The number belongs to everyone using the cache, so it moves while you are
-    // looking at it. What stops that being load on the server is the max-age it
-    // is served with — see COUNT_POLL_MS.
+    // looking at it. What stops that being load on the server is its own cache
+    // of the count — see COUNT_POLL_MS.
     fakePollClock()
     mountStored({})
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
@@ -536,6 +536,19 @@ describe('how much the community cache holds', () => {
         ),
       ).toBe(true),
     )
+  })
+
+  it('asks once a minute, not sooner', async () => {
+    // The server keeps each count for 3 minutes, so asking faster only redraws
+    // the same number.
+    fakePollClock()
+    mountStored({})
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    vi.advanceTimersByTime(60_000 - 1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(1)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
   })
 
   it('stops asking once the panel is gone', async () => {
