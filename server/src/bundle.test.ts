@@ -1,49 +1,26 @@
-import { spawn, type ChildProcess } from 'node:child_process'
+import type { ChildProcess } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
-import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { build } from 'esbuild'
 import { afterEach, describe, expect, it } from 'vitest'
 import { BUNDLE, BUNDLE_OPTIONS } from '../build.ts'
+import { freePort, startServer, stopServer } from './test-helpers.ts'
 
 // The service runs the committed bundle, never src/: a change built into no
 // bundle deploys nothing, and one the bundle cannot run deploys an outage.
 
-async function freePort(): Promise<number> {
-  const probe = createServer()
-  await new Promise<void>((done) => probe.listen(0, '127.0.0.1', done))
-  const { port } = probe.address() as { port: number }
-  await new Promise((done) => probe.close(done))
-  return port
-}
-
-function startBundle(port: number, dbPath: string): Promise<ChildProcess> {
+async function startBundle(
+  port: number,
+  dbPath: string,
+): Promise<ChildProcess> {
   // Stripping off, so a .ts file left un-bundled fails here instead of quietly
   // loading Node's type stripper in production.
-  const child = spawn(
-    process.execPath,
-    ['--no-experimental-strip-types', BUNDLE],
-    {
-      env: {
-        ...process.env,
-        XLOC_HOST: '127.0.0.1',
-        XLOC_PORT: String(port),
-        XLOC_DB: dbPath,
-        XLOC_STATS_INTERVAL_HOURS: '0',
-      },
-    },
-  )
-  return new Promise((ready, fail) => {
-    let output = ''
-    const onData = (chunk: Buffer): void => {
-      output += chunk.toString()
-      if (output.includes('listening on')) ready(child)
-    }
-    child.stdout!.on('data', onData)
-    child.stderr!.on('data', onData)
-    child.once('exit', (code) => fail(new Error(`exited ${code}:\n${output}`)))
+  const server = await startServer(['--no-experimental-strip-types', BUNDLE], {
+    XLOC_PORT: String(port),
+    XLOC_DB: dbPath,
   })
+  return server.child
 }
 
 function post(port: number, path: string, body: unknown): Promise<Response> {
@@ -91,8 +68,6 @@ describe('dist/node-server.js', () => {
       ],
     })
 
-    const exited = new Promise((done) => child!.once('exit', done))
-    child.kill('SIGTERM')
-    expect(await exited).toBe(0)
+    expect(await stopServer(child)).toBe(0)
   })
 })

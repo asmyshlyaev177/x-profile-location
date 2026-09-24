@@ -10,7 +10,7 @@ import { mkdirSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import worker, { type Env } from './index.ts'
 import { DEFAULT_SQLITE_CONFIG, openDatabase, type SqliteDb } from './sqlite.ts'
-import { Stats } from './stats.ts'
+import { requestKind, Stats } from './stats.ts'
 
 // Config
 function num(name: string, fallback: number): number {
@@ -90,11 +90,6 @@ const BODYLESS = new Set(['GET', 'HEAD', 'OPTIONS', 'DELETE'])
 /** Methods `new Request` cannot represent, answered 405 rather than carried
  *  into the adapter. All three listed: node intercepts some of them first. */
 const UNSUPPORTED_METHODS = new Set(['CONNECT', 'TRACE', 'TRACK'])
-
-/** Request path minus the query, the shape the stats counters key on. */
-function pathOf(req: IncomingMessage): string {
-  return (req.url ?? '/').split('?')[0]!
-}
 
 /** Cheap pre-check: reject on the declared length before reading a byte. */
 function declaredTooLarge(req: IncomingMessage, limit: number): boolean {
@@ -263,7 +258,7 @@ const server = createServer((req, res) => {
       // Counted as `other` with the 404s: scanner traffic is a number to have,
       // not an error to page anyone about.
       if (UNSUPPORTED_METHODS.has(req.method ?? '')) {
-        stats.noteRequest(pathOf(req), '', '', Date.now() - startedAt)
+        stats.noteRequest('other', '', '', Date.now() - startedAt)
         return plain(res, 405, 'Method Not Allowed', {
           allow: 'GET, POST, OPTIONS',
         })
@@ -282,12 +277,14 @@ const server = createServer((req, res) => {
 
       const request = toRequest(req, body)
       if (request === null) {
-        stats.noteRequest(pathOf(req), '', '', Date.now() - startedAt)
+        stats.noteRequest('other', '', '', Date.now() - startedAt)
         return plain(res, 400, 'Bad Request')
       }
 
+      // Classified as the router reads it: the parsed path, not the raw target.
+      const kind = requestKind(request.method, new URL(request.url).pathname)
       const responseBody = await send(res, await worker.fetch(request, env))
-      stats.noteRequest(pathOf(req), body, responseBody, Date.now() - startedAt)
+      stats.noteRequest(kind, body, responseBody, Date.now() - startedAt)
     } catch (err) {
       stats.noteError()
       console.error('[x-loc-cache] request failed:', err)

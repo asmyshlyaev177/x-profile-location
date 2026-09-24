@@ -278,8 +278,9 @@ export function flushContributions(): void {
 // How much the cache holds — shown in the popup, and only while it is open.
 // See "The count the popup shows" in CLAUDE.md.
 
-/** How often the popup re-asks while it is open. Under the server's max-age. */
-export const COUNT_POLL_MS = 30_000
+/** How often the popup re-asks while it is open. The server answers from a
+ *  count it keeps for 3 minutes, so a re-ask costs it no query. */
+export const COUNT_POLL_MS = 60_000
 
 /** Older than this, a remembered number says more about the gap than the cache. */
 const COUNT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000

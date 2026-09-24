@@ -148,13 +148,14 @@ without the server ever asking anyone to re-verify, and an account nobody opens
 any more leaves the database instead of sitting in it forever.
 
 `GET /v1/stats` is how many accounts the cache can answer for — the extension's
-toolbar popup shows it, and asks again every 30s for as long as that popup is
+toolbar popup shows it, and asks again every 60s for as long as that popup is
 open. It is the only endpoint whose traffic tracks popups rather than reading,
 so it is the only one shaped against a crowd all asking the same question:
 
-- The count is memoised for 60s (`STATS_TTL_MS`), so the database is asked once
-  a minute however many clients turn up.
-- The response carries `Cache-Control: public, max-age=60`, which is what keeps
+- The count is memoised for 3 minutes (`STATS_TTL_MS`), so the database is
+  asked once every 3 minutes however many clients turn up, whether or not they
+  honour the header below.
+- The response carries `Cache-Control: public, max-age=180`, which is what keeps
   most of those repeats inside the browser. On the Worker backend this is the
   part that matters: module state is per isolate, so the memo alone does not
   bound it to one query per window, and an unfiltered `COUNT(*)` reads every
@@ -1252,6 +1253,7 @@ sudo journalctl -u x-loc-cache | grep 'stats ' | sed 's/.*stats //' | jq .
   "contributions": 388,
   "contributedEntries": 9012,
   "statsReads": 219,
+  "preflights": 164,
   "other": 6,
   "users": 34,
   "rateLimited": 0,
@@ -1272,13 +1274,15 @@ sudo journalctl -u x-loc-cache | grep 'stats ' | sed 's/.*stats //' | jq .
 
 | Field                                 |                                                                                                                                                             |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lookups` / `contributions`           | **reads / writes** — request counts for `/v1/loc/batch` and `/v1/loc`                                                                                       |
+| `lookups` / `contributions`           | **reads / writes** — `POST /v1/loc/batch` and `POST /v1/loc`. Another method on those paths counts as `preflights` or `other`                               |
 | `lookupNames` / `lookupHits`          | usernames asked about, and how many the cache could answer                                                                                                  |
 | `hitRate`                             | `lookupHits / lookupNames` — the number that says whether any of this is working. `null` when nothing was asked, so an idle night doesn't read as an outage |
 | `users`                               | distinct anonymous installs that contributed **during this window** — counted in-process from the clientId already on the wire, so it costs nothing         |
 | `users24h` / `users7d`                | the same figure over a trailing 24h / 7d, from SQL. Survives restarts and is independent of the log cadence, but costs a full scan — see Performance above  |
 | `usersCapped`                         | present only if the in-process set hit its 50k ceiling, meaning `users` is a floor                                                                          |
 | `statsReads`                          | `GET /v1/stats` — popups asking how much the cache holds. Its own line so `other` still means scanners                                                      |
+| `preflights`                          | `OPTIONS` on those three paths — the CORS preflight a browser sends before the extension's JSON POSTs, at most every 2 h in Chrome. Its own line for the same reason |
+| `other`                               | everything else: 404s, 405s, other methods on the API paths, scanners                                                                                       |
 | `profiles` / `votes` / `dbMb`         | current totals, not window deltas                                                                                                                           |
 | `rateLimited` / `tooLarge` / `errors` | rejections; these never reached a handler, so they're excluded from the request counts above                                                                |
 | `minMs` / `medianMs` / `avgMs` / `maxMs` | fastest, median, mean and slowest handled request in the window; all `null` when idle. Median comes from a ms-resolution histogram, so it costs no sample buffer |

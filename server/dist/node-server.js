@@ -86,7 +86,7 @@ var USERNAME_RE = /^[a-z0-9_]{1,50}$/;
 var MAX_FIELD_LEN = 60;
 var VOTE_CAP = 10;
 var VOTE_CAP_SLACK = 5;
-var STATS_TTL_MS = 6e4;
+var STATS_TTL_MS = 18e4;
 function cors(resp) {
   resp.headers.set("Access-Control-Allow-Origin", "*");
   resp.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -281,6 +281,15 @@ function consensusWrites(env2, ctx) {
   }
   return writes;
 }
+var ROUTES = [
+  { route: "lookup", method: "POST", path: "/v1/loc/batch" },
+  { route: "contribution", method: "POST", path: "/v1/loc" },
+  { route: "stats", method: "GET", path: "/v1/stats" }
+];
+function routeOf(method, pathname) {
+  const match = ROUTES.find((r) => r.method === method && r.path === pathname);
+  return match?.route ?? null;
+}
 var index_default = {
   async fetch(req, env2) {
     if (req.method === "OPTIONS") {
@@ -288,16 +297,16 @@ var index_default = {
     }
     const url = new URL(req.url);
     try {
-      if (req.method === "POST" && url.pathname === "/v1/loc/batch") {
-        return await handleBatch(req, env2);
+      switch (routeOf(req.method, url.pathname)) {
+        case "lookup":
+          return await handleBatch(req, env2);
+        case "contribution":
+          return await handleContribute(req, env2);
+        case "stats":
+          return await handleStats(env2, Date.now());
+        case null:
+          return cors(new Response("Not found", { status: 404 }));
       }
-      if (req.method === "POST" && url.pathname === "/v1/loc") {
-        return await handleContribute(req, env2);
-      }
-      if (req.method === "GET" && url.pathname === "/v1/stats") {
-        return await handleStats(env2, Date.now());
-      }
-      return cors(new Response("Not found", { status: 404 }));
     } catch {
       return json({ error: "internal" }, 500);
     }
@@ -410,6 +419,12 @@ function openDatabase(config2) {
 }
 
 // src/stats.ts
+function requestKind(method, pathname) {
+  if (method === "OPTIONS") {
+    return ROUTES.some((r) => r.path === pathname) ? "preflight" : "other";
+  }
+  return routeOf(method, pathname) ?? "other";
+}
 var MAX_TRACKED_CLIENTS2 = 5e4;
 function parseBody(json2) {
   if (json2 === "") return null;
@@ -461,6 +476,7 @@ var Stats = class {
   #clients = /* @__PURE__ */ new Set();
   #clientsCapped = false;
   #statsReads = 0;
+  #preflights = 0;
   #other = 0;
   #rateLimited = 0;
   #tooLarge = 0;
@@ -468,26 +484,33 @@ var Stats = class {
   #latencyHist = /* @__PURE__ */ new Map();
   /** Bodies are re-parsed here rather than threaded out of the handlers, so
    *  index.ts stays free of instrumentation for the Worker build. */
-  noteRequest(pathname, requestBody, responseBody, ms) {
+  noteRequest(kind, requestBody, responseBody, ms) {
     const bucket = Math.max(0, Math.round(ms));
     this.#latencyHist.set(bucket, (this.#latencyHist.get(bucket) ?? 0) + 1);
-    if (pathname === "/v1/loc/batch") {
-      this.#lookups += 1;
-      this.#lookupNames += countArray(parseBody(requestBody), "usernames");
-      this.#lookupHits += countArray(parseBody(responseBody), "profiles");
-    } else if (pathname === "/v1/loc") {
-      const body = parseBody(requestBody);
-      this.#contributions += 1;
-      this.#contributedEntries += countArray(body, "entries");
-      const cid = body?.clientId;
-      if (typeof cid === "string" && cid !== "") {
+    switch (kind) {
+      case "lookup":
+        this.#lookups += 1;
+        this.#lookupNames += countArray(parseBody(requestBody), "usernames");
+        this.#lookupHits += countArray(parseBody(responseBody), "profiles");
+        return;
+      case "contribution": {
+        const body = parseBody(requestBody);
+        this.#contributions += 1;
+        this.#contributedEntries += countArray(body, "entries");
+        const cid = body?.clientId;
+        if (typeof cid !== "string" || cid === "") return;
         if (this.#clients.size < MAX_TRACKED_CLIENTS2) this.#clients.add(cid);
         else this.#clientsCapped = true;
+        return;
       }
-    } else if (pathname === "/v1/stats") {
-      this.#statsReads += 1;
-    } else {
-      this.#other += 1;
+      case "stats":
+        this.#statsReads += 1;
+        return;
+      case "preflight":
+        this.#preflights += 1;
+        return;
+      case "other":
+        this.#other += 1;
     }
   }
   noteRateLimited() {
@@ -514,6 +537,7 @@ var Stats = class {
       users: this.#clients.size,
       ...this.#clientsCapped ? { usersCapped: true } : {},
       statsReads: this.#statsReads,
+      preflights: this.#preflights,
       other: this.#other,
       rateLimited: this.#rateLimited,
       tooLarge: this.#tooLarge,
@@ -533,6 +557,7 @@ var Stats = class {
     this.#clients.clear();
     this.#clientsCapped = false;
     this.#statsReads = 0;
+    this.#preflights = 0;
     this.#other = 0;
     this.#rateLimited = 0;
     this.#tooLarge = 0;
@@ -605,9 +630,6 @@ function clientIp(req) {
 }
 var BODYLESS = /* @__PURE__ */ new Set(["GET", "HEAD", "OPTIONS", "DELETE"]);
 var UNSUPPORTED_METHODS = /* @__PURE__ */ new Set(["CONNECT", "TRACE", "TRACK"]);
-function pathOf(req) {
-  return (req.url ?? "/").split("?")[0];
-}
 function declaredTooLarge(req, limit) {
   const len = Number(req.headers["content-length"]);
   return Number.isFinite(len) && len > limit;
@@ -729,7 +751,7 @@ var server = createServer((req, res) => {
         });
       }
       if (UNSUPPORTED_METHODS.has(req.method ?? "")) {
-        stats.noteRequest(pathOf(req), "", "", Date.now() - startedAt);
+        stats.noteRequest("other", "", "", Date.now() - startedAt);
         return plain(res, 405, "Method Not Allowed", {
           allow: "GET, POST, OPTIONS"
         });
@@ -745,11 +767,12 @@ var server = createServer((req, res) => {
       }
       const request = toRequest(req, body);
       if (request === null) {
-        stats.noteRequest(pathOf(req), "", "", Date.now() - startedAt);
+        stats.noteRequest("other", "", "", Date.now() - startedAt);
         return plain(res, 400, "Bad Request");
       }
+      const kind = requestKind(request.method, new URL(request.url).pathname);
       const responseBody = await send(res, await index_default.fetch(request, env));
-      stats.noteRequest(pathOf(req), body, responseBody, Date.now() - startedAt);
+      stats.noteRequest(kind, body, responseBody, Date.now() - startedAt);
     } catch (err) {
       stats.noteError();
       console.error("[x-loc-cache] request failed:", err);
