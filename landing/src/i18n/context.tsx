@@ -8,7 +8,7 @@ interface I18n {
   locale: LocaleDef
   t: Dict
   /**
-   * The path *below* the locale — `/x-posed-alternative`, never
+   * The path *below* the locale - `/x-posed-alternative`, never
    * `/ja/x-posed-alternative`. What the language selector needs in order to
    * offer the same page in another language rather than dumping the reader on
    * a homepage.
@@ -20,7 +20,7 @@ interface I18n {
    * English ones.
    *
    * Every internal `href` on the site goes through this. A hardcoded
-   * `/x-posed-alternative` on a Japanese page is not a broken link — it is
+   * `/x-posed-alternative` on a Japanese page is not a broken link - it is
    * worse, it silently drops the reader back into English, and it is the
    * single easiest mistake to make in a translated static site.
    */
@@ -34,7 +34,7 @@ interface I18n {
  * the lazy loading: a static `import { en }` in this module is reachable from
  * every component, so English lands in the client's main chunk and a Japanese
  * reader downloads 28 kB of copy they will never see. `App` always supplies a
- * dictionary, so the fallback was never actually reached — it was only paying
+ * dictionary, so the fallback was never actually reached - it was only paying
  * for the possibility.
  */
 const Ctx = createContext<I18n>({
@@ -82,7 +82,7 @@ export function useI18n(): I18n {
 }
 
 /**
- * The common case — `const t = useT()`, then `t.hero.lead`.
+ * The common case - `const t = useT()`, then `t.hero.lead`.
  *
  * Throws rather than silently rendering English if a component ends up outside
  * the provider: with no fallback dictionary the alternative is a
@@ -94,7 +94,7 @@ export function useT(): Dict {
   if (!t) {
     throw new Error(
       'useT() outside <I18nProvider>. Every page renders through <App>, which ' +
-        'supplies the dictionary — a component reaching this has been mounted ' +
+        'supplies the dictionary - a component reaching this has been mounted ' +
         'on its own.',
     )
   }

@@ -23,7 +23,7 @@ export const UI_LOCALES = [
 
 export type UiLocale = (typeof UI_LOCALES)[number]
 
-/** '' means "whatever the browser is set to" — the default, and the way back. */
+/** '' means "whatever the browser is set to" - the default, and the way back. */
 export const UI_LANGUAGE_KEY = 'uiLanguage'
 
 export function normalizeUiLanguage(value: unknown): UiLocale | '' {
@@ -56,7 +56,7 @@ export function __setMessages(messages: Record<string, string> | null): void {
 /** Null means "use the browser". */
 let chosen: Record<string, string> | null = null
 
-/** `$1`…`$9`, and `$$` for a literal dollar — the messages.json rules. */
+/** `$1`…`$9`, and `$$` for a literal dollar - the messages.json rules. */
 function substitute(message: string, subs: string[]): string {
   return message.replace(/\$(\$|\d)/g, (_, token: string) =>
     token === '$' ? '$' : (subs[Number(token) - 1] ?? ''),
@@ -74,7 +74,7 @@ export function t(key: string, ...subs: (string | number)[]): string {
   return message ? message : key
 }
 
-/** Read out of the catalogue, not asked of the browser — see CLAUDE.md. */
+/** Read out of the catalogue, not asked of the browser - see CLAUDE.md. */
 export function uiLocale(): string {
   const tag = t('localeTag')
   // `t` falls back to the key, which is not a locale anything can parse.
@@ -98,7 +98,7 @@ function flatten(catalogue: Catalogue): Record<string, string> {
   )
 }
 
-/** Extension pages and the worker only — a content script cannot. */
+/** Extension pages and the worker only - a content script cannot. */
 export async function readCatalogue(
   locale: string,
 ): Promise<Record<string, string>> {

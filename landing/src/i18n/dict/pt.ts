@@ -10,7 +10,7 @@ export const pt: Dict = {
     privacy: 'Privacidade',
     comparison: 'Comparação',
     sourceOnGitHub: 'Código no GitHub',
-    home: 'X-Pat — início',
+    home: 'X-Pat - início',
   },
 
   language: {
@@ -126,7 +126,7 @@ export const pt: Dict = {
       },
       spread: {
         title: 'Dosado, não disparado de uma vez',
-        body: 'Mais ou menos uma consulta a cada 21 segundos, recalculada sempre — alivia quando você passa muito o mouse, aperta quando a janela vai recompondo.',
+        body: 'Mais ou menos uma consulta a cada 21 segundos, recalculada sempre - alivia quando você passa muito o mouse, aperta quando a janela vai recompondo.',
         readoutKey: 'Ritmo',
         readoutValue: 'janela ÷ limite',
       },
@@ -176,7 +176,7 @@ export const pt: Dict = {
       title: 'Esconda os países que você prefere não ver.',
       p1: 'Quando você consegue enxergar de onde vem uma publicação, dá para agir. Escolha os países que quer pular e decida o que acontece com os tweets deles.',
       p2: 'Recolher é o padrão. O tweet vira uma barra fina <b>🚫 Oculto · 🇮🇳 Índia</b> com um botão Mostrar, então você ainda percebe que tinha algo ali, e um clique traz de volta de vez. O filtro segue o país da loja de aplicativos quando existe um, e não mexe no tweet que você abriu de propósito.',
-      p3: 'País não é a única alavanca que você tem. Bloqueie uma organização e todas as contas que o X marca como dela somem também. Contas mais novas do que o limite que você definir são marcadas assim que aparecem — marcadas, nunca ocultas, porque ser nova não prova nada.',
+      p3: 'País não é a única alavanca que você tem. Bloqueie uma organização e todas as contas que o X marca como dela somem também. Contas mais novas do que o limite que você definir são marcadas assim que aparecem - marcadas, nunca ocultas, porque ser nova não prova nada.',
       readoutCollapse: 'Recolher',
       readoutCollapseValue: 'Barra fina + Mostrar',
       readoutHide: 'Ocultar',
@@ -219,7 +219,7 @@ export const pt: Dict = {
   trust: {
     heading: 'Uma extensão que lê sua sessão do X tem que ser bem específica.',
     lead: 'Então vamos lá. As consultas vão direto para x.com, do mesmo jeito que as requisições do próprio site, e nunca passam por um servidor nosso. Seu navegador guarda os resultados por 30 dias, e a página de opções limpa quando você quiser.',
-    body: 'Não tem analytics nem telemetria dentro da extensão. Este site usa Google Analytics, para contar visitas e saber qual botão de instalação foi clicado — só isso.',
+    body: 'Não tem analytics nem telemetria dentro da extensão. Este site usa Google Analytics, para contar visitas e saber qual botão de instalação foi clicado - só isso.',
     readPolicy: 'Ler a política de privacidade completa',
     neverTitle: 'Nunca enviado a lugar nenhum',
     neverNote:
@@ -242,7 +242,7 @@ export const pt: Dict = {
 
   compareTeaser: {
     heading: 'Já usa alguma das outras?',
-    lead: 'Cerca de vinte extensões colocam uma bandeira ao lado de um @. As diferenças que importam não estão na lista de recursos — estão no que o cache compartilhado tem permissão para fazer, e no que acontece quando as cinquenta consultas do X acabam.',
+    lead: 'Cerca de vinte extensões colocam uma bandeira ao lado de um @. As diferenças que importam não estão na lista de recursos - estão no que o cache compartilhado tem permissão para fazer, e no que acontece quando as cinquenta consultas do X acabam.',
     body: 'Esta aqui se ritma pelo orçamento real que vem nos cabeçalhos de resposta do X e guarda oito consultas para as contas em que você passa o mouse, então uma thread cheia termina de preencher em vez de parar no meio. A tabela completa tem catorze linhas e mostra as três coisas que o X-Posed faz melhor do que esta extensão.',
     link: 'Ver a comparação completa →',
   },
@@ -293,7 +293,7 @@ export const pt: Dict = {
         note: 'Lido dos dados de "Sobre esta conta" do próprio X, não adivinhado por endereço de IP.',
       },
       signupSource: {
-        label: 'Origem do cadastro — Apple, Google Play ou web',
+        label: 'Origem do cadastro - Apple, Google Play ou web',
         note: '',
       },
       accountAge: { label: 'Idade da conta', note: '' },
@@ -319,7 +319,7 @@ export const pt: Dict = {
       },
       cacheServerSource: {
         label: 'Código do servidor de cache publicado',
-        note: 'O servidor que recebe as contribuições, não só a extensão que as envia. O nosso está no mesmo repositório, com documentação de deploy — dá para ler, ou para rodar o seu.',
+        note: 'O servidor que recebe as contribuições, não só a extensão que as envia. O nosso está no mesmo repositório, com documentação de deploy - dá para ler, ou para rodar o seu.',
       },
       crossChecked: {
         label: 'Entradas do cache conferidas entre instalações',
@@ -343,14 +343,14 @@ export const pt: Dict = {
       },
       surfaces: {
         title: 'Ele roda em mais lugares',
-        body: 'Firefox no desktop, Firefox para Android e um app complementar para iPhone. O X-Pat hoje é só Chromium — Chrome, Edge, Brave e Quetta no Android. Firefox está nos planos, iOS não.',
+        body: 'Firefox no desktop, Firefox para Android e um app complementar para iPhone. O X-Pat hoje é só Chromium - Chrome, Edge, Brave e Quetta no Android. Firefox está nos planos, iOS não.',
       },
       languageFilter: {
         title: 'Ele tem filtro por idioma',
-        body: 'Nós não temos, e é de propósito. O campo de idioma por publicação do X erra com frequência suficiente para que filtrar por ele faça publicações sumirem sem motivo visível. É uma escolha defensável, não uma lacuna — mas se o que você busca é filtro por idioma, o X-Posed tem e nós não.',
+        body: 'Nós não temos, e é de propósito. O campo de idioma por publicação do X erra com frequência suficiente para que filtrar por ele faça publicações sumirem sem motivo visível. É uma escolha defensável, não uma lacuna - mas se o que você busca é filtro por idioma, o X-Posed tem e nós não.',
       },
     },
-    notApplicable: '—',
+    notApplicable: '-',
     testCount: '{count} testes',
     none: 'nenhum',
   },
@@ -361,7 +361,7 @@ export const pt: Dict = {
       titleLead: 'O painel',
       titleAccent: '"Sobre esta conta"',
       titleRest: ' do X, e como parar de clicar para chegar nele.',
-      lead: 'O X sabe muito bem de que país cada conta publica, e até te conta — um perfil por vez, três toques de profundidade, quantos a sua paciência aguentar. Aqui está onde fica esse painel, o que ele consegue e o que não consegue responder, e o que fazer quando você quer o mesmo dado para oitenta respostas em vez de uma.',
+      lead: 'O X sabe muito bem de que país cada conta publica, e até te conta - um perfil por vez, três toques de profundidade, quantos a sua paciência aguentar. Aqui está onde fica esse painel, o que ele consegue e o que não consegue responder, e o que fazer quando você quer o mesmo dado para oitenta respostas em vez de uma.',
       whereHeading: 'Onde o painel realmente fica',
       steps: {
         web: {
@@ -381,14 +381,14 @@ export const pt: Dict = {
       cant1:
         'O painel é por perfil e modal. Ótimo para checar uma conta, um desastre para ler uma thread de respostas, que é justamente quando a dúvida aparece. Cem respostas são cem idas e vindas por um menu, e na terceira você já perdeu o fio da thread.',
       cant2:
-        'E nem sempre vem preenchido. O X não devolve país para um bom número de contas — em geral as mais antigas ou pouco ativas. Quando o campo está realmente vazio, não tem o que revelar, e qualquer ferramenta que diga o contrário está chutando por endereço de IP.',
+        'E nem sempre vem preenchido. O X não devolve país para um bom número de contas - em geral as mais antigas ou pouco ativas. Quando o campo está realmente vazio, não tem o que revelar, e qualquer ferramenta que diga o contrário está chutando por endereço de IP.',
       cant3:
         'E não diz nada sobre confiabilidade. Internamente o X marca algumas localizações como não verificáveis; o painel mostra o país do mesmo jeito.',
       sameHeading: 'O mesmo campo, sem o menu',
       same1:
-        'O X-Pat lê exatamente o campo que o painel lê — o mesmo endpoint, usando a sessão do X que você já tem no navegador — e desenha como bandeira no cartão e, se quiser, direto na timeline. Sem consulta de IP, sem banco de dados de terceiros, sem conta nem chave de API.',
+        'O X-Pat lê exatamente o campo que o painel lê - o mesmo endpoint, usando a sessão do X que você já tem no navegador - e desenha como bandeira no cartão e, se quiser, direto na timeline. Sem consulta de IP, sem banco de dados de terceiros, sem conta nem chave de API.',
       same2:
-        'Ele extrai três coisas dessa resposta: o país, a loja de aplicativos pela qual a conta se cadastrou, e se o X sinaliza a localização como duvidosa — o indicador de confiança que o painel omite. Data de criação e histórico de @ ficam onde estão; a extensão não tenta ser o painel inteiro.',
+        'Ele extrai três coisas dessa resposta: o país, a loja de aplicativos pela qual a conta se cadastrou, e se o X sinaliza a localização como duvidosa - o indicador de confiança que o painel omite. Data de criação e histórico de @ ficam onde estão; a extensão não tenta ser o painel inteiro.',
       same3:
         'E você pode agir a partir disso: países e regiões que prefere não ver podem recolher atrás de um botão "Mostrar", ou sumir de vez. Recolher é o padrão, porque uma timeline que descarta publicações em silêncio é uma timeline em que você não pode confiar.',
     },
@@ -403,7 +403,7 @@ export const pt: Dict = {
       noVerdict1:
         'Cada pista abaixo tem uma explicação inocente. Contas novas são novas. Tem gente que segue com generosidade. Muita gente que escreve bem tem emoji na bio. Tratar qualquer um desses sinais como prova vai fazer você descartar desconhecidos perfeitamente normais, o que é desagradável e ainda por cima chato.',
       noVerdict2:
-        'O que funciona é empilhar. Uma conta de três semanas, seguindo milhares, seguida por dezenas, primeira nas respostas com uma frase pronta — essa combinação não é coincidência, e você lê tudo em dois segundos quando sabe onde olhar.',
+        'O que funciona é empilhar. Uma conta de três semanas, seguindo milhares, seguida por dezenas, primeira nas respostas com uma frase pronta - essa combinação não é coincidência, e você lê tudo em dois segundos quando sabe onde olhar.',
       colSignal: 'Sinal',
       colTell: 'Qual é a cara',
       colCost: 'Custo para checar',
@@ -426,7 +426,7 @@ export const pt: Dict = {
         bio: {
           signal: 'Composição da bio',
           tell: 'Uma fileira de bandeiras e emojis no lugar de uma frase',
-          cost: 'De graça — está bem ali',
+          cost: 'De graça - está bem ali',
         },
         substance: {
           signal: 'Conteúdo da resposta',
@@ -436,16 +436,16 @@ export const pt: Dict = {
         location: {
           signal: 'De onde a conta publica',
           tell: 'Dando aula com autoridade sobre um país de onde a conta nunca publicou',
-          cost: 'Três toques, por perfil — ou na hora',
+          cost: 'Três toques, por perfil - ou na hora',
         },
       },
       hiddenHeading: 'O que você não consegue ver',
       hidden1:
-        'Cinco desses seis sinais já estão na tela. Contagem de seguidores, data de criação, a bio, a própria resposta — o X entrega tudo isso sem você pedir. O sexto é o que o X guarda atrás de um menu: de onde a conta realmente publica.',
+        'Cinco desses seis sinais já estão na tela. Contagem de seguidores, data de criação, a bio, a própria resposta - o X entrega tudo isso sem você pedir. O sexto é o que o X guarda atrás de um menu: de onde a conta realmente publica.',
       hidden2:
-        'Esse pesa mais que os outros para um tipo específico de incômodo — não exatamente spam, mas aula com pose de autoridade sobre um lugar onde a conta não tem nada em jogo. A leitura muda completamente quando você consegue ver, e o X te obriga a abrir um painel por perfil para descobrir.',
+        'Esse pesa mais que os outros para um tipo específico de incômodo - não exatamente spam, mas aula com pose de autoridade sobre um lugar onde a conta não tem nada em jogo. A leitura muda completamente quando você consegue ver, e o X te obriga a abrir um painel por perfil para descobrir.',
       hidden3:
-        '<b>O X-Pat faz essa parte.</b> Ele coloca o país no cartão e, se você quiser, direto na timeline — além de um aviso quando nem o próprio X consegue verificar a localização. Ele não dá nota para contas nem julga respostas por você; os outros cinco sinais continuam sendo por sua conta. Ele só impede que o único dado genuinamente escondido custe três toques.',
+        '<b>O X-Pat faz essa parte.</b> Ele coloca o país no cartão e, se você quiser, direto na timeline - além de um aviso quando nem o próprio X consegue verificar a localização. Ele não dá nota para contas nem julga respostas por você; os outros cinco sinais continuam sendo por sua conta. Ele só impede que o único dado genuinamente escondido custe três toques.',
     },
 
     comparison: {
@@ -453,16 +453,16 @@ export const pt: Dict = {
       titleLead: 'X-Pat vs',
       titleAccent: 'X-Posed',
       titleRest: ', e o resto da prateleira.',
-      lead: 'Cerca de vinte extensões colocam uma bandeira de país ao lado de um @ do X. Três delas têm um número relevante de usuários. Aqui está o que cada uma realmente faz, o que o X-Pat faz diferente, e as três coisas que o X-Posed faz melhor — exatamente a parte que a maioria das páginas de comparação deixa de fora.',
+      lead: 'Cerca de vinte extensões colocam uma bandeira de país ao lado de um @ do X. Três delas têm um número relevante de usuários. Aqui está o que cada uma realmente faz, o que o X-Pat faz diferente, e as três coisas que o X-Posed faz melhor - exatamente a parte que a maioria das páginas de comparação deixa de fora.',
       featureHeading: 'Recurso por recurso',
       featureLead:
-        'Cada célula vem da página pública da loja ou do repositório público, lidos em {date}. Um traço significa que a página não diz — para as duas extensões de código fechado isso não equivale a um não, e seria injusto desenhar como tal.',
+        'Cada célula vem da página pública da loja ou do repositório público, lidos em {date}. Um traço significa que a página não diz - para as duas extensões de código fechado isso não equivale a um não, e seria injusto desenhar como tal.',
       aheadHeading: 'Onde o X-Posed está na frente',
       differsHeading: 'O que realmente difere',
       differs1:
-        'Tudo nesta categoria depende de um cache compartilhado. O X permite a um navegador cerca de cinquenta consultas de perfil a cada quinze minutos, e uma thread movimentada tem mais contas que isso — então toda extensão desta lista que continua funcionando depois do limite faz isso lendo um cache que outras pessoas preencheram. A pergunta não é se existe um servidor. É o que esse servidor tem permissão para fazer.',
+        'Tudo nesta categoria depende de um cache compartilhado. O X permite a um navegador cerca de cinquenta consultas de perfil a cada quinze minutos, e uma thread movimentada tem mais contas que isso - então toda extensão desta lista que continua funcionando depois do limite faz isso lendo um cache que outras pessoas preencheram. A pergunta não é se existe um servidor. É o que esse servidor tem permissão para fazer.',
       differs2:
-        '<b>O nosso é publicado, e você pode rodar o seu.</b> O servidor de cache está no mesmo repositório da extensão, com documentação de deploy para Cloudflare Workers e para um VPS comum. O X-Posed publica a extensão dele — de verdade, sob licença MIT — mas não publica o Worker para onde vão as contribuições. É exatamente a peça que você não consegue verificar lendo o código que instalou.',
+        '<b>O nosso é publicado, e você pode rodar o seu.</b> O servidor de cache está no mesmo repositório da extensão, com documentação de deploy para Cloudflare Workers e para um VPS comum. O X-Posed publica a extensão dele - de verdade, sob licença MIT - mas não publica o Worker para onde vão as contribuições. É exatamente a peça que você não consegue verificar lendo o código que instalou.',
       differs3:
         '<b>Aqui uma resposta em cache precisa de corroboração.</b> As contribuições são guardadas como votos por instalação e o que é servido é o consenso, com um limite de confiança que você pode aumentar nas opções. A documentação do X-Posed descreve que guarda o último valor aceito para um @, ou seja, quem contribuiu por último decide. Ambos os modelos são honestos sobre o mesmo problema de fundo: nenhum servidor consegue provar que uma contribuição veio mesmo do X.',
       differs4:
@@ -472,21 +472,21 @@ export const pt: Dict = {
       sourcesHeading: 'Fontes',
       sourcesLead:
         'Lido em {date}. Números de instalação e recursos mudam; se algo abaixo estiver desatualizado, é erro, não posição, e o <a href="{href}">rastreador de issues</a> é o jeito mais rápido de mandar corrigir.',
-      sourceLabel: ' — fonte: ',
-      sourceNotPublished: ' — código não publicado',
+      sourceLabel: ' - fonte: ',
+      sourceNotPublished: ' - código não publicado',
     },
   },
 
   pages: {
     home: {
       title:
-        'X-Pat — Localização de perfil no X: veja o país de qualquer perfil',
+        'X-Pat - Localização de perfil no X: veja o país de qualquer perfil',
       description:
         'Uma bandeira de país em cada perfil do X, a partir dos dados do próprio X. Avisos de VPN, e oculte ou destaque publicações por país, organização, idade da conta ou palavra-chave da bio. Grátis para Chrome.',
       faq: [
         {
           q: 'Como vejo de que país é uma conta do X?',
-          a: 'O X guarda um país para cada conta e mostra em "Sobre esta conta", mas um perfil por vez e só se você abrir o menu. Esta extensão lê esse mesmo campo e coloca a bandeira direto no cartão e na timeline — você vê sem clicar em nada.',
+          a: 'O X guarda um país para cada conta e mostra em "Sobre esta conta", mas um perfil por vez e só se você abrir o menu. Esta extensão lê esse mesmo campo e coloca a bandeira direto no cartão e na timeline - você vê sem clicar em nada.',
         },
         {
           q: 'Dá para saber se uma conta do X usa VPN?',
@@ -494,11 +494,11 @@ export const pt: Dict = {
         },
         {
           q: 'Dá para esconder ou recolher tweets de certos países?',
-          a: 'Dá. Escolha os países ou regiões na página de opções e decida se os tweets correspondentes recolhem atrás de um botão "Mostrar" ou somem de vez. Recolher é o padrão — nada é removido da sua timeline em silêncio.',
+          a: 'Dá. Escolha os países ou regiões na página de opções e decida se os tweets correspondentes recolhem atrás de um botão "Mostrar" ou somem de vez. Recolher é o padrão - nada é removido da sua timeline em silêncio.',
         },
         {
           q: 'Dá para filtrar por outra coisa além de país?',
-          a: 'Dá. Você pode bloquear toda conta que o X marca como pertencente a uma organização, marcar contas mais novas do que o limite que você definir, e destacar contas cujo nome ou bio bata com suas palavras-chave — ou cuja bio seja praticamente só emoji de bandeira. As regras de idade e palavra-chave só marcam a publicação, nunca a removem. Uma lista de permissão e exceções por regra cobrem as contas que você quer poupar.',
+          a: 'Dá. Você pode bloquear toda conta que o X marca como pertencente a uma organização, marcar contas mais novas do que o limite que você definir, e destacar contas cujo nome ou bio bata com suas palavras-chave - ou cuja bio seja praticamente só emoji de bandeira. As regras de idade e palavra-chave só marcam a publicação, nunca a removem. Uma lista de permissão e exceções por regra cobrem as contas que você quer poupar.',
         },
         {
           q: 'Precisa da minha senha do X ou de chave de API?',
@@ -514,7 +514,7 @@ export const pt: Dict = {
     aboutThisAccount: {
       title: 'X "Sobre esta conta": como ver e como ver mais rápido',
       description:
-        'O X mostra o país de cada conta em "Sobre esta conta" — um perfil por vez, atrás de um menu. Veja onde encontrar e como obter direto na timeline.',
+        'O X mostra o país de cada conta em "Sobre esta conta" - um perfil por vez, atrás de um menu. Veja onde encontrar e como obter direto na timeline.',
       faq: [
         {
           q: 'O que é "Sobre esta conta" no X?',
@@ -526,11 +526,11 @@ export const pt: Dict = {
         },
         {
           q: 'Por que não vejo "Sobre esta conta" em alguns usuários?',
-          a: 'O X não devolve país para toda conta — as mais antigas ou menos ativas costumam não ter nada registrado. Quando o campo está realmente vazio, nenhuma ferramenta consegue preencher, incluindo esta.',
+          a: 'O X não devolve país para toda conta - as mais antigas ou menos ativas costumam não ter nada registrado. Quando o campo está realmente vazio, nenhuma ferramenta consegue preencher, incluindo esta.',
         },
         {
           q: 'Como vejo o país sem abrir cada perfil?',
-          a: 'É exatamente a lacuna que esta extensão fecha. Ela lê o mesmo campo e desenha como bandeira no cartão e, se você quiser, direto na timeline — então varrer uma thread de oitenta respostas não significa oitenta visitas a um menu.',
+          a: 'É exatamente a lacuna que esta extensão fecha. Ela lê o mesmo campo e desenha como bandeira no cartão e, se você quiser, direto na timeline - então varrer uma thread de oitenta respostas não significa oitenta visitas a um menu.',
         },
       ],
     },
@@ -542,7 +542,7 @@ export const pt: Dict = {
       faq: [
         {
           q: 'O que é engagement farming no X?',
-          a: 'Publicar respostas pensadas para colher impressões em vez de dizer alguma coisa — concordância genérica, indignação reciclada, ou uma frase pronta colada embaixo do que estiver em alta. Desde que o X começou a pagar por impressões, existe um motivo financeiro direto.',
+          a: 'Publicar respostas pensadas para colher impressões em vez de dizer alguma coisa - concordância genérica, indignação reciclada, ou uma frase pronta colada embaixo do que estiver em alta. Desde que o X começou a pagar por impressões, existe um motivo financeiro direto.',
         },
         {
           q: 'Como saber se uma resposta no X é de bot ou de fazenda?',
@@ -550,7 +550,7 @@ export const pt: Dict = {
         },
         {
           q: 'Que proporção seguidores/seguindo sugere uma conta cultivada?',
-          a: 'Seguir muito mais contas do que te seguem — uma proporção bem abaixo de 0,1 — é o padrão clássico, porque seguir em massa é o jeito mais barato de ser notado. Dito isso, montes de contas novas comuns têm a mesma cara, então trate como um indício entre outros, não como veredito.',
+          a: 'Seguir muito mais contas do que te seguem - uma proporção bem abaixo de 0,1 - é o padrão clássico, porque seguir em massa é o jeito mais barato de ser notado. Dito isso, montes de contas novas comuns têm a mesma cara, então trate como um indício entre outros, não como veredito.',
         },
         {
           q: 'A extensão detecta engagement farming?',
@@ -569,7 +569,7 @@ export const pt: Dict = {
     comparison: {
       title: 'Alternativa ao X-Posed: X-Pat comparado, recurso por recurso',
       description:
-        'Uma comparação honesta do X-Pat com o X-Posed e as outras duas extensões de localização do X mais instaladas — incluindo as três coisas que o X-Posed faz melhor.',
+        'Uma comparação honesta do X-Pat com o X-Posed e as outras duas extensões de localização do X mais instaladas - incluindo as três coisas que o X-Posed faz melhor.',
       faq: [
         {
           q: 'Qual é a melhor alternativa ao X-Posed?',
@@ -577,7 +577,7 @@ export const pt: Dict = {
         },
         {
           q: 'O X-Pat é código aberto?',
-          a: 'É, com licença MIT, e o servidor de cache com que ele conversa também — os dois moram no mesmo repositório, com documentação de deploy para Cloudflare Workers e para um VPS comum. O X-Posed também publica a extensão sob MIT; o que ele não publica é o Worker que recebe as contribuições do cache comunitário.',
+          a: 'É, com licença MIT, e o servidor de cache com que ele conversa também - os dois moram no mesmo repositório, com documentação de deploy para Cloudflare Workers e para um VPS comum. O X-Posed também publica a extensão sob MIT; o que ele não publica é o Worker que recebe as contribuições do cache comunitário.',
         },
         {
           q: 'Essas extensões precisam da minha senha do X?',
@@ -585,7 +585,7 @@ export const pt: Dict = {
         },
         {
           q: 'Por que a bandeira para de aparecer no meio de uma thread?',
-          a: 'O X permite a um navegador cerca de cinquenta consultas de conta a cada quinze minutos, e uma thread movimentada tem mais contas que isso. Extensões que batem no teto simplesmente param de preencher bandeiras. O cache compartilhado é o que evita isso — a maioria dos perfis não custa consulta porque outra pessoa já resolveu — e o X-Pat ainda reserva os últimos vinte por cento da janela para as contas em que você mesmo passa o mouse.',
+          a: 'O X permite a um navegador cerca de cinquenta consultas de conta a cada quinze minutos, e uma thread movimentada tem mais contas que isso. Extensões que batem no teto simplesmente param de preencher bandeiras. O cache compartilhado é o que evita isso - a maioria dos perfis não custa consulta porque outra pessoa já resolveu - e o X-Pat ainda reserva os últimos vinte por cento da janela para as contas em que você mesmo passa o mouse.',
         },
       ],
     },

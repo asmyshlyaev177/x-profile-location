@@ -1,5 +1,5 @@
 /* ───────────────────────────────────────────────────────────────────────────
-   The rate limit in full — the three paragraphs and the three facts that used
+   The rate limit in full - the three paragraphs and the three facts that used
    to sit on the homepage.
 
    No new copy: every string here is the `rateBudget` block the homepage

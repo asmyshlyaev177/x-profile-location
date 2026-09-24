@@ -69,7 +69,7 @@ function write(key: string, value: unknown) {
 /** Crypto donations, via NOWPayments. */
 const DONATE_URL = 'https://nowpayments.io/donation/asmyshlyaev177'
 
-/** `window.close()` must not run synchronously after `openOptionsPage()` —
+/** `window.close()` must not run synchronously after `openOptionsPage()` -
  *  that cancels the open it just asked for. */
 async function openOptions() {
   try {
@@ -196,7 +196,7 @@ export function Popup() {
   )
   const [cacheCount, setCacheCount] = useState<number | null>(null)
 
-  // Once per mount — see the same pair in options.tsx. A popup cannot outlive
+  // Once per mount - see the same pair in options.tsx. A popup cannot outlive
   // a language change: choosing one happens on the settings page.
   const pickerOptions = useMemo(
     () => sortByLocalizedName(CANONICAL_LOCATIONS),
@@ -207,7 +207,7 @@ export function Popup() {
     [],
   )
 
-  // The popup has no theme control of its own — it is set once in the options
+  // The popup has no theme control of its own - it is set once in the options
   // page and every extension page follows it.
   useEffect(startThemeSync, [])
 
@@ -273,7 +273,7 @@ export function Popup() {
   }, [loaded, enabled, sharedCache])
 
   // The same keys the options page writes, which the content script is already
-  // listening on — so an edit lands on the timeline behind the popup.
+  // listening on - so an edit lands on the timeline behind the popup.
   function editBlocked(next: string[]) {
     if (next === blocked) return
     setBlocked(next)
@@ -460,21 +460,21 @@ export function Popup() {
       )}
 
       {/* Not while paused. Someone who has just switched it off is answering a
-          different question, and the ask keeps — `status` stays 'idle'. */}
+          different question, and the ask keeps - `status` stays 'idle'. */}
       {askRating && enabled && (
         <RatePrompt onAnswer={() => setAskRating(false)} />
       )}
 
       <footer class={css.footer}>
         {/* The one control in this footer that leads somewhere people
-            actually need — given weight to match, since the two beside it are
+            actually need - given weight to match, since the two beside it are
             things you do once and never again. */}
         <button class={css.settingsBtn} onClick={() => void openOptions()}>
           {t('popupAllSettings')}
         </button>
         {/* Permanent, unlike the card above: the card is a request and goes
             away once answered, this is just the way to the listing for anyone
-            who goes looking. Clicking counts as answered — somebody who has
+            who goes looking. Clicking counts as answered - somebody who has
             been to the review page should not be asked again later. */}
         <a
           class={css.linkBtn}

@@ -46,7 +46,7 @@ export function detectBrowser(): SupportedBrowser {
 
 /**
  * Brave ships Chrome's user-agent verbatim, so the only reliable signal is the
- * `navigator.brave` handshake — which is async, hence the separate entry point.
+ * `navigator.brave` handshake - which is async, hence the separate entry point.
  */
 export async function detectBrowserAsync(): Promise<SupportedBrowser> {
   const ua = detectBrowser()

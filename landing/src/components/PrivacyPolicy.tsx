@@ -20,8 +20,8 @@ export function PrivacyPolicy() {
               of X / Twitter profiles as a flag emoji and can highlight accounts
               by location or keyword. We are committed to your privacy. By
               default, everything the extension does happens locally in your
-              browser. The one exception — an optional, off-by-a-single- toggle
-              community cache — is described below.
+              browser. The one exception - an optional, off-by-a-single- toggle
+              community cache - is described below.
             </p>
           </section>
 
@@ -55,7 +55,7 @@ export function PrivacyPolicy() {
             <p>
               When you hover or swipe a profile, the extension requests that
               profile’s publicly declared location directly from X / Twitter’s
-              own API, using the X session already present in your browser —
+              own API, using the X session already present in your browser -
               exactly as the X website does when you view a profile. This
               request goes to X directly; it is not routed through, or seen by,
               us.
@@ -67,11 +67,11 @@ export function PrivacyPolicy() {
               Optional: Shared Community Location Cache
             </h2>
             <p>
-              The extension includes an optional feature — controlled by the{' '}
+              The extension includes an optional feature - controlled by the{' '}
               <strong class="text-ink font-semibold">
                 "Use shared community location cache"
               </strong>{' '}
-              toggle in its options — that lets users share already-public
+              toggle in its options - that lets users share already-public
               location flags with one another, so everyone avoids repeating the
               same lookups. When it is enabled, the extension exchanges data
               with a server operated by us (a Cloudflare Worker) for that sole
@@ -109,13 +109,13 @@ export function PrivacyPolicy() {
             <p class="mt-3">
               Contributions are stored on the community server only to build the
               shared cache, keyed by the public handle and the random
-              installation ID — never by your identity. They are not sold,
+              installation ID - never by your identity. They are not sold,
               rented, or used for advertising.
             </p>
             <p class="mt-3">
               To keep the cache useful, the extension also looks up accounts
               that appear in your feed in the background, rather than only the
-              ones you hover — the same public handles X has already sent your
+              ones you hover - the same public handles X has already sent your
               browser, at a deliberately slow pace. The toggle governs both:
               switch it off and background lookups stop with it, the extension
               makes no requests to the community server, and a location is only
@@ -130,7 +130,7 @@ export function PrivacyPolicy() {
               <strong class="text-ink font-semibold">Google Analytics</strong>{' '}
               to collect anonymous, aggregated visit statistics so we can
               understand traffic and improve the site. This applies to the
-              website only — the{' '}
+              website only - the{' '}
               <strong class="text-ink font-semibold">
                 browser extension itself contains no analytics, telemetry, or
                 tracking of any kind.

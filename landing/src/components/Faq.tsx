@@ -6,7 +6,7 @@ import { useT } from '../i18n/context'
  * whether or not hydration ever runs, and this page defers hydration to idle.
  * A JS accordion would put the crawlable half of the page behind a click.
  *
- * The same array is emitted as FAQPage structured data in `seo.ts` — both read
+ * The same array is emitted as FAQPage structured data in `seo.ts` - both read
  * `pages.<key>.faq` from the one dictionary, which is what keeps the schema in
  * the same language as the copy above it.
  */

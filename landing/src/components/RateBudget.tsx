@@ -9,8 +9,8 @@
    why it states the limit itself instead of assuming the reader met it
    earlier.
 
-   The mechanism — the pacing, the reserved share, what happens when you do run
-   dry — is a page of its own at `/x-rate-limit`. It was here, and three
+   The mechanism - the pacing, the reserved share, what happens when you do run
+   dry - is a page of its own at `/x-rate-limit`. It was here, and three
    paragraphs plus a three-column grid is a wall of text between a visitor and
    the rest of the site.
    ─────────────────────────────────────────────────────────────────────────── */
@@ -56,7 +56,7 @@ export function RateBudget() {
    The numbers in the copy around it are the shipped defaults:
    LOOKUP_LIMIT_PER_WINDOW and LOOKUP_WINDOW_MINUTES from
    `server/src/x-lookup-budget.ts`, DEFAULT_PREFETCH_SHARE from
-   `src/scripts/constants.ts` — written into the dictionaries the same way
+   `src/scripts/constants.ts` - written into the dictionaries the same way
    HowItWorks writes the 30-day cache, since the landing site is its own
    package and importing across would drag the extension's module graph into a
    static site for three integers.

@@ -1,4 +1,4 @@
-// Per-client contribution budget, in memory and per window — see "The
+// Per-client contribution budget, in memory and per window - see "The
 // contribution budget" in CLAUDE.md.
 
 import { LOOKUP_LIMIT_PER_WINDOW, LOOKUP_WINDOW_MS } from './x-lookup-budget.ts'
@@ -71,12 +71,12 @@ function evictStaleClients(now: number): void {
   }
 }
 
-/** Test seam — the map is process-global. */
+/** Test seam - the map is process-global. */
 export function __resetContribLimit(): void {
   budgets.clear()
 }
 
-/** Test seam — memory is the only observable difference an expired budget makes. */
+/** Test seam - memory is the only observable difference an expired budget makes. */
 export function __countTrackedClients(): number {
   return budgets.size
 }

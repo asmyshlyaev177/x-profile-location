@@ -1,4 +1,4 @@
-// Shared location cache — request handlers, backend-agnostic. The server never
+// Shared location cache - request handlers, backend-agnostic. The server never
 // talks to X. See CLAUDE.md and README.md; endpoints are listed in both.
 
 import { admitContributions } from './contrib-limit.ts'
@@ -15,13 +15,13 @@ export const VOTE_RETENTION_MS = 60 * 24 * 60 * 60 * 1000 // 60 days
 const USERNAME_RE = /^[a-z0-9_]{1,50}$/
 const MAX_FIELD_LEN = 60
 
-// Per-username vote cap, pruned at cap + slack, oldest-first — see "Why the vote
+// Per-username vote cap, pruned at cap + slack, oldest-first - see "Why the vote
 // cap has slack" in CLAUDE.md.
 const VOTE_CAP = 10
 const VOTE_CAP_SLACK = 5
 
 // How long /v1/stats reuses a count, and how long clients are told to. Not a
-// nicety — see "Two queries that look wrong" in CLAUDE.md.
+// nicety - see "Two queries that look wrong" in CLAUDE.md.
 const STATS_TTL_MS = 180_000
 
 interface Served {
@@ -133,7 +133,7 @@ async function handleBatch(req: Request, env: Env): Promise<Response> {
 }
 
 // The last count and when it was taken. Module state, so on Workers it is per
-// isolate — a cold isolate pays for one COUNT, as a restart does on Node.
+// isolate - a cold isolate pays for one COUNT, as a restart does on Node.
 let counted: { at: number; profiles: number } | null = null
 
 /** The memo outlives a test otherwise, and the next one would read its number. */
@@ -141,7 +141,7 @@ export function __resetStats(): void {
   counted = null
 }
 
-/** How many accounts the cache can answer for. Unfiltered on purpose — see
+/** How many accounts the cache can answer for. Unfiltered on purpose - see
  *  "Two queries that look wrong" in CLAUDE.md. */
 async function handleStats(env: Env, now: number): Promise<Response> {
   if (counted === null || now - counted.at >= STATS_TTL_MS) {
@@ -245,7 +245,7 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
   const affected = new Set(votes.map((v) => v.u))
   if (votes.length === 0) return json({ ok: true })
 
-  // 1. Record each client's (latest) vote — one row per (username, client_id).
+  // 1. Record each client's (latest) vote - one row per (username, client_id).
   await env.DB.batch(
     votes.map((v) =>
       env.DB.prepare(
@@ -261,7 +261,7 @@ async function handleContribute(req: Request, env: Env): Promise<Response> {
     ),
   )
 
-  // 2. Recompute consensus from all of a username's votes — no date filter,
+  // 2. Recompute consensus from all of a username's votes - no date filter,
   //    see "Two queries that look wrong" in CLAUDE.md.
   const affectedList = [...affected]
   const ph = affectedList.map(() => '?').join(',')
@@ -378,7 +378,7 @@ export default {
     }
   },
 
-  // Retention cleanup, the only thing that ages votes out — see CLAUDE.md.
+  // Retention cleanup, the only thing that ages votes out - see CLAUDE.md.
   // `_controller` / `_ctx` stay loose so this file needs no workers-types.
   async scheduled(
     _controller: unknown,

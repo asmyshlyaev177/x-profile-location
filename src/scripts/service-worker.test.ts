@@ -339,7 +339,7 @@ describe('tabs coming and going', () => {
 })
 
 // The share and the pacing mode used to be pushed into each tab's prefetcher.
-// One broker means one place reads them — here — or two tabs could be pacing
+// One broker means one place reads them - here - or two tabs could be pacing
 // against different numbers.
 describe('pacing settings', () => {
   const WINDOW = LOOKUP_WINDOW_MS
@@ -385,7 +385,7 @@ describe('pacing settings', () => {
     for (const listener of env.listeners['storage.onChanged'] ?? []) {
       listener({ prefetchShare: { newValue: 0.9 } }, 'local')
     }
-    // 0.9 reserves 5, leaving 22 of the 27 — a gap the old share cannot produce.
+    // 0.9 reserves 5, leaving 22 of the 27 - a gap the old share cannot produce.
     await vi.waitFor(async () =>
       aboutGap(await gapAfterOneLookup(27), WINDOW / 22),
     )

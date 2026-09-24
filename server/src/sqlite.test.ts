@@ -1,6 +1,6 @@
 // End-to-end tests for the SQLite backend: real better-sqlite3, real schema,
 // driven through the same handlers the Worker runs. This is what proves the
-// db-types.ts adapter is a faithful stand-in for D1 — the handler code under
+// db-types.ts adapter is a faithful stand-in for D1 - the handler code under
 // test is not mocked at any layer.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -74,7 +74,7 @@ function profileCount(username: string): number {
   ).n
 }
 
-describe('sqlite backend — round trip', () => {
+describe('sqlite backend - round trip', () => {
   it('serves back what a single client contributed', async () => {
     await contribute('client-a', [
       { u: 'Alice', loc: 'United States', src: 'web', acc: true },
@@ -116,7 +116,7 @@ describe('sqlite backend — round trip', () => {
 
   it('returns nothing for unknown names, and skips invalid ones', async () => {
     expect(await lookup(['nobody'])).toEqual([])
-    // Rejected by USERNAME_RE before reaching SQL — no rows, no error.
+    // Rejected by USERNAME_RE before reaching SQL - no rows, no error.
     expect(await lookup(['has space', 'has-dash', "quote'"])).toEqual([])
   })
 
@@ -153,7 +153,7 @@ describe('sqlite backend — round trip', () => {
   })
 })
 
-describe('sqlite backend — vote cap', () => {
+describe('sqlite backend - vote cap', () => {
   it('lets votes accumulate through the slack, then prunes to the cap', async () => {
     vi.useFakeTimers()
     // Distinct timestamps so "newest wins" eviction is deterministic.
@@ -206,7 +206,7 @@ describe('sqlite backend — vote cap', () => {
   })
 })
 
-describe('sqlite backend — retention', () => {
+describe('sqlite backend - retention', () => {
   it('deletes votes past the window and leaves recent ones', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
@@ -215,12 +215,12 @@ describe('sqlite backend — retention', () => {
     vi.setSystemTime(new Date('2026-04-01T00:00:00Z')) // > 60 days later
     await contribute('new-client', [{ u: 'fresh', loc: 'Chile', src: 'web' }])
 
-    // The real driver's count, not a mocked one — this is what gets logged.
+    // The real driver's count, not a mocked one - this is what gets logged.
     expect(await worker.scheduled(null, env)).toBe(1)
 
     expect(voteCount('stale')).toBe(0)
     expect(voteCount('fresh')).toBe(1)
-    // A profile left with no votes goes with them — that is what sends the next
+    // A profile left with no votes goes with them - that is what sends the next
     // reader to X for a fresh value.
     expect(profileCount('stale')).toBe(0)
     expect(await lookup(['stale'])).toEqual([])

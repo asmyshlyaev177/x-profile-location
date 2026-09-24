@@ -32,7 +32,7 @@ vi.mock('../scripts/cache/shared-cache', () => ({
 }))
 
 // Mutable backing store for the chrome.storage.local mock. It has to be in
-// place before options.tsx is imported below — the module renders itself into
+// place before options.tsx is imported below - the module renders itself into
 // document.body on import, which reads storage.
 const storedRef: { current: Record<string, unknown> } = { current: {} }
 const setMock = vi.fn()
@@ -74,7 +74,7 @@ function tabButton(root: ParentNode, label: string) {
 
 /**
  * The card carrying a given heading. Sections are plain <section> cards since
- * the accordions were removed — nothing to expand, so a test just finds the
+ * the accordions were removed - nothing to expand, so a test just finds the
  * card and reads inside it.
  */
 function section(root: ParentNode, label: string) {
@@ -104,7 +104,7 @@ describe('background lookups section', () => {
     ) as HTMLSelectElement
   }
 
-  /** The section's checkbox whose label contains `text` — order-independent. */
+  /** The section's checkbox whose label contains `text` - order-independent. */
   function checkbox(root: ParentNode, text: string) {
     const label = [
       ...section(root, PREFETCH_LABEL).querySelectorAll('label'),
@@ -119,7 +119,7 @@ describe('background lookups section', () => {
     await waitFor(() => expect(shareSelect(container).value).toBe('0.85'))
     expect(checkbox(container, PREFETCH).checked).toBe(true)
     expect(checkbox(container, SPREAD).checked).toBe(true)
-    // Defaults are applied in memory only — the first write should be the user's.
+    // Defaults are applied in memory only - the first write should be the user's.
     expect(setMock).not.toHaveBeenCalled()
   })
 
@@ -207,7 +207,7 @@ describe('background lookups section', () => {
 
 // The threshold the shared cache trusts (MIN_CONFIDENCE_KEY) is a documented
 // trade-off rather than a preference, so it lives behind a section that the
-// options page does not advertise — see the reasoning in shared-cache.ts.
+// options page does not advertise - see the reasoning in shared-cache.ts.
 describe('advanced section', () => {
   // The tab is what is (or isn't) offered; the section inside it is where the
   // one setting lives.
@@ -525,7 +525,7 @@ describe('account age thresholds', () => {
     expect(
       [...select.querySelectorAll('option')].map((o) => o.textContent),
     ).toContain('30 days')
-    // Nothing was written — showing a setting must not change it.
+    // Nothing was written - showing a setting must not change it.
     expect(setMock).not.toHaveBeenCalled()
   })
 })

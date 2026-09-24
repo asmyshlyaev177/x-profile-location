@@ -42,7 +42,7 @@ export function Footer() {
     {
       heading: t.footer.groupSmallPrint,
       items: [
-        // English-only, so it is linked without a locale prefix on purpose —
+        // English-only, so it is linked without a locale prefix on purpose -
         // `href()` would point at a page that was never rendered.
         { label: t.footer.privacyPolicy, href: '/privacy-policy' },
         { label: t.footer.whatIsNotCollected, href: `${href('/')}#privacy` },

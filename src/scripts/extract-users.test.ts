@@ -63,9 +63,9 @@ describe('base cases', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Direct User node — screen_name source
+// Direct User node - screen_name source
 // ---------------------------------------------------------------------------
-describe('User node — screen_name from core', () => {
+describe('User node - screen_name from core', () => {
   it('extracts userName from core.screen_name', () => {
     const user = makeUser('alice')
     expect(extractUsers(user)).toEqual([
@@ -75,7 +75,7 @@ describe('User node — screen_name from core', () => {
 
   it('ignores a screen_name on the legacy object', () => {
     // Identity moved to `core`. Reading legacy would resurrect a shape X has
-    // retired — see the bio test below for the live measurement.
+    // retired - see the bio test below for the live measurement.
     const user = {
       __typename: 'User',
       legacy: { screen_name: 'secondary', description: 'bio' },
@@ -90,9 +90,9 @@ describe('User node — screen_name from core', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Direct User node — bio source priority
+// Direct User node - bio source priority
 // ---------------------------------------------------------------------------
-describe('User node — bio extraction', () => {
+describe('User node - bio extraction', () => {
   it('returns null bio when profile_bio is absent', () => {
     const user = makeUser('charlie')
     expect(extractUsers(user)).toEqual([
@@ -136,7 +136,7 @@ describe('User node — bio extraction', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Non-User __typename nodes — should still recurse into children
+// Non-User __typename nodes - should still recurse into children
 // ---------------------------------------------------------------------------
 describe('non-User __typename nodes', () => {
   it('recurses into a node with a different __typename', () => {
@@ -533,7 +533,7 @@ describe('account facts', () => {
     })
     expect(parsed.facts).toEqual({})
     // A merge target must be able to tell "not in this response" from
-    // "explicitly nothing" — see mergeCached's facts branch.
+    // "explicitly nothing" - see mergeCached's facts branch.
     expect('blockedBy' in parsed.facts).toBe(false)
   })
 })

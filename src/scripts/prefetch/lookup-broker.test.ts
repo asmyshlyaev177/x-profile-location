@@ -10,7 +10,7 @@ import {
 import { PACING_DEFAULTS } from './prefetch-queue'
 
 // ---------------------------------------------------------------------------
-// Harness: a broker whose only outside dependency — the clock — is ours. Most
+// Harness: a broker whose only outside dependency - the clock - is ours. Most
 // tests pace at zero, because what they are about is *which* handle comes next;
 // the pacing suite sets a real gap.
 // ---------------------------------------------------------------------------
@@ -99,7 +99,7 @@ describe('grant order', () => {
     expect(drain(broker, 1, HIDDEN)).toEqual(['shown', 'hidden'])
   })
 
-  it('still serves hidden tabs — they are prefetching on purpose', () => {
+  it('still serves hidden tabs - they are prefetching on purpose', () => {
     const { broker } = makeBroker(unpaced())
     broker.enqueue(1, [{ userName: 'only-one' }], HIDDEN)
     expect(broker.next(1, HIDDEN).userName).toBe('only-one')
@@ -131,7 +131,7 @@ describe('grant order', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Cross-tab duplicate suppression — the reason the broker exists
+// Cross-tab duplicate suppression - the reason the broker exists
 // ---------------------------------------------------------------------------
 describe('in-flight handles', () => {
   it('never grants the same handle to two tabs at once', () => {
@@ -251,7 +251,7 @@ describe('in-flight handles', () => {
 })
 
 // ---------------------------------------------------------------------------
-// `asked` — what replaces the per-tab checkedThisSession set. Nothing here is
+// `asked` - what replaces the per-tab checkedThisSession set. Nothing here is
 // ever written to disk: a second tab must not re-ask, and next window may.
 // ---------------------------------------------------------------------------
 describe('handles already asked about', () => {
@@ -322,7 +322,7 @@ describe('handles already asked about', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Revalidation — the reserved slice spent on accounts already answered for
+// Revalidation - the reserved slice spent on accounts already answered for
 // ---------------------------------------------------------------------------
 // The queue only ever holds accounts nobody has an answer for, so without this
 // a location is fetched once and believed until the 30-day cache TTL drops it.
@@ -381,7 +381,7 @@ describe('revalidation', () => {
   })
 
   // The offer list arrives over chrome.runtime from a content script, typed
-  // string[] and nothing more — an empty or non-string entry would become a
+  // string[] and nothing more - an empty or non-string entry would become a
   // grant the poller then asks X about by that name.
   it('drops junk offers rather than granting them', () => {
     const { broker } = makeBroker(unpaced())
@@ -652,7 +652,7 @@ describe('the rate-limit ledger', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Pacing — one clock for every tab, which is the whole point of moving it here
+// Pacing - one clock for every tab, which is the whole point of moving it here
 // ---------------------------------------------------------------------------
 describe('pacing', () => {
   // The opening sprint is prefetch-queue's, and tested there. These are about
@@ -711,7 +711,7 @@ describe('pacing', () => {
       FOCUSED,
     )
     // A hover answered 'seen' after it was queued, so the feed queue still holds
-    // it — and the reply is what the next grant will actually be.
+    // it - and the reply is what the next grant will actually be.
     h.broker.report({ userName: 'seen', spent: true, ok: true, remaining: 48 })
 
     expect(h.broker.next(1, FOCUSED).waitMs).toBe(PACING_DEFAULTS.windowMs / 40)
@@ -780,7 +780,7 @@ describe('pacing', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Snapshots — the service worker is evicted after ~30s idle, which is shorter
+// Snapshots - the service worker is evicted after ~30s idle, which is shorter
 // than the gap between lookups. Everything below has to survive that.
 // ---------------------------------------------------------------------------
 describe('toJSON / from', () => {
@@ -842,7 +842,7 @@ describe('toJSON / from', () => {
   })
 
   // JSON has no -Infinity, and a `null` read back as a number would put the
-  // next lookup 1970-shaped milliseconds in the past — or never.
+  // next lookup 1970-shaped milliseconds in the past - or never.
   it('survives a lastGrantAt that has never been set', () => {
     const h = makeBroker()
     const restored = roundTrip(h.broker, h.now)

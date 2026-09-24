@@ -27,7 +27,7 @@ export interface StatsSnapshot {
   lookupNames: number
   /** profiles actually served back */
   lookupHits: number
-  /** lookupHits / lookupNames — the number that says whether the cache is working. */
+  /** lookupHits / lookupNames - the number that says whether the cache is working. */
   hitRate: number | null
   /** POST /v1/loc */
   contributions: number
@@ -37,9 +37,9 @@ export interface StatsSnapshot {
   users: number
   /** true if the distinct-install set hit its cap and the count is a floor */
   usersCapped?: true
-  /** GET /v1/stats — popups asking how much the cache holds */
+  /** GET /v1/stats - popups asking how much the cache holds */
   statsReads: number
-  /** OPTIONS to those paths — the CORS preflights ahead of the extension's POSTs */
+  /** OPTIONS to those paths - the CORS preflights ahead of the extension's POSTs */
   preflights: number
   /** requests to anything else (404s, probes, scanners) */
   other: number
@@ -57,7 +57,7 @@ export interface StatsSnapshot {
  *  a floor rather than the process to an OOM. */
 const MAX_TRACKED_CLIENTS = 50_000
 
-/** Body shapes we count. Parsed defensively — stats must never fail a request. */
+/** Body shapes we count. Parsed defensively - stats must never fail a request. */
 function parseBody(json: string): Record<string, unknown> | null {
   if (json === '') return null
   try {

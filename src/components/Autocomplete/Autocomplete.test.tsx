@@ -132,7 +132,7 @@ describe('Autocomplete', () => {
     const options = screen.getAllByRole('option')
     expect(options).toHaveLength(1)
     await user.click(options[0])
-    // The alias is only a way in — what gets committed is the option itself.
+    // The alias is only a way in - what gets committed is the option itself.
     expect(onSelect).toHaveBeenCalledWith('United States')
   })
 

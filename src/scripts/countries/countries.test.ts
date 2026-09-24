@@ -29,7 +29,7 @@ describe('canonicalLocation', () => {
 
   it('folds the two spellings X could report onto the same entry', () => {
     // Both are COUNTRY_FLAGS keys in their own right, so blocking one has to
-    // block the other — the picker only offers the canonical one.
+    // block the other - the picker only offers the canonical one.
     expect(canonicalLocation('Czech Republic')).toBe('Czechia')
     expect(canonicalLocation('Czechia')).toBe('Czechia')
     expect(canonicalLocation('Macedonia')).toBe('North Macedonia')

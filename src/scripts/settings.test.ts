@@ -198,7 +198,7 @@ describe('reading a setting', () => {
 
   // A key removed from storage arrives as an undefined newValue, and the old
   // hand-written `Boolean(newValue)` turned that into false for every one of
-  // these — the opposite of what the same key means when absent on load.
+  // these - the opposite of what the same key means when absent on load.
   it('reads a removed key the same way it reads an absent one', () => {
     expect(settingValue(EXTENSION_ENABLED_KEY, undefined)).toBe(true)
   })
@@ -306,7 +306,7 @@ describe('the list edits both editors make', () => {
     ])
   })
 
-  // Identity is the caller's signal that there is nothing to write — a popup
+  // Identity is the caller's signal that there is nothing to write - a popup
   // that stored on every keystroke would wake the content script for nothing.
   it('hands back the same list when the edit changes nothing', () => {
     const keywords = [{ text: 'crypto', mode: 'word' as const }]
@@ -341,7 +341,7 @@ describe('settingsFileName', () => {
   })
 })
 
-// Moved here with the vocabulary they cover — countries.ts is country data now.
+// Moved here with the vocabulary they cover - countries.ts is country data now.
 describe('normalizePrefetchShare', () => {
   it('defaults to 85% when nothing usable is stored', () => {
     expect(DEFAULT_PREFETCH_SHARE).toBe(0.85)
@@ -365,7 +365,7 @@ describe('normalizePrefetchShare', () => {
     expect(normalizePrefetchShare(0.44)).toBe(0.5)
     expect(normalizePrefetchShare(0.83)).toBe(0.85)
     expect(normalizePrefetchShare(0.81)).toBe(0.8)
-    // Ties go to the smaller share — leaving more room for the user's hovers.
+    // Ties go to the smaller share - leaving more room for the user's hovers.
     expect(normalizePrefetchShare(0.4)).toBe(0.3)
     expect(normalizePrefetchShare(0.75)).toBe(0.7)
   })

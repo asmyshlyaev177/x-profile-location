@@ -1,5 +1,5 @@
 // The tab half of the lookup broker: ask what to look up, look it up, ask
-// again. The clock lives here, not in the worker — see CLAUDE.md.
+// again. The clock lives here, not in the worker - see CLAUDE.md.
 
 import type { NextInstruction } from './lookup-broker'
 
@@ -69,7 +69,7 @@ export class PrefetchPoller {
     return this.running
   }
 
-  /** Poll now rather than at the end of the current wait — see "Waking a poll
+  /** Poll now rather than at the end of the current wait - see "Waking a poll
    *  in flight" in CLAUDE.md. */
   wake(): void {
     if (!this.running) return

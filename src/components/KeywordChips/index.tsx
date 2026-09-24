@@ -46,7 +46,7 @@ export function KeywordAddRow({
 
 export interface KeywordChipsProps {
   keywords: Keyword[]
-  /** The host page's own chip styling — the popup and the options page differ. */
+  /** The host page's own chip styling - the popup and the options page differ. */
   classes: { chips: string; chip: string; remove: string }
   onChange: (next: Keyword[]) => void
 }
@@ -71,7 +71,7 @@ export function KeywordChips({
           <span class={css.caret} aria-hidden="true">
             ▾
           </span>
-          {/* Covers the chip, so the whole badge opens the list — and carries no
+          {/* Covers the chip, so the whole badge opens the list - and carries no
               text of its own, so the mode costs the chip no width. */}
           <select
             class={css.mode}

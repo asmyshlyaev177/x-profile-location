@@ -1,5 +1,5 @@
 // Country and region names in the reader's language, from CLDR rather than by
-// hand. Display only — see "Location names & aliases" in CLAUDE.md.
+// hand. Display only - see "Location names & aliases" in CLAUDE.md.
 
 import { COUNTRY_FLAGS } from './countries'
 import { t, uiLocale } from '../i18n'
@@ -16,7 +16,7 @@ export function isoFromFlag(flag: string): string | null {
 }
 
 // `North America` is 003, the whole continent, because REGION_MEMBERS puts
-// Guatemala and Cuba in it — 021 is only the northern part.
+// Guatemala and Cuba in it - 021 is only the northern part.
 
 const REGION_M49: Record<string, string> = {
   Africa: '002',
@@ -85,7 +85,7 @@ function buildNames(locale: string): Localized {
   const display = new Map<string, string>()
   const search = new Map<string, string[]>()
 
-  // Identity case. CLDR would rename things — "Myanmar (Burma)" — where the
+  // Identity case. CLDR would rename things - "Myanmar (Burma)" - where the
   // extension says what X says.
   if (locale.toLowerCase().startsWith('en')) return { display, search }
 
@@ -136,7 +136,7 @@ export function __resetLocationNames(): void {
   cache = null
 }
 
-/** Unchanged when there is no translation — including anything X made up. */
+/** Unchanged when there is no translation - including anything X made up. */
 export function localizedLocation(canonical: string): string {
   return displayNames().get(canonical) ?? canonical
 }
@@ -149,7 +149,7 @@ export function sortByLocalizedName(canonicals: readonly string[]): string[] {
   )
 }
 
-/** Undefined when the alias is just the label again — that would be noise. */
+/** Undefined when the alias is just the label again - that would be noise. */
 export function aliasNote(
   canonical: string,
   alias: string | undefined,

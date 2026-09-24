@@ -1,5 +1,5 @@
-/* Features. Not a grid of same-sized cards: the five badges are one legend —
-   five readings of the same injected row — and the three things that change
+/* Features. Not a grid of same-sized cards: the five badges are one legend -
+   five readings of the same injected row - and the three things that change
    your timeline get room to argue. Colour is never decorative: cyan is ours,
    X blue is X's, amber means highlighted, red means blocked. */
 
@@ -76,7 +76,7 @@ const BADGES = {
   ),
 } as const
 
-/** Rows on narrow screens, columns on wide ones — a legend either way. */
+/** Rows on narrow screens, columns on wide ones - a legend either way. */
 function Legend({ t }: { t: Dict }) {
   const ids = ['country', 'region', 'vpn', 'registration', 'cooldown'] as const
 
@@ -250,7 +250,7 @@ function HighlightPreview({ t }: { t: Dict }) {
   )
 }
 
-/** The extension's options page — light UI, so it stays light here. */
+/** The extension's options page - light UI, so it stays light here. */
 function OptionsPopup({ t }: { t: Dict }) {
   const c = t.features.highlight
   return (

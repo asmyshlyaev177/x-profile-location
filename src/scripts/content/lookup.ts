@@ -1,5 +1,5 @@
 // Ask X about one account, once, and tell the broker what it cost. The pace is
-// the service worker's — see ../prefetch/CLAUDE.md.
+// the service worker's - see ../prefetch/CLAUDE.md.
 
 import {
   LOOKUP_WINDOW_MS,
@@ -33,7 +33,7 @@ export function setApiHeaders(h: Record<string, string> | null) {
 const checkedThisSession = new Set<string>()
 
 // A hover or swipe refetches rather than trusting a cached answer, at most once
-// per handle per window — see "Asking again for the account" in CLAUDE.md.
+// per handle per window - see "Asking again for the account" in CLAUDE.md.
 const lastManualAt = new Map<string, number>()
 
 function manualRefetchDue(key: string): boolean {
@@ -135,7 +135,7 @@ function toLocationData(
     locationAccurate: profile.location_accurate !== false,
     source: profile.source ?? null,
     // Same response, already paid for. This is the only place handle-change
-    // history is available at all — timeline nodes don't carry it.
+    // history is available at all - timeline nodes don't carry it.
     facts: definedFacts(parseAccountFacts(result)),
   }
 }
@@ -164,7 +164,7 @@ function answerWithoutAsking(
   if (revalidate) return undefined
   // Bio-only entries (location: null, source: null) fall through.
   if (stored?.location || stored?.source) return stored
-  // Already asked X this session — whatever IDB has is the whole answer.
+  // Already asked X this session - whatever IDB has is the whole answer.
   if (checkedThisSession.has(userName.toLowerCase())) return stored ?? null
   return undefined
 }
@@ -179,12 +179,12 @@ async function runLookup(
   const settled = answerWithoutAsking(userName, stored, revalidate)
   if (settled !== undefined) return { data: settled, cost: NOTHING_SPENT }
 
-  // A refetch that cannot go out still shows the last answer — but a bio-only
+  // A refetch that cannot go out still shows the last answer - but a bio-only
   // entry is not one, and would cost the caller its rate-limit badge.
   const storedAnswer = stored?.location || stored?.source ? stored : undefined
   const fallbackData = revalidate ? (storedAnswer ?? null) : null
 
-  // Don't attempt without intercepted headers — avoids failures before
+  // Don't attempt without intercepted headers - avoids failures before
   // the page-script captures the session.
   if (!capturedHeaders) return { data: fallbackData, cost: NOTHING_SPENT }
 
@@ -261,7 +261,7 @@ export async function fetchLocationData(
     // Stamped on the request, not on the gesture: a hover that found the window
     // closed asked X nothing, and the next one should be free to try.
     if (manual && cost.spent) lastManualAt.set(key, Date.now())
-    // Nothing went out and the broker is holding nothing for us — every hover
+    // Nothing went out and the broker is holding nothing for us - every hover
     // over a cached account lands here, and each report would wake the worker.
     if (!cost.spent && !opts.granted) return data
 

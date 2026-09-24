@@ -1,4 +1,4 @@
-// The keyword / flag rule and the marks it paints — see "Marking the matched
+// The keyword / flag rule and the marks it paints - see "Marking the matched
 // keyword" in CLAUDE.md.
 
 import { HIGHLIGHT_FLAGS_KEY } from '../constants'

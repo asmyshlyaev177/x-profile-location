@@ -9,7 +9,7 @@ function mockDb(runResult: unknown = {}) {
   return { env: { DB: { prepare } } as unknown as Env, prepare, bind, run }
 }
 
-describe('scheduled — retention cleanup', () => {
+describe('scheduled - retention cleanup', () => {
   it('deletes votes older than the retention window', async () => {
     const { env, prepare, bind, run } = mockDb()
     const before = Date.now()
@@ -41,9 +41,9 @@ describe('scheduled — retention cleanup', () => {
     expect(cutoff).toBeLessThan(Date.now())
   })
 
-  // The count node-server.ts logs — votes deleted, not profiles expired. The two backends report it in different
+  // The count node-server.ts logs - votes deleted, not profiles expired. The two backends report it in different
   // shapes, and neither is guaranteed by db-types.ts, so an unreadable result
-  // must degrade to 0 rather than throw — the log line is not worth failing a
+  // must degrade to 0 rather than throw - the log line is not worth failing a
   // cleanup over.
   describe('deleted-row count', () => {
     it("reads D1's nested meta.changes", async () => {

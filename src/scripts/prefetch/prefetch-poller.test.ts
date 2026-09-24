@@ -93,7 +93,7 @@ describe('runOnce', () => {
   })
 
   // An evicted or reloading worker answers nothing. Background lookups are the
-  // only casualty — hovers never come through here.
+  // only casualty - hovers never come through here.
   it('backs off when the broker cannot be reached', async () => {
     const h = harness([null])
     expect(await h.poller.runOnce()).toBe(UNREACHABLE_RETRY_MS)
@@ -159,7 +159,7 @@ describe('the polling loop', () => {
   // The window a flaky e2e test lived in: the startup poll asks an empty queue,
   // the timeline's users land while it is still out, and wake() therefore
   // arrives *before* the answer it should override. Scheduling on wake() alone
-  // was not enough — the in-flight "nothing to do, wait 30s" replaced the
+  // was not enough - the in-flight "nothing to do, wait 30s" replaced the
   // immediate re-poll a moment later, and the first feed flag came half a minute
   // after the page.
   it('does not let an in-flight poll bury a wake() that arrived during it', async () => {

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Mock idb-keyval — the cache module calls createStore at module level,
+// Mock idb-keyval - the cache module calls createStore at module level,
 // so the mock must be hoisted before the import resolves.
 // ---------------------------------------------------------------------------
 vi.mock('idb-keyval', () => ({
@@ -19,7 +19,7 @@ import type { LocationData } from './cache'
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
-// Convenience — a minimal valid LocationData value
+// Convenience - a minimal valid LocationData value
 const loc = (location: string): LocationData => ({
   location,
   locationAccurate: true,
@@ -299,7 +299,7 @@ describe('cleanupCache', () => {
     const now = Date.now()
     vi.mocked(entries).mockResolvedValue([
       ['user1', makeEntry(now - 1_000)],
-      ['user2', makeEntry(now - THIRTY_DAYS_MS)], // exactly at boundary — not expired
+      ['user2', makeEntry(now - THIRTY_DAYS_MS)], // exactly at boundary - not expired
     ])
     await cleanupCache()
     expect(vi.mocked(del)).not.toHaveBeenCalled()

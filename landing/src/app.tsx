@@ -26,15 +26,15 @@ interface AppProps {
   url?: string
   /**
    * The copy for this page's language. Supplied by whichever entry rendered
-   * it — statically by `prerender.tsx`, lazily by `main.tsx` — so that `App`
+   * it - statically by `prerender.tsx`, lazily by `main.tsx` - so that `App`
    * itself never imports the registry.
    */
   dict: Dict
 }
 
 /**
- * Guide pages share one shape — article, then the page's own FAQ, then the
- * install CTA — so they only need to name their body here. The metadata for
+ * Guide pages share one shape - article, then the page's own FAQ, then the
+ * install CTA - so they only need to name their body here. The metadata for
  * each lives in the dictionaries, keyed from `routes.ts`.
  */
 const GUIDES: Record<string, () => VNode> = {
@@ -59,7 +59,7 @@ export function App({ url, dict }: AppProps) {
 }
 
 /**
- * Split out so every branch below sits *inside* the provider — a component
+ * Split out so every branch below sits *inside* the provider - a component
  * calling `useT()` above it would silently render English.
  */
 function Body({

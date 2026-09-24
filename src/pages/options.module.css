@@ -6,14 +6,14 @@
  * a page with room to spare only made settings harder to find.
  *
  * What replaces them is a flat list of cards, one per topic, with every control
- * laid out on the same rhythm — label and explanation on the left, control on
+ * laid out on the same rhythm - label and explanation on the left, control on
  * the right. The point is that the page can be *scanned*: you should be able to
  * find a setting by reading down the left edge, without opening anything.
  */
 
 /* Both palettes, one line per colour. `light-dark()` reads whichever half the
    page's `color-scheme` selects, which is how the theme setting switches them:
-   it sets `data-theme` on <html> and nothing else. Absent — the default — the
+   it sets `data-theme` on <html> and nothing else. Absent - the default - the
    scheme stays `light dark` and the OS decides, with no storage read in the
    way, so a system user never sees the wrong theme flash first. */
 :root {
@@ -39,7 +39,7 @@
 
 /* An explicit choice pins the scheme. Pinning rather than re-declaring the
    variables is what also brings the controls with no custom properties to
-   follow — checkboxes, the number spinner, scrollbars — onto the same theme. */
+   follow - checkboxes, the number spinner, scrollbars - onto the same theme. */
 :root[data-theme='light'] {
   color-scheme: light;
 }
@@ -88,7 +88,7 @@
   color: var(--text);
 }
 
-/* The master switch reads as a state, not a checkbox in a list — it is the one
+/* The master switch reads as a state, not a checkbox in a list - it is the one
    control that decides whether anything else on the page applies. */
 .masterSwitch {
   display: inline-flex;
@@ -201,7 +201,7 @@
 }
 
 /* One setting: text on the left, control on the right, on a shared rhythm.
-   This is the pattern that makes the page scannable — every row reads the same
+   This is the pattern that makes the page scannable - every row reads the same
    way, so you can find a setting by running down the left edge. */
 .setting {
   display: flex;

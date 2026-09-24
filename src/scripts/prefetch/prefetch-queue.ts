@@ -2,7 +2,7 @@
 import { DEFAULT_PREFETCH_SHARE, LOOKUP_WINDOW_MS } from '../constants'
 import type { PrefetchPacing } from '../settings'
 // The candidate queue and the pacing arithmetic behind background lookups. No
-// timers, no fetching, no rate-limit state — see "Cross-tab lookup broker".
+// timers, no fetching, no rate-limit state - see "Cross-tab lookup broker".
 
 /** 'high' (the feed being scrolled) drains to exhaustion before 'low' (a
  *  thread's replies) gets a single lookup. */
@@ -13,13 +13,13 @@ export const PRIORITIES: readonly PrefetchPriority[] = ['high', 'low']
 
 export interface PrefetchCandidate {
   userName: string
-  /** Defaults to 'high' — an unlabelled candidate is never buried. */
+  /** Defaults to 'high' - an unlabelled candidate is never buried. */
   priority?: PrefetchPriority
 }
 
 export interface RateState {
   /** Seeded at `limit`, decremented per request and corrected from
-   *  x-rate-limit-remaining — so hovers count too. */
+   *  x-rate-limit-remaining - so hovers count too. */
   remaining: number
   /** Per-window total (x-rate-limit-limit). */
   limit: number
@@ -98,7 +98,7 @@ export class CandidateQueue {
       const key = c.userName.toLowerCase()
       const priority = c.priority ?? 'high'
       const existing = this.queued.get(key)
-      // Already queued at this priority, or already ahead of it — leave it be.
+      // Already queued at this priority, or already ahead of it - leave it be.
       if (existing === priority || existing === 'high') continue
       if (existing === 'low') {
         // Promoting: drop the low copy; it is re-added at the front of `high`.
@@ -231,12 +231,12 @@ export function prefetchBudget(
 }
 
 /** Until a 429 lifts, until the window refills, or else the window left over
- *  the budget left, clamped — which spreads the share evenly. */
+ *  the budget left, clamped - which spreads the share evenly. */
 export function nextDelayMs(
   rate: RateState,
   opts: Required<PacingOptions>,
   now: number,
-  /** Whether the next lookup would be a feed account — the only kind sprinted. */
+  /** Whether the next lookup would be a feed account - the only kind sprinted. */
   sprintable = false,
 ): number {
   if (rate.resetAt > now)
@@ -249,7 +249,7 @@ export function nextDelayMs(
   // 'instant': spend the share as fast as the floor allows.
   if (opts.pacing === 'instant') return opts.minSpacingMs
 
-  // The feed's opening sprint — see "Prefetch" in CLAUDE.md.
+  // The feed's opening sprint - see "Prefetch" in CLAUDE.md.
   const sprintFloor =
     usableShare(rate, opts.reserveFraction) * (1 - opts.sprintShare)
   if (sprintable && budget > sprintFloor) {

@@ -61,7 +61,7 @@ import {
   THEME_KEY,
 } from '../scripts/constants'
 // The full settings page: five tabs, flat cards. Only the tab you were on is
-// remembered (OPTIONS_TAB_KEY) — the accordions went with the popup split.
+// remembered (OPTIONS_TAB_KEY) - the accordions went with the popup split.
 
 import { render } from 'preact'
 import type { ComponentChildren } from 'preact'
@@ -98,7 +98,7 @@ import { applyTheme, startThemeSync } from './theme'
 
 const DEFAULT_FLAGS = defaultSetting(HIGHLIGHT_FLAGS_KEY)
 
-// Thunks, so the language can change under the page — and still spelled
+// Thunks, so the language can change under the page - and still spelled
 // `t('key')`, so messages.test.ts can see which keys the page uses.
 const TAB_LABEL: Record<OptionsTabId, () => string> = {
   display: () => t('tabDisplay'),
@@ -204,7 +204,7 @@ function Setting({
   )
 }
 
-/** A full-width block — chip lists, autocompletes, button rows. */
+/** A full-width block - chip lists, autocompletes, button rows. */
 function Stack({ children }: { children: ComponentChildren }) {
   return <div class={css.stack}>{children}</div>
 }
@@ -402,7 +402,7 @@ export function Options() {
     chrome.storage.local.set({ [HIGHLIGHT_KEYWORDS_KEY]: next })
   }
 
-  /** Both keys, or a removal comes back from the stale copy — see content.tsx. */
+  /** Both keys, or a removal comes back from the stale copy - see content.tsx. */
   function writeExceptions(next: RuleExceptions) {
     setExceptions(next)
     chrome.storage.local.set({
@@ -725,7 +725,7 @@ export function Options() {
 
             {/* Each language named in itself, because somebody looking for
                 their own language is not reading the current one. "Match
-                browser" is the odd one out and is translated — whoever reads
+                browser" is the odd one out and is translated - whoever reads
                 it has already found a language they understand. */}
             <Setting
               label={t('setLanguage')}

@@ -87,7 +87,7 @@ describe('setKeywords: which matcher a keyword compiles into', () => {
     expect(emojiKeywords()).toEqual(['🇺🇦', '👍🏽', TRANS_FLAG])
   })
 
-  // Emoji to a reader, but no surrogate pair for the routing test to see —
+  // Emoji to a reader, but no surrogate pair for the routing test to see -
   // which is why the text pattern needs grapheme awareness of its own.
   it('leaves BMP-only symbol sequences on the text pattern', () => {
     setKeywords(whole([HAMMER_SICKLE, ANTI_COMMUNIST, `1${VS16}${KEYCAP}`]))
@@ -95,7 +95,7 @@ describe('setKeywords: which matcher a keyword compiles into', () => {
   })
 
   it('ignores a blank keyword rather than matching every account', () => {
-    // An empty alternative matches between any two non-word characters — so
+    // An empty alternative matches between any two non-word characters - so
     // any bio with punctuation or an emoji, which is nearly all of them.
     setKeywords(whole(['', '   ']))
     expect(matchesAnyKeyword('crypto trader 🚀')).toBe(false)
@@ -120,7 +120,7 @@ describe('matchesAnyKeyword: grapheme cluster boundaries', () => {
   })
 
   // Regression, found live 2026-08-03: @HoppeanGhoul and @Bl00dOld display
-  // "☭⃠" and were highlighted by a keyword of "☭" — the symbol they crossed out.
+  // "☭⃠" and were highlighted by a keyword of "☭" - the symbol they crossed out.
   it('does not match a symbol a combining mark crosses out', () => {
     setKeywords(whole([HAMMER_SICKLE]))
     expect(matchesAnyKeyword(`HoppeanJuuzou ${ANTI_COMMUNIST}`)).toBe(false)
@@ -150,7 +150,7 @@ describe('matchesAnyKeyword: grapheme cluster boundaries', () => {
     expect(matchesAnyKeyword('at the cafe')).toBe(true)
   })
 
-  // ⚧ is one code point, so it compiles into the text pattern — and it sits
+  // ⚧ is one code point, so it compiles into the text pattern - and it sits
   // inside the trans flag, joined on by a ZWJ.
   it('does not match a symbol joined into an emoji sequence', () => {
     setKeywords(whole([TRANS_SYMBOL]))
@@ -170,7 +170,7 @@ describe('matchesAnyKeyword: grapheme cluster boundaries', () => {
   })
 
   // भारतीय ("Indian") extends भारत ("India") by a vowel sign, which is a
-  // mark rather than a letter — so it used to read as a word boundary.
+  // mark rather than a letter - so it used to read as a word boundary.
   it('treats a Devanagari vowel sign as part of the word', () => {
     setKeywords(whole(['भारत']))
     expect(matchesAnyKeyword('भारतीय लोग')).toBe(false)
@@ -178,7 +178,7 @@ describe('matchesAnyKeyword: grapheme cluster boundaries', () => {
   })
 
   // The accepted cost of the same rule. Nikkud is rare enough in X bios that
-  // missing it is the cheaper error — but it is an error.
+  // missing it is the cheaper error - but it is an error.
   it('does not match a Hebrew word written with nikkud', () => {
     setKeywords(whole(['שלום']))
     expect(matchesAnyKeyword('שָׁלוֹם עולם')).toBe(false)
@@ -272,7 +272,7 @@ describe('matchesAnyKeyword: word boundaries', () => {
   })
 
   // The alternation fails "nafo" on the boundary, then backtracks into the
-  // longer one — so neither order loses a match.
+  // longer one - so neither order loses a match.
   it('matches the longer keyword that starts with a shorter one', () => {
     setKeywords(whole(['nafo', 'nafofella']))
     expect(matchesAnyKeyword('nafofella')).toBe(true)
@@ -334,7 +334,7 @@ describe("matchesAnyKeyword: 'partial'", () => {
   })
 
   // The grapheme matcher never had word boundaries to drop, so the mode is inert
-  // for it — an emoji that is genuinely present matches either way.
+  // for it - an emoji that is genuinely present matches either way.
   it('leaves the emoji matcher alone', () => {
     setKeywords(partial(['🇺🇦', '🇵🇸']))
     expect(matchesAnyKeyword('slava 🇺🇦')).toBe(true)
@@ -398,7 +398,7 @@ describe('findKeywordMatches', () => {
 
   it('gives offsets that cut the keyword out of the text exactly', () => {
     // These offsets become Range boundaries, so an off-by-one paints half a
-    // word — or half a flag.
+    // word - or half a flag.
     setKeywords(whole(['nft']))
     const text = 'we love NFT, all the nft'
 
@@ -434,7 +434,7 @@ describe('findKeywordMatches', () => {
   })
 
   it('counts an emoji keyword in code units, not characters', () => {
-    // A flag is two surrogate pairs — four code units. Offsets measured in
+    // A flag is two surrogate pairs - four code units. Offsets measured in
     // characters would land mid-surrogate and split the flag in half.
     setKeywords(whole(['🇺🇦']))
     const text = 'slava 🇺🇦 ukraini'
@@ -515,7 +515,7 @@ describe('findKeywordMatches', () => {
 })
 
 // The hover-card mark answers "why is this highlighted?", so it may never point
-// at a word the rule did not fire on — nor stay away from one it did.
+// at a word the rule did not fire on - nor stay away from one it did.
 describe('the rule and the mark agree', () => {
   afterEach(() => setKeywords([]))
 

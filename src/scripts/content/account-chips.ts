@@ -33,7 +33,7 @@ const ageChip: ChipBuilder = (facts, now) => {
     text: t('chipAge', age),
     title: t('chipAgeTitle', created),
     // The strongest tell for a farmed account, and also just what a new user
-    // looks like — hence a tint rather than a warning.
+    // looks like - hence a tint rather than a warning.
     tone: days < 90 ? 'warn' : 'plain',
   }
 }
@@ -51,7 +51,7 @@ const affiliationChip: ChipBuilder = (facts) => {
   }
 }
 
-// No chip for plain Premium — X draws that. These two are invisible otherwise:
+// No chip for plain Premium - X draws that. These two are invisible otherwise:
 // X renders identity and legacy verification with the same badge as a paid one.
 const verificationChip: ChipBuilder = (facts) => {
   if (facts.identityVerified) {
@@ -78,7 +78,7 @@ const protectedChip: ChipBuilder = (facts) =>
     ? { text: t('chipProtected'), title: t('chipProtectedTitle') }
     : null
 
-/** In the order they are worth reading — blocked-you first, because it explains
+/** In the order they are worth reading - blocked-you first, because it explains
  *  everything else the card is missing. */
 const CHIP_BUILDERS: ChipBuilder[] = [
   blockedByChip,

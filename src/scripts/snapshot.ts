@@ -1,5 +1,5 @@
 // Snapshot a live element to a PNG, keeping the styles it is wearing. Every step
-// degrades rather than aborting — see "Snapshots" in CLAUDE.md.
+// degrades rather than aborting - see "Snapshots" in CLAUDE.md.
 
 /** Curated: ~200 elements × ~340 properties is a data URL big enough to break. */
 const STYLE_PROPS = [
@@ -204,7 +204,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 const MAX_IMAGE_EDGE = 1400
 
 // Below this, decoding to measure costs more than it could save. Avatars and
-// emoji — most of what gets inlined — never come close.
+// emoji - most of what gets inlined - never come close.
 const SHRINK_THRESHOLD_CHARS = 400_000
 
 /** Re-encode an oversized image down to MAX_IMAGE_EDGE, or pass it through. */

@@ -51,7 +51,7 @@ describe('t', () => {
 describe('uiLocale', () => {
   it('reads the catalogue rather than asking the browser', () => {
     // getUILanguage() and @@ui_locale both report the browser's UI language,
-    // which is not necessarily the catalogue that got loaded — a Chrome run
+    // which is not necessarily the catalogue that got loaded - a Chrome run
     // with --lang=ru serves `ru` while still reporting `en_US`.
     expect(uiLocale()).toBe('en')
     __setMessages({ ...EN, localeTag: 'pt-BR' })

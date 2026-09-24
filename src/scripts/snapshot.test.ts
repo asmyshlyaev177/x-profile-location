@@ -9,8 +9,8 @@ import {
 } from './snapshot'
 
 // snapshotElement itself needs a 2D canvas context and an <img> that can decode
-// an SVG data URL, neither of which happy-dom has. What is testable — and what
-// actually breaks — is the DOM surgery it does on the way there.
+// an SVG data URL, neither of which happy-dom has. What is testable - and what
+// actually breaks - is the DOM surgery it does on the way there.
 
 function frag(html: string): HTMLElement {
   const host = document.createElement('div')
@@ -215,7 +215,7 @@ describe('buildSvgDataUrl', () => {
 
 describe('unclampText', () => {
   it('lets a truncated name render in full', () => {
-    // X sizes those boxes for its own webfont, which the snapshot cannot load —
+    // X sizes those boxes for its own webfont, which the snapshot cannot load -
     // so the wider fallback turns a name that fitted into "Some Very Long Nam…".
     const clone = frag(
       '<div><span id="n" style="text-overflow:ellipsis;overflow:hidden;max-width:120px;width:120px">A very long display name</span></div>',

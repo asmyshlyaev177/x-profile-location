@@ -23,7 +23,7 @@ import {
   SHOW_SHARE_BUTTON_KEY,
   USAGE_STATS_KEY,
 } from '../constants'
-// content.tsx — plain DOM, no React/Preact
+// content.tsx - plain DOM, no React/Preact
 import {
   cleanupCache,
   clearAllCache,
@@ -248,7 +248,7 @@ chrome.storage.local
     window.dispatchEvent(new CustomEvent(EVENTS.REQUEST_USERS))
   })
 
-/** Attributes and injected nodes only — never markup React owns. */
+/** Attributes and injected nodes only - never markup React owns. */
 function stripAllInjections(): void {
   for (const article of Array.from(
     document.querySelectorAll<Element>(SEL_TWEET),
@@ -329,7 +329,7 @@ function applyFilterChanges(changes: StorageChanges): void {
     void refreshHiddenTweets()
   })
   // Both keys arrive together, so the general one wins and the legacy one is a
-  // fallback — that is what makes a removal stick.
+  // fallback - that is what makes a removal stick.
   if (changes[RULE_EXCEPTIONS_KEY]) {
     // The write already folded in the legacy list (writeHighlightExceptions),
     // so merging it again here would resurrect anything just removed.
@@ -402,7 +402,7 @@ function applyLookupChanges(changes: StorageChanges): void {
   onSettingChange(changes, SHARED_CACHE_KEY, (value) => {
     setSharedCacheEnabled(value)
     // Opting out of the community cache also stops background prefetch, which
-    // exists to warm it — and opting back in restarts it.
+    // exists to warm it - and opting back in restarts it.
     syncPoller()
   })
   if (changes[MIN_CONFIDENCE_KEY]) {
@@ -432,7 +432,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
   if (!applyMasterSwitch(changes)) return
   if (changes[USAGE_STATS_KEY] || changes[RATE_PROMPT_KEY]) {
-    // Re-arm, or a tab left open across the day that earns the ask never asks —
+    // Re-arm, or a tab left open across the day that earns the ask never asks -
     // and X is exactly the page people leave open for days.
     rearmRatingAsk()
   }
@@ -497,7 +497,7 @@ chrome.runtime.onMessage.addListener((message) => {
 
 async function applyResolved(userName: string): Promise<void> {
   if (!isEnabled()) return
-  // A tab that did the lookup itself has already applied it, its own way — for
+  // A tab that did the lookup itself has already applied it, its own way - for
   // a hover that means leaving the post the card was opened from alone.
   if (answeredThisSession(userName)) return
   const data = await getCached(userName)
@@ -516,7 +516,7 @@ function injectStyles() {
 async function tryHighlightArticle(article: Element) {
   if (!hasHighlightRule()) return
   // The tweet's own author and the author of anything it quotes are judged
-  // independently — either, both, or neither can match.
+  // independently - either, both, or neither can match.
   await tryHighlightTweet(article)
   await tryHighlightQuote(article)
 }
@@ -532,7 +532,7 @@ async function tryHighlightTweet(article: Element) {
 }
 
 // Highlight the embedded quoted post when its author matches a keyword/flag
-// rule — independent of whether the outer tweet's author matches.
+// rule - independent of whether the outer tweet's author matches.
 async function tryHighlightQuote(article: Element) {
   const quote = getQuotedTweetEl(article)
   if (!quote || quote.hasAttribute(QUOTE_HIGHLIGHT_ATTR)) return
@@ -670,7 +670,7 @@ function getFeedRowObserver(): IntersectionObserver {
           feedRowObserver!.unobserve(article)
           continue
         }
-        if (insertionAboveFold(article)) continue // still above the fold — wait
+        if (insertionAboveFold(article)) continue // still above the fold - wait
         pendingFeedRows.delete(article)
         feedRowObserver!.unobserve(article)
         placeFeedRow(article, plan)
@@ -753,7 +753,7 @@ function refreshFeedLocations() {
 
 // Hide tweets from blocked locations. Collapsed behind a placeholder, never
 // removed: attribute-and-CSS survives React's re-renders.
-/** Everything of `match` a placeholder shows — so a change to it is visible. */
+/** Everything of `match` a placeholder shows - so a change to it is visible. */
 function placeholderKey(match: FilterMatch): string {
   return `${match.rule}|${match.icon}|${match.label}`
 }
@@ -785,7 +785,7 @@ function buildShowButton(match: FilterMatch, onShow: () => void): HTMLElement {
   return btn
 }
 
-/** The exception button, once "Show" has put the post on screen — see "The
+/** The exception button, once "Show" has put the post on screen - see "The
  *  exception button" in CLAUDE.md. */
 function placeRevealedException(
   target: Element,
@@ -797,7 +797,7 @@ function placeRevealedException(
   btn.classList.add('x-loc-exc-inline')
 
   // No row when the reader turned it off, or when the rule that caught the post
-  // is one the row has nothing to say about — then it goes where the row would.
+  // is one the row has nothing to say about - then it goes where the row would.
   const row = target.querySelector('.x-loc-feed-row')
   if (row) {
     row.appendChild(btn)
@@ -830,7 +830,7 @@ function buildHiddenPlaceholder(
   return ph
 }
 
-/** One collapsible kind — a post, or the post it quotes. The two collapse
+/** One collapsible kind - a post, or the post it quotes. The two collapse
  *  independently, so each carries its own attribute pair; everything else about
  *  hiding, unhiding and revealing them is the same. */
 function collapser(hiddenAttr: string, revealedAttr: string) {
@@ -861,7 +861,7 @@ function collapser(hiddenAttr: string, revealedAttr: string) {
     const schedule = bornHidden ? runNow : whenSafeToResize
 
     if (hideMode === 'hide') {
-      // CSS takes the whole target, so this mode has no placeholder — and one
+      // CSS takes the whole target, so this mode has no placeholder - and one
       // left by collapse mode must go, or switching back builds a second.
       if (isHiddenSilently(target, hiddenAttr)) return
       schedule(target, () => {
@@ -872,7 +872,7 @@ function collapser(hiddenAttr: string, revealedAttr: string) {
     }
 
     // Build a placeholder only when there is none, or the one there names a rule
-    // no longer catching this post — that keeps rule changes off other posts.
+    // no longer catching this post - that keeps rule changes off other posts.
     if (isCollapsedFor(target, hiddenAttr, match)) return
     schedule(target, () => {
       target.setAttribute(hiddenAttr, 'collapse')
@@ -891,7 +891,7 @@ const post = collapser(HIDDEN_ATTR, HIDDEN_REVEALED_ATTR)
 // reader never filtered.
 const quotedPost = collapser(QUOTE_HIDDEN_ATTR, QUOTE_REVEALED_ATTR)
 
-/** The placeholder this target owns — a direct child. A descendant query would
+/** The placeholder this target owns - a direct child. A descendant query would
  *  also find a collapsed quote's, and answer for the wrong post. */
 function ownPlaceholder(target: Element): HTMLElement | null {
   for (const child of Array.from(target.children)) {
@@ -918,7 +918,7 @@ function isCollapsedFor(
 }
 
 /** Collapse a just-inserted post in the microtask it arrived in, so it is never
- *  laid out at full height — worth 2188px of scroll, see CLAUDE.md. */
+ *  laid out at full height - worth 2188px of scroll, see CLAUDE.md. */
 function applyKnownHide(article: Element): void {
   if (hideMode === 'off') return
 
@@ -969,7 +969,7 @@ async function tryHideArticle(article: Element) {
   if (match) post.hide(article, userName, match)
 }
 
-// For data arriving after the posts did — a cache hit, a resolved prefetch.
+// For data arriving after the posts did - a cache hit, a resolved prefetch.
 // `hideNow: false` judges without collapsing.
 function hideTweetsForUser(
   userName: string,
@@ -1010,7 +1010,7 @@ interface PostVerdict {
   quoteMark: FilterMatch | null
 }
 
-/** Everything the rules have to say about one post — DOM untouched. */
+/** Everything the rules have to say about one post - DOM untouched. */
 async function judgePost(article: Element): Promise<PostVerdict> {
   const quote = getQuotedTweetEl(article)
   const { userName } = extractTweetUserInfo(article)
@@ -1021,7 +1021,7 @@ async function judgePost(article: Element): Promise<PostVerdict> {
     userName ? getCached(userName) : undefined,
     quoteUserName ? getCached(quoteUserName) : undefined,
   ])
-  // The post a status page is about is never collapsed — but it is still
+  // The post a status page is about is never collapsed - but it is still
   // marked, which is the whole difference between the two kinds of rule.
   const collapsible = hideMode !== 'off' && !article.matches(SEL_PRIMARY_TWEET)
   return {
@@ -1095,7 +1095,7 @@ async function refreshHiddenTweets(): Promise<void> {
 
 async function tryMarkArticle(article: Element) {
   // The quote's author is judged on their own, exactly as they are for hiding
-  // and highlighting — either, both or neither can be new.
+  // and highlighting - either, both or neither can be new.
   void tryMarkQuote(article)
 
   if (article.hasAttribute(TWEET_MARK_ATTR)) return
@@ -1126,7 +1126,7 @@ function markTweetsForUser(userName: string, data: LocationData): void {
 }
 
 // People lists (Followers / Following / the People tab of search). Marked,
-// never removed — a short list would look like X's, not ours.
+// never removed - a short list would look like X's, not ours.
 
 async function tryMarkPeopleCell(cell: Element) {
   if (cell.hasAttribute(PEOPLE_CELL_ATTR)) return
@@ -1164,7 +1164,7 @@ function markPeopleCellsForUser(userName: string, data: LocationData): void {
 }
 
 /** One function, so no caller wires up two of three. `hideNow: false` judges
- *  without collapsing — asking about an account is not filtering it. */
+ *  without collapsing - asking about an account is not filtering it. */
 function applyFiltersForUser(
   userName: string,
   data: LocationData,
@@ -1282,7 +1282,7 @@ function refreshLocationFlags(): void {
   }
 }
 
-// One button whatever the rule — from the reader's side these are one
+// One button whatever the rule - from the reader's side these are one
 // complaint, "not this account". The exceptions stay per-rule underneath.
 
 /** Exceptions included: an already-excepted rule is the one the button must
@@ -1321,7 +1321,7 @@ function buildExceptionButton(
   function render() {
     const excepted = exceptedFromAll(userName, rules)
     const phrase = joinPhrases(rules.map((r) => RULE_EXCEPTION_PHRASE[r]()))
-    // One label whatever the rule — four would make one control look like four.
+    // One label whatever the rule - four would make one control look like four.
     btn.textContent = excepted ? t('excUndo') : t('excAdd')
     btn.title = excepted
       ? t('excUndoTitle', userName, phrase)
@@ -1360,7 +1360,7 @@ function syncExceptionButton({
   userName: string
   data: LocationData | null | undefined
   info: { bio: string | null; displayName: string | null }
-  /** Where in `host` the button goes — every caller puts it somewhere else. */
+  /** Where in `host` the button goes - every caller puts it somewhere else. */
   place: (btn: HTMLElement) => void
 }): void {
   const existing = host.querySelector<HTMLElement>('.x-loc-exc-btn')
@@ -1419,7 +1419,7 @@ function buildRateLimitRow(onExpiry: () => void): HTMLElement {
   row.appendChild(badge)
 
   const interval = setInterval(() => {
-    // Taken off the page by something else — a hover card closing, the master
+    // Taken off the page by something else - a hover card closing, the master
     // switch stripping the page. Whatever removed it did not ask for a lookup.
     if (!badge.isConnected) {
       clearInterval(interval)
@@ -1460,7 +1460,7 @@ function insertIntoCard(card: Element, userName: string, el: HTMLElement) {
   ;(card.querySelector('div > div > div') ?? card).appendChild(el)
 }
 
-// The bio X declined to render — see "The bio X declined to render" in
+// The bio X declined to render - see "The bio X declined to render" in
 // CLAUDE.md.
 
 /** A slice distinctive enough to look for in a card. URLs come out first: X
@@ -1472,7 +1472,7 @@ export function bioProbe(bio: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase()
-  // Too short to identify a bio by — a three-character probe matches a display
+  // Too short to identify a bio by - a three-character probe matches a display
   // name or one of our own chips as easily as the bio itself.
   return plain.length < 4 ? '' : plain.slice(0, 40)
 }
@@ -1543,7 +1543,7 @@ async function processCard(card: Element) {
   if (card.getAttribute(HOVER_CARD_DONE_ATTR)) return
 
   const userName = extractScreenName(card)
-  // Don't mark done yet — card content may not be rendered. The observer will
+  // Don't mark done yet - card content may not be rendered. The observer will
   // retry when React adds content inside the card.
   if (!userName) return
 
@@ -1628,7 +1628,7 @@ function primaryTweetTarget(): {
 }
 
 // Inline, because X only sometimes opens a hover card for the account a status
-// page is about — measured August 2026 — and that is no place for a control.
+// page is about - measured August 2026 - and that is no place for a control.
 async function syncPrimaryExceptionButton(): Promise<void> {
   const target = primaryTweetTarget()
   if (!target) return
@@ -1695,7 +1695,7 @@ async function processPrimaryTweet() {
 }
 
 // Share a post with its location flags. The context-menu click arrives in the
-// worker, which knows the tab but not the element — so it is remembered here.
+// worker, which knows the tab but not the element - so it is remembered here.
 let lastRightClickedTweet: Element | null = null
 
 document.addEventListener(
@@ -2031,7 +2031,7 @@ function startObserver() {
 
     for (const node of nodes) {
       eachMatching(node, SEL_TWEET, decorateTweet)
-      // People rows are their own surface — Followers/Following/search have no
+      // People rows are their own surface - Followers/Following/search have no
       // tweet articles at all, so they'd otherwise never be looked at.
       eachMatching(node, SEL_USER_CELL, (cell) => void tryMarkPeopleCell(cell))
     }
@@ -2088,7 +2088,7 @@ async function revealLocationForSwipe(article: Element) {
     if (rateLimited || !hasApiHeaders()) {
       dismissLocationToast()
       // The explanation the corner promises, even if the user clicked it away
-      // earlier — the swipe asked for it back.
+      // earlier - the swipe asked for it back.
       if (rateLimited) showRateLimitToast(true)
     } else {
       renderLocationToast(t('toastNoLocation'))
@@ -2096,7 +2096,7 @@ async function revealLocationForSwipe(article: Element) {
     return
   }
 
-  // Inject below username even if showLocationInFeed is off — user explicitly swiped
+  // Inject below username even if showLocationInFeed is off - user explicitly swiped
   const userNameEl = getNameEl(article)
   if (userNameEl && !nameLineHasInfoRow(userNameEl)) {
     article.setAttribute(FEED_LOCATION_ATTR, '1')
@@ -2119,7 +2119,7 @@ function startSwipeListener() {
   document.body.addEventListener(
     'touchstart',
     (e: TouchEvent) => {
-      // A second finger is a pinch or a two-finger scroll, never a swipe — and
+      // A second finger is a pinch or a two-finger scroll, never a swipe - and
       // it would otherwise re-origin the gesture already in progress.
       if (e.touches.length > 1) {
         handled = true
@@ -2184,7 +2184,7 @@ window.addEventListener(EVENTS.HEADERS_CAPTURED, (e: Event) => {
   const headers = (e as CustomEvent).detail?.headers
   if (headers?.authorization) {
     setApiHeaders(headers)
-    // Auth just became available — a wanted poller can start now.
+    // Auth just became available - a wanted poller can start now.
     syncPoller()
   }
 })
@@ -2231,7 +2231,7 @@ async function locallyAnswered(userName: string): Promise<boolean> {
 }
 
 /** Names this tab already answered never reach the broker or the community
- *  cache — neither can read x.com's IndexedDB to check for itself. */
+ *  cache - neither can read x.com's IndexedDB to check for itself. */
 async function unknownNames(userNames: string[]): Promise<string[]> {
   const known = await Promise.all(userNames.map(locallyAnswered))
   return userNames.filter((_, i) => !known[i])
@@ -2262,7 +2262,7 @@ function leastVotedFirst(known: RankedHandle[]): string[] {
 async function enqueueForLookup(
   candidates: PrefetchCandidate[],
 ): Promise<void> {
-  // Answered this session already cost a request, whatever the cache holds —
+  // Answered this session already cost a request, whatever the cache holds -
   // so those never reach IDB, let alone the broker.
   const unasked = candidates.filter((c) => !answeredThisSession(c.userName))
   const answers = await Promise.all(
@@ -2288,7 +2288,7 @@ async function enqueueForLookup(
 }
 
 // Prefetch exists to warm the shared cache, so opting out of that switches it
-// off too. Settings only — prefetchWanted() adds the runtime requirements.
+// off too. Settings only - prefetchWanted() adds the runtime requirements.
 function prefetchAllowedBySettings(): boolean {
   if (!isEnabled()) return false
   if (!prefetchEnabled) return false
@@ -2339,7 +2339,7 @@ window.addEventListener(EVENTS.USERS_DATA, (e: Event) => {
   }
 
   // Bios land here, so this is the first moment the primary tweet's account can
-  // be known to match a rule — processPrimaryTweet usually runs before it.
+  // be known to match a rule - processPrimaryTweet usually runs before it.
   void syncPrimaryExceptionButton()
 })
 

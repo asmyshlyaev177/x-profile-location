@@ -1,6 +1,6 @@
 import type { Dict } from './en'
 
-/** French. "Vous" throughout — "tu" reads as forced familiarity from a product. */
+/** French. "Vous" throughout - "tu" reads as forced familiarity from a product. */
 export const fr: Dict = {
   nav: {
     sections: 'Sections',
@@ -10,7 +10,7 @@ export const fr: Dict = {
     privacy: 'Confidentialité',
     comparison: 'Comparatif',
     sourceOnGitHub: 'Code sur GitHub',
-    home: 'X-Pat — accueil',
+    home: 'X-Pat - accueil',
   },
 
   language: {
@@ -126,7 +126,7 @@ export const fr: Dict = {
       },
       spread: {
         title: 'Étalé, pas épuisé d’un coup',
-        body: 'Environ une consultation toutes les 21 secondes, recalculée en continu — le rythme se détend quand vous survolez beaucoup, se resserre quand la fenêtre se recharge.',
+        body: 'Environ une consultation toutes les 21 secondes, recalculée en continu - le rythme se détend quand vous survolez beaucoup, se resserre quand la fenêtre se recharge.',
         readoutKey: 'Rythme',
         readoutValue: 'fenêtre ÷ quota',
       },
@@ -176,7 +176,7 @@ export const fr: Dict = {
       title: 'Masquez les pays que vous préférez ne pas lire.',
       p1: 'Une fois que vous voyez d’où vient une publication, vous pouvez agir. Choisissez les pays à contourner et décidez du sort de leurs tweets.',
       p2: 'Le repli est le comportement par défaut. Le tweet se réduit à une fine barre <b>🚫 Masqué · 🇮🇳 Inde</b> avec un bouton Afficher : vous savez donc qu’il y avait quelque chose, et un clic le ramène définitivement. Le filtre suit le pays de la boutique d’applications quand il y en a un, et il épargne le tweet que vous avez ouvert exprès.',
-      p3: 'Le pays n’est pas votre seul levier. Bloquez une organisation et toutes les comptes que X y rattache disparaissent aussi. Les comptes plus récents qu’un seuil que vous fixez sont marqués dès leur apparition — marqués, jamais masqués, car être récent ne prouve rien.',
+      p3: 'Le pays n’est pas votre seul levier. Bloquez une organisation et toutes les comptes que X y rattache disparaissent aussi. Les comptes plus récents qu’un seuil que vous fixez sont marqués dès leur apparition - marqués, jamais masqués, car être récent ne prouve rien.',
       readoutCollapse: 'Replier',
       readoutCollapseValue: 'Barre fine + Afficher',
       readoutHide: 'Masquer',
@@ -219,7 +219,7 @@ export const fr: Dict = {
   trust: {
     heading: 'Une extension qui lit votre session X a intérêt à être précise.',
     lead: 'Alors voilà. Les consultations vont directement à x.com, exactement comme les requêtes du site lui-même, et jamais via un serveur à nous. Votre navigateur conserve les résultats pendant 30 jours, et la page d’options les efface quand vous le souhaitez.',
-    body: 'L’extension ne contient ni analytique ni télémétrie. Ce site web utilise Google Analytics, pour le nombre de visites et le bouton d’installation cliqué — rien de plus.',
+    body: 'L’extension ne contient ni analytique ni télémétrie. Ce site web utilise Google Analytics, pour le nombre de visites et le bouton d’installation cliqué - rien de plus.',
     readPolicy: 'Lire la politique de confidentialité complète',
     neverTitle: 'Jamais envoyé nulle part',
     neverNote:
@@ -242,7 +242,7 @@ export const fr: Dict = {
 
   compareTeaser: {
     heading: 'Vous utilisez déjà l’une des autres ?',
-    lead: 'Une vingtaine d’extensions placent un drapeau à côté d’un pseudo. Les différences qui comptent ne sont pas dans la liste des fonctionnalités — elles sont dans ce que le cache partagé a le droit de faire, et dans ce qui se passe quand les cinquante consultations de X sont épuisées.',
+    lead: 'Une vingtaine d’extensions placent un drapeau à côté d’un pseudo. Les différences qui comptent ne sont pas dans la liste des fonctionnalités - elles sont dans ce que le cache partagé a le droit de faire, et dans ce qui se passe quand les cinquante consultations de X sont épuisées.',
     body: 'Celle-ci se cale sur le budget réel annoncé par les en-têtes de réponse de X et garde huit consultations pour les comptes que vous survolez : un fil chargé finit de se remplir au lieu de s’arrêter à mi-chemin. Le tableau complet couvre quatorze lignes et nomme les trois domaines où X-Posed fait mieux que cette extension.',
     link: 'Voir la comparaison complète →',
   },
@@ -293,7 +293,7 @@ export const fr: Dict = {
         note: 'Lu depuis les données « À propos de ce compte » de X, pas deviné à partir d’une adresse IP.',
       },
       signupSource: {
-        label: 'Origine de l’inscription — Apple, Google Play ou web',
+        label: 'Origine de l’inscription - Apple, Google Play ou web',
         note: '',
       },
       accountAge: { label: 'Ancienneté du compte', note: '' },
@@ -319,7 +319,7 @@ export const fr: Dict = {
       },
       cacheServerSource: {
         label: 'Code du serveur de cache publié',
-        note: 'Le serveur qui reçoit les contributions, pas seulement l’extension qui les envoie. Le nôtre est dans le même dépôt, avec une documentation de déploiement — vous pouvez le lire, ou faire tourner le vôtre.',
+        note: 'Le serveur qui reçoit les contributions, pas seulement l’extension qui les envoie. Le nôtre est dans le même dépôt, avec une documentation de déploiement - vous pouvez le lire, ou faire tourner le vôtre.',
       },
       crossChecked: {
         label: 'Entrées du cache recoupées entre installations',
@@ -343,14 +343,14 @@ export const fr: Dict = {
       },
       surfaces: {
         title: 'Elle est disponible sur plus de plateformes',
-        body: 'Firefox pour ordinateur, Firefox pour Android, et une application compagnon pour iPhone. X-Pat est aujourd’hui limité à Chromium — Chrome, Edge, Brave, et Quetta sur Android. Firefox est prévu, iOS ne l’est pas.',
+        body: 'Firefox pour ordinateur, Firefox pour Android, et une application compagnon pour iPhone. X-Pat est aujourd’hui limité à Chromium - Chrome, Edge, Brave, et Quetta sur Android. Firefox est prévu, iOS ne l’est pas.',
       },
       languageFilter: {
         title: 'Elle propose un filtre par langue',
-        body: 'Pas nous, et c’est volontaire. Le champ de langue par message de X est suffisamment souvent erroné pour qu’un filtre fondé dessus fasse disparaître des messages sans raison apparente. C’est un choix défendable plutôt qu’un manque — mais si c’est un filtre par langue que vous cherchez, X-Posed l’a et nous pas.',
+        body: 'Pas nous, et c’est volontaire. Le champ de langue par message de X est suffisamment souvent erroné pour qu’un filtre fondé dessus fasse disparaître des messages sans raison apparente. C’est un choix défendable plutôt qu’un manque - mais si c’est un filtre par langue que vous cherchez, X-Posed l’a et nous pas.',
       },
     },
-    notApplicable: '—',
+    notApplicable: '-',
     testCount: '{count} tests',
     none: 'aucun',
   },
@@ -361,7 +361,7 @@ export const fr: Dict = {
       titleLead: 'Le panneau',
       titleAccent: '« À propos de ce compte »',
       titleRest: ' de X, et comment arrêter de cliquer pour y accéder.',
-      lead: 'X sait très bien depuis quel pays chaque compte publie, et il vous le dira — un profil à la fois, à trois clics de profondeur, pour tous les profils que votre patience vous permet. Voici où se trouve ce panneau, ce qu’il peut et ne peut pas répondre, et que faire quand vous voulez la même information pour quatre-vingts réponses plutôt qu’une.',
+      lead: 'X sait très bien depuis quel pays chaque compte publie, et il vous le dira - un profil à la fois, à trois clics de profondeur, pour tous les profils que votre patience vous permet. Voici où se trouve ce panneau, ce qu’il peut et ne peut pas répondre, et que faire quand vous voulez la même information pour quatre-vingts réponses plutôt qu’une.',
       whereHeading: 'Où se trouve vraiment le panneau',
       steps: {
         web: {
@@ -379,16 +379,16 @@ export const fr: Dict = {
       },
       cantHeading: 'Ce à quoi il ne peut pas répondre',
       cant1:
-        'Le panneau est modal et par profil. Très bien quand vous examinez un seul compte, parfaitement inutile quand vous lisez un fil de réponses — c’est-à-dire précisément au moment où la question se pose. Cent réponses, c’est cent allers-retours dans un menu, et dès la troisième vous avez perdu le fil de la conversation.',
+        'Le panneau est modal et par profil. Très bien quand vous examinez un seul compte, parfaitement inutile quand vous lisez un fil de réponses - c’est-à-dire précisément au moment où la question se pose. Cent réponses, c’est cent allers-retours dans un menu, et dès la troisième vous avez perdu le fil de la conversation.',
       cant2:
-        'Il n’est pas non plus toujours renseigné. X ne renvoie aucun pays pour un nombre non négligeable de comptes — souvent les plus anciens ou les moins actifs. Quand le champ est réellement vide, il n’y a rien à révéler, et tout outil prétendant le contraire ne fait que deviner à partir d’une adresse IP.',
+        'Il n’est pas non plus toujours renseigné. X ne renvoie aucun pays pour un nombre non négligeable de comptes - souvent les plus anciens ou les moins actifs. Quand le champ est réellement vide, il n’y a rien à révéler, et tout outil prétendant le contraire ne fait que deviner à partir d’une adresse IP.',
       cant3:
         'Et il ne dit rien sur le degré de confiance. En interne, X marque certaines localisations comme invérifiables ; le panneau affiche le pays dans les deux cas.',
       sameHeading: 'Le même champ, sans le menu',
       same1:
-        'X-Pat lit exactement le champ que lit le panneau — le même point d’accès, en utilisant la session X déjà présente dans votre navigateur — et l’affiche sous forme de drapeau dans la carte de survol, et en option directement dans le fil. Aucune recherche d’IP, aucune base de données tierce, aucun compte ni clé API.',
+        'X-Pat lit exactement le champ que lit le panneau - le même point d’accès, en utilisant la session X déjà présente dans votre navigateur - et l’affiche sous forme de drapeau dans la carte de survol, et en option directement dans le fil. Aucune recherche d’IP, aucune base de données tierce, aucun compte ni clé API.',
       same2:
-        'Il en extrait trois choses : le pays, la boutique d’applications par laquelle le compte s’est inscrit, et le fait que X signale ou non une localisation qu’il ne peut pas vérifier — le signal de confiance que le panneau omet. La date d’inscription et l’historique des pseudos restent où ils sont ; l’extension ne cherche pas à reproduire tout le panneau.',
+        'Il en extrait trois choses : le pays, la boutique d’applications par laquelle le compte s’est inscrit, et le fait que X signale ou non une localisation qu’il ne peut pas vérifier - le signal de confiance que le panneau omet. La date d’inscription et l’historique des pseudos restent où ils sont ; l’extension ne cherche pas à reproduire tout le panneau.',
       same3:
         'Vous pouvez aussi agir en conséquence : les pays et régions que vous préférez ne pas voir peuvent se replier derrière un bouton « Afficher », ou être masqués. Le repli est le comportement par défaut, parce qu’un fil qui supprime des messages en silence est un fil auquel vous ne pouvez pas vous fier.',
     },
@@ -403,7 +403,7 @@ export const fr: Dict = {
       noVerdict1:
         'Chacun des indices ci-dessous a une explication innocente. Les nouveaux comptes sont nouveaux. Certaines personnes suivent généreusement. Beaucoup de gens réfléchis mettent un emoji dans leur bio. Prendre un seul de ces signaux pour une preuve vous fera condamner de parfaits inconnus, ce qui est à la fois désagréable et sans intérêt.',
       noVerdict2:
-        'Ce qui marche, c’est de les cumuler. Un compte de trois semaines, abonné à des milliers de personnes, suivi par des dizaines, premier dans les réponses avec une phrase toute faite — cette combinaison n’est pas un hasard, et elle se lit en deux secondes une fois que vous savez où regarder.',
+        'Ce qui marche, c’est de les cumuler. Un compte de trois semaines, abonné à des milliers de personnes, suivi par des dizaines, premier dans les réponses avec une phrase toute faite - cette combinaison n’est pas un hasard, et elle se lit en deux secondes une fois que vous savez où regarder.',
       colSignal: 'Signal',
       colTell: 'À quoi cela ressemble',
       colCost: 'Coût de la vérification',
@@ -426,7 +426,7 @@ export const fr: Dict = {
         bio: {
           signal: 'Composition de la bio',
           tell: 'Une rangée de drapeaux et d’emojis là où il y aurait une phrase',
-          cost: 'Gratuit — c’est sous vos yeux',
+          cost: 'Gratuit - c’est sous vos yeux',
         },
         substance: {
           signal: 'Contenu de la réponse',
@@ -436,16 +436,16 @@ export const fr: Dict = {
         location: {
           signal: 'D’où le compte publie',
           tell: 'Donnant des leçons assurées sur un pays depuis lequel le compte n’a jamais publié',
-          cost: 'Trois clics, par profil — ou en ligne',
+          cost: 'Trois clics, par profil - ou en ligne',
         },
       },
       hiddenHeading: 'Celui que vous ne pouvez pas voir',
       hidden1:
-        'Cinq des six signaux ci-dessus sont déjà visibles. Nombre d’abonnés, date d’inscription, la bio, la réponse elle-même — X vous donne tout cela sans que vous ayez à le demander. Le sixième est celui que X garde derrière un menu : le pays depuis lequel le compte publie réellement.',
+        'Cinq des six signaux ci-dessus sont déjà visibles. Nombre d’abonnés, date d’inscription, la bio, la réponse elle-même - X vous donne tout cela sans que vous ayez à le demander. Le sixième est celui que X garde derrière un menu : le pays depuis lequel le compte publie réellement.',
       hidden2:
-        'Il compte plus que les autres pour un type d’agacement bien particulier — pas vraiment du spam, mais des leçons péremptoires sur un endroit où le compte n’a aucun intérêt en jeu. Cela se lit très différemment une fois qu’on peut le voir, et X vous oblige à ouvrir un panneau par profil pour le découvrir.',
+        'Il compte plus que les autres pour un type d’agacement bien particulier - pas vraiment du spam, mais des leçons péremptoires sur un endroit où le compte n’a aucun intérêt en jeu. Cela se lit très différemment une fois qu’on peut le voir, et X vous oblige à ouvrir un panneau par profil pour le découvrir.',
       hidden3:
-        '<b>X-Pat s’occupe de cette partie.</b> Il place le pays dans la carte de survol et, si vous le voulez, en ligne dans le fil — avec en plus une alerte quand X lui-même ne peut pas vérifier la localisation. Il ne note pas les comptes et ne juge pas les réponses à votre place ; les cinq autres signaux restent votre affaire. Il empêche simplement la seule information réellement cachée de vous coûter trois clics.',
+        '<b>X-Pat s’occupe de cette partie.</b> Il place le pays dans la carte de survol et, si vous le voulez, en ligne dans le fil - avec en plus une alerte quand X lui-même ne peut pas vérifier la localisation. Il ne note pas les comptes et ne juge pas les réponses à votre place ; les cinq autres signaux restent votre affaire. Il empêche simplement la seule information réellement cachée de vous coûter trois clics.',
     },
 
     comparison: {
@@ -453,16 +453,16 @@ export const fr: Dict = {
       titleLead: 'X-Pat face à',
       titleAccent: 'X-Posed',
       titleRest: ', et au reste du rayon.',
-      lead: 'Une vingtaine d’extensions placent un drapeau national à côté d’un pseudo X. Trois d’entre elles ont un nombre d’utilisateurs significatif. Voici ce que fait réellement chacune, ce que X-Pat fait différemment, et les trois choses que X-Posed fait mieux — la partie que la plupart des pages de comparaison omettent.',
+      lead: 'Une vingtaine d’extensions placent un drapeau national à côté d’un pseudo X. Trois d’entre elles ont un nombre d’utilisateurs significatif. Voici ce que fait réellement chacune, ce que X-Pat fait différemment, et les trois choses que X-Posed fait mieux - la partie que la plupart des pages de comparaison omettent.',
       featureHeading: 'Fonctionnalité par fonctionnalité',
       featureLead:
-        'Chaque case provient d’une fiche de boutique publique ou d’un dépôt public, consultés le {date}. Un tiret signifie que la fiche ne le précise pas — pour les deux extensions à code fermé, cela n’équivaut pas à un non, et il serait injuste de le présenter comme tel.',
+        'Chaque case provient d’une fiche de boutique publique ou d’un dépôt public, consultés le {date}. Un tiret signifie que la fiche ne le précise pas - pour les deux extensions à code fermé, cela n’équivaut pas à un non, et il serait injuste de le présenter comme tel.',
       aheadHeading: 'Là où X-Posed a l’avantage',
       differsHeading: 'Ce qui diffère vraiment',
       differs1:
-        'Tout dans cette catégorie dépend d’un cache partagé. X autorise environ cinquante consultations de profil par navigateur et par quart d’heure, et un fil actif contient davantage de comptes — si bien que toute extension ici qui continue de fonctionner au-delà de la limite le fait en lisant un cache rempli par d’autres. La question n’est pas de savoir s’il y a un serveur. C’est de savoir ce que ce serveur a le droit de faire.',
+        'Tout dans cette catégorie dépend d’un cache partagé. X autorise environ cinquante consultations de profil par navigateur et par quart d’heure, et un fil actif contient davantage de comptes - si bien que toute extension ici qui continue de fonctionner au-delà de la limite le fait en lisant un cache rempli par d’autres. La question n’est pas de savoir s’il y a un serveur. C’est de savoir ce que ce serveur a le droit de faire.',
       differs2:
-        '<b>Le nôtre est publié, et vous pouvez faire tourner le vôtre.</b> Le serveur de cache se trouve dans le même dépôt que l’extension, avec une documentation de déploiement pour Cloudflare Workers comme pour un simple VPS. X-Posed publie son extension — réellement, et sous licence MIT — mais pas le Worker auquel ses contributions sont envoyées. C’est précisément la pièce que vous ne pouvez pas vérifier en lisant le code que vous avez installé.',
+        '<b>Le nôtre est publié, et vous pouvez faire tourner le vôtre.</b> Le serveur de cache se trouve dans le même dépôt que l’extension, avec une documentation de déploiement pour Cloudflare Workers comme pour un simple VPS. X-Posed publie son extension - réellement, et sous licence MIT - mais pas le Worker auquel ses contributions sont envoyées. C’est précisément la pièce que vous ne pouvez pas vérifier en lisant le code que vous avez installé.',
       differs3:
         '<b>Ici, une réponse en cache doit être corroborée.</b> Les contributions sont stockées comme des votes par installation et c’est le consensus qui est servi, avec un seuil de confiance que vous pouvez relever dans la page d’options. La documentation de X-Posed décrit le stockage de la dernière valeur acceptée pour un pseudo, ce qui revient à laisser le dernier contributeur décider. Les deux conceptions sont honnêtes sur le même problème de fond : aucun serveur ne peut prouver qu’une contribution provient réellement de X.',
       differs4:
@@ -472,15 +472,15 @@ export const fr: Dict = {
       sourcesHeading: 'Sources',
       sourcesLead:
         'Consulté le {date}. Les chiffres d’installation et les fonctionnalités évoluent ; si quelque chose ci-dessous n’est plus à jour, c’est une erreur et non une position, et le <a href="{href}">suivi des tickets</a> est le moyen le plus rapide de la faire corriger.',
-      sourceLabel: ' — source : ',
-      sourceNotPublished: ' — source non publiée',
+      sourceLabel: ' - source : ',
+      sourceNotPublished: ' - source non publiée',
     },
   },
 
   pages: {
     home: {
       title:
-        'X-Pat — Localisation des profils X : voyez le pays de n’importe quel profil',
+        'X-Pat - Localisation des profils X : voyez le pays de n’importe quel profil',
       description:
         'Un drapeau national sur chaque profil X, tiré des données de X. Alertes VPN, et masquage ou surlignage des messages par pays, organisation, ancienneté ou mot-clé de bio. Gratuit pour Chrome.',
       faq: [
@@ -498,7 +498,7 @@ export const fr: Dict = {
         },
         {
           q: 'Puis-je filtrer sur autre chose que le pays ?',
-          a: 'Oui. Vous pouvez bloquer tous les comptes que X rattache à une organisation, marquer les comptes plus récents qu’un seuil de votre choix, et surligner les comptes dont le nom ou la bio correspond à vos mots-clés — ou dont la bio est surtout composée d’emojis de drapeau. Les règles d’ancienneté et de mot-clé ne font que marquer un message ; elles ne le retirent jamais. Une liste blanche et des exceptions par règle couvrent les comptes que vous souhaitez épargner.',
+          a: 'Oui. Vous pouvez bloquer tous les comptes que X rattache à une organisation, marquer les comptes plus récents qu’un seuil de votre choix, et surligner les comptes dont le nom ou la bio correspond à vos mots-clés - ou dont la bio est surtout composée d’emojis de drapeau. Les règles d’ancienneté et de mot-clé ne font que marquer un message ; elles ne le retirent jamais. Une liste blanche et des exceptions par règle couvrent les comptes que vous souhaitez épargner.',
         },
         {
           q: 'Cela nécessite-t-il mon mot de passe X ou une clé API ?',
@@ -514,7 +514,7 @@ export const fr: Dict = {
     aboutThisAccount: {
       title: 'X « À propos de ce compte » : comment y accéder, et plus vite',
       description:
-        'X indique le pays de chaque compte sous « À propos de ce compte » — un profil à la fois, derrière un menu. Voici où le trouver, et comment l’obtenir directement en ligne.',
+        'X indique le pays de chaque compte sous « À propos de ce compte » - un profil à la fois, derrière un menu. Voici où le trouver, et comment l’obtenir directement en ligne.',
       faq: [
         {
           q: 'Qu’est-ce que « À propos de ce compte » sur X ?',
@@ -526,11 +526,11 @@ export const fr: Dict = {
         },
         {
           q: 'Pourquoi « À propos de ce compte » n’apparaît-il pas pour certains ?',
-          a: 'X ne renvoie pas de pays pour tous les comptes — les plus anciens ou les moins actifs n’ont souvent rien d’enregistré. Quand le champ est réellement vide, aucun outil ne peut le remplir, y compris celui-ci.',
+          a: 'X ne renvoie pas de pays pour tous les comptes - les plus anciens ou les moins actifs n’ont souvent rien d’enregistré. Quand le champ est réellement vide, aucun outil ne peut le remplir, y compris celui-ci.',
         },
         {
           q: 'Comment voir le pays sans ouvrir chaque profil ?',
-          a: 'C’est exactement ce que cette extension permet. Elle lit le même champ et l’affiche sous forme de drapeau dans la carte de survol et, en option, en ligne dans le fil — parcourir un fil de quatre-vingts réponses ne nécessite donc plus quatre-vingts détours par un menu.',
+          a: 'C’est exactement ce que cette extension permet. Elle lit le même champ et l’affiche sous forme de drapeau dans la carte de survol et, en option, en ligne dans le fil - parcourir un fil de quatre-vingts réponses ne nécessite donc plus quatre-vingts détours par un menu.',
         },
       ],
     },
@@ -543,7 +543,7 @@ export const fr: Dict = {
       faq: [
         {
           q: 'Qu’est-ce que l’engagement farming sur X ?',
-          a: 'Publier des réponses conçues pour récolter des impressions plutôt que pour dire quelque chose — approbation générique, indignation recyclée, ou phrase toute faite collée sous le message qui fait le buzz. Depuis que X rémunère les impressions, la motivation financière est directe.',
+          a: 'Publier des réponses conçues pour récolter des impressions plutôt que pour dire quelque chose - approbation générique, indignation recyclée, ou phrase toute faite collée sous le message qui fait le buzz. Depuis que X rémunère les impressions, la motivation financière est directe.',
         },
         {
           q: 'Comment savoir si une réponse X vient d’un bot ou d’une ferme ?',
@@ -551,7 +551,7 @@ export const fr: Dict = {
         },
         {
           q: 'Quel rapport abonnés/abonnements trahit un compte fabriqué ?',
-          a: 'Suivre bien plus de comptes qu’on n’est suivi — un rapport nettement inférieur à 0,1 — est le schéma classique, parce que s’abonner en masse est le moyen le moins coûteux de se faire remarquer. Beaucoup de nouveaux comptes ordinaires ont le même profil, alors traitez cela comme un élément parmi d’autres, pas comme un verdict.',
+          a: 'Suivre bien plus de comptes qu’on n’est suivi - un rapport nettement inférieur à 0,1 - est le schéma classique, parce que s’abonner en masse est le moyen le moins coûteux de se faire remarquer. Beaucoup de nouveaux comptes ordinaires ont le même profil, alors traitez cela comme un élément parmi d’autres, pas comme un verdict.',
         },
         {
           q: 'L’extension détecte-t-elle l’engagement farming ?',
@@ -571,7 +571,7 @@ export const fr: Dict = {
       title:
         'Alternative à X-Posed : X-Pat comparé, fonctionnalité par fonctionnalité',
       description:
-        'Une comparaison honnête de X-Pat avec X-Posed et les deux autres extensions de localisation X les plus installées — y compris les trois domaines où X-Posed fait mieux.',
+        'Une comparaison honnête de X-Pat avec X-Posed et les deux autres extensions de localisation X les plus installées - y compris les trois domaines où X-Posed fait mieux.',
       faq: [
         {
           q: 'Quelle est la meilleure alternative à X-Posed ?',
@@ -579,7 +579,7 @@ export const fr: Dict = {
         },
         {
           q: 'X-Pat est-il open source ?',
-          a: 'Oui, sous licence MIT, tout comme le serveur de cache auquel il se connecte — les deux se trouvent dans le même dépôt, avec une documentation de déploiement pour Cloudflare Workers et pour un simple VPS. X-Posed publie aussi son extension sous MIT ; ce qu’il ne publie pas, c’est le Worker qui reçoit les contributions au cache communautaire.',
+          a: 'Oui, sous licence MIT, tout comme le serveur de cache auquel il se connecte - les deux se trouvent dans le même dépôt, avec une documentation de déploiement pour Cloudflare Workers et pour un simple VPS. X-Posed publie aussi son extension sous MIT ; ce qu’il ne publie pas, c’est le Worker qui reçoit les contributions au cache communautaire.',
         },
         {
           q: 'Ces extensions ont-elles besoin de mon mot de passe X ?',
@@ -587,7 +587,7 @@ export const fr: Dict = {
         },
         {
           q: 'Pourquoi le drapeau cesse-t-il d’apparaître au milieu d’un fil ?',
-          a: 'X autorise environ cinquante consultations de comptes par navigateur et par quart d’heure, et un fil actif contient davantage de comptes. Les extensions qui atteignent le plafond arrêtent simplement de remplir les drapeaux. C’est le cache partagé qui l’évite — la plupart des profils ne coûtent aucune consultation parce que quelqu’un d’autre les a déjà résolus — et X-Pat réserve en plus les vingt derniers pour cent de la fenêtre aux comptes que vous survolez vous-même.',
+          a: 'X autorise environ cinquante consultations de comptes par navigateur et par quart d’heure, et un fil actif contient davantage de comptes. Les extensions qui atteignent le plafond arrêtent simplement de remplir les drapeaux. C’est le cache partagé qui l’évite - la plupart des profils ne coûtent aucune consultation parce que quelqu’un d’autre les a déjà résolus - et X-Pat réserve en plus les vingt derniers pour cent de la fenêtre aux comptes que vous survolez vous-même.',
         },
       ],
     },

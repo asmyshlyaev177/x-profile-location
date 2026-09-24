@@ -1,11 +1,11 @@
-// The injected stylesheet and the names it is written against, together —
+// The injected stylesheet and the names it is written against, together -
 // renaming one without the other makes a rule match nothing, silently.
 
 // Set on tweets collapsed by the "hide blocked locations" feature; a user "Show"
 // click swaps it for HIDDEN_REVEALED_ATTR so the tweet is never re-hidden.
 export const HIDDEN_ATTR = 'data-x-loc-hidden'
 export const HIDDEN_PLACEHOLDER_CLASS = 'x-loc-hidden-ph'
-// The same pair again for the quoted post inside an article — tracked
+// The same pair again for the quoted post inside an article - tracked
 // separately so a quote can be collapsed while its host stays readable.
 export const QUOTE_HIDDEN_ATTR = 'data-x-loc-quote-hidden'
 // Set on a people-list row whose account matches a rule. Rows there are marked,
@@ -91,7 +91,7 @@ export const CONTENT_CSS = `
 }
 /* Coloured by currentColor, so the platform mark tracks the surrounding text on
    every X theme instead of being a fixed-colour sticker.
-   The Android robot is a wide, short shape — roughly 24×13 in its own viewBox —
+   The Android robot is a wide, short shape - roughly 24×13 in its own viewBox -
    so at a square 13px it drew about 7px tall and read as noticeably fainter
    than the Apple mark beside it. Sizing the box slightly larger gives the robot
    presence without making the apple overbearing. */
@@ -204,13 +204,13 @@ export const CONTENT_CSS = `
   justify-content: center;
   gap: 4px 14px;
   /* left: 50% leaves only half the viewport as available width, so without
-     max-content this wraps at 450px on a 900px screen — the other two toasts
+     max-content this wraps at 450px on a 900px screen - the other two toasts
      hide that behind white-space: nowrap. max-width still clamps it on a
      phone, where wrapping is the right answer. */
   width: max-content;
   /* 100% and not 100vw: vw counts the scrollbar, which X always has. And
      border-box, or the padding and border land 34px of this outside the
-     max-width — X sets a global border-box and we must not depend on it. */
+     max-width - X sets a global border-box and we must not depend on it. */
   box-sizing: border-box;
   max-width: calc(100% - 32px);
   background: rgba(24, 24, 24, 0.96);
@@ -236,7 +236,7 @@ export const CONTENT_CSS = `
   height: 16px;
 }
 /* The name is a flex item like any other, so on a phone it shrank and broke as
-   "X-" / "Pat" — a product name split down the middle is worse than no name. */
+   "X-" / "Pat" - a product name split down the middle is worse than no name. */
 #${RATING_ASK_ID} .x-loc-ask-msg strong {
   font-weight: 800;
   white-space: nowrap;
@@ -262,7 +262,7 @@ export const CONTENT_CSS = `
 }
 /* Every reason a post gets pointed at draws the same bar: the keyword rule on a
    post, on a quote card, and the rules that mark instead of hiding. One
-   declaration rather than three identical ones, so they cannot drift apart —
+   declaration rather than three identical ones, so they cannot drift apart -
    and so a post that matches two of them has no cascade to resolve. */
 article[${HIGHLIGHT_ATTR}],
 [${QUOTE_HIGHLIGHT_ATTR}],
@@ -271,7 +271,7 @@ article[${HIGHLIGHT_ATTR}],
   background: rgba(245, 158, 11, 0.05) !important;
 }
 /* The word that earned the orange bar, marked where the reader can see it.
-   ::highlight paints ranges the script registers — it changes no markup, which
+   ::highlight paints ranges the script registers - it changes no markup, which
    is what makes it safe to use inside a card React owns and re-renders. Only a
    few properties are allowed here; background-color is the one that matters. */
 ::highlight(${KEYWORD_HIGHLIGHT_NAME}) {
@@ -305,7 +305,7 @@ article[${HIGHLIGHT_ATTR}],
 }
 /* Its own tone rather than the amber one: amber means "a trait worth doubting"
    (young account, many handles), and being blocked is not a trait of the
-   account at all — it is where the reader stands with it. Filled, because it
+   account at all - it is where the reader stands with it. Filled, because it
    has to read as a state at a glance next to chips that are only facts. */
 .x-loc-chip-block {
   color: rgb(220, 232, 236);
@@ -345,7 +345,7 @@ article[${HIGHLIGHT_ATTR}],
   background: rgba(128, 128, 128, 0.14);
 }
 /* Stacks the hover card's pieces in the order they are appended, and keeps
-   buttons at their natural width — inside X's own flex column they were
+   buttons at their natural width - inside X's own flex column they were
    stretching to the full width of the card. */
 .x-loc-hover {
   display: flex;
@@ -387,7 +387,7 @@ article[${HIDDEN_ATTR}='hide'] {
 article[${HIDDEN_ATTR}='collapse'] > :not(.${HIDDEN_PLACEHOLDER_CLASS}) {
   display: none !important;
 }
-/* 'hide' drops the card outright — there is no placeholder in that mode, so
+/* 'hide' drops the card outright - there is no placeholder in that mode, so
    collapsing only its children would leave an empty bordered box behind. */
 [${QUOTE_HIDDEN_ATTR}='hide'] {
   display: none !important;
@@ -395,7 +395,7 @@ article[${HIDDEN_ATTR}='collapse'] > :not(.${HIDDEN_PLACEHOLDER_CLASS}) {
 [${QUOTE_HIDDEN_ATTR}='collapse'] > :not(.${HIDDEN_PLACEHOLDER_CLASS}) {
   display: none !important;
 }
-/* People rows are marked, never removed — see refreshPeopleCells. */
+/* People rows are marked, never removed - see refreshPeopleCells. */
 [${PEOPLE_MATCH_ATTR}] {
   border-left: 3px solid rgba(220, 38, 38, 0.55) !important;
 }
@@ -455,7 +455,7 @@ article[${HIDDEN_ATTR}='collapse'] > :not(.${HIDDEN_PLACEHOLDER_CLASS}) {
   white-space: nowrap;
 }
 /* In the placeholder it is one of a row of controls, not a block under the
-   flags — so it drops the stacking margin and matches the button beside it. */
+   flags - so it drops the stacking margin and matches the button beside it. */
 .${HIDDEN_PLACEHOLDER_CLASS} .x-loc-exc-btn {
   margin-top: 0;
   font-size: 13px;

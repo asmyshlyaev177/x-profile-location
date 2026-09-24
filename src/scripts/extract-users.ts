@@ -9,7 +9,7 @@ export interface UserBio {
   facts: Partial<AccountFacts>
 }
 
-/** Every User node in a GraphQL response, depth-first — so, timeline order. */
+/** Every User node in a GraphQL response, depth-first - so, timeline order. */
 export function extractUsers(_obj: unknown, depth = 0): UserBio[] {
   if (depth > 20 || !_obj || typeof _obj !== 'object') return []
   const obj = _obj as Record<string, unknown>

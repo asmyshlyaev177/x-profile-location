@@ -123,7 +123,7 @@ export function Screenshots() {
   const railMounted = useRef(false)
   useEffect(() => {
     // Skip the mount run: scrollToItem is native scrollIntoView, which also
-    // scrolls the *page* to reveal the rail — the site loaded ~600px down.
+    // scrolls the *page* to reveal the rail - the site loaded ~600px down.
     if (!railMounted.current) {
       railMounted.current = true
       return
@@ -203,7 +203,7 @@ export function Screenshots() {
 
           {/* The rail scrolls: eight thumbs outgrew the shell, and a cut-off
               eighth looked like the gallery ended at seven. ScrollMenu owns the
-              overflow — its arrows appear only on the side that actually has
+              overflow - its arrows appear only on the side that actually has
               more, so the edge states explain themselves.
 
               Plain pressed-state buttons, not a tablist: ScrollMenu's wrappers
@@ -269,7 +269,7 @@ export function Screenshots() {
 
       {/* Lightbox. The click handler is backdrop-to-dismiss; the keyboard path
           is Escape, which a native <dialog> handles itself and reports through
-          onClose — there is no key event to add here. */}
+          onClose - there is no key event to add here. */}
       {/* oxlint-disable-next-line click-events-have-key-events */}
       <dialog
         ref={dialogRef}
@@ -313,7 +313,7 @@ export function Screenshots() {
  * Drag-to-scroll for mouse users, ported from the library's example app.
  * A 5px threshold separates a drag from a click, and dragStop defers one
  * frame so click handlers can still read `dragging` and skip selection.
- * Touch needs none of this — the container is a real scroll container.
+ * Touch needs none of this - the container is a real scroll container.
  */
 class DragManager {
   clicked = false
@@ -384,7 +384,7 @@ function RailChevron({ dir }: { dir: 'prev' | 'next' }) {
   const api = useContext<publicApiType>(VisibilityContext)
   const isPrev = dir === 'prev'
   // Misnamed upstream: use*ArrowVisible() returns whether the EDGE item is
-  // visible — the arrow's disabled state, not its visibility.
+  // visible - the arrow's disabled state, not its visibility.
   const edgeItemVisible = isPrev
     ? api.useLeftArrowVisible()
     : api.useRightArrowVisible()

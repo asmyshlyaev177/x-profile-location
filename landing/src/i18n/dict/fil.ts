@@ -1,7 +1,7 @@
 import type { Dict } from './en'
 
 /**
- * Filipino. Conversational Taglish where that is genuinely the register — the
+ * Filipino. Conversational Taglish where that is genuinely the register - the
  * English technical terms below (browser, cache, extension, timeline) are what
  * Filipino speakers actually say; translating them would read as stilted.
  */
@@ -14,7 +14,7 @@ export const fil: Dict = {
     privacy: 'Privacy',
     comparison: 'Paghahambing',
     sourceOnGitHub: 'Source sa GitHub',
-    home: 'X-Pat — home',
+    home: 'X-Pat - home',
   },
 
   language: {
@@ -130,7 +130,7 @@ export const fil: Dict = {
       },
       spread: {
         title: 'Sinusukat, hindi sinusugod',
-        body: 'Mga isang lookup kada 21 seconds, nire-recompute sa tuwing kailangan — humahabà kapag madalas kang mag-hover, humihigpit kapag napupuno uli ang window.',
+        body: 'Mga isang lookup kada 21 seconds, nire-recompute sa tuwing kailangan - humahabà kapag madalas kang mag-hover, humihigpit kapag napupuno uli ang window.',
         readoutKey: 'Pace',
         readoutValue: 'window ÷ budget',
       },
@@ -179,8 +179,8 @@ export const fil: Dict = {
     hide: {
       title: 'Itago ang mga bansang ayaw mong makita.',
       p1: 'Kapag nakikita mo na kung saan galing ang isang post, may magagawa ka na. Piliin ang mga lugar na gusto mong laktawan at pumili kung ano ang mangyayari sa tweets nila.',
-      p2: 'Ang collapse ang default. Nagiging slim bar ang tweet — <b>🚫 Nakatago · 🇮🇳 India</b> — na may Ipakita button, kaya alam mo pa ring mayroon doon, at isang click ay ibabalik ito nang tuluyan. Sinusundan ng filter ang country ng app store kapag mayroon, at hindi ginagalaw ang tweet na sinadya mong buksan.',
-      p3: 'Hindi lang bansa ang hawak mo. I-block ang isang organisasyon at lahat ng account na bina-badge ng X na kabilang doon ay mawawala rin, habang ang mga account na mas bata sa threshold na ilalagay mo ay mamamarkahan kapa-labas pa lang — minamarkahan, hindi kailanman tinatago, dahil ang pagiging bago ay hindi patunay ng kahit ano.',
+      p2: 'Ang collapse ang default. Nagiging slim bar ang tweet - <b>🚫 Nakatago · 🇮🇳 India</b> - na may Ipakita button, kaya alam mo pa ring mayroon doon, at isang click ay ibabalik ito nang tuluyan. Sinusundan ng filter ang country ng app store kapag mayroon, at hindi ginagalaw ang tweet na sinadya mong buksan.',
+      p3: 'Hindi lang bansa ang hawak mo. I-block ang isang organisasyon at lahat ng account na bina-badge ng X na kabilang doon ay mawawala rin, habang ang mga account na mas bata sa threshold na ilalagay mo ay mamamarkahan kapa-labas pa lang - minamarkahan, hindi kailanman tinatago, dahil ang pagiging bago ay hindi patunay ng kahit ano.',
       readoutCollapse: 'Collapse',
       readoutCollapseValue: 'Slim bar + Ipakita',
       readoutHide: 'Itago',
@@ -224,7 +224,7 @@ export const fil: Dict = {
     heading:
       'Ang extension na nagbabasa ng X session mo dapat ay tiyak magsalita.',
     lead: 'Kaya heto. Diretsong pumapasok sa x.com ang mga lookup, kapareho ng sariling request ng site, at hindi kailanman dumadaan sa server namin. Hawak ng browser mo ang resulta nang 30 araw, at nililinis ito ng options page kahit kailan mo gusto.',
-    body: 'Walang analytics o telemetry sa loob ng extension. Ang website na ito ay gumagamit ng Google Analytics, para sa bilang ng bisita at kung aling install button ang na-click — wala nang iba.',
+    body: 'Walang analytics o telemetry sa loob ng extension. Ang website na ito ay gumagamit ng Google Analytics, para sa bilang ng bisita at kung aling install button ang na-click - wala nang iba.',
     readPolicy: 'Basahin ang buong privacy policy',
     neverTitle: 'Hindi kailanman ipinapadala kung saan',
     neverNote:
@@ -247,8 +247,8 @@ export const fil: Dict = {
 
   compareTeaser: {
     heading: 'May ginagamit ka na bang iba?',
-    lead: 'Mga dalawampung extension ang naglalagay ng flag sa tabi ng handle. Ang mga pagkakaibang may halaga ay wala sa listahan ng features — nasa kung ano ang pinapayagang gawin ng shared cache, at sa kung ano ang nangyayari kapag naubos na ang limampung lookup ng X.',
-    body: 'Sinusukat nitong isa ang sarili niyang bilis sa totoong budget na galing mismo sa response headers ng X, at may nakatabing walong lookup para sa mga account na hino-hover mo — kaya natatapos punan ang isang matraping thread sa halip na huminto sa kalagitnaan. Labing-apat na hilera ang sinasaklaw ng buong table at pinapangalanan ang tatlong bagay na mas magaling gawin ng X-Posed kaysa sa extension na ito.',
+    lead: 'Mga dalawampung extension ang naglalagay ng flag sa tabi ng handle. Ang mga pagkakaibang may halaga ay wala sa listahan ng features - nasa kung ano ang pinapayagang gawin ng shared cache, at sa kung ano ang nangyayari kapag naubos na ang limampung lookup ng X.',
+    body: 'Sinusukat nitong isa ang sarili niyang bilis sa totoong budget na galing mismo sa response headers ng X, at may nakatabing walong lookup para sa mga account na hino-hover mo - kaya natatapos punan ang isang matraping thread sa halip na huminto sa kalagitnaan. Labing-apat na hilera ang sinasaklaw ng buong table at pinapangalanan ang tatlong bagay na mas magaling gawin ng X-Posed kaysa sa extension na ito.',
     link: 'Tingnan ang buong comparison →',
   },
 
@@ -298,7 +298,7 @@ export const fil: Dict = {
         note: 'Binabasa mula sa sariling data ng X na "About this account", hindi hinuhulaan mula sa IP address.',
       },
       signupSource: {
-        label: 'Pinagmulan ng sign-up — Apple, Google Play o web',
+        label: 'Pinagmulan ng sign-up - Apple, Google Play o web',
         note: '',
       },
       accountAge: { label: 'Edad ng account', note: '' },
@@ -322,7 +322,7 @@ export const fil: Dict = {
       },
       cacheServerSource: {
         label: 'Naka-publish ang source ng cache server',
-        note: 'Ang server na tumatanggap ng contributions, hindi lang ang extension na nagpapadala. Ang sa amin ay nasa parehong repo, may deploy docs — puwede mong basahin, o magpatakbo ng sarili mo.',
+        note: 'Ang server na tumatanggap ng contributions, hindi lang ang extension na nagpapadala. Ang sa amin ay nasa parehong repo, may deploy docs - puwede mong basahin, o magpatakbo ng sarili mo.',
       },
       crossChecked: {
         label:
@@ -347,14 +347,14 @@ export const fil: Dict = {
       },
       surfaces: {
         title: 'Mas marami itong platform',
-        body: 'Firefox sa desktop, Firefox para sa Android, at isang companion iPhone app. Ang X-Pat ay Chromium lang sa ngayon — Chrome, Edge, Brave, at Quetta sa Android. Plano ang Firefox, ang iOS ay hindi.',
+        body: 'Firefox sa desktop, Firefox para sa Android, at isang companion iPhone app. Ang X-Pat ay Chromium lang sa ngayon - Chrome, Edge, Brave, at Quetta sa Android. Plano ang Firefox, ang iOS ay hindi.',
       },
       languageFilter: {
         title: 'May language filter ito',
-        body: 'Wala kami, at sinadya iyon. Ang per-post language field ng X ay sapat nang madalas mali para ang pagsala rito ay magpawala ng mga post nang walang nakikitang dahilan. Depensableng desisyon iyon sa halip na missing feature — pero kung ang pagsala sa wika ang pinunta mo rito, nasa X-Posed iyon at wala sa amin.',
+        body: 'Wala kami, at sinadya iyon. Ang per-post language field ng X ay sapat nang madalas mali para ang pagsala rito ay magpawala ng mga post nang walang nakikitang dahilan. Depensableng desisyon iyon sa halip na missing feature - pero kung ang pagsala sa wika ang pinunta mo rito, nasa X-Posed iyon at wala sa amin.',
       },
     },
-    notApplicable: '—',
+    notApplicable: '-',
     testCount: '{count} tests',
     none: 'wala',
   },
@@ -365,7 +365,7 @@ export const fil: Dict = {
       titleLead: 'Ang',
       titleAccent: '"About this account"',
       titleRest: ' ng X, at kung paano tumigil sa pag-click para dito.',
-      lead: 'Tahimik na alam ng X kung anong bansa nagpo-post ang bawat account, at sasabihin naman nito sa iyo — isang profile kada beses, tatlong tap ang lalim, kung ilang profile ang kaya ng pasensiya mo. Heto kung saan ang panel, kung ano ang kaya at hindi kaya nitong sagutin, at kung anong gagawin kapag gusto mo ang parehong katotohanan para sa walumpung reply imbes na isa.',
+      lead: 'Tahimik na alam ng X kung anong bansa nagpo-post ang bawat account, at sasabihin naman nito sa iyo - isang profile kada beses, tatlong tap ang lalim, kung ilang profile ang kaya ng pasensiya mo. Heto kung saan ang panel, kung ano ang kaya at hindi kaya nitong sagutin, at kung anong gagawin kapag gusto mo ang parehong katotohanan para sa walumpung reply imbes na isa.',
       whereHeading: 'Kung saan talaga ang panel',
       steps: {
         web: {
@@ -385,14 +385,14 @@ export const fil: Dict = {
       cant1:
         'Ang panel ay per-profile at modal. Ayos lang iyan kapag nagsu-survey ka ng isang account, at walang silbi kapag nagbabasa ka ng reply thread, na siya namang sandali kung kailan kadalasang lumilitaw ang tanong. Isang daang reply ay isang daang balikan sa menu, at pagsapit ng ikatlo ay nawala na sa iyo ang thread na binabasa mo.',
       cant2:
-        'Hindi rin ito laging populated. Walang ibinabalik na bansa ang X para sa hindi kakaunting accounts — kadalasan ay ang mas luma o halos walang activity. Kapag talagang walang laman ang field, wala naming maibubunyag, at kahit anong tool na nagsasabing mayroon ay nanghuhula lang ng IP address.',
+        'Hindi rin ito laging populated. Walang ibinabalik na bansa ang X para sa hindi kakaunting accounts - kadalasan ay ang mas luma o halos walang activity. Kapag talagang walang laman ang field, wala naming maibubunyag, at kahit anong tool na nagsasabing mayroon ay nanghuhula lang ng IP address.',
       cant3:
         'At wala itong sinasabi tungkol sa confidence. Sa internal, minamarkahan ng X ang ilang lokasyon bilang hindi nito kayang panindigan; ipinapakita pa rin ng panel ang bansa.',
       sameHeading: 'Ang parehong field, walang menu',
       same1:
-        'Binabasa ng X-Pat ang eksaktong field na binabasa ng panel — ang parehong endpoint, gamit ang X session na nasa browser mo na — at iginuguhit ito bilang flag sa hover card, at opsiyonal na inline sa timeline. Walang IP lookup, walang third-party database, walang account o API key.',
+        'Binabasa ng X-Pat ang eksaktong field na binabasa ng panel - ang parehong endpoint, gamit ang X session na nasa browser mo na - at iginuguhit ito bilang flag sa hover card, at opsiyonal na inline sa timeline. Walang IP lookup, walang third-party database, walang account o API key.',
       same2:
-        'Tatlong bagay ang inilalabas nito mula sa response na iyon: ang bansa, ang app store kung saan nag-sign up ang account, at kung minamarkahan ba ng X ang lokasyon bilang hindi nito ma-verify — ang confidence signal na iniiwan ng panel. Ang join date at handle history ay nananatili kung saan sila naroon; hindi sinusubukan ng extension na maging buong panel.',
+        'Tatlong bagay ang inilalabas nito mula sa response na iyon: ang bansa, ang app store kung saan nag-sign up ang account, at kung minamarkahan ba ng X ang lokasyon bilang hindi nito ma-verify - ang confidence signal na iniiwan ng panel. Ang join date at handle history ay nananatili kung saan sila naroon; hindi sinusubukan ng extension na maging buong panel.',
       same3:
         'Puwede ka ring kumilos batay dito: ang mga bansa at rehiyon na ayaw mong makita ay puwedeng mag-collapse sa likod ng button na "Ipakita", o itago. Ang collapse ang default, dahil ang timeline na tahimik na nagtatapon ng post ay timeline na hindi mo mapagkakatiwalaan.',
     },
@@ -407,7 +407,7 @@ export const fil: Dict = {
       noVerdict1:
         'Bawat palatandaan sa ibaba ay may inosenteng paliwanag. Ang mga bagong account ay bago nga. May mga taong generous mag-follow. Maraming maaayos na nagpo-post ang may emoji sa bio. Kapag tinuring mong patunay ang kahit alin sa mga ito, isusulat-off mo ang mga ordinaryong estranghero, na parehong hindi maganda at nakakainip.',
       noVerdict2:
-        'Ang gumagana ay ang pagsasalansan. Isang account na tatlong linggo pa lang ang edad, nagfa-follow ng libo-libo, fina-follow ng ilang dosena, unang-una sa replies na may stock phrase — ang kombinasyong iyon ay hindi pagkakataon lang, at mababasa mo ito nang mga dalawang segundo kapag alam mo na kung saan titingin.',
+        'Ang gumagana ay ang pagsasalansan. Isang account na tatlong linggo pa lang ang edad, nagfa-follow ng libo-libo, fina-follow ng ilang dosena, unang-una sa replies na may stock phrase - ang kombinasyong iyon ay hindi pagkakataon lang, at mababasa mo ito nang mga dalawang segundo kapag alam mo na kung saan titingin.',
       colSignal: 'Signal',
       colTell: 'Ano ang itsura',
       colCost: 'Gastos i-check',
@@ -430,7 +430,7 @@ export const fil: Dict = {
         bio: {
           signal: 'Komposisyon ng bio',
           tell: 'Isang hanay ng flags at emoji kung saan dapat may pangungusap',
-          cost: 'Libre — nakalantad lang',
+          cost: 'Libre - nakalantad lang',
         },
         substance: {
           signal: 'Nilalaman ng reply',
@@ -440,16 +440,16 @@ export const fil: Dict = {
         location: {
           signal: 'Kung saan nakabase ang account',
           tell: 'Kumpiyansang nagle-lecture tungkol sa bansang hindi pa napo-post-an ng account',
-          cost: 'Tatlong tap, bawat profile — o inline',
+          cost: 'Tatlong tap, bawat profile - o inline',
         },
       },
       hiddenHeading: 'Ang hindi mo nakikita',
       hidden1:
-        'Lima sa anim na signal sa itaas ay nasa screen na. Follower counts, join date, ang bio, ang reply mismo — lahat iyan ay ibinibigay ng X nang hindi hinihingi. Ang ikaanim ay ang itinatago ng X sa likod ng menu: kung saan talaga nagpo-post ang account.',
+        'Lima sa anim na signal sa itaas ay nasa screen na. Follower counts, join date, ang bio, ang reply mismo - lahat iyan ay ibinibigay ng X nang hindi hinihingi. Ang ikaanim ay ang itinatago ng X sa likod ng menu: kung saan talaga nagpo-post ang account.',
       hidden2:
-        'Mas mahalaga ito kaysa sa iba para sa isang partikular na klase ng inis — hindi eksaktong spam, kundi kumpiyansang pagtuturo tungkol sa lugar na walang kinalaman sa account. Iba talaga ang pagbasa niyan kapag nakikita mo ito, at pinapabukas sa iyo ng X ang panel kada profile para malaman.',
+        'Mas mahalaga ito kaysa sa iba para sa isang partikular na klase ng inis - hindi eksaktong spam, kundi kumpiyansang pagtuturo tungkol sa lugar na walang kinalaman sa account. Iba talaga ang pagbasa niyan kapag nakikita mo ito, at pinapabukas sa iyo ng X ang panel kada profile para malaman.',
       hidden3:
-        '<b>Iyan ang ginagawa ng X-Pat.</b> Inilalagay nito ang bansa sa hover card at, kung gusto mo, inline sa timeline — kasama ang babala kapag ang X mismo ay hindi ma-verify ang lokasyon. Hindi nito sini-score ang mga account o hinahatulan ang replies para sa iyo; ang limang natitirang signal ay ikaw pa rin ang bahala. Pinipigilan lang nitong ang isang talagang nakatagong katotohanan ay gumastos ng tatlong tap.',
+        '<b>Iyan ang ginagawa ng X-Pat.</b> Inilalagay nito ang bansa sa hover card at, kung gusto mo, inline sa timeline - kasama ang babala kapag ang X mismo ay hindi ma-verify ang lokasyon. Hindi nito sini-score ang mga account o hinahatulan ang replies para sa iyo; ang limang natitirang signal ay ikaw pa rin ang bahala. Pinipigilan lang nitong ang isang talagang nakatagong katotohanan ay gumastos ng tatlong tap.',
     },
 
     comparison: {
@@ -457,16 +457,16 @@ export const fil: Dict = {
       titleLead: 'X-Pat vs',
       titleAccent: 'X-Posed',
       titleRest: ', at ang iba pang nasa shelf.',
-      lead: 'Mga dalawampung extension ang naglalagay ng country flag sa tabi ng X handle. Tatlo sa kanila ang may makabuluhang bilang ng users. Heto kung ano ang aktuwal na ginagawa ng bawat isa, kung ano ang ginagawa ng X-Pat na iba, at ang tatlong bagay na mas magaling gawin ng X-Posed — na siyang bahaging iniiwan ng karamihan sa mga comparison page.',
+      lead: 'Mga dalawampung extension ang naglalagay ng country flag sa tabi ng X handle. Tatlo sa kanila ang may makabuluhang bilang ng users. Heto kung ano ang aktuwal na ginagawa ng bawat isa, kung ano ang ginagawa ng X-Pat na iba, at ang tatlong bagay na mas magaling gawin ng X-Posed - na siyang bahaging iniiwan ng karamihan sa mga comparison page.',
       featureHeading: 'Feature kada feature',
       featureLead:
-        'Bawat cell ay galing sa public store listing o public repository, binasa noong {date}. Ang dash ay nangangahulugang hindi ito sinasabi ng listing — para sa dalawang closed-source na extension, hindi iyon kapareho ng no, at magiging unfair na iguhit ito nang ganoon.',
+        'Bawat cell ay galing sa public store listing o public repository, binasa noong {date}. Ang dash ay nangangahulugang hindi ito sinasabi ng listing - para sa dalawang closed-source na extension, hindi iyon kapareho ng no, at magiging unfair na iguhit ito nang ganoon.',
       aheadHeading: 'Kung saan nangunguna ang X-Posed',
       differsHeading: 'Ano talaga ang pagkakaiba',
       differs1:
-        'Ang lahat sa kategoryang ito ay nakasalalay sa shared cache. Pinapayagan ng X ang isang browser ng mga limampung profile lookup bawat labinlimang minuto, at ang isang busy na thread ay may mas marami pang accounts kaysa riyan — kaya bawat extension dito na patuloy na gumagana lampas sa limit ay ginagawa iyon sa pamamagitan ng pagbasa ng cache na pinuno ng ibang tao. Ang tanong ay hindi kung may server. Ang tanong ay kung ano ang pinapayagang gawin ng server na iyon.',
+        'Ang lahat sa kategoryang ito ay nakasalalay sa shared cache. Pinapayagan ng X ang isang browser ng mga limampung profile lookup bawat labinlimang minuto, at ang isang busy na thread ay may mas marami pang accounts kaysa riyan - kaya bawat extension dito na patuloy na gumagana lampas sa limit ay ginagawa iyon sa pamamagitan ng pagbasa ng cache na pinuno ng ibang tao. Ang tanong ay hindi kung may server. Ang tanong ay kung ano ang pinapayagang gawin ng server na iyon.',
       differs2:
-        '<b>Ang sa amin ay naka-publish, at puwede kang magpatakbo ng sarili mo.</b> Ang cache server ay nasa parehong repositoryo ng extension, may deploy docs para sa parehong Cloudflare Workers at plain VPS. Naka-publish ang X-Posed ng extension nito — totoo, at under MIT — pero hindi ang Worker kung saan ipinapadala ang contributions. Iyan ang piyesang hindi mo masi-check sa pamamagitan ng pagbabasa ng code na in-install mo.',
+        '<b>Ang sa amin ay naka-publish, at puwede kang magpatakbo ng sarili mo.</b> Ang cache server ay nasa parehong repositoryo ng extension, may deploy docs para sa parehong Cloudflare Workers at plain VPS. Naka-publish ang X-Posed ng extension nito - totoo, at under MIT - pero hindi ang Worker kung saan ipinapadala ang contributions. Iyan ang piyesang hindi mo masi-check sa pamamagitan ng pagbabasa ng code na in-install mo.',
       differs3:
         '<b>Ang naka-cache na sagot dito ay kailangan ng corroboration.</b> Ang mga contribution ay ini-store bilang per-install votes at ang consensus ang inihahain, may confidence threshold na puwede mong taasan sa options page. Ang sariling dokumentasyon ng X-Posed ay naglalarawan ng pag-store ng huling accepted value para sa isang handle, na ibig sabihin ay ang pinakahuling contributor ang nagdedesisyon. Parehong disenyo ay tapat tungkol sa parehong underlying problem: walang server ang makakapagpatunay na ang isang contribution ay talagang galing sa X.',
       differs4:
@@ -476,15 +476,15 @@ export const fil: Dict = {
       sourcesHeading: 'Mga source',
       sourcesLead:
         'Binasa noong {date}. Nagbabago ang install counts at features; kung may outdated man sa ibaba, error iyon at hindi posisyon, at ang <a href="{href}">issue tracker</a> ang pinakamabilis na paraan para maitama ito.',
-      sourceLabel: ' — source: ',
-      sourceNotPublished: ' — hindi naka-publish ang source',
+      sourceLabel: ' - source: ',
+      sourceNotPublished: ' - hindi naka-publish ang source',
     },
   },
 
   pages: {
     home: {
       title:
-        'X-Pat — X Profile Location: tingnan ang bansa ng kahit anong X profile',
+        'X-Pat - X Profile Location: tingnan ang bansa ng kahit anong X profile',
       description:
         'Isang country flag sa bawat X profile, mula sa sariling data ng X. May VPN warnings, at itago o i-highlight ang posts ayon sa bansa, organisasyon, edad o bio keyword. Libre para sa Chrome.',
       faq: [
@@ -494,7 +494,7 @@ export const fil: Dict = {
         },
         {
           q: 'Malalaman ko ba kung gumagamit ng VPN ang isang X account?',
-          a: 'Minamarkahan ng X ang ilang account bilang may lokasyong hindi nito ma-verify. Ipinapakita ito ng extension bilang ⚠ VPN badge sa tabi ng flag. Ibig sabihin, ang X mismo ang hindi sigurado sa bansa — hindi napatunayan na may VPN.',
+          a: 'Minamarkahan ng X ang ilang account bilang may lokasyong hindi nito ma-verify. Ipinapakita ito ng extension bilang ⚠ VPN badge sa tabi ng flag. Ibig sabihin, ang X mismo ang hindi sigurado sa bansa - hindi napatunayan na may VPN.',
         },
         {
           q: 'Puwede ko bang itago o i-collapse ang tweets mula sa ilang bansa?',
@@ -502,7 +502,7 @@ export const fil: Dict = {
         },
         {
           q: 'Puwede ba akong mag-filter base sa iba bukod sa bansa?',
-          a: 'Oo. Puwede mong i-block ang bawat account na bina-badge ng X bilang kabilang sa isang organisasyon, markahan ang mga account na mas bata sa threshold na pipiliin mo, at i-highlight ang mga account na tumutugma ang pangalan o bio sa keywords mo — o ang bio ay halos puro flag emoji. Ang mga age at keyword rules ay nagmamarka lang ng post; hindi nila tinatanggal. Sinasaklaw ng allowlist at per-rule exceptions ang mga account na gusto mong hindi tamaan.',
+          a: 'Oo. Puwede mong i-block ang bawat account na bina-badge ng X bilang kabilang sa isang organisasyon, markahan ang mga account na mas bata sa threshold na pipiliin mo, at i-highlight ang mga account na tumutugma ang pangalan o bio sa keywords mo - o ang bio ay halos puro flag emoji. Ang mga age at keyword rules ay nagmamarka lang ng post; hindi nila tinatanggal. Sinasaklaw ng allowlist at per-rule exceptions ang mga account na gusto mong hindi tamaan.',
         },
         {
           q: 'Kailangan ba nito ang X password ko o API key?',
@@ -519,7 +519,7 @@ export const fil: Dict = {
       title:
         'X "About this account": paano ito makikita, at makita nang mas mabilis',
       description:
-        'Ipinapakita ng X ang bansa ng bawat account sa ilalim ng "About this account" — isang profile kada beses, nasa likod ng menu. Heto kung saan ito hahanapin, at kung paano makukuha nang inline.',
+        'Ipinapakita ng X ang bansa ng bawat account sa ilalim ng "About this account" - isang profile kada beses, nasa likod ng menu. Heto kung saan ito hahanapin, at kung paano makukuha nang inline.',
       faq: [
         {
           q: 'Ano ang "About this account" sa X?',
@@ -531,11 +531,11 @@ export const fil: Dict = {
         },
         {
           q: 'Bakit hindi ko makita ang "About this account" para sa ilang users?',
-          a: 'Hindi nagbabalik ang X ng bansa para sa bawat account — kadalasan ang mas luma o hindi masyadong active ay walang nakasave. Kapag talagang walang laman ang field, walang tool ang makakapuno niyon, kasama na ito.',
+          a: 'Hindi nagbabalik ang X ng bansa para sa bawat account - kadalasan ang mas luma o hindi masyadong active ay walang nakasave. Kapag talagang walang laman ang field, walang tool ang makakapuno niyon, kasama na ito.',
         },
         {
           q: 'Paano ko makikita ang bansa nang hindi binubuksan ang bawat profile?',
-          a: 'Iyan mismo ang puwang na sinasara ng extension na ito. Binabasa nito ang parehong field at iginuguhit bilang flag sa hover card at, kung gusto mo, inline sa timeline — kaya ang pag-scan ng thread na may walumpung reply ay hindi na ibig sabihin ay walumpung menu visit.',
+          a: 'Iyan mismo ang puwang na sinasara ng extension na ito. Binabasa nito ang parehong field at iginuguhit bilang flag sa hover card at, kung gusto mo, inline sa timeline - kaya ang pag-scan ng thread na may walumpung reply ay hindi na ibig sabihin ay walumpung menu visit.',
         },
       ],
     },
@@ -547,7 +547,7 @@ export const fil: Dict = {
       faq: [
         {
           q: 'Ano ang engagement farming sa X?',
-          a: 'Ang pagpo-post ng replies na dinisenyo para mag-harvest ng impressions imbes na magsabi ng kahit ano — generic na pagsang-ayon, recycled na galit, o stock phrase na idinidikit sa ilalim ng kung aling post ang trending. Simula nang magsimulang magbayad ang X base sa impressions, may direktang pinansyal na motibo na rito.',
+          a: 'Ang pagpo-post ng replies na dinisenyo para mag-harvest ng impressions imbes na magsabi ng kahit ano - generic na pagsang-ayon, recycled na galit, o stock phrase na idinidikit sa ilalim ng kung aling post ang trending. Simula nang magsimulang magbayad ang X base sa impressions, may direktang pinansyal na motibo na rito.',
         },
         {
           q: 'Paano mo malalaman kung ang isang X reply ay galing sa bot o farm?',
@@ -555,7 +555,7 @@ export const fil: Dict = {
         },
         {
           q: 'Anong follower-to-following ratio ang nagpapahiwatig ng farmed account?',
-          a: 'Ang pag-follow ng mas marami pang accounts kaysa sa nagfa-follow pabalik — ratio na malayong mas mababa sa 0.1 — ang klasikong pattern, dahil ang mass-following ang pinakamurang paraan para mapansin. Maraming ordinaryong bagong account ang ganoon din ang hitsura, kaya ituring itong isang input sa halip na hatol.',
+          a: 'Ang pag-follow ng mas marami pang accounts kaysa sa nagfa-follow pabalik - ratio na malayong mas mababa sa 0.1 - ang klasikong pattern, dahil ang mass-following ang pinakamurang paraan para mapansin. Maraming ordinaryong bagong account ang ganoon din ang hitsura, kaya ituring itong isang input sa halip na hatol.',
         },
         {
           q: 'Nade-detect ba ng extension ang engagement farming?',
@@ -574,7 +574,7 @@ export const fil: Dict = {
     comparison: {
       title: 'Alternatibo sa X-Posed: X-Pat compared, feature kada feature',
       description:
-        'Isang matapat na paghahambing ng X-Pat laban sa X-Posed at sa dalawa pang pinaka-installed na X location extension — kasama ang tatlong bagay na mas magaling gawin ng X-Posed.',
+        'Isang matapat na paghahambing ng X-Pat laban sa X-Posed at sa dalawa pang pinaka-installed na X location extension - kasama ang tatlong bagay na mas magaling gawin ng X-Posed.',
       faq: [
         {
           q: 'Ano ang pinakamahusay na alternatibo sa X-Posed?',
@@ -582,7 +582,7 @@ export const fil: Dict = {
         },
         {
           q: 'Open source ba ang X-Pat?',
-          a: 'Oo, MIT licensed, at ganoon din ang cache server na kausap nito — parehong nasa iisang repositoryo, may deploy docs para sa Cloudflare Workers at para sa plain VPS. Naka-publish din ang X-Posed ng extension nito under MIT; ang hindi nito naka-publish ay ang Worker na tumatanggap ng community-cache contributions.',
+          a: 'Oo, MIT licensed, at ganoon din ang cache server na kausap nito - parehong nasa iisang repositoryo, may deploy docs para sa Cloudflare Workers at para sa plain VPS. Naka-publish din ang X-Posed ng extension nito under MIT; ang hindi nito naka-publish ay ang Worker na tumatanggap ng community-cache contributions.',
         },
         {
           q: 'Kailangan ba ng mga extension na ito ang X password ko?',
@@ -590,7 +590,7 @@ export const fil: Dict = {
         },
         {
           q: 'Bakit tumitigil ang flag sa gitna ng thread?',
-          a: 'Pinapayagan ng X ang isang browser ng mga limampung account lookup bawat labinlimang minuto, at ang isang busy na thread ay mas marami pa riyan ang accounts. Ang mga extension na umaabot sa ceiling ay humihinto na lang sa paglalagay ng flags. Ang shared cache ang umiiwas dito — karamihan ng profile ay walang gastos na lookup dahil may ibang nag-resolve na sa kanila — at ang X-Pat ay nagrereserba pa ng huling dalawampung porsiyento ng window para sa mga account na ikaw mismo ang nag-hover.',
+          a: 'Pinapayagan ng X ang isang browser ng mga limampung account lookup bawat labinlimang minuto, at ang isang busy na thread ay mas marami pa riyan ang accounts. Ang mga extension na umaabot sa ceiling ay humihinto na lang sa paglalagay ng flags. Ang shared cache ang umiiwas dito - karamihan ng profile ay walang gastos na lookup dahil may ibang nag-resolve na sa kanila - at ang X-Pat ay nagrereserba pa ng huling dalawampung porsiyento ng window para sa mga account na ikaw mismo ang nag-hover.',
         },
       ],
     },

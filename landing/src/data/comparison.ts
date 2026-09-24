@@ -4,14 +4,14 @@
  * One source, three surfaces: the /x-posed-alternative page renders every row,
  * the homepage renders the `headline` subset, and `vite.config.ts` writes the
  * same subset into the repo README between markers. A table that disagrees with
- * itself across three places is worse than no table at all — on a page whose
+ * itself across three places is worse than no table at all - on a page whose
  * entire value is being trusted as fair.
  *
  * Deliberately free of JSX imports for the same reason `routes.ts` is: the Vite
  * config loads this at build time to generate the README block.
  *
  * Since the site went multilingual this file holds the *verifiable* half of a
- * row — which product does what — and the readable half (`label`, `note`) lives
+ * row - which product does what - and the readable half (`label`, `note`) lives
  * in `i18n/dict/*` under `comparison.rows.<id>`. The split is not cosmetic: a
  * cell is a checkable claim about someone else's software and must stay
  * identical in every language, while the sentence describing it must not.
@@ -19,7 +19,7 @@
  * ── Rules for editing ────────────────────────────────────────────────────────
  *
  * 1. Every cell is checkable by a reader in under a minute. Store listings and
- *    public repos only — never a claim that rests on having read someone's
+ *    public repos only - never a claim that rests on having read someone's
  *    minified bundle, and never an inference about code we cannot see.
  * 2. `'unstated'` is not a polite `'no'`. It means the listing does not say, and
  *    it renders as "not stated" rather than a cross. Closed-source extensions
@@ -61,7 +61,7 @@ export interface Row {
 }
 
 /**
- * When the store figures below were last read by hand. The page prints this —
+ * When the store figures below were last read by hand. The page prints this -
  * an undated competitive claim ages into a false one, and saying when you
  * looked is the cheapest way to stay honest about it.
  */
@@ -206,7 +206,7 @@ export const ROWS: Row[] = [
     id: 'testSuite',
     headline: true,
     cells: {
-      // Not a tick but a count, and it is copy as much as data — so the string
+      // Not a tick but a count, and it is copy as much as data - so the string
       // itself comes from the dictionary, where "{count} tests" can become
       // "{count} اختبارات" without the row's meaning moving. The number is
       // filled from `test-count.ts`, which `pnpm tests:count` generates.

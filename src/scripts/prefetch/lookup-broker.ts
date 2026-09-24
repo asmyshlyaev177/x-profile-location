@@ -18,19 +18,19 @@ import {
   revalidateBudget,
 } from './prefetch-queue'
 
-/** A grant whose tab never reported back — closed, crashed or navigated away. */
+/** A grant whose tab never reported back - closed, crashed or navigated away. */
 const INFLIGHT_TTL_MS = 60 * 1000
 
 /** Answer to a poll with nothing to hand out; tabs re-ask on it. */
 export const IDLE_POLL_MS = 30 * 1000
 
 /** A record no lifecycle event ever came for. Past any silence a live tab can
- *  have — a frozen one runs no timers at all — because a sweep costs it its
+ *  have - a frozen one runs no timers at all - because a sweep costs it its
  *  queue. A bound on growth, not a reaper. */
 export const TAB_TTL_MS = 3 * 24 * 60 * 60 * 1000
 
 // Offers arrive ~20 a batch and drain 2 a window, and every message rewrites the
-// whole snapshot — see "Revalidation" in CLAUDE.md.
+// whole snapshot - see "Revalidation" in CLAUDE.md.
 const MAX_REVALIDATE = 10
 
 export interface TabState {
@@ -50,7 +50,7 @@ export interface LookupReport {
   userName: string
   /** A request actually went to X. False when a cache answered first. */
   spent: boolean
-  /** X answered and the answer parsed — the condition for not asking again. */
+  /** X answered and the answer parsed - the condition for not asking again. */
   ok?: boolean
   status?: number
   limit?: number | null
@@ -156,7 +156,7 @@ export class LookupBroker {
   }
 
   /** Forget a closed tab, releasing its grants rather than letting them time
-   *  out — at worst another tab repeats one request. */
+   *  out - at worst another tab repeats one request. */
   dropTab(tabId: number): void {
     this.tabs.delete(tabId)
     for (const [handle, entry] of this.inflight) {
@@ -177,7 +177,7 @@ export class LookupBroker {
     )
   }
 
-  // The tab offers, the reserve decides — see "Revalidation" in ./CLAUDE.md.
+  // The tab offers, the reserve decides - see "Revalidation" in ./CLAUDE.md.
   offerRevalidation(handles: string[]): void {
     const now = this.now()
     const held = new Set(this.revalidate.map(key))
@@ -189,7 +189,7 @@ export class LookupBroker {
       held.add(key(handle))
       fresh.push(handle)
     }
-    // Newest offer first, its own order kept — the queues' rule, for the same
+    // Newest offer first, its own order kept - the queues' rule, for the same
     // reason: what a tab just saw is what its reader is looking at.
     this.revalidate.unshift(...fresh)
     this.revalidate.length = Math.min(this.revalidate.length, MAX_REVALIDATE)
@@ -228,7 +228,7 @@ export class LookupBroker {
     return null
   }
 
-  /** Whether any tab holds a feed account worth asking about — all that earns
+  /** Whether any tab holds a feed account worth asking about - all that earns
    *  the opening sprint. */
   private feedIsWaiting(now: number): boolean {
     for (const tab of this.tabs.values()) {
@@ -241,7 +241,7 @@ export class LookupBroker {
     return false
   }
 
-  /** A cached handle to re-ask about, ahead of the queues — see
+  /** A cached handle to re-ask about, ahead of the queues - see
    *  "Revalidation" in CLAUDE.md. */
   private takeRevalidation(now: number): string | null {
     const reserve = revalidateBudget(this.rate, this.opts.reserveFraction)

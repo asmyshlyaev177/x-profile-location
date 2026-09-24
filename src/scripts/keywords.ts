@@ -1,7 +1,7 @@
 const segmenter = new Intl.Segmenter()
 
 export function toGraphemes(text: string): string[] {
-  // ASCII fast-path: each code unit is its own grapheme — skip Intl.Segmenter.
+  // ASCII fast-path: each code unit is its own grapheme - skip Intl.Segmenter.
   for (let i = 0; i < text.length; i++) {
     if (text.charCodeAt(i) > 127) return _segmentUnicode(text)
   }
@@ -51,7 +51,7 @@ export function graphemeIndicesOf(
 }
 /* jscpd:ignore-end */
 
-// Keyword matching (stateful — call setKeywords whenever the set changes)
+// Keyword matching (stateful - call setKeywords whenever the set changes)
 
 /** Whether a keyword has to stand alone, or may sit inside a longer word. */
 export type MatchMode = 'word' | 'partial'

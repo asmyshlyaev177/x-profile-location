@@ -53,7 +53,7 @@ export function Hero() {
             </a>
           </div>
 
-          {/* Data rail — the install objections, answered in four readings */}
+          {/* Data rail - the install objections, answered in four readings */}
           <dl
             class="rise mt-11 grid grid-cols-2 gap-x-6 gap-y-5 sm:flex sm:flex-wrap sm:gap-y-0"
             style="animation-delay:350ms"
@@ -90,7 +90,7 @@ export function Hero() {
 
 /* A mock of X with the extension running: a post collapsed by country, an
    inline flag, the injected hover-card row, a VPN warning. The names and
-   countries are examples, not UI, so they never translate — only the words X
+   countries are examples, not UI, so they never translate - only the words X
    itself renders and the extension's own "Hidden / Show". */
 function XPanel({ t }: { t: Dict }) {
   const cardRef = useRef<HTMLDivElement>(null)
@@ -151,7 +151,7 @@ function XPanel({ t }: { t: Dict }) {
         ref={cardRef}
         class="bg-surface border-line overflow-hidden rounded-2xl border shadow-[0_40px_90px_-40px_rgba(0,0,0,0.9)] transition-transform duration-200 ease-out lg:transform-[rotateY(-7deg)_rotateX(2.5deg)]"
       >
-        {/* Browser chrome — grounds the mock as "inside x.com" */}
+        {/* Browser chrome - grounds the mock as "inside x.com" */}
         <div class="border-line bg-bg/60 flex items-center gap-2 border-b px-3.5 py-2.5">
           <span class="flex gap-1.5">
             <i class="bg-line-strong block h-2 w-2 rounded-full" />
@@ -164,7 +164,7 @@ function XPanel({ t }: { t: Dict }) {
         </div>
 
         <div class="space-y-2 p-3">
-          {/* 1 — a blocked country, collapsed rather than silently dropped.
+          {/* 1 - a blocked country, collapsed rather than silently dropped.
               First in the stack and in the loudest colour on the panel: it is
               the outcome people install for, and the flags below it are the
               mechanism that produces it. */}
@@ -177,14 +177,14 @@ function XPanel({ t }: { t: Dict }) {
             </span>
           </div>
 
-          {/* 2 — inline flag in the timeline */}
+          {/* 2 - inline flag in the timeline */}
           <TweetRow name="Lena Fischer" handle="@lenafischer">
             <span class="text-accent-on-soft inline-flex items-center gap-1 text-[0.6875rem]">
               <span class="text-[0.875rem] leading-none">🇯🇵</span> Japan
             </span>
           </TweetRow>
 
-          {/* 3 — the hover card: the moment the extension exists for */}
+          {/* 3 - the hover card: the moment the extension exists for */}
           <div class="border-line-strong bg-bg rounded-xl border p-3.5 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.9)]">
             <div class="flex items-start gap-3">
               <div class="bg-accent/15 ring-accent/25 h-11 w-11 shrink-0 rounded-full ring-1" />
@@ -194,7 +194,7 @@ function XPanel({ t }: { t: Dict }) {
                 </p>
                 <p class="text-muted truncate text-[0.75rem]">@mweber</p>
 
-                {/* Injected by the extension — flashes in after the card lands */}
+                {/* Injected by the extension - flashes in after the card lands */}
                 <p class="injected mt-1.5 inline-flex items-center gap-1.5 px-1 py-0.5">
                   <span class="text-[1.0625rem] leading-none">🇩🇪</span>
                   <span class="text-body text-[0.75rem] font-medium">
@@ -228,7 +228,7 @@ function XPanel({ t }: { t: Dict }) {
             </div>
           </div>
 
-          {/* 4 — VPN warning */}
+          {/* 4 - VPN warning */}
           <TweetRow name="nightcrawler" handle="@n1ghtcrawl">
             <span class="inline-flex items-center gap-1.5">
               <span class="text-[0.875rem] leading-none">🇺🇸</span>

@@ -1,5 +1,5 @@
 // The post as it goes into a shared image: our rows in, the reader's controls
-// out. Every style is inline — no stylesheet reaches inside the SVG.
+// out. Every style is inline - no stylesheet reaches inside the SVG.
 
 import type { LocationData } from '../cache/cache'
 import { canonicalLocation, flagEmojiFor } from '../countries/countries'
@@ -96,7 +96,7 @@ export function decorateSnapshot(clone: Element, data: LocationData): void {
 
   const row = buildSnapshotLocationRow(data)
 
-  // Where the page puts it, which differs by layout — after the block in a feed,
+  // Where the page puts it, which differs by layout - after the block in a feed,
   // inside it on a status page, whose block is sized for the text.
   const nameEl = getNameEl(clone)
   const handleDiv = clone.matches(SEL_PRIMARY_TWEET)

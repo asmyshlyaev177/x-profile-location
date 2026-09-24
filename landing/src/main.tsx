@@ -2,7 +2,7 @@
  * The client entry.
  *
  * Deliberately does not import `seo.ts`, `dicts.ts` or `prerender.tsx`. Those
- * reach every language at once, which is correct in Node and wrong here — one
+ * reach every language at once, which is correct in Node and wrong here - one
  * import of any of them would put ~170 kB of copy the visitor cannot read into
  * the bundle. The one dictionary this page needs is fetched by `loadDict`, as
  * its own chunk.
@@ -25,7 +25,7 @@ if (typeof window !== 'undefined') {
   // Every page is prerendered and every control in the markup already works
   // without JS: the install link is a real <a href>, the anchors are anchors,
   // the FAQ is a native <details>, and so is the language menu. So hydration
-  // buys the carousel, the lightbox and the Brave check — none of which anyone
+  // buys the carousel, the lightbox and the Brave check - none of which anyone
   // can reach in the first second. Running it on idle instead of immediately
   // keeps ~150 ms of scripting off the critical path, and it is also what
   // makes the dictionary fetch free: it happens while the page sits idle,

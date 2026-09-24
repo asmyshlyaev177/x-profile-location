@@ -9,7 +9,7 @@ import {
   vi,
 } from 'vitest'
 
-// Only the server URL is faked — the storage keys beside it are real, and a
+// Only the server URL is faked - the storage keys beside it are real, and a
 // hand-written copy of one would pass while the extension read another.
 vi.mock('../constants', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../constants')>()),
@@ -200,7 +200,7 @@ describe('resilience: failures, timeout, circuit breaker', () => {
     await sharedBatchLookup(['a3']) // 3rd consecutive failure trips the breaker
     expect(fetchFn).toHaveBeenCalledTimes(3)
 
-    await sharedBatchLookup(['a4']) // short-circuited — no request
+    await sharedBatchLookup(['a4']) // short-circuited - no request
     await sharedBatchLookup(['a5'])
     expect(fetchFn).toHaveBeenCalledTimes(3)
   })
@@ -215,7 +215,7 @@ describe('resilience: failures, timeout, circuit breaker', () => {
     await sharedBatchLookup(['b1'])
     await sharedBatchLookup(['b2'])
     await sharedBatchLookup(['b3'])
-    await sharedBatchLookup(['b4']) // breaker open — short-circuited
+    await sharedBatchLookup(['b4']) // breaker open - short-circuited
     expect(fetchFn).toHaveBeenCalledTimes(3)
 
     vi.advanceTimersByTime(30 * 60 * 1000) // well past the cooldown
@@ -246,7 +246,7 @@ describe('resilience: failures, timeout, circuit breaker', () => {
 
   it('fails fast when the network is simply gone', async () => {
     vi.useFakeTimers()
-    // DNS failure or a refused connection — no server to answer, no hang.
+    // DNS failure or a refused connection - no server to answer, no hang.
     vi.stubGlobal(
       'fetch',
       vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
@@ -259,7 +259,7 @@ describe('resilience: failures, timeout, circuit breaker', () => {
 
   it('does not lock a failed batch out of the retry', async () => {
     // The names were marked queried before the request went out. Nobody
-    // answered, so the mark has to go with the failure — otherwise a server
+    // answered, so the mark has to go with the failure - otherwise a server
     // that is back in a second is not asked again for QUERIED_TTL_MS.
     const fetchFn = vi
       .fn()
@@ -335,7 +335,7 @@ describe('resilience: failures, timeout, circuit breaker', () => {
 
     for (const n of ['e1', 'e2', 'e3']) await sharedBatchLookup([n])
     await vi.advanceTimersByTimeAsync(31_000)
-    await sharedBatchLookup(['e4']) // 4th failure — second trip, 60s
+    await sharedBatchLookup(['e4']) // 4th failure - second trip, 60s
     expect(fetchFn).toHaveBeenCalledTimes(4)
 
     await vi.advanceTimersByTimeAsync(31_000)
@@ -535,7 +535,7 @@ describe('how much the cache holds', () => {
 
   it('forgets one nothing has confirmed in a week', () => {
     // `at` is when the number last moved, so a count standing still for that
-    // long is a cache nobody is contributing to — better a blank than a figure
+    // long is a cache nobody is contributing to - better a blank than a figure
     // that is quietly wrong.
     const stored = { sharedCacheCount: { n: 4242, at: 1_000 } }
     const week = 7 * 24 * 60 * 60 * 1000

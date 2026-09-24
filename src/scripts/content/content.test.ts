@@ -8,7 +8,7 @@ import type { Keyword } from '../keywords'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Hoist chrome global — must run before module-level code in content.tsx
+// Hoist chrome global - must run before module-level code in content.tsx
 // ---------------------------------------------------------------------------
 vi.hoisted(() => {
   ;(globalThis as unknown as Record<string, unknown>).chrome = {
@@ -51,8 +51,8 @@ vi.mock('../cache/cache', async (importOriginal) => ({
 }))
 
 // Isolate content tests from the shared cache (it has a real server URL and is
-// covered by shared-cache.test.ts) — no network, no cross-test async bleed.
-// Configured + opted in by default, which is what ships — so background
+// covered by shared-cache.test.ts) - no network, no cross-test async bleed.
+// Configured + opted in by default, which is what ships - so background
 // prefetch is allowed unless a test says otherwise.
 vi.mock('../cache/shared-cache', () => ({
   sharedBatchLookup: vi.fn().mockResolvedValue([]),
@@ -74,22 +74,22 @@ const snapshot = vi.hoisted(() => ({
 }))
 vi.mock('../snapshot', async (importOriginal) => ({
   // allowGrowth is real DOM work with no canvas in it, and decorateSnapshot
-  // calls it — only the rendering needs stubbing.
+  // calls it - only the rendering needs stubbing.
   ...(await importOriginal<typeof import('../snapshot')>()),
   snapshotElement: snapshot.snapshotElement,
 }))
 
 // Stub the card renderer: it needs a real 2D canvas context (happy-dom has
 // none) and its layout is covered by share-card.test.ts. What content.tsx owns
-// is *what it passes in* — which post text, for which account.
+// is *what it passes in* - which post text, for which account.
 vi.mock('../share-card', () => ({
   renderShareCard: vi.fn().mockResolvedValue(new Blob()),
   renderAboutCard: vi.fn().mockResolvedValue(new Blob()),
   deliverShareCard: vi.fn().mockResolvedValue('clipboard'),
 }))
 
-// Stub the poller. content.tsx's job is only to *drive* it — settings decide
-// whether it runs, captured users decide what it asks about — and its loop is
+// Stub the poller. content.tsx's job is only to *drive* it - settings decide
+// whether it runs, captured users decide what it asks about - and its loop is
 // covered by prefetch-poller.test.ts. Stubbing also keeps its timers (and the
 // lookups they'd trigger) out of every other test in this file.
 const poller = vi.hoisted(() => ({
@@ -142,8 +142,8 @@ const onMessageCallback: (message: unknown) => void =
 // ---------------------------------------------------------------------------
 // This hook is file-scoped on purpose: Vitest runs file-level beforeEach hooks
 // before describe-level ones, so every test starts from the same state no matter
-// which describe (or which order) it runs in. `vi.clearAllMocks()` — which most
-// describes below call — only clears call history, *not* implementations, so a
+// which describe (or which order) it runs in. `vi.clearAllMocks()` - which most
+// describes below call - only clears call history, *not* implementations, so a
 // `mockResolvedValue` set by one test stays installed for every test after it.
 // That was a real order dependency: with `--sequence.shuffle`, the
 // `fetchLocationData` tests (which expect the cache to miss, and so never set
@@ -252,7 +252,7 @@ function disableFeedLocation() {
 }
 
 // ---------------------------------------------------------------------------
-// fetchLocationData — API request variables
+// fetchLocationData - API request variables
 // ---------------------------------------------------------------------------
 describe('fetchLocationData', () => {
   const HEADERS = {
@@ -342,9 +342,9 @@ describe('fetchLocationData', () => {
 })
 
 // ---------------------------------------------------------------------------
-// fetchLocationData — cache and session behaviour
+// fetchLocationData - cache and session behaviour
 // ---------------------------------------------------------------------------
-describe('fetchLocationData — cache hit', () => {
+describe('fetchLocationData - cache hit', () => {
   const HEADERS = {
     authorization: 'Bearer token123',
     'x-csrf-token': 'csrf123',
@@ -546,7 +546,7 @@ describe('fetchLocationData — cache hit', () => {
   })
 })
 
-describe('fetchLocationData — checkedThisSession dedup', () => {
+describe('fetchLocationData - checkedThisSession dedup', () => {
   const HEADERS = {
     authorization: 'Bearer token123',
     'x-csrf-token': 'csrf123',
@@ -585,7 +585,7 @@ describe('fetchLocationData — checkedThisSession dedup', () => {
   })
 })
 
-describe('fetchLocationData — manual refetch', () => {
+describe('fetchLocationData - manual refetch', () => {
   const HEADERS = {
     authorization: 'Bearer token123',
     'x-csrf-token': 'csrf123',
@@ -702,7 +702,7 @@ describe('fetchLocationData — manual refetch', () => {
 
   it('reports nothing rather than a bio when the refetch fails', async () => {
     // A bio-only entry is not a location answer, and handing it back would read
-    // as "X knows nothing" — the caller draws the rate-limit row off `null`.
+    // as "X knows nothing" - the caller draws the rate-limit row off `null`.
     vi.mocked(getCached).mockResolvedValue({
       location: null,
       locationAccurate: true,
@@ -731,7 +731,7 @@ describe('fetchLocationData — manual refetch', () => {
   })
 })
 
-describe('fetchLocationData — concurrent deduplication', () => {
+describe('fetchLocationData - concurrent deduplication', () => {
   const HEADERS = {
     authorization: 'Bearer token123',
     'x-csrf-token': 'csrf123',
@@ -774,7 +774,7 @@ describe('fetchLocationData — concurrent deduplication', () => {
   })
 })
 
-describe('fetchLocationData — error responses', () => {
+describe('fetchLocationData - error responses', () => {
   const HEADERS = {
     authorization: 'Bearer token123',
     'x-csrf-token': 'csrf123',
@@ -888,7 +888,7 @@ describe('fetchLocationData — error responses', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The rate-limit toast — closable by click
+// The rate-limit toast - closable by click
 // ---------------------------------------------------------------------------
 describe('the rate-limit toast', () => {
   const HEADERS = {
@@ -929,7 +929,7 @@ describe('the rate-limit toast', () => {
     toast()!.click()
     expect(toast()).toBeNull()
 
-    // The countdown died with it — a later tick must not resurrect anything.
+    // The countdown died with it - a later tick must not resurrect anything.
     await vi.advanceTimersByTimeAsync(2000)
     expect(toast()).toBeNull()
   })
@@ -966,7 +966,7 @@ describe('the rate-limit toast', () => {
     await fetchLocationData('rl_dismissed')
     toast()!.click()
 
-    // Still inside the window, so the lookup is refused — quietly now.
+    // Still inside the window, so the lookup is refused - quietly now.
     await fetchLocationData('rl_blocked')
     expect(toast()).toBeNull()
   })
@@ -998,7 +998,7 @@ describe('the rate-limit toast', () => {
   it('closes on Enter and Space too', async () => {
     // It went from inert pill to control, and a control a click can reach the
     // keyboard must reach as well. The role sits on the countdown span, not
-    // the container — a button nested inside a role="button" is the
+    // the container - a button nested inside a role="button" is the
     // nested-interactive trap.
     respondRateLimited(300)
     await fetchLocationData('rl_keyboard')
@@ -1015,7 +1015,7 @@ describe('the rate-limit toast', () => {
 
   it('is brought back by a swipe, which asks for it', async () => {
     // The swipe path deliberately shows no answer of its own while rate
-    // limited — the corner belongs to this toast. A dismissal must not turn
+    // limited - the corner belongs to this toast. A dismissal must not turn
     // that into a gesture that silently does nothing for the whole window.
     respondRateLimited(300)
     await fetchLocationData('rl_swipe_seed')
@@ -1124,7 +1124,7 @@ describe('the rate-limit badge', () => {
     await vi.advanceTimersByTimeAsync(4_000)
 
     // The bug: the badge stops ticking a second short and stays on the page
-    // reading "⏱ 1s" — a countdown that has already finished, still counting.
+    // reading "⏱ 1s" - a countdown that has already finished, still counting.
     expect(badge()?.textContent).not.toBe('⏱ 1s')
     expect(badge()).toBeNull()
     expect(article.querySelector('.x-loc-info')).toBeNull()
@@ -1141,7 +1141,7 @@ describe('the rate-limit badge', () => {
     await flushAsync()
 
     // No hover, no reload: the countdown ending is itself the cue. This is the
-    // one surface with no second chance — X opens no hover card for the account
+    // one surface with no second chance - X opens no hover card for the account
     // its own status page is about, so a row left counting stays counting.
     expect(badge()).toBeNull()
     expect(article.querySelector('.x-loc-icon-flag')).not.toBeNull()
@@ -1175,9 +1175,9 @@ describe('the rate-limit badge', () => {
 })
 
 // ---------------------------------------------------------------------------
-// chrome.runtime.onMessage — CLEAR_CACHE
+// chrome.runtime.onMessage - CLEAR_CACHE
 // ---------------------------------------------------------------------------
-describe('chrome.runtime.onMessage — CLEAR_CACHE', () => {
+describe('chrome.runtime.onMessage - CLEAR_CACHE', () => {
   const HEADERS = { authorization: 'Bearer token', 'x-csrf-token': 'csrf' }
 
   beforeEach(() => {
@@ -1538,7 +1538,7 @@ describe('x-loc-users-data event', () => {
   it('highlights a tweet rendered AFTER its bio arrived, with an empty IDB cache', async () => {
     // Simulates a fresh page load: nothing in IndexedDB yet. The bio is only
     // available in memory (from the timeline event), and the tweet is rendered
-    // after the event — so the observer must highlight it without reading the
+    // after the event - so the observer must highlight it without reading the
     // bio back from IDB. Regression for "no highlight until reload".
     vi.mocked(getCached).mockResolvedValue(undefined)
     onChangedCallback({ highlightKeywords: { newValue: ['crypto'] } }, 'local')
@@ -1724,7 +1724,7 @@ describe('x-loc-users-data event', () => {
 
   it('highlights the quote via an emoji keyword in the quoted display name', async () => {
     // The quoted display name contains 🏳️‍⚧️ only as an <img alt> (textContent
-    // drops it) and the author has no anchor — exercises textWithEmoji + the
+    // drops it) and the author has no anchor - exercises textWithEmoji + the
     // handle-from-text parsing. No bio is delivered; the storage-change path
     // (rehighlightAll → tryHighlightQuote) does the work.
     const article = makeQuoteTweetArticle(
@@ -1785,7 +1785,7 @@ describe('x-loc-users-data event', () => {
 // ---------------------------------------------------------------------------
 // Feed location injection (tryInjectFeedLocation via MutationObserver)
 // ---------------------------------------------------------------------------
-// A name and a bio are asked separately, and the defaults are opposites — see
+// A name and a bio are asked separately, and the defaults are opposites - see
 // the two keys in constants.ts for why.
 describe('per-keyword match modes', () => {
   afterEach(() => {
@@ -1846,7 +1846,7 @@ describe('per-keyword match modes', () => {
   })
 
   // The mark answers "why is this highlighted?", so it may only point at what
-  // the rule fired on — under the same mode, wherever on the card it sits.
+  // the rule fired on - under the same mode, wherever on the card it sits.
   it('marks only what the rule read, name and bio alike', () => {
     track({ text: 'nft', mode: 'partial' }, { text: 'art', mode: 'word' })
     const host = document.createElement('div')
@@ -2184,7 +2184,7 @@ describe('hover card exception button', () => {
   })
 
   it('covers every rule acting on the account, and names them all', async () => {
-    // One button, whatever the reason — the reader's complaint is "not this
+    // One button, whatever the reason - the reader's complaint is "not this
     // account", not "not rule three of four".
     vi.mocked(getCached).mockResolvedValue({
       location: 'Japan',
@@ -2267,7 +2267,7 @@ describe('hover card exception button', () => {
 
   it('is not offered for an account on the always-show allowlist', async () => {
     // Nothing is acting on it, so an exception would be a setting with no
-    // effect — and one more entry for the user to find later and puzzle over.
+    // effect - and one more entry for the user to find later and puzzle over.
     vi.mocked(getCached).mockResolvedValue({
       location: 'Japan',
       locationAccurate: true,
@@ -2323,7 +2323,7 @@ describe('bio injected into a card that carries none', () => {
     onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
   })
 
-  it('shows the bio when the card has none — the blocked case', async () => {
+  it('shows the bio when the card has none - the blocked case', async () => {
     // An account blocking the reader gets a card with no bio, no follow button
     // and no counts, while the extension still holds the bio from a timeline
     // response and still highlights on it.
@@ -2477,7 +2477,7 @@ describe('keyword marks on hover cards', () => {
     onChangedCallback({ highlightKeywords: { newValue: [] } }, 'local')
   })
 
-  /** happy-dom has no Highlight registry — stand one up so it can be read. */
+  /** happy-dom has no Highlight registry - stand one up so it can be read. */
   function stubHighlightApi(): Map<string, { ranges: Range[] }> {
     const registry = new Map<string, { ranges: Range[] }>()
     vi.stubGlobal(
@@ -2555,7 +2555,7 @@ describe('keyword marks on hover cards', () => {
   })
 
   it('marks nothing for an account excepted from highlighting', async () => {
-    // The posts lose their orange bar, so the bio has to lose its mark — a word
+    // The posts lose their orange bar, so the bio has to lose its mark - a word
     // still lit up in a card would read as the exception not having worked.
     const registry = stubHighlightApi()
     onChangedCallback({ highlightKeywords: { newValue: ['nft'] } }, 'local')
@@ -2591,7 +2591,7 @@ describe('keyword marks on hover cards', () => {
     const card = await addHoverCard('trader', userDescription('nft trader'))
     await flushAsync()
 
-    // The attribute half still works — that is the emoji marking, which is CSS.
+    // The attribute half still works - that is the emoji marking, which is CSS.
     expect(card.getAttribute('data-x-loc-kw')).toBe('1')
   })
 
@@ -2664,7 +2664,7 @@ describe('primary tweet exception button', () => {
     })
 
     const article = await addPrimaryTweet('sarcasticuser')
-    // Keyword added after the page settled — the button has to catch up.
+    // Keyword added after the page settled - the button has to catch up.
     expect(article.querySelector('.x-loc-exc-btn')).toBeNull()
 
     onChangedCallback({ highlightKeywords: { newValue: ['nafo'] } }, 'local')
@@ -2714,7 +2714,7 @@ describe('primary tweet exception button', () => {
 
   it('appears for a blocked location too, not only for a keyword', async () => {
     // X opens no hover card for the account a status page is about, so this
-    // inline copy is the only place to make an exception from that page — and
+    // inline copy is the only place to make an exception from that page - and
     // it has to follow the same rules the hover card's button does.
     vi.mocked(getCached).mockResolvedValue({
       location: 'Japan',
@@ -2775,9 +2775,9 @@ describe('primary tweet exception button', () => {
 })
 
 // ---------------------------------------------------------------------------
-// injectFeedLocationForUser — triggered via hover card (processCard)
+// injectFeedLocationForUser - triggered via hover card (processCard)
 // ---------------------------------------------------------------------------
-describe('injectFeedLocationForUser — via hover card fetch', () => {
+describe('injectFeedLocationForUser - via hover card fetch', () => {
   const HEADERS = { authorization: 'Bearer token', 'x-csrf-token': 'csrf' }
 
   beforeEach(async () => {
@@ -2801,7 +2801,7 @@ describe('injectFeedLocationForUser — via hover card fetch', () => {
     await flushAsync()
     expect(article.querySelector('.x-loc-feed-row')).toBeNull()
 
-    // Hover card appears — processCard fetches data via the network
+    // Hover card appears - processCard fetches data via the network
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -2831,7 +2831,7 @@ describe('injectFeedLocationForUser — via hover card fetch', () => {
   })
 
   it('does not inject a second row if tryInjectFeedLocation already ran', async () => {
-    // Cache is ready when article appears — tryInjectFeedLocation injects first
+    // Cache is ready when article appears - tryInjectFeedLocation injects first
     vi.mocked(getCached).mockResolvedValue({
       location: 'Italy',
       locationAccurate: true,
@@ -2951,8 +2951,8 @@ describe('hide tweets by blocked location', () => {
   })
 
   it('offers the exception button only once "Show" has been clicked', async () => {
-    // A collapsed post shows nothing to hover, so the hover card — where the
-    // button otherwise lives — cannot be reached from here at all. It is still
+    // A collapsed post shows nothing to hover, so the hover card - where the
+    // button otherwise lives - cannot be reached from here at all. It is still
     // not offered while the post is collapsed: sparing an account is a
     // judgement about what it posts, and there is nothing on screen to judge.
     vi.mocked(getCached).mockResolvedValue({
@@ -2971,7 +2971,7 @@ describe('hide tweets by blocked location', () => {
     article.querySelector<HTMLElement>('.x-loc-hidden-show')!.click()
     await flushAsync()
 
-    // In the flags row, where the rest of what is known about the account is —
+    // In the flags row, where the rest of what is known about the account is -
     // the placeholder it was clicked from is gone with the collapse.
     const btn = article.querySelector<HTMLElement>(
       '.x-loc-feed-row .x-loc-exc-btn',
@@ -3042,7 +3042,7 @@ describe('hide tweets by blocked location', () => {
   })
 
   it('matches the blocked list across alternate names for one country', async () => {
-    // Saved one way, reported the other — either direction has to hide.
+    // Saved one way, reported the other - either direction has to hide.
     setBlockedCountries(['USA'])
     vi.mocked(getCached).mockResolvedValue({
       location: 'United States',
@@ -3204,7 +3204,7 @@ describe('hide tweets by blocked location', () => {
   it('an exception for one account leaves every other post untouched', async () => {
     // The refresh used to strip every attribute and ask the cache afterwards,
     // so an exception for one account tore down and rebuilt the placeholder on
-    // all of them — every collapsed post back to full height for the length of
+    // all of them - every collapsed post back to full height for the length of
     // an IndexedDB read, which is what moved the page. Node identity is the
     // assertion: the bystander's placeholder must be the very same element.
     vi.mocked(getCached).mockImplementation(async (userName: string) =>
@@ -3233,7 +3233,7 @@ describe('hide tweets by blocked location', () => {
     const untouched = bystander.querySelector('.x-loc-hidden-ph')
     expect(untouched).not.toBeNull()
 
-    // "Show" first — that is what puts the exception button on the flags row.
+    // "Show" first - that is what puts the exception button on the flags row.
     target.querySelector<HTMLElement>('.x-loc-hidden-show')!.click()
     await flushAsync()
     target.querySelector<HTMLElement>('.x-loc-exc-btn')!.click()
@@ -3247,7 +3247,7 @@ describe('hide tweets by blocked location', () => {
   it('parks a collapse that would resize above the fold until the post is in view', async () => {
     // Taking height out of the page above the viewport top makes X's timeline
     // compensate by scrolling, once per cell resized in the frame and each time
-    // by the running total — so a batch of collapses flings the page. happy-dom
+    // by the running total - so a batch of collapses flings the page. happy-dom
     // reports all-zero rects, so drive the geometry and the observer by hand.
     const observed: Element[] = []
     let ioCallback: IntersectionObserverCallback = () => {}
@@ -3280,7 +3280,7 @@ describe('hide tweets by blocked location', () => {
     })
 
     const article = makeTweetArticle('scrolledpasthide')
-    let top = -400 // top edge above the viewport — collapsing here moves the scroll
+    let top = -400 // top edge above the viewport - collapsing here moves the scroll
     vi.spyOn(article, 'getBoundingClientRect').mockImplementation(
       () => ({ top }) as unknown as DOMRect,
     )
@@ -3314,7 +3314,7 @@ describe('hide tweets by blocked location', () => {
   it('collapses a re-rendered post from the remembered verdict, with no cache read', async () => {
     // X throws article nodes away and builds new ones as you scroll, and none
     // of our attributes survive that. A post that comes back at full height and
-    // collapses one IndexedDB read later is a resize above the fold — the jump
+    // collapses one IndexedDB read later is a resize above the fold - the jump
     // on the way back up. The verdict from the first sighting has to be enough.
     vi.mocked(getCached).mockResolvedValue({
       location: 'India',
@@ -3328,7 +3328,7 @@ describe('hide tweets by blocked location', () => {
     await flushAsync()
     expect(first.getAttribute('data-x-loc-hidden')).toBe('collapse')
 
-    // The node X discards, and the one it renders in its place — this time with
+    // The node X discards, and the one it renders in its place - this time with
     // the cache unreachable, so only a remembered verdict can answer.
     first.remove()
     vi.mocked(getCached).mockReturnValue(new Promise(() => {}))
@@ -3345,7 +3345,7 @@ describe('hide tweets by blocked location', () => {
 
   it('leaves the post a hover card was opened from where it is', async () => {
     // A hover is the reader asking about the author, and it is asked *at* a
-    // post — so answering it by taking that post away is answering a question
+    // post - so answering it by taking that post away is answering a question
     // nobody put. The swipe gesture, the other lookup asked for by hand, has
     // never collapsed anything either.
     const article = makeTweetArticle('hovered')
@@ -3385,7 +3385,7 @@ describe('hide tweets by blocked location', () => {
     await addHoverCard('hovered')
     expect(hovered.getAttribute('data-x-loc-hidden')).toBeNull()
 
-    // Cache unreachable, so only the verdict the hover recorded can answer —
+    // Cache unreachable, so only the verdict the hover recorded can answer -
     // and it has to, in the microtask the node arrives in (see whenSafeToResize).
     vi.mocked(getCached).mockReturnValue(new Promise(() => {}))
     const next = makeTweetArticle('hovered')
@@ -3432,7 +3432,7 @@ describe('hide tweets by blocked location', () => {
   })
 
   // The batch response is the only place a client hears how many others agree,
-  // and it is asked once per account — so the count has to be kept, not read.
+  // and it is asked once per account - so the count has to be kept, not read.
   it('stores the vote count that came with a community-cache hit', async () => {
     vi.mocked(sharedBatchLookup).mockResolvedValue([
       {
@@ -3464,7 +3464,7 @@ describe('hide tweets by blocked location', () => {
   it('never asks the community cache about an account IDB can answer for', async () => {
     // A reload empties the client's in-memory "asked recently" set, so nothing
     // downstream stops a whole timeline of already-known accounts going back
-    // over the wire — this end has to do the filtering.
+    // over the wire - this end has to do the filtering.
     vi.mocked(getCached).mockImplementation(async (userName: string) =>
       userName === 'known'
         ? {
@@ -3504,7 +3504,7 @@ describe('hide tweets by blocked location', () => {
     await flushAsync()
     expect(first.getAttribute('data-x-loc-hidden')).toBe('collapse')
 
-    // Scrolled away — X has thrown the node out — and then the rule changes.
+    // Scrolled away - X has thrown the node out - and then the rule changes.
     // With nothing by this account on screen, no re-judge can correct the
     // verdict it left behind, so the refresh has to drop it.
     first.remove()
@@ -3520,7 +3520,7 @@ describe('hide tweets by blocked location', () => {
 
   it('switching from collapse to hide takes the placeholder with it', async () => {
     // Hide mode drops the whole article, so a placeholder left over from
-    // collapse is invisible — and still in the DOM. Switching back then found
+    // collapse is invisible - and still in the DOM. Switching back then found
     // it and built a second one underneath.
     vi.mocked(getCached).mockResolvedValue({
       location: 'India',
@@ -3547,7 +3547,7 @@ describe('hide tweets by blocked location', () => {
 
   it('rebuilds the placeholder when a different rule becomes the one hiding the post', async () => {
     // The placeholder names the rule that caught the post, and the refresh only
-    // touches what changed — so "what changed" has to include the post still
+    // touches what changed - so "what changed" has to include the post still
     // being hidden, but for another reason than the one it is naming.
     vi.mocked(getCached).mockResolvedValue({
       location: 'India',
@@ -3648,8 +3648,8 @@ describe('broker wiring', () => {
     ])
   })
 
-  // The broker cannot read this tab's IndexedDB — it is x.com's storage, not
-  // the extension's — so anything already answered is filtered out here.
+  // The broker cannot read this tab's IndexedDB - it is x.com's storage, not
+  // the extension's - so anything already answered is filtered out here.
   it('leaves out accounts this tab already has a location for', async () => {
     vi.mocked(getCached).mockImplementation(async (userName: string) =>
       userName === 'known'
@@ -3668,7 +3668,7 @@ describe('broker wiring', () => {
 
   // A location is fetched once and then believed for the 30-day cache TTL, so
   // the broker is offered a sample of what this tab knows to ask X about again.
-  // How many of those actually go out is the window's reserve — see
+  // How many of those actually go out is the window's reserve - see
   // "Revalidation" in prefetch/CLAUDE.md.
   it('offers accounts it already knows for a first-hand re-ask', async () => {
     cachedExcept('unknown')
@@ -3855,7 +3855,7 @@ describe('broker wiring', () => {
 })
 
 // ---------------------------------------------------------------------------
-// locationSummaryText — the swipe overlay's one-liner
+// locationSummaryText - the swipe overlay's one-liner
 // ---------------------------------------------------------------------------
 describe('locationSummaryText', () => {
   const base = { location: null, locationAccurate: true, source: null } as const
@@ -3929,7 +3929,7 @@ describe('locationSummaryText', () => {
   it('warns about a blocked country, and names it for an excepted account', () => {
     // The swipe answers a question the reader asked about one account, so it
     // reads the exceptions like every other surface. Called without a handle it
-    // warns — the answer that cannot under-warn.
+    // warns - the answer that cannot under-warn.
     pushSettings({
       blockedCountries: ['India'],
       ruleExceptions: {
@@ -3990,7 +3990,7 @@ describe('swipe-right gesture', () => {
     setApiHeaders(HEADERS)
     document.body.innerHTML = ''
     document.getElementById('x-loc-location-toast')?.remove()
-    // Feed rows off, so a row in an article can only be the swipe's own doing —
+    // Feed rows off, so a row in an article can only be the swipe's own doing -
     // the gesture injects one whether or not the setting is on.
     disableFeedLocation()
   })
@@ -4443,7 +4443,7 @@ describe('region filtering', () => {
 
     it('unchecks the store country too, not only the stated location', async () => {
       // The App Store country is the stronger signal and takes its own path
-      // through effectiveBlockedLocation — it reads the same set or it lies.
+      // through effectiveBlockedLocation - it reads the same set or it lies.
       vi.mocked(getCached).mockResolvedValue({
         location: null,
         locationAccurate: true,
@@ -4610,7 +4610,7 @@ describe('account age', () => {
     )
     // The mark is set as well, and deliberately left alone: the two rules are
     // separate answers about the same account, and the collapsed row keeping
-    // the bar costs nothing — the placeholder is what carries the reason.
+    // the bar costs nothing - the placeholder is what carries the reason.
     expect(article.getAttribute('data-x-loc-mark')).toBe('age')
   })
 
@@ -4772,13 +4772,13 @@ describe('per-rule exceptions', () => {
 // ---------------------------------------------------------------------------
 // ⚠️ is what the location rule looks like while it is acting. Once the reader
 // has excepted the account the rule is not acting on it, so the row goes back to
-// saying which country — the only thing it was ever there to say. A warning over
+// saying which country - the only thing it was ever there to say. A warning over
 // a filter that is no longer filtering tells the reader nothing about the
 // account, and costs them the one fact they opened the row for.
 //
 // The awkward half is that most of these rows were drawn before the exception
 // existed. Nothing rebuilds a row that is already there, so each of them has to
-// be found and changed where it stands — and changed without altering its size,
+// be found and changed where it stands - and changed without altering its size,
 // because a row is height inside a post and X's timeline answers a post
 // resizing by scrolling the window (see whenSafeToResize in content.tsx).
 describe('a blocked location, once the rule has stopped acting on the account', () => {
@@ -4850,8 +4850,8 @@ describe('a blocked location, once the rule has stopped acting on the account', 
   })
 
   it('does the same for an allowlisted account', async () => {
-    // The allowlist is the broader form of the same decision — nothing acts on
-    // an allowlisted account at all — so it cannot be the one case still warned.
+    // The allowlist is the broader form of the same decision - nothing acts on
+    // an allowlisted account at all - so it cannot be the one case still warned.
     vi.mocked(getCached).mockResolvedValue(INDIA)
     pushSettings({
       blockedCountries: ['India'],
@@ -4888,7 +4888,7 @@ describe('a blocked location, once the rule has stopped acting on the account', 
     // The usual way in: the reader excepts an account whose posts are already on
     // screen. None of the incremental refreshes touch a row that exists, so
     // without refreshLocationFlags the warning would sit there until X recycled
-    // the node — which on a thread nobody is scrolling is never.
+    // the node - which on a thread nobody is scrolling is never.
     vi.mocked(getCached).mockResolvedValue(INDIA)
     pushSettings({ blockedCountries: ['India'] })
 
@@ -4901,7 +4901,7 @@ describe('a blocked location, once the rule has stopped acting on the account', 
 
     expect(feedFlag(article)).toBe('🇮🇳')
     // Still the same node. Replacing the row would be height leaving the post
-    // and coming back, and X compensates for that by scrolling the window — an
+    // and coming back, and X compensates for that by scrolling the window - an
     // exception for one account would move the whole page.
     expect(article.querySelector('.x-loc-feed-row')).toBe(row)
   })
@@ -4944,7 +4944,7 @@ describe('a blocked location, once the rule has stopped acting on the account', 
 
   it('gives the store-region flag back as well', async () => {
     // Two flags can sit on one row, and the store's is the stronger signal of
-    // the two — leaving that one warning would just move the confusion along.
+    // the two - leaving that one warning would just move the confusion along.
     vi.mocked(getCached).mockResolvedValue({
       ...INDIA,
       location: null,
@@ -5016,7 +5016,7 @@ describe('quoted posts', () => {
 
     const quote = article.querySelector('div[role="link"]')!
     expect(quote.getAttribute('data-x-loc-quote-hidden')).toBe('collapse')
-    // The post doing the quoting was never filtered, so it stays readable —
+    // The post doing the quoting was never filtered, so it stays readable -
     // taking the whole row would remove something the user never asked to hide.
     expect(article.hasAttribute('data-x-loc-hidden')).toBe(false)
   })
@@ -5131,7 +5131,7 @@ describe('the master switch', () => {
 
 describe('what a snapshot leaves out', () => {
   // decorateSnapshot is handed to snapshotElement as a callback, so the test
-  // takes it from the call and runs it — the same way the real snapshot does.
+  // takes it from the call and runs it - the same way the real snapshot does.
   function decorateOf(article: Element) {
     const opts = snapshot.snapshotElement.mock.calls.at(-1)?.[1] as {
       decorate?: (clone: Element) => void
@@ -5166,7 +5166,7 @@ describe('what a snapshot leaves out', () => {
   }
 
   it('drops the ⋯ menu, Grok, and the Subscribe button', async () => {
-    // Controls pointed at whoever is looking, not part of the post — and in an
+    // Controls pointed at whoever is looking, not part of the post - and in an
     // image they invite a click that cannot do anything.
     const clone = await snapshotOf(
       '<button data-testid="caret">⋯</button>' +
@@ -5289,7 +5289,7 @@ describe('the hover-card share button', () => {
   beforeEach(() => {
     // Call history survives between tests otherwise, and "was it called" is
     // exactly what these assert. The implementation is re-installed because
-    // clearAllMocks drops history but keeps implementations — and elsewhere in
+    // clearAllMocks drops history but keeps implementations - and elsewhere in
     // this file it is the other way round.
     snapshot.snapshotElement.mockClear()
     snapshot.snapshotElement.mockRejectedValue(new Error('no canvas in tests'))
@@ -5325,7 +5325,7 @@ describe('the hover-card share button', () => {
     const btn = card.querySelector('.x-loc-post-btn') as HTMLButtonElement
     expect(btn).not.toBeNull()
     expect(btn.textContent).toContain('Post')
-    // In the flags row, not on a line of its own — a hover card is short on
+    // In the flags row, not on a line of its own - a hover card is short on
     // vertical space and the button is an action on exactly that row.
     expect(btn.closest('.x-loc-info')).not.toBeNull()
   })
@@ -5427,7 +5427,7 @@ describe('the hover-card share button', () => {
     expect(btn.closest('.x-loc-info')).not.toBeNull()
     btn.click()
 
-    // The copy happens in that tab, off the native DOM — nothing is drawn here.
+    // The copy happens in that tab, off the native DOM - nothing is drawn here.
     expect(open).toHaveBeenCalledWith(
       'https://x.com/someone/about#xpat-copy-about',
       '_blank',
@@ -5576,7 +5576,7 @@ describe('where the snapshot puts the location line', () => {
 // The rating ask, on the page
 // ---------------------------------------------------------------------------
 // The popup card only reaches people who open the popup, which after the first
-// day is almost nobody. This is the same ask where they actually are — and it
+// day is almost nobody. This is the same ask where they actually are - and it
 // is the one thing the extension puts on screen unbidden, so what it must never
 // do is more interesting than what it does.
 describe('the rating ask on the page', () => {
@@ -5641,7 +5641,7 @@ describe('the rating ask on the page', () => {
     // Named, on a page it does not own: an unattributed bar over X reads as X
     // asking, and nobody can rate what they cannot identify.
     expect(bar()!.textContent).toContain('X-Pat')
-    // The extension's own toolbar icon, inlined — not a drawing of it, and not
+    // The extension's own toolbar icon, inlined - not a drawing of it, and not
     // the site's mark, which is a different one entirely.
     const mark = bar()!.querySelector('img')
     expect(mark?.getAttribute('src')).toMatch(/^data:image\/png;base64,/)
@@ -5711,7 +5711,7 @@ describe('the rating ask on the page', () => {
 
   it('swaps to a share ask once the rating is accepted', async () => {
     // The one audience already proven friendly, asked for the one thing that
-    // moves installs — without a second interruption of its own.
+    // moves installs - without a second interruption of its own.
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     seedUsage(5)
     await hoverWithFlag('someone')
@@ -5803,7 +5803,7 @@ describe('the rating ask on the page', () => {
     expect(bar()).not.toBeNull()
 
     // The file-level reset clears the captured headers, and without them a
-    // swipe cannot attempt a lookup at all — it dismisses quietly rather than
+    // swipe cannot attempt a lookup at all - it dismisses quietly rather than
     // reporting a rate limit.
     setApiHeaders({ authorization: 'Bearer t', 'x-csrf-token': 'c' })
     vi.mocked(getCached).mockResolvedValue(undefined)

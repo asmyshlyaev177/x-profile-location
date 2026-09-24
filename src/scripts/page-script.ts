@@ -88,7 +88,7 @@ import { EVENTS, X_GRAPHQL_PATH } from './constants'
       // behind its replies.
       const wasHigh = userBuffer.get(key)?.priority === 'high'
       // set() keeps the existing insertion slot, so a repeat sighting doesn't
-      // lose where the account first appeared — the replay is page order.
+      // lose where the account first appeared - the replay is page order.
       userBuffer.set(key, wasHigh ? { ...u, priority: 'high' } : u)
       if (userBuffer.size > USER_BUFFER_CAP) {
         userBuffer.delete(userBuffer.keys().next().value as string)

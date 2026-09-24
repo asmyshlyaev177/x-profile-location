@@ -41,7 +41,7 @@ export function dismissRateLimitToast(): void {
 export function showRateLimitToast(force = false) {
   if (force) rateLimitToastDismissedUntil = 0
 
-  // Closed by the user, and still the same window — the reset time hasn't
+  // Closed by the user, and still the same window - the reset time hasn't
   // moved. A fresh window carries a later reset and shows again.
   if (rateLimitResetAt <= rateLimitToastDismissedUntil) return
 
@@ -53,7 +53,7 @@ export function showRateLimitToast(force = false) {
   if (!toast) {
     toast = document.createElement('div')
     toast.id = RATE_TOAST_ID
-    // A click anywhere dismisses — including on the share button, whose click
+    // A click anywhere dismisses - including on the share button, whose click
     // bubbles here after opening the composer.
     toast.addEventListener('click', dismissRateLimitToast)
 
@@ -164,7 +164,7 @@ export function showLocationOverlay(
   renderLocationToast(text)
 }
 
-// The rating ask — see "The rating ask" in CLAUDE.md for its rules.
+// The rating ask - see "The rating ask" in CLAUDE.md for its rules.
 
 /** Long enough that the flag it is riding on has been read. */
 const RATING_ASK_DELAY_MS = 6000
@@ -299,7 +299,7 @@ export function isRateLimited(): boolean {
   return rateLimitResetAt > Date.now()
 }
 
-/** Records the window and shows the countdown — the two are never done apart. */
+/** Records the window and shows the countdown - the two are never done apart. */
 export function noteRateLimit(resetAt: number): void {
   rateLimitResetAt = resetAt
   showRateLimitToast()

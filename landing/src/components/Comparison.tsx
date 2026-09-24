@@ -8,7 +8,7 @@ import { fill } from '../i18n/fill'
 import { rich } from '../i18n/rich'
 
 /**
- * /x-posed-alternative — the page someone lands on after typing that query.
+ * /x-posed-alternative - the page someone lands on after typing that query.
  *
  * Written on the assumption the reader is already suspicious. Whoever searches
  * "<competitor> alternative" has been sold to before, so the order is: name the

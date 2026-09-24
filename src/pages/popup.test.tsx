@@ -19,7 +19,7 @@ import { REGION_MEMBERS } from '../scripts/countries/countries'
 const SOUTH_ASIA = REGION_MEMBERS['South Asia']
 
 // Mutable backing store for the chrome.storage.local mock. It has to be in
-// place before popup.tsx is imported below — the module renders itself into
+// place before popup.tsx is imported below - the module renders itself into
 // document.body on import, which reads storage.
 const storedRef: { current: Record<string, unknown> } = { current: {} }
 const setMock = vi.fn()
@@ -41,7 +41,7 @@ const setMock = vi.fn()
 }
 
 // The popup asks the community cache how much it holds. Unstubbed, every test
-// in this file would make a real request to the live server — and the import
+// in this file would make a real request to the live server - and the import
 // below renders a Popup, so it has to be in place before that too.
 const CACHED_ACCOUNTS = 12_480
 const fetchMock = vi.fn()
@@ -219,7 +219,7 @@ describe('editing the filters from the popup', () => {
     })
 
     const select = await waitFor(() => getByTitle('How “nft” is matched'))
-    // The badge spends no width on the mode — the list it opens says it, so
+    // The badge spends no width on the mode - the list it opens says it, so
     // the only text the chip prints itself is the keyword.
     const chip = select.closest('[data-mode]')
     expect(chip?.getAttribute('data-mode')).toBe('word')
@@ -295,7 +295,7 @@ describe('editing the filters from the popup', () => {
     // A popup that saved on load would rewrite every key each time it is
     // opened, and a normalizer disagreeing with what is stored would quietly
     // become a migration. The community-cache count is the one key opening it
-    // may write, and it is not a setting — it is what the server just said.
+    // may write, and it is not a setting - it is what the server just said.
     mountStored({
       [BLOCKED_COUNTRIES_KEY]: ['Japan'],
       [HIGHLIGHT_KEYWORDS_KEY]: ['nft'],
@@ -520,7 +520,7 @@ describe('how much the community cache holds', () => {
   it('keeps asking while the panel is open', async () => {
     // The number belongs to everyone using the cache, so it moves while you are
     // looking at it. What stops that being load on the server is its own cache
-    // of the count — see COUNT_POLL_MS.
+    // of the count - see COUNT_POLL_MS.
     fakePollClock()
     mountStored({})
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))

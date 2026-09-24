@@ -1,10 +1,10 @@
 import { finiteNumber } from './settings'
 // Account facts riding along with responses the extension already receives, so
-// none of it costs an API call. Never reads `legacy` — X hollowed it out.
+// none of it costs an API call. Never reads `legacy` - X hollowed it out.
 
 import { t } from './i18n'
 
-/** X's affiliate badge. `handle` is the filtering key — a `name` is renameable. */
+/** X's affiliate badge. `handle` is the filtering key - a `name` is renameable. */
 export interface Affiliation {
   handle: string | null
   name: string | null
@@ -17,7 +17,7 @@ export interface AccountFacts {
   affiliation: Affiliation | null
   /** How many times the account has changed its @handle. */
   handleChanges: number | null
-  /** X's numeric account id — stable across handle changes. */
+  /** X's numeric account id - stable across handle changes. */
   restId: string | null
   blueVerified: boolean | null
   /** Legacy (pre-2023) verification. */
@@ -25,7 +25,7 @@ export interface AccountFacts {
   /** X verified an actual identity document. */
   identityVerified: boolean | null
   isProtected: boolean | null
-  /** Timeline nodes only — AboutAccountQuery carries no relationship at all. */
+  /** Timeline nodes only - AboutAccountQuery carries no relationship at all. */
   blockedBy: boolean | null
 }
 
@@ -56,7 +56,7 @@ const MONTHS: Record<string, number> = {
   dec: 11,
 }
 
-// "Sun Jan 22 21:18:47 +0000 2023" — the format X has used since the v1 API.
+// "Sun Jan 22 21:18:47 +0000 2023" - the format X has used since the v1 API.
 const RE_X_DATE =
   /^\w{3}\s+(\w{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+([+-]\d{4})\s+(\d{4})$/
 
@@ -114,7 +114,7 @@ export function parseAffiliation(value: unknown): Affiliation | null {
 }
 
 // Every field is checked because this is X's shape, which changes between
-// deploys — the failure mode has to be a missing badge, not a thrown script.
+// deploys - the failure mode has to be a missing badge, not a thrown script.
 
 export function parseAccountFacts(node: unknown): AccountFacts {
   if (!node || typeof node !== 'object') return { ...EMPTY_FACTS }

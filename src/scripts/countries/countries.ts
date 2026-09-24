@@ -275,7 +275,7 @@ export const REGION_ABBR: Record<string, string> = {
   'West Asia': 'WAS',
 }
 
-/** The marker for a canonical name — a country flag, a region flag, or 🌐. */
+/** The marker for a canonical name - a country flag, a region flag, or 🌐. */
 export function flagFor(canonical: string): string {
   return COUNTRY_FLAGS[canonical] ?? REGION_FLAGS[canonical] ?? '🌐'
 }
@@ -795,7 +795,7 @@ export const REGION_MEMBERS: Record<string, string[]> = {
   ],
 }
 
-// Purely a union of the three, so it is derived rather than typed out again — a
+// Purely a union of the three, so it is derived rather than typed out again - a
 // hand-copied fourth list would drift the first time a country moved.
 REGION_MEMBERS['East Asia & Pacific'] = [
   ...new Set([
@@ -805,7 +805,7 @@ REGION_MEMBERS['East Asia & Pacific'] = [
   ]),
 ]
 
-/** Members unchecked under a blocked region, keyed by region — a country
+/** Members unchecked under a blocked region, keyed by region - a country
  *  dropped from one is still blocked through another that keeps it. */
 export type RegionExclusions = Record<string, string[]>
 
@@ -820,7 +820,7 @@ export function includedMembers(
   return members.filter((m) => !dropped.has(canonicalLocation(m)))
 }
 
-/** Each region plus the members it still covers — X reports both shapes.
+/** Each region plus the members it still covers - X reports both shapes.
  *  Only the content script expands; storage keeps the user's picks. */
 export function expandLocations(
   list: Iterable<string>,
