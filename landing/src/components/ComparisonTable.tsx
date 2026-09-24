@@ -23,7 +23,7 @@ function measured(value: Cell, t: Dict): string | null {
   return null
 }
 
-/** Symbol plus a word, never a symbol alone — see `cellLabel`. */
+/** Symbol plus a word, never a symbol alone - see `cellLabel`. */
 function CellMark({ value, t }: { value: Cell; t: Dict }) {
   if (value === 'yes') {
     return (

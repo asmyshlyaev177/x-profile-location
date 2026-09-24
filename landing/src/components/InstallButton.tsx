@@ -46,7 +46,7 @@ export function InstallButton({
       return
     }
     // Paint the UA answer immediately, then upgrade to Brave if the async
-    // handshake says so — the label must never be blank while we wait.
+    // handshake says so - the label must never be blank while we wait.
     setBrowser(detectBrowser())
     let live = true
     void detectBrowserAsync().then((b) => {
@@ -91,7 +91,7 @@ export function BrowserIcon({ browser }: { browser: SupportedBrowser }) {
   return <ChromeIcon />
 }
 
-// Simple Icons — brave
+// Simple Icons - brave
 function BraveIcon() {
   return (
     <svg
@@ -106,7 +106,7 @@ function BraveIcon() {
   )
 }
 
-// Simple Icons — googlechrome
+// Simple Icons - googlechrome
 function ChromeIcon() {
   return (
     <svg
@@ -121,7 +121,7 @@ function ChromeIcon() {
   )
 }
 
-// Simple Icons — microsoftedge
+// Simple Icons - microsoftedge
 function EdgeIcon() {
   return (
     <svg

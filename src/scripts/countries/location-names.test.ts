@@ -59,7 +59,7 @@ describe('isoFromFlag', () => {
 
 describe('localizedLocation', () => {
   it('leaves English alone', () => {
-    // Not just a shortcut — CLDR would rename these, and the extension says
+    // Not just a shortcut - CLDR would rename these, and the extension says
     // what X says.
     expect(localizedLocation('Japan')).toBe('Japan')
     expect(localizedLocation('Myanmar')).toBe('Myanmar')
@@ -118,7 +118,7 @@ describe('sortByLocalizedName', () => {
     const sorted = inLocale('ru', () =>
       sortByLocalizedName(['Japan', 'Australia', 'Germany']),
     )
-    // Австралия, Германия, Япония — Я is last in the Cyrillic alphabet, so
+    // Австралия, Германия, Япония - Я is last in the Cyrillic alphabet, so
     // Japan moves from first to last.
     expect(sorted).toEqual(['Australia', 'Germany', 'Japan'])
   })

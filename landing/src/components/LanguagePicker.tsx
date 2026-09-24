@@ -9,7 +9,7 @@ import { localizedRoutes } from '../routes'
  * hydration to idle, and a JS dropdown would leave the only route out of the
  * wrong language behind a click that does nothing for the first second. The
  * entries are real `<a href>`s to real prerendered URLs, so it also works with
- * scripting off entirely — and a crawler follows them, which is half the point
+ * scripting off entirely - and a crawler follows them, which is half the point
  * of translating the site.
  *
  * Every entry carries `hreflang` and its own `lang`, so the endonym is
@@ -45,7 +45,7 @@ export function LanguagePicker() {
           const current = l.code === locale.code
           // English is the bare path, so choosing it looks identical to never
           // having chosen anything. `#hl=en` is what makes the difference
-          // legible to the preference script in `index.html` — without it, a
+          // legible to the preference script in `index.html` - without it, a
           // German speaker who deliberately switches to English gets sent
           // back to /de on their next visit.
           const to =

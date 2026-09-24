@@ -2,7 +2,7 @@ import { NOT_FOUND_PATH, metaFor, routes } from '../routes'
 import { useT } from '../i18n/context'
 
 /**
- * The page Cloudflare Pages serves — with a real 404 status — for a path that
+ * The page Cloudflare Pages serves - with a real 404 status - for a path that
  * matches no file.
  *
  * Without a `404.html` in the build output, Pages falls back to `index.html`
@@ -16,7 +16,7 @@ import { useT } from '../i18n/context'
  * English pages, and the language picker in the header is the way out.
  */
 export function NotFound() {
-  // English, whatever the URL said — see the note above.
+  // English, whatever the URL said - see the note above.
   const t = useT()
   const elsewhere = routes.filter(
     (r) => !r.noindex && r.path !== NOT_FOUND_PATH,
@@ -29,7 +29,7 @@ export function NotFound() {
         <h1 class="t-h2 mt-4">This page doesn’t exist.</h1>
         <p class="t-lead mt-5">
           The link may be out of date, or the address slightly off. Nothing here
-          moved recently — these are all the pages there are:
+          moved recently - these are all the pages there are:
         </p>
 
         <ul class="mt-10 space-y-5">

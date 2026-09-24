@@ -402,7 +402,7 @@ describe('consensusWrites', () => {
 
 describe('GET /v1/stats', () => {
   // A number the popup shows while it is open, so the request rate follows how
-  // many people have a popup open — the one thing here that isn't driven by
+  // many people have a popup open - the one thing here that isn't driven by
   // someone actually reading a timeline.
   function countingEnv(n: number) {
     const all = vi.fn().mockResolvedValue({ results: [{ n }] })
@@ -443,7 +443,7 @@ describe('GET /v1/stats', () => {
 
   it('keeps one count for the whole window, whatever the client caches', async () => {
     // Cache-Control only asks: a client that ignores it, or a scanner, still
-    // costs one COUNT(*) a window here — a full scan, and better-sqlite3 holds
+    // costs one COUNT(*) a window here - a full scan, and better-sqlite3 holds
     // every other request while it runs.
     vi.useFakeTimers()
     try {
@@ -465,7 +465,7 @@ describe('GET /v1/stats', () => {
 
   it('tells the browser how long to hold on to the answer', async () => {
     // A saving where the browser honours it, not the protection, which is the
-    // memo above. Set on this response only — `json()` is shared with the batch
+    // memo above. Set on this response only - `json()` is shared with the batch
     // lookup, which must not be cacheable.
     const { env } = countingEnv(1)
     const resp = await ask(env)

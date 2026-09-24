@@ -1,6 +1,6 @@
 import type { Dict } from './en'
 
-/** Vietnamese. "Bạn" throughout — the neutral second person a product can use. */
+/** Vietnamese. "Bạn" throughout - the neutral second person a product can use. */
 export const vi: Dict = {
   nav: {
     sections: 'Mục lục',
@@ -10,7 +10,7 @@ export const vi: Dict = {
     privacy: 'Quyền riêng tư',
     comparison: 'So sánh',
     sourceOnGitHub: 'Mã nguồn trên GitHub',
-    home: 'X-Pat — trang chủ',
+    home: 'X-Pat - trang chủ',
   },
 
   language: {
@@ -112,7 +112,7 @@ export const vi: Dict = {
 
   rateBudget: {
     link: 'Cách hạn mức hoạt động',
-    heading: 'Rate limit của X — xử lý chứ không đâm đầu vào.',
+    heading: 'Rate limit của X - xử lý chứ không đâm đầu vào.',
     lead: 'Bạn từng thấy cảnh này rồi. Đầu thread hiện ra hết, xong phần dưới thì trắng. Đó chính là cái giới hạn: năm chục lần tra mỗi mười lăm phút, mà một thread sôi nổi thì nhiều tài khoản hơn hẳn.',
     body: 'Đa số hồ sơ ở đây chẳng tốn lượt nào. Chúng đã có trong cache, hoặc có người khác tra rồi, cache chung trả lời. Phần còn thì được chia khẩu phần hẳn hoi.',
     closing:
@@ -126,7 +126,7 @@ export const vi: Dict = {
       },
       spread: {
         title: 'Trải đều, không chạy hộc tốc',
-        body: 'Tầm một lần tra mỗi 21 giây, tính lại liên tục — giãn khi bạn rê chuột nhiều, siết khi cửa sổ đầy lại.',
+        body: 'Tầm một lần tra mỗi 21 giây, tính lại liên tục - giãn khi bạn rê chuột nhiều, siết khi cửa sổ đầy lại.',
         readoutKey: 'Tốc độ',
         readoutValue: 'cửa sổ ÷ hạn mức',
       },
@@ -175,7 +175,7 @@ export const vi: Dict = {
       title: 'Ẩn nước bạn không muốn đọc.',
       p1: 'Khi đã biết bài đăng đến từ đâu, bạn làm được gì đó với nó. Chọn nơi bạn muốn bỏ qua rồi quyết định tweet của họ sẽ ra sao.',
       p2: 'Mặc định là thu gọn. Tweet co lại thành một thanh mỏng <b>🚫 Đã ẩn · 🇮🇳 Ấn Độ</b> kèm nút Hiện, để bạn vẫn biết chỗ đó từng có gì, và bấm một cái là nó trở lại. Bộ lọc theo sát nước trong kho ứng dụng nếu có, còn tweet bạn cố tình mở thì nó để yên.',
-      p3: 'Không chỉ có nước là tay nắm. Chặn một tổ chức là mọi tài khoản được X gắn nhãn thuộc tổ chức đó cũng bay theo, còn tài khoản non hơn mốc bạn chọn thì bị đánh dấu lúc xuất hiện — đánh dấu thôi, không ẩn, vì mới tạo tài khoản chẳng phải bằng chứng cho điều gì.',
+      p3: 'Không chỉ có nước là tay nắm. Chặn một tổ chức là mọi tài khoản được X gắn nhãn thuộc tổ chức đó cũng bay theo, còn tài khoản non hơn mốc bạn chọn thì bị đánh dấu lúc xuất hiện - đánh dấu thôi, không ẩn, vì mới tạo tài khoản chẳng phải bằng chứng cho điều gì.',
       readoutCollapse: 'Thu gọn',
       readoutCollapseValue: 'Thanh mỏng + Hiện',
       readoutHide: 'Ẩn',
@@ -218,7 +218,7 @@ export const vi: Dict = {
   trust: {
     heading: 'Extension đọc phiên X của bạn thì nên nói rõ ràng.',
     lead: 'Đây. Tra cứu đi thẳng tới x.com, giống hệt request của chính trang web, và không đời nào qua server của chúng tôi. Trình duyệt bạn giữ kết quả 30 ngày, và trang tùy chọn xóa sạch lúc nào bạn muốn.',
-    body: 'Trong extension không có analytics hay telemetry gì hết. Riêng website này có dùng Google Analytics, để biết lượt truy cập và nút cài nào được bấm — chỉ thế.',
+    body: 'Trong extension không có analytics hay telemetry gì hết. Riêng website này có dùng Google Analytics, để biết lượt truy cập và nút cài nào được bấm - chỉ thế.',
     readPolicy: 'Đọc chính sách bảo mật đầy đủ',
     neverTitle: 'Không bao giờ gửi đi đâu',
     neverNote: 'Không có cài đặt cho mấy thứ này. Extension không đọc chúng.',
@@ -240,7 +240,7 @@ export const vi: Dict = {
 
   compareTeaser: {
     heading: 'Đang xài một cái khác rồi à?',
-    lead: 'Khoảng hai chục extension nhét cờ cạnh tên người dùng. Mấy cái khác biệt đáng kể thì không nằm trong danh sách tính năng — mà nằm ở chuyện cache chung được phép làm gì, và ở chuyện gì xảy ra khi năm mươi lượt tra cứu của X hết sạch.',
+    lead: 'Khoảng hai chục extension nhét cờ cạnh tên người dùng. Mấy cái khác biệt đáng kể thì không nằm trong danh sách tính năng - mà nằm ở chuyện cache chung được phép làm gì, và ở chuyện gì xảy ra khi năm mươi lượt tra cứu của X hết sạch.',
     body: 'Cái này tự giữ nhịp theo hạn mức thật lấy từ chính response header của X và chừa lại tám lượt cho tài khoản bạn rê chuột, nên một thread đông vẫn điền xong thay vì đứng giữa chừng. Bảng đầy đủ có mười bốn dòng và chỉ đích danh ba thứ X-Posed làm tốt hơn extension này.',
     link: 'Xem so sánh đầy đủ →',
   },
@@ -290,7 +290,7 @@ export const vi: Dict = {
         note: 'Đọc từ dữ liệu “About this account” của chính X, không đoán IP.',
       },
       signupSource: {
-        label: 'Nguồn đăng ký — Apple, Google Play hay web',
+        label: 'Nguồn đăng ký - Apple, Google Play hay web',
         note: '',
       },
       accountAge: { label: 'Tuổi tài khoản', note: '' },
@@ -313,7 +313,7 @@ export const vi: Dict = {
       },
       cacheServerSource: {
         label: 'Công bố mã nguồn server cache',
-        note: 'Là server nhận đóng góp, chứ không chỉ extension gửi. Của mình nằm cùng repo, có tài liệu deploy — bạn đọc được, hoặc tự chạy.',
+        note: 'Là server nhận đóng góp, chứ không chỉ extension gửi. Của mình nằm cùng repo, có tài liệu deploy - bạn đọc được, hoặc tự chạy.',
       },
       crossChecked: {
         label: 'Mục cache được đối chiếu chéo giữa các máy',
@@ -334,14 +334,14 @@ export const vi: Dict = {
       },
       surfaces: {
         title: 'Nó có mặt trên nhiều nền hơn',
-        body: 'Firefox desktop, Firefox Android, và app iPhone đồng hành. X-Pat mới chỉ Chromium — Chrome, Edge, Brave, và Quetta trên Android. Firefox thì có kế hoạch, iOS thì không.',
+        body: 'Firefox desktop, Firefox Android, và app iPhone đồng hành. X-Pat mới chỉ Chromium - Chrome, Edge, Brave, và Quetta trên Android. Firefox thì có kế hoạch, iOS thì không.',
       },
       languageFilter: {
         title: 'Nó có lọc ngôn ngữ',
-        body: 'Bên mình không có, cố ý. Trường ngôn ngữ mỗi bài trên X sai thường xuyên tới mức lọc theo nó làm bài biến mất chẳng hiểu lý do. Đấy là lựa chọn có chủ đích chứ không phải thiếu tính năng — nhưng nếu bạn đến vì muốn lọc ngôn ngữ, X-Posed có còn mình không.',
+        body: 'Bên mình không có, cố ý. Trường ngôn ngữ mỗi bài trên X sai thường xuyên tới mức lọc theo nó làm bài biến mất chẳng hiểu lý do. Đấy là lựa chọn có chủ đích chứ không phải thiếu tính năng - nhưng nếu bạn đến vì muốn lọc ngôn ngữ, X-Posed có còn mình không.',
       },
     },
-    notApplicable: '—',
+    notApplicable: '-',
     testCount: '{count} test',
     none: 'không',
   },
@@ -352,7 +352,7 @@ export const vi: Dict = {
       titleLead: 'Mục',
       titleAccent: '“About this account”',
       titleRest: ' của X, và cách khỏi phải bấm để xem.',
-      lead: 'X lặng lẽ biết mỗi tài khoản đăng từ nước nào, và nó cũng sẵn sàng cho bạn biết — từng hồ sơ một, sâu ba cú chạm, nhiêu hồ sơ thì tùy kiên nhẫn của bạn. Đây là vị trí của cái bảng đó, nó trả lời được gì và không được gì, và làm sao khi bạn muốn cùng thông tin ấy cho 80 cái reply thay vì 1.',
+      lead: 'X lặng lẽ biết mỗi tài khoản đăng từ nước nào, và nó cũng sẵn sàng cho bạn biết - từng hồ sơ một, sâu ba cú chạm, nhiêu hồ sơ thì tùy kiên nhẫn của bạn. Đây là vị trí của cái bảng đó, nó trả lời được gì và không được gì, và làm sao khi bạn muốn cùng thông tin ấy cho 80 cái reply thay vì 1.',
       whereHeading: 'Cái bảng nằm ở đâu',
       steps: {
         web: {
@@ -370,16 +370,16 @@ export const vi: Dict = {
       },
       cantHeading: 'Những gì nó không trả lời được',
       cant1:
-        'Bảng này từng hồ sơ và dạng modal. Ổn khi bạn rà một tài khoản, vô dụng khi đọc thread reply — mà đấy mới là lúc câu hỏi thường nảy ra. Một trăm reply là một trăm lần ra vào menu, đến lần thứ ba là bạn mất dấu thread mình đang đọc.',
+        'Bảng này từng hồ sơ và dạng modal. Ổn khi bạn rà một tài khoản, vô dụng khi đọc thread reply - mà đấy mới là lúc câu hỏi thường nảy ra. Một trăm reply là một trăm lần ra vào menu, đến lần thứ ba là bạn mất dấu thread mình đang đọc.',
       cant2:
-        'Nó cũng không phải lúc nào cũng có dữ liệu. X không trả về nước cho kha khá tài khoản — thường là mấy cái cũ hoặc ít hoạt động. Khi trường đó trống thật thì chẳng có gì để lộ ra, và công cụ nào nói khác là đang đoán IP.',
+        'Nó cũng không phải lúc nào cũng có dữ liệu. X không trả về nước cho kha khá tài khoản - thường là mấy cái cũ hoặc ít hoạt động. Khi trường đó trống thật thì chẳng có gì để lộ ra, và công cụ nào nói khác là đang đoán IP.',
       cant3:
         'Và nó chẳng nói gì về độ tin cậy. Bên trong X đánh dấu một số vị trí là không dám đảm bảo; cái bảng vẫn hiện ra nước y như thường.',
       sameHeading: 'Cùng trường dữ liệu, không cần menu',
       same1:
-        'X-Pat đọc đúng cái trường mà cái bảng đọc — cùng endpoint, dùng phiên X có sẵn trong trình duyệt — rồi vẽ thành lá cờ trong thẻ hover, và tùy chọn thì ngay trên timeline. Không tra IP, không cơ sở dữ liệu bên ngoài, không tài khoản hay API key.',
+        'X-Pat đọc đúng cái trường mà cái bảng đọc - cùng endpoint, dùng phiên X có sẵn trong trình duyệt - rồi vẽ thành lá cờ trong thẻ hover, và tùy chọn thì ngay trên timeline. Không tra IP, không cơ sở dữ liệu bên ngoài, không tài khoản hay API key.',
       same2:
-        'Nó trích ba thứ từ response đó: nước, kho ứng dụng đăng ký qua, và việc X có gắn cờ vị trí là không xác minh được hay không — tín hiệu tin cậy cái bảng bỏ qua. Ngày tham gia và lịch sử tên thì giữ nguyên; extension không cố làm nguyên cái bảng.',
+        'Nó trích ba thứ từ response đó: nước, kho ứng dụng đăng ký qua, và việc X có gắn cờ vị trí là không xác minh được hay không - tín hiệu tin cậy cái bảng bỏ qua. Ngày tham gia và lịch sử tên thì giữ nguyên; extension không cố làm nguyên cái bảng.',
       same3:
         'Bạn cũng làm được gì đó dựa trên nó: nước và khu vực không muốn đọc thì thu gọn sau nút “Hiện”, hoặc ẩn. Mặc định là thu gọn, vì timeline lặng lẽ vứt bài là timeline không đáng tin.',
     },
@@ -394,7 +394,7 @@ export const vi: Dict = {
       noVerdict1:
         'Mỗi dấu hiệu bên dưới đều có cách giải thích vô tội. Tài khoản mới thì là mới. Có người rộng rãi trong chuyện follow. Nhiều người viết tử tế có emoji trong bio. Coi cái nào trong số này là bằng chứng sẽ khiến bạn loại bỏ cả người lạ bình thường, vừa khó chịu vừa vô vị.',
       noVerdict2:
-        'Cái hiệu quả là chồng chúng lên. Tài khoản ba tuần tuổi, follow hàng nghìn, được vài chục follow lại, xuất hiện đầu tiên trong reply với câu sáo — tổ hợp đó không phải tình cờ, và bạn nhận ra trong hai giây một khi biết nhìn vào đâu.',
+        'Cái hiệu quả là chồng chúng lên. Tài khoản ba tuần tuổi, follow hàng nghìn, được vài chục follow lại, xuất hiện đầu tiên trong reply với câu sáo - tổ hợp đó không phải tình cờ, và bạn nhận ra trong hai giây một khi biết nhìn vào đâu.',
       colSignal: 'Tín hiệu',
       colTell: 'Trông ra sao',
       colCost: 'Tốn công kiểm tra',
@@ -417,7 +417,7 @@ export const vi: Dict = {
         bio: {
           signal: 'Cấu tạo bio',
           tell: 'Một dãy cờ và emoji chỗ đáng ra là một câu',
-          cost: 'Free — nó nằm sờ sờ ra đấy',
+          cost: 'Free - nó nằm sờ sờ ra đấy',
         },
         substance: {
           signal: 'Nội dung reply',
@@ -427,16 +427,16 @@ export const vi: Dict = {
         location: {
           signal: 'Tài khoản đặt ở đâu',
           tell: 'Lên lớp tự tin về một nước tài khoản chưa từng đăng bài',
-          cost: 'Ba chạm, mỗi hồ sơ — hoặc inline',
+          cost: 'Ba chạm, mỗi hồ sơ - hoặc inline',
         },
       },
       hiddenHeading: 'Cái duy nhất bạn không thấy',
       hidden1:
-        'Năm trong sáu tín hiệu trên đã nằm sẵn trên màn hình. Số follow, ngày tham gia, bio, bản thân reply — X đưa hết cho bạn không cần hỏi. Cái thứ sáu là cái X giấu sau menu: tài khoản thực sự đăng từ đâu.',
+        'Năm trong sáu tín hiệu trên đã nằm sẵn trên màn hình. Số follow, ngày tham gia, bio, bản thân reply - X đưa hết cho bạn không cần hỏi. Cái thứ sáu là cái X giấu sau menu: tài khoản thực sự đăng từ đâu.',
       hidden2:
-        'Nó quan trọng hơn mấy cái kia với một kiểu khó chịu rất riêng — không hẳn spam, mà là kiểu dạy đời tự tin về một nơi tài khoản chẳng liên quan. Cảm giác đọc khác hẳn khi bạn thấy được, mà X bắt bạn mở bảng cho từng hồ sơ mới biết.',
+        'Nó quan trọng hơn mấy cái kia với một kiểu khó chịu rất riêng - không hẳn spam, mà là kiểu dạy đời tự tin về một nơi tài khoản chẳng liên quan. Cảm giác đọc khác hẳn khi bạn thấy được, mà X bắt bạn mở bảng cho từng hồ sơ mới biết.',
       hidden3:
-        '<b>X-Pat làm đúng phần đó.</b> Nó nhét nước vào thẻ hover và, nếu bạn muốn, inline trên timeline — kèm cảnh báo khi chính X không xác minh được vị trí. Nó không chấm điểm tài khoản hay phán reply cho bạn; năm tín hiệu kia vẫn là quyết định của bạn. Nó chỉ làm cái dữ kiện bị giấu kia khỏi tốn ba cú chạm.',
+        '<b>X-Pat làm đúng phần đó.</b> Nó nhét nước vào thẻ hover và, nếu bạn muốn, inline trên timeline - kèm cảnh báo khi chính X không xác minh được vị trí. Nó không chấm điểm tài khoản hay phán reply cho bạn; năm tín hiệu kia vẫn là quyết định của bạn. Nó chỉ làm cái dữ kiện bị giấu kia khỏi tốn ba cú chạm.',
     },
 
     comparison: {
@@ -444,16 +444,16 @@ export const vi: Dict = {
       titleLead: 'X-Pat và',
       titleAccent: 'X-Posed',
       titleRest: ', cùng mấy cái còn lại.',
-      lead: 'Khoảng hai chục extension nhét cờ nước cạnh tên X. Ba cái có số người dùng đáng kể. Đây là từng cái thực sự làm gì, X-Pat làm khác gì, và ba thứ X-Posed làm tốt hơn — phần mà đa số trang so sánh bỏ qua.',
+      lead: 'Khoảng hai chục extension nhét cờ nước cạnh tên X. Ba cái có số người dùng đáng kể. Đây là từng cái thực sự làm gì, X-Pat làm khác gì, và ba thứ X-Posed làm tốt hơn - phần mà đa số trang so sánh bỏ qua.',
       featureHeading: 'Từng tính năng',
       featureLead:
-        'Mỗi ô đến từ store công khai hoặc repo công khai, đọc ngày {date}. Dấu gạch nghĩa là không thấy ghi — với hai extension đóng thì không giống "không", mà vẽ thành "không" là không công bằng.',
+        'Mỗi ô đến từ store công khai hoặc repo công khai, đọc ngày {date}. Dấu gạch nghĩa là không thấy ghi - với hai extension đóng thì không giống "không", mà vẽ thành "không" là không công bằng.',
       aheadHeading: 'X-Posed dẫn trước ở đâu',
       differsHeading: 'Khác biệt thực sự',
       differs1:
-        'Mọi thứ trong mục này phụ thuộc cache chung. X cho một trình duyệt tầm năm chục lần tra mỗi mười lăm phút, mà thread sôi nổi thì hơn hẳn — nên extension nào ở đây chạy qua giới hạn là nhờ đọc cache người khác đổ đầy. Câu hỏi không phải có server hay không. Mà là server đó được làm gì.',
+        'Mọi thứ trong mục này phụ thuộc cache chung. X cho một trình duyệt tầm năm chục lần tra mỗi mười lăm phút, mà thread sôi nổi thì hơn hẳn - nên extension nào ở đây chạy qua giới hạn là nhờ đọc cache người khác đổ đầy. Câu hỏi không phải có server hay không. Mà là server đó được làm gì.',
       differs2:
-        '<b>Của mình công khai, và bạn tự chạy được.</b> Server cache cùng repo với extension, có tài liệu deploy cho Cloudflare Workers và VPS thường. X-Posed công bố extension — thật, MIT hẳn hoi — nhưng không công bố Worker nhận đóng góp. Đó là mảnh bạn không kiểm tra được bằng code mình đã cài.',
+        '<b>Của mình công khai, và bạn tự chạy được.</b> Server cache cùng repo với extension, có tài liệu deploy cho Cloudflare Workers và VPS thường. X-Posed công bố extension - thật, MIT hẳn hoi - nhưng không công bố Worker nhận đóng góp. Đó là mảnh bạn không kiểm tra được bằng code mình đã cài.',
       differs3:
         '<b>Một câu trả lời từ cache ở đây cần đối chứng.</b> Đóng góp lưu dưới dạng phiếu theo máy và cái được trả là đồng thuận, có ngưỡng tin cậy bạn nâng được trong tùy chọn. Tài liệu của X-Posed mô tả lưu giá trị được chấp nhận gần nhất, nghĩa là người góp mới nhất quyết. Cả hai thiết kế đều thừa nhận vấn đề gốc: không server nào chứng minh được đóng góp thực sự tới từ X.',
       differs4:
@@ -463,14 +463,14 @@ export const vi: Dict = {
       sourcesHeading: 'Nguồn',
       sourcesLead:
         'Đọc ngày {date}. Số cài và tính năng thay đổi; nếu bên dưới có gì cũ là lỗi chứ không phải lập trường, và <a href="{href}">issue tracker</a> là cách nhanh nhất để sửa.',
-      sourceLabel: ' — nguồn: ',
-      sourceNotPublished: ' — không công bố mã nguồn',
+      sourceLabel: ' - nguồn: ',
+      sourceNotPublished: ' - không công bố mã nguồn',
     },
   },
 
   pages: {
     home: {
-      title: 'X-Pat — Định vị hồ sơ X: xem nước của mọi hồ sơ X',
+      title: 'X-Pat - Định vị hồ sơ X: xem nước của mọi hồ sơ X',
       description:
         'Một lá cờ nước trên mỗi hồ sơ X, từ dữ liệu của chính X. Cảnh báo VPN, ẩn hoặc đánh dấu bài theo nước, tổ chức, tuổi hoặc từ khóa bio. Miễn phí cho Chrome.',
       faq: [
@@ -488,7 +488,7 @@ export const vi: Dict = {
         },
         {
           q: 'Lọc theo cái gì khác ngoài nước được không?',
-          a: 'Được. Chặn mọi tài khoản X gắn nhãn thuộc tổ chức, đánh dấu tài khoản non hơn mốc bạn chọn, và highlight tài khoản có tên hoặc bio khớp từ khóa — hoặc bio toàn cờ. Luật tuổi và từ khóa chỉ đánh dấu, không vứt đi. Danh sách cho phép và ngoại lệ theo luật lo cho tài khoản bạn muốn tha.',
+          a: 'Được. Chặn mọi tài khoản X gắn nhãn thuộc tổ chức, đánh dấu tài khoản non hơn mốc bạn chọn, và highlight tài khoản có tên hoặc bio khớp từ khóa - hoặc bio toàn cờ. Luật tuổi và từ khóa chỉ đánh dấu, không vứt đi. Danh sách cho phép và ngoại lệ theo luật lo cho tài khoản bạn muốn tha.',
         },
         {
           q: 'Có cần mật khẩu X hay API key không?',
@@ -504,7 +504,7 @@ export const vi: Dict = {
     aboutThisAccount: {
       title: '“About this account” trên X: xem ở đâu, xem sao cho nhanh',
       description:
-        'X hiện nước của mỗi tài khoản dưới “About this account” — từng hồ sơ, sau menu. Đây là chỗ tìm, và cách lấy nó inline.',
+        'X hiện nước của mỗi tài khoản dưới “About this account” - từng hồ sơ, sau menu. Đây là chỗ tìm, và cách lấy nó inline.',
       faq: [
         {
           q: '“About this account” trên X là gì?',
@@ -516,11 +516,11 @@ export const vi: Dict = {
         },
         {
           q: 'Sao không thấy “About this account” với một số người?',
-          a: 'X không trả về nước cho mọi tài khoản — mấy cái cũ hoặc ít dùng thường không có. Trống thật thì không công cụ nào điền được, kể cả cái này.',
+          a: 'X không trả về nước cho mọi tài khoản - mấy cái cũ hoặc ít dùng thường không có. Trống thật thì không công cụ nào điền được, kể cả cái này.',
         },
         {
           q: 'Làm sao xem nước mà không phải mở từng hồ sơ?',
-          a: 'Đó là chỗ trống extension này lấp. Nó đọc cùng trường và vẽ thành cờ trong thẻ hover, và tùy chọn trên timeline — nên lướt thread 80 reply không có nghĩa 80 lần vào menu.',
+          a: 'Đó là chỗ trống extension này lấp. Nó đọc cùng trường và vẽ thành cờ trong thẻ hover, và tùy chọn trên timeline - nên lướt thread 80 reply không có nghĩa 80 lần vào menu.',
         },
       ],
     },
@@ -532,7 +532,7 @@ export const vi: Dict = {
       faq: [
         {
           q: 'Cày tương tác trên X là gì?',
-          a: 'Đăng reply cốt gặt lượt hiển thị chứ không nói gì — đồng tình chung chung, phẫn nộ tái chế, hoặc câu sáo dán dưới bài đang hot. Từ khi X trả tiền theo lượt hiển thị, có động cơ tài chính đàng hoàng.',
+          a: 'Đăng reply cốt gặt lượt hiển thị chứ không nói gì - đồng tình chung chung, phẫn nộ tái chế, hoặc câu sáo dán dưới bài đang hot. Từ khi X trả tiền theo lượt hiển thị, có động cơ tài chính đàng hoàng.',
         },
         {
           q: 'Làm sao biết reply là của bot hay tài khoản cày?',
@@ -540,7 +540,7 @@ export const vi: Dict = {
         },
         {
           q: 'Tỉ lệ follow nào đáng nghi?',
-          a: 'Follow nhiều hơn hẳn được follow — tỉ lệ dưới 0,1 — là kiểu kinh điển, vì follow hàng loạt là cách rẻ nhất để được chú ý. Nhiều tài khoản mới bình thường cũng vậy, coi là một dữ kiện chứ không kết luận.',
+          a: 'Follow nhiều hơn hẳn được follow - tỉ lệ dưới 0,1 - là kiểu kinh điển, vì follow hàng loạt là cách rẻ nhất để được chú ý. Nhiều tài khoản mới bình thường cũng vậy, coi là một dữ kiện chứ không kết luận.',
         },
         {
           q: 'Extension có phát hiện cày tương tác không?',
@@ -559,7 +559,7 @@ export const vi: Dict = {
     comparison: {
       title: 'Thay thế X-Posed: so sánh X-Pat từng tính năng',
       description:
-        'So sánh thẳng thắn X-Pat với X-Posed và hai extension định vị X còn lại — gồm cả ba thứ X-Posed làm tốt hơn.',
+        'So sánh thẳng thắn X-Pat với X-Posed và hai extension định vị X còn lại - gồm cả ba thứ X-Posed làm tốt hơn.',
       faq: [
         {
           q: 'Thay thế X-Posed nào tốt nhất?',
@@ -567,7 +567,7 @@ export const vi: Dict = {
         },
         {
           q: 'X-Pat có mã nguồn mở không?',
-          a: 'Có, MIT, và cả server cache — cùng repo, có tài liệu deploy Cloudflare Workers với VPS. X-Posed cũng MIT cho extension; cái không công bố là Worker nhận đóng góp cache.',
+          a: 'Có, MIT, và cả server cache - cùng repo, có tài liệu deploy Cloudflare Workers với VPS. X-Posed cũng MIT cho extension; cái không công bố là Worker nhận đóng góp cache.',
         },
         {
           q: 'Mấy extension này có cần mật khẩu X không?',
@@ -575,7 +575,7 @@ export const vi: Dict = {
         },
         {
           q: 'Sao cờ ngừng hiện giữa chừng thread?',
-          a: 'X cho một trình duyệt tầm 50 lần tra mỗi 15 phút, thread sôi nổi hơn thế. Extension đụng trần thì ngừng điền cờ. Cache chung tránh được — đa số hồ sơ không tốn lượt vì người khác tra rồi — và X-Pat chừa 20% cuối cửa sổ cho tài khoản bạn tự rê.',
+          a: 'X cho một trình duyệt tầm 50 lần tra mỗi 15 phút, thread sôi nổi hơn thế. Extension đụng trần thì ngừng điền cờ. Cache chung tránh được - đa số hồ sơ không tốn lượt vì người khác tra rồi - và X-Pat chừa 20% cuối cửa sổ cho tài khoản bạn tự rê.',
         },
       ],
     },

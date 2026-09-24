@@ -1,6 +1,6 @@
 import type { Dict } from './en'
 
-/** Turkish. "Sen" throughout — "siz" would read as a bank notice. */
+/** Turkish. "Sen" throughout - "siz" would read as a bank notice. */
 export const tr: Dict = {
   nav: {
     sections: 'Bölümler',
@@ -10,7 +10,7 @@ export const tr: Dict = {
     privacy: 'Gizlilik',
     comparison: 'Karşılaştırma',
     sourceOnGitHub: "GitHub'da kaynak kod",
-    home: 'X-Pat — ana sayfa',
+    home: 'X-Pat - ana sayfa',
   },
 
   language: {
@@ -126,7 +126,7 @@ export const tr: Dict = {
       },
       spread: {
         title: 'Yayılıyor, patlamıyor',
-        body: 'Kabaca her 21 saniyede bir sorgu, her seferinde yeniden hesaplanıyor — çok bakınca esniyor, pencere yeniden dolunca sıkılaşıyor.',
+        body: 'Kabaca her 21 saniyede bir sorgu, her seferinde yeniden hesaplanıyor - çok bakınca esniyor, pencere yeniden dolunca sıkılaşıyor.',
         readoutKey: 'Tempo',
         readoutValue: 'pencere ÷ bütçe',
       },
@@ -175,7 +175,7 @@ export const tr: Dict = {
       title: 'Okumak istemediğin ülkeleri gizle.',
       p1: "Bir paylaşımın nereden geldiğini gördüğün an harekete geçebilirsin. Atlamak istediğin konumları seçip tweet'lerine ne olacağını belirle.",
       p2: 'Varsayılan katlamak. Tweet, içinde Göster düğmesi olan ince bir <b>🚫 Gizli · 🇮🇳 Hindistan</b> çubuğuna dönüşüyor; böylece orada bir şey olduğunu hâlâ anlıyorsun ve tek tıkla kalıcı olarak geri geliyor. Filtre varsa uygulama mağazası ülkesini izliyor, bilerek açtığın tweete ise dokunmuyor.',
-      p3: "Elindeki tek kulp ülke değil. Bir kurumu engellersen X'in o kuruma bağlı saydığı bütün hesaplar da gider; senin belirlediğin eşikten daha genç hesaplarsa göründükleri anda işaretlenir — işaretlenir, asla gizlenmez, çünkü yeni olmak tek başına hiçbir şeyi kanıtlamaz.",
+      p3: "Elindeki tek kulp ülke değil. Bir kurumu engellersen X'in o kuruma bağlı saydığı bütün hesaplar da gider; senin belirlediğin eşikten daha genç hesaplarsa göründükleri anda işaretlenir - işaretlenir, asla gizlenmez, çünkü yeni olmak tek başına hiçbir şeyi kanıtlamaz.",
       readoutCollapse: 'Katla',
       readoutCollapseValue: 'İnce çubuk + Göster',
       readoutHide: 'Gizle',
@@ -218,7 +218,7 @@ export const tr: Dict = {
   trust: {
     heading: 'X oturumunu okuyan bir eklenti açık konuşsun.',
     lead: "Buyur. Sorgular sitenin kendi istekleri gibi doğrudan x.com'a gider, bizim sunucumuzdan asla geçmez. Tarayıcın sonuçları 30 gün tutar, seçenekler sayfası da dilediğin an temizler.",
-    body: 'Eklentide analitik veya telemetri yok. Bu site ise ziyaret sayısı ve hangi kurulum düğmesine tıklandığı için Google Analytics kullanıyor — hepsi bu.',
+    body: 'Eklentide analitik veya telemetri yok. Bu site ise ziyaret sayısı ve hangi kurulum düğmesine tıklandığı için Google Analytics kullanıyor - hepsi bu.',
     readPolicy: 'Gizlilik politikasının tamamını oku',
     neverTitle: 'Hiçbir yere gönderilmez',
     neverNote: 'Bunların ayarı yok. Eklenti zaten okumaz.',
@@ -240,7 +240,7 @@ export const tr: Dict = {
 
   compareTeaser: {
     heading: 'Zaten başka birini mi kullanıyorsun?',
-    lead: 'Yaklaşık yirmi eklenti kullanıcı adının yanına bayrak koyuyor. Asıl fark özellik listesinde değil — ortak önbelleğin neye izni olduğunda ve X’in elli sorgusu bittiğinde ne olduğunda.',
+    lead: 'Yaklaşık yirmi eklenti kullanıcı adının yanına bayrak koyuyor. Asıl fark özellik listesinde değil - ortak önbelleğin neye izni olduğunda ve X’in elli sorgusu bittiğinde ne olduğunda.',
     body: "Bu eklenti hızını X'in kendi yanıt başlıklarındaki gerçek bütçeye göre ayarlıyor ve üzerine gittiğin hesaplar için sekiz sorgu saklı tutuyor; kalabalık bir başlık yarıda kalmak yerine sonuna kadar doluyor. Tam tablo on dört satır ve X-Posed'un bu eklentiden daha iyi yaptığı üç şeyi açık açık söylüyor.",
     link: 'Tam karşılaştırmayı gör →',
   },
@@ -290,7 +290,7 @@ export const tr: Dict = {
         note: 'IP tahmini değil, X\'in kendi "Bu hesap hakkında" verisinden okunuyor.',
       },
       signupSource: {
-        label: 'Kayıt kaynağı — Apple, Google Play veya web',
+        label: 'Kayıt kaynağı - Apple, Google Play veya web',
         note: '',
       },
       accountAge: { label: 'Hesap yaşı', note: '' },
@@ -314,7 +314,7 @@ export const tr: Dict = {
       },
       cacheServerSource: {
         label: 'Önbellek sunucusunun kaynak kodu yayınlanmış',
-        note: 'Katkıları gönderen eklenti değil, katkıları alan sunucu. Bizimki aynı repoda, deploy belgeleriyle — ister oku, ister kendininkini çalıştır.',
+        note: 'Katkıları gönderen eklenti değil, katkıları alan sunucu. Bizimki aynı repoda, deploy belgeleriyle - ister oku, ister kendininkini çalıştır.',
       },
       crossChecked: {
         label: 'Önbellek kayıtları kurulumlar arasında çapraz kontrol edilir',
@@ -338,14 +338,14 @@ export const tr: Dict = {
       },
       surfaces: {
         title: 'Daha çok yerde var',
-        body: "Masaüstü Firefox, Android Firefox'u ve bir iPhone eşlik uygulaması. X-Pat bugün sadece Chromium tarafında — Chrome, Edge, Brave ve Android'de Quetta. Firefox planda, iOS planda değil.",
+        body: "Masaüstü Firefox, Android Firefox'u ve bir iPhone eşlik uygulaması. X-Pat bugün sadece Chromium tarafında - Chrome, Edge, Brave ve Android'de Quetta. Firefox planda, iOS planda değil.",
       },
       languageFilter: {
         title: 'Dil filtresi var',
-        body: "Bizde yok, bilerek. X'in gönderi başına dil alanı o kadar sık yanılıyor ki üzerine filtre kurmak gönderilerin görünür bir sebep olmadan kaybolmasına yol açar. Bu eksik özellik değil, savunulabilir bir tercih — ama dil filtrelemeye geldiysen X-Posed'da var, bizde yok.",
+        body: "Bizde yok, bilerek. X'in gönderi başına dil alanı o kadar sık yanılıyor ki üzerine filtre kurmak gönderilerin görünür bir sebep olmadan kaybolmasına yol açar. Bu eksik özellik değil, savunulabilir bir tercih - ama dil filtrelemeye geldiysen X-Posed'da var, bizde yok.",
       },
     },
-    notApplicable: '—',
+    notApplicable: '-',
     testCount: '{count} test',
     none: 'yok',
   },
@@ -356,7 +356,7 @@ export const tr: Dict = {
       titleLead: "X'in",
       titleAccent: '"Bu hesap hakkında"',
       titleRest: ' paneli ve onun için tıklamayı nasıl bırakacağın.',
-      lead: 'X hangi hesabın nereden paylaştığını sessizce biliyor ve söylüyor da — profil başına, üç tık derinde, sabrın yettiği kadar. İşte panelin yeri, neyi yanıtlayıp neyi yanıtlayamadığı ve aynı bilgiyi bir yerine seksen yanıt için istediğinde ne yapman gerektiği.',
+      lead: 'X hangi hesabın nereden paylaştığını sessizce biliyor ve söylüyor da - profil başına, üç tık derinde, sabrın yettiği kadar. İşte panelin yeri, neyi yanıtlayıp neyi yanıtlayamadığı ve aynı bilgiyi bir yerine seksen yanıt için istediğinde ne yapman gerektiği.',
       whereHeading: 'Panel aslında nerede',
       steps: {
         web: {
@@ -374,16 +374,16 @@ export const tr: Dict = {
       },
       cantHeading: 'Yanıtlayamadıkları',
       cant1:
-        'Panel profil başına ve kalıcı pencere şeklinde. Tek bir hesabı didikliyorsan sorun değil; bir yanıt zinciri okurken hiçbir işe yaramaz — ki soru genelde tam o anda doğar. Yüz yanıt, menüden yüz gidiş geliş demek; üçüncüsünde okuduğun zinciri çoktan kaybettin bile.',
+        'Panel profil başına ve kalıcı pencere şeklinde. Tek bir hesabı didikliyorsan sorun değil; bir yanıt zinciri okurken hiçbir işe yaramaz - ki soru genelde tam o anda doğar. Yüz yanıt, menüden yüz gidiş geliş demek; üçüncüsünde okuduğun zinciri çoktan kaybettin bile.',
       cant2:
-        "Üstelik her zaman dolu değil. X azımsanmayacak sayıda hesap için ülke döndürmüyor — genelde eski veya neredeyse hiç aktif olmayanlar. Alan sahiden boşsa açığa çıkarılacak bir şey yoktur, aksini iddia eden her türlü araç IP'den tahmin yürütüyordur.",
+        "Üstelik her zaman dolu değil. X azımsanmayacak sayıda hesap için ülke döndürmüyor - genelde eski veya neredeyse hiç aktif olmayanlar. Alan sahiden boşsa açığa çıkarılacak bir şey yoktur, aksini iddia eden her türlü araç IP'den tahmin yürütüyordur.",
       cant3:
         'Güvenilirlik hakkında da hiçbir şey söylemez. X bazı konumları dahili olarak arkasında duramayacağı konum diye işaretler; panel ülkeyi yine de gösterir.',
       sameHeading: 'Aynı alan, menüsüz',
       same1:
-        'X-Pat tam olarak panelin okuduğu alanı okuyor — aynı uç nokta, zaten tarayıcında açık olan X oturumunu kullanarak — ve onu kartta bir bayrak olarak, istersen akışta satır içinde çiziyor. IP sorgusu yok, üçüncü taraf veritabanı yok, hesap veya API anahtarı yok.',
+        'X-Pat tam olarak panelin okuduğu alanı okuyor - aynı uç nokta, zaten tarayıcında açık olan X oturumunu kullanarak - ve onu kartta bir bayrak olarak, istersen akışta satır içinde çiziyor. IP sorgusu yok, üçüncü taraf veritabanı yok, hesap veya API anahtarı yok.',
       same2:
-        "O yanıttan üç şeyi yüzeye çıkarıyor: ülke, hesabın kaydolduğu uygulama mağazası ve X'in konumu doğrulanamaz olarak işaretleyip işaretlemediği — işte panelin atladığı güven sinyali. Katılım tarihi ve kullanıcı adı geçmişi olduğu yerde duruyor; eklenti panelin tamamı olma iddiasında değil.",
+        "O yanıttan üç şeyi yüzeye çıkarıyor: ülke, hesabın kaydolduğu uygulama mağazası ve X'in konumu doğrulanamaz olarak işaretleyip işaretlemediği - işte panelin atladığı güven sinyali. Katılım tarihi ve kullanıcı adı geçmişi olduğu yerde duruyor; eklenti panelin tamamı olma iddiasında değil.",
       same3:
         'Üstüne aksiyon da alabilirsin: okumak istemediğin ülke ve bölgeler "Göster" düğmesinin arkasına katlanabilir veya gizlenebilir. Varsayılan katlamaktır, çünkü paylaşımları sessizce düşüren bir akış güvenilmezdir.',
     },
@@ -398,7 +398,7 @@ export const tr: Dict = {
       noVerdict1:
         'Aşağıdaki her işaretin masum bir açıklaması var. Yeni hesap yenidir. Kimi insan gönlü bol takip eder. Aklı başında yazan bir sürü insan biyografisine emoji koyar. Bunlardan birini kanıt sayarsan sıradan yabancıları sil baştan yazarsın; hem tatsız hem bayık.',
       noVerdict2:
-        'İşe yarayan üst üste koymaktır. Üç haftalık hesap, binlerce kişiyi takip ediyor, onu onlarca kişi takip ediyor, yanıtlarda birinci sırada, elinde kalıp bir cümle — bu bileşim tesadüf değil, nereye bakacağını bildiğinde iki saniyede okursun.',
+        'İşe yarayan üst üste koymaktır. Üç haftalık hesap, binlerce kişiyi takip ediyor, onu onlarca kişi takip ediyor, yanıtlarda birinci sırada, elinde kalıp bir cümle - bu bileşim tesadüf değil, nereye bakacağını bildiğinde iki saniyede okursun.',
       colSignal: 'Sinyal',
       colTell: 'Görünüşü',
       colCost: 'Kontrol maliyeti',
@@ -421,7 +421,7 @@ export const tr: Dict = {
         bio: {
           signal: 'Biyografi yapısı',
           tell: 'Bir cümlelik yer sıra sıra bayrak ve emoji',
-          cost: 'Bedava — orada duruyor zaten',
+          cost: 'Bedava - orada duruyor zaten',
         },
         substance: {
           signal: 'Yanıtın içi',
@@ -431,16 +431,16 @@ export const tr: Dict = {
         location: {
           signal: 'Hesap nerede duruyor',
           tell: 'Hiç paylaşmadığı bir ülke hakkında ahkâm kesme',
-          cost: 'Profil başına üç tık — ya da satır içinde',
+          cost: 'Profil başına üç tık - ya da satır içinde',
         },
       },
       hiddenHeading: 'Göremediğin',
       hidden1:
-        "Yukarıdaki altı sinyalin beşi zaten ekranda. Takipçi sayıları, katılım tarihi, biyografi, yanıtın kendisi — X hepsini sormadan önüne koyuyor. Altıncısı X'in menü arkasında tuttuğu: hesap gerçekte nereden paylaşıyor.",
+        "Yukarıdaki altı sinyalin beşi zaten ekranda. Takipçi sayıları, katılım tarihi, biyografi, yanıtın kendisi - X hepsini sormadan önüne koyuyor. Altıncısı X'in menü arkasında tuttuğu: hesap gerçekte nereden paylaşıyor.",
       hidden2:
-        'Bu, belli bir sinir bozuculuk türü için diğerlerinden daha önemli — spam değil tam olarak, hesabın hiçbir bağının olmadığı bir yer hakkında kendinden emin akıl verme. Bunu görebildiğin an aynı metin bambaşka okunuyor ve X öğrenmen için profil başına panel açmanı şart koşuyor.',
+        'Bu, belli bir sinir bozuculuk türü için diğerlerinden daha önemli - spam değil tam olarak, hesabın hiçbir bağının olmadığı bir yer hakkında kendinden emin akıl verme. Bunu görebildiğin an aynı metin bambaşka okunuyor ve X öğrenmen için profil başına panel açmanı şart koşuyor.',
       hidden3:
-        "<b>X-Pat işte o kısmı yapıyor.</b> Ülkeyi karta, istersen akışta satır içine koyuyor — ayrıca X'in kendisi konumu doğrulayamazsa uyarı ekliyor. Hesaplara puan biçmiyor, yanıtları senin adına yargılamıyor; diğer beş sinyal senin bileceğin iş olarak kalıyor. Gerçekten saklı olan tek bilgiyi üç tıka mahkûm olmaktan kurtarıyor, hepsi bu.",
+        "<b>X-Pat işte o kısmı yapıyor.</b> Ülkeyi karta, istersen akışta satır içine koyuyor - ayrıca X'in kendisi konumu doğrulayamazsa uyarı ekliyor. Hesaplara puan biçmiyor, yanıtları senin adına yargılamıyor; diğer beş sinyal senin bileceğin iş olarak kalıyor. Gerçekten saklı olan tek bilgiyi üç tıka mahkûm olmaktan kurtarıyor, hepsi bu.",
     },
 
     comparison: {
@@ -448,18 +448,18 @@ export const tr: Dict = {
       titleLead: 'X-Pat karşısında',
       titleAccent: 'X-Posed',
       titleRest: ' ve raftaki diğerleri.',
-      lead: "Yaklaşık yirmi eklenti X kullanıcı adının yanına ülke bayrağı koyuyor. Üç tanesinin kayda değer kullanıcısı var. Her biri gerçekte ne yapıyor, X-Pat neyi farklı yapıyor ve X-Posed'un daha iyi yaptığı üç şey — ki çoğu karşılaştırma sayfası bu kısmı es geçer.",
+      lead: "Yaklaşık yirmi eklenti X kullanıcı adının yanına ülke bayrağı koyuyor. Üç tanesinin kayda değer kullanıcısı var. Her biri gerçekte ne yapıyor, X-Pat neyi farklı yapıyor ve X-Posed'un daha iyi yaptığı üç şey - ki çoğu karşılaştırma sayfası bu kısmı es geçer.",
       featureHeading: 'Özellik özellik',
       featureLead:
-        'Her hücre, {date} tarihinde okunan herkese açık mağaza sayfası veya herkese açık depodan. Tire işareti sayfanın bunu söylemediği anlamına gelir — kapalı kaynak iki eklenti için bu "yok" demek değildir, öyle çizmek haksızlık olur.',
+        'Her hücre, {date} tarihinde okunan herkese açık mağaza sayfası veya herkese açık depodan. Tire işareti sayfanın bunu söylemediği anlamına gelir - kapalı kaynak iki eklenti için bu "yok" demek değildir, öyle çizmek haksızlık olur.',
       aheadHeading: "X-Posed'un önde olduğu noktalar",
       differsHeading: 'Asıl fark ne',
       differs1:
-        "Bu kategorideki her şey ortak önbelleğe dayanıyor. X bir tarayıcıya on beş dakikada yaklaşık elli profil sorgusu tanıyor, hareketli bir thread'de bundan fazla hesap var — yani buradaki her eklenti sınırı aşıp çalışmaya devam ediyorsa başkalarının doldurduğu bir önbelleği okuyarak yapıyor. Soru sunucu var mı yok mu değil. Soru o sunucunun ne yapmaya izni olduğu.",
+        "Bu kategorideki her şey ortak önbelleğe dayanıyor. X bir tarayıcıya on beş dakikada yaklaşık elli profil sorgusu tanıyor, hareketli bir thread'de bundan fazla hesap var - yani buradaki her eklenti sınırı aşıp çalışmaya devam ediyorsa başkalarının doldurduğu bir önbelleği okuyarak yapıyor. Soru sunucu var mı yok mu değil. Soru o sunucunun ne yapmaya izni olduğu.",
       differs2:
-        "<b>Bizimki yayında ve kendininkini çalıştırabilirsin.</b> Önbellek sunucusu eklentiyle aynı repoda, hem Cloudflare Workers hem düz VPS için deploy belgeleriyle. X-Posed eklentisini yayınlıyor — sahiden, MIT lisansıyla — ama katkıların gönderildiği Worker'ı yayınlamıyor. Kurduğun kodu okuyarak denetleyemeyeceğin kısım tam olarak orası.",
+        "<b>Bizimki yayında ve kendininkini çalıştırabilirsin.</b> Önbellek sunucusu eklentiyle aynı repoda, hem Cloudflare Workers hem düz VPS için deploy belgeleriyle. X-Posed eklentisini yayınlıyor - sahiden, MIT lisansıyla - ama katkıların gönderildiği Worker'ı yayınlamıyor. Kurduğun kodu okuyarak denetleyemeyeceğin kısım tam olarak orası.",
       differs3:
-        "<b>Burada önbellekten gelen cevap için teyit şart.</b> Katkılar kurulum başına oy olarak saklanıyor ve sunulan uzlaşı oluyor, seçeneklerden yükseltebileceğin bir güven eşiğiyle. X-Posed'un kendi belgeleriyse bir kullanıcı adı için kabul edilen son değeri sakladığını anlatıyor — yani son katkı yapan karar veriyor. İki tasarım da aynı temel sorun hakkında dürüst: hiçbir sunucu bir katkının gerçekten X'ten geldiğini kanıtlayamaz.",
+        "<b>Burada önbellekten gelen cevap için teyit şart.</b> Katkılar kurulum başına oy olarak saklanıyor ve sunulan uzlaşı oluyor, seçeneklerden yükseltebileceğin bir güven eşiğiyle. X-Posed'un kendi belgeleriyse bir kullanıcı adı için kabul edilen son değeri sakladığını anlatıyor - yani son katkı yapan karar veriyor. İki tasarım da aynı temel sorun hakkında dürüst: hiçbir sunucu bir katkının gerçekten X'ten geldiğini kanıtlayamaz.",
       differs4:
         '<b>Sorgular kimlik taşımaz.</b> Okumalar imzasız bir kullanıcı adı listesidir, sunucunun onları birbirine bağlayacak hiçbir şeyi yoktur, "bu kurulum şu hesaplara baktı" gibi bir bilgi inşa edemez. Okuyucuları saymak tek satır sürer ve bu özelliği anında bitirir, yayınlanan istatistiklerin bilerek düşük olması bu yüzden.',
       differs5:
@@ -467,14 +467,14 @@ export const tr: Dict = {
       sourcesHeading: 'Kaynaklar',
       sourcesLead:
         '{date} tarihinde okundu. Kurulum sayıları ve özellikler değişir; aşağıda bir şey güncelliğini yitirmişse bu bir duruş değil hatadır, düzeltmenin en hızlı yolu <a href="{href}">sorun takipçisidir</a>.',
-      sourceLabel: ' — kaynak: ',
-      sourceNotPublished: ' — kaynak yayınlanmamış',
+      sourceLabel: ' - kaynak: ',
+      sourceNotPublished: ' - kaynak yayınlanmamış',
     },
   },
 
   pages: {
     home: {
-      title: 'X-Pat — X Profil Konumu: herhangi bir X profilinin ülkesini gör',
+      title: 'X-Pat - X Profil Konumu: herhangi bir X profilinin ülkesini gör',
       description:
         "Her X profilinde bir ülke bayrağı, X'in kendi verisinden. VPN uyarıları, paylaşımları ülkeye, kuruma, hesap yaşına veya biyografideki anahtar kelimeye göre gizleme veya vurgulama. Chrome için ücretsiz.",
       faq: [
@@ -492,7 +492,7 @@ export const tr: Dict = {
         },
         {
           q: 'Ülke dışında bir şeye göre filtreleyebilir miyim?',
-          a: "Evet. X'in bir kuruma bağlı saydığı bütün hesapları engelleyebilir, seçtiğin eşikten daha yeni hesapları işaretleyebilir, adı veya biyografisi anahtar kelimelerine uyan — ya da biyografisi çoğunlukla bayrak emojisinden oluşan — hesapları vurgulayabilirsin. Yaş ve anahtar kelime kuralları sadece işaretler, asla silmez. İzin listesi ve kural başına istisnalar muaf tutmak istediğin hesapları kapsar.",
+          a: "Evet. X'in bir kuruma bağlı saydığı bütün hesapları engelleyebilir, seçtiğin eşikten daha yeni hesapları işaretleyebilir, adı veya biyografisi anahtar kelimelerine uyan - ya da biyografisi çoğunlukla bayrak emojisinden oluşan - hesapları vurgulayabilirsin. Yaş ve anahtar kelime kuralları sadece işaretler, asla silmez. İzin listesi ve kural başına istisnalar muaf tutmak istediğin hesapları kapsar.",
         },
         {
           q: 'X şifremi veya API anahtarı ister mi?',
@@ -509,7 +509,7 @@ export const tr: Dict = {
       title:
         'X "Bu hesap hakkında": nasıl görürsün ve nasıl daha hızlı görürsün',
       description:
-        'X her hesabın ülkesini "Bu hesap hakkında" altında gösteriyor — profil profili, menü arkasında. Nerede bulunur, satır içinde nasıl alınır.',
+        'X her hesabın ülkesini "Bu hesap hakkında" altında gösteriyor - profil profili, menü arkasında. Nerede bulunur, satır içinde nasıl alınır.',
       faq: [
         {
           q: 'X\'te "Bu hesap hakkında" nedir?',
@@ -521,11 +521,11 @@ export const tr: Dict = {
         },
         {
           q: 'Neden bazı kullanıcılarda "Bu hesap hakkında"yı göremiyorum?',
-          a: 'X her hesap için ülke döndürmez — eski veya az aktif hesapların çoğunda kayıtlı bir şey yoktur. Alan sahiden boşsa hiçbir araç dolduramaz, bu da dahil.',
+          a: 'X her hesap için ülke döndürmez - eski veya az aktif hesapların çoğunda kayıtlı bir şey yoktur. Alan sahiden boşsa hiçbir araç dolduramaz, bu da dahil.',
         },
         {
           q: 'Her profili açmadan ülkeyi nasıl görürüm?',
-          a: 'İşte bu eklentinin kapattığı boşluk tam olarak bu. Aynı alanı okuyup karta bir bayrak olarak, istersen akışta satır içinde çiziyor — seksen yanıtlık bir zinciri taramak menüye seksen kere girmek anlamına gelmiyor böylece.',
+          a: 'İşte bu eklentinin kapattığı boşluk tam olarak bu. Aynı alanı okuyup karta bir bayrak olarak, istersen akışta satır içinde çiziyor - seksen yanıtlık bir zinciri taramak menüye seksen kere girmek anlamına gelmiyor böylece.',
         },
       ],
     },
@@ -537,7 +537,7 @@ export const tr: Dict = {
       faq: [
         {
           q: "X'te etkileşim çiftçiliği nedir?",
-          a: 'Bir şey söylemek için değil, görüntülenme toplamak için tasarlanmış yanıtlar paylaşmak — jenerik onay, geri dönüştürülmüş öfke veya o an gündemdeki gönderinin altına yapıştırılmış kalıp bir cümle. X görüntülenme başına ödemeye başlayalı beri bunun doğrudan maddi karşılığı var.',
+          a: 'Bir şey söylemek için değil, görüntülenme toplamak için tasarlanmış yanıtlar paylaşmak - jenerik onay, geri dönüştürülmüş öfke veya o an gündemdeki gönderinin altına yapıştırılmış kalıp bir cümle. X görüntülenme başına ödemeye başlayalı beri bunun doğrudan maddi karşılığı var.',
         },
         {
           q: 'Bir X yanıtının bot veya çiftlik malı olduğunu nasıl anlarım?',
@@ -545,11 +545,11 @@ export const tr: Dict = {
         },
         {
           q: 'Hangi takipçi/takip oranı çiftlik hesabını işaret eder?',
-          a: "Takip ettiğin sayısı seni takip edenden kat kat fazlaysa — 0,1'in belirgin şekilde altında bir oran — klasik örüntü budur, toplu takip fark edilmenin en ucuz yoludur. Bir sürü sıradan yeni hesap da aynı görünür, bunu hüküm olarak değil veri noktası olarak al.",
+          a: "Takip ettiğin sayısı seni takip edenden kat kat fazlaysa - 0,1'in belirgin şekilde altında bir oran - klasik örüntü budur, toplu takip fark edilmenin en ucuz yoludur. Bir sürü sıradan yeni hesap da aynı görünür, bunu hüküm olarak değil veri noktası olarak al.",
         },
         {
           q: 'Eklenti etkileşim çiftçiliğini tespit ediyor mu?',
-          a: 'Doğrudan değil. Yaptığı şey hesabın ülkesini ve VPN durumunu satır içinde göstermek — ki bu her profili tek tek açmadan hiçbir şekilde göremeyeceğin tek sinyal. Bu sayfadaki diğer sinyaller hâlâ senin takdirine kalmış.',
+          a: 'Doğrudan değil. Yaptığı şey hesabın ülkesini ve VPN durumunu satır içinde göstermek - ki bu her profili tek tek açmadan hiçbir şekilde göremeyeceğin tek sinyal. Bu sayfadaki diğer sinyaller hâlâ senin takdirine kalmış.',
         },
       ],
     },
@@ -564,15 +564,15 @@ export const tr: Dict = {
     comparison: {
       title: 'X-Posed alternatifi: X-Pat karşılaştırması, özellik özellik',
       description:
-        "X-Pat'in X-Posed ve en çok kurulan diğer iki X konum eklentisiyle dürüst bir karşılaştırması — X-Posed'un daha iyi yaptığı üç şey dahil.",
+        "X-Pat'in X-Posed ve en çok kurulan diğer iki X konum eklentisiyle dürüst bir karşılaştırması - X-Posed'un daha iyi yaptığı üç şey dahil.",
       faq: [
         {
           q: 'En iyi X-Posed alternatifi hangisi?',
-          a: "Neye ihtiyacın olduğuna bağlı. X-Posed en oturmuş seçenek, dil filtresi var, Firefox sürümleri ve iPhone uygulaması var — X-Pat'te bunlar yok. X-Pat ortak önbellekte ayrışıyor: sunucusu yayınlanmış ve kendi kendine host edilebilir, önbellek kayıtları sunulmadan önce kurulumlar arasında çapraz doğrulanıyor ve sorgular, sunucunun neye baktığınla ilgili profil çıkarmasına yarayacak hiçbir kimlik taşımıyor.",
+          a: "Neye ihtiyacın olduğuna bağlı. X-Posed en oturmuş seçenek, dil filtresi var, Firefox sürümleri ve iPhone uygulaması var - X-Pat'te bunlar yok. X-Pat ortak önbellekte ayrışıyor: sunucusu yayınlanmış ve kendi kendine host edilebilir, önbellek kayıtları sunulmadan önce kurulumlar arasında çapraz doğrulanıyor ve sorgular, sunucunun neye baktığınla ilgili profil çıkarmasına yarayacak hiçbir kimlik taşımıyor.",
         },
         {
           q: 'X-Pat açık kaynak mı?',
-          a: 'Evet, MIT lisanslı; konuştuğu önbellek sunucusu da öyle — ikisi aynı repoda, Cloudflare Workers ve düz VPS için deploy belgeleriyle. X-Posed da eklentisini MIT altında yayınlıyor; yayınlamadığı, topluluk önbellek katkılarını alan Worker.',
+          a: 'Evet, MIT lisanslı; konuştuğu önbellek sunucusu da öyle - ikisi aynı repoda, Cloudflare Workers ve düz VPS için deploy belgeleriyle. X-Posed da eklentisini MIT altında yayınlıyor; yayınlamadığı, topluluk önbellek katkılarını alan Worker.',
         },
         {
           q: 'Bu eklentiler X şifremi ister mi?',
@@ -580,7 +580,7 @@ export const tr: Dict = {
         },
         {
           q: "Bayrak neden bir thread'in ortasında kayboluyor?",
-          a: "X bir tarayıcıya on beş dakikada yaklaşık elli hesap sorgusu tanıyor, hareketli bir thread'de bundan fazla hesap var. Tavana çarpan eklentiler bayrakları doldurmayı bırakıverir. Bunu önleyen ortak önbellek — profillerin çoğu sorgu yakmaz çünkü başkası çoktan çözmüştür — ve X-Pat ayrıca pencerenin son yüzde yirmisini senin bizzat üzerine gittiğin hesaplara ayırır.",
+          a: "X bir tarayıcıya on beş dakikada yaklaşık elli hesap sorgusu tanıyor, hareketli bir thread'de bundan fazla hesap var. Tavana çarpan eklentiler bayrakları doldurmayı bırakıverir. Bunu önleyen ortak önbellek - profillerin çoğu sorgu yakmaz çünkü başkası çoktan çözmüştür - ve X-Pat ayrıca pencerenin son yüzde yirmisini senin bizzat üzerine gittiğin hesaplara ayırır.",
         },
       ],
     },

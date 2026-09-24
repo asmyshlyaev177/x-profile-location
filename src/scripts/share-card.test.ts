@@ -26,7 +26,7 @@ describe('wrapText', () => {
       'one two',
       'three four',
     ])
-    // A line exactly on the limit still fits — the break is on overflow, not
+    // A line exactly on the limit still fits - the break is on overflow, not
     // on reaching the width.
     expect(wrapText('abcde fghi', 100, measure)).toEqual(['abcde fghi'])
     expect(wrapText('abcde fghij', 100, measure)).toEqual(['abcde', 'fghij'])
@@ -41,7 +41,7 @@ describe('wrapText', () => {
   })
 
   it('lets an unbreakable word overflow rather than cutting it', () => {
-    // A truncated URL is worse than a wide one — it stops being checkable.
+    // A truncated URL is worse than a wide one - it stops being checkable.
     const url = 'https://example.com/a/very/long/path/that/never/breaks'
     expect(wrapText(url, 100, measure)).toEqual([url])
   })
@@ -75,7 +75,7 @@ describe('shareChips', () => {
     // different vocabularies.
     const chips = shareChips({ ...DATA, locationAccurate: false })
     expect(chips).toContain('⚠ VPN')
-    // But it still must not claim a detection — the field is X declining to
+    // But it still must not claim a detection - the field is X declining to
     // verify a location, not X finding a proxy.
     expect(chips.join(' ')).not.toMatch(/detected|proxy|confirmed/i)
   })

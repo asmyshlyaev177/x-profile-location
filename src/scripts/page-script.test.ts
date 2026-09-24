@@ -45,7 +45,7 @@ class FakeXHR {
 
 // Every test re-imports page-script after vi.resetModules(), so each one runs a
 // fresh IIFE that registers its own REQUEST_HEADERS / REQUEST_USERS listeners on
-// the one shared `window` — closing over its own userBuffer. Nothing removes
+// the one shared `window` - closing over its own userBuffer. Nothing removes
 // them, so by the tenth test a single `x-loc-request-users` dispatch is answered
 // by ten module instances and the replay assertions see every earlier test's
 // users. In declaration order the leftovers happened to be harmless; under
@@ -87,7 +87,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
   // A test that fails before its own spy.mockRestore() would otherwise leave a
   // window.dispatchEvent spy installed, and the next test's spy stacks on top of
-  // it — turning one real failure into several.
+  // it - turning one real failure into several.
   vi.restoreAllMocks()
 })
 
@@ -106,9 +106,9 @@ describe('re-injection guard', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Fetch — header capture
+// Fetch - header capture
 // ---------------------------------------------------------------------------
-describe('fetch — header capture', () => {
+describe('fetch - header capture', () => {
   it('dispatches x-loc-headers-captured with plain-object headers', async () => {
     await import('./page-script')
     const eventP = nextWindowEvent<CustomEvent>('x-loc-headers-captured')
@@ -242,7 +242,7 @@ describe('fetch — header capture', () => {
     expect(fired).toBe(false)
   })
 
-  it('only captures headers once — subsequent graphql requests do not re-dispatch', async () => {
+  it('only captures headers once - subsequent graphql requests do not re-dispatch', async () => {
     await import('./page-script')
     let count = 0
     window.addEventListener('x-loc-headers-captured', () => {
@@ -262,7 +262,7 @@ describe('fetch — header capture', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Fetch — bio extraction (HomeTimeline / TweetDetail)
+// Fetch - bio extraction (HomeTimeline / TweetDetail)
 // ---------------------------------------------------------------------------
 
 /** Build a minimal HomeTimeline response containing one user */
@@ -339,7 +339,7 @@ function tweetDetailResponse(userName: string, bio: string) {
   }
 }
 
-describe('fetch — bio extraction', () => {
+describe('fetch - bio extraction', () => {
   it('dispatches x-loc-users-data for HomeTimeline response', async () => {
     vi.stubGlobal(
       'fetch',
@@ -362,7 +362,7 @@ describe('fetch — bio extraction', () => {
     expect(ev.detail.users).toHaveLength(1)
     expect(ev.detail.users[0].userName).toBe('tweetuser')
     expect(ev.detail.users[0].bio).toBe('my bio')
-    // The feed is what the user is scrolling — looked up before any reply.
+    // The feed is what the user is scrolling - looked up before any reply.
     expect(ev.detail.users[0].priority).toBe('high')
   })
 
@@ -474,9 +474,9 @@ describe('fetch — bio extraction', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Fetch — user deduplication in dispatched event
+// Fetch - user deduplication in dispatched event
 // ---------------------------------------------------------------------------
-describe('fetch — user deduplication', () => {
+describe('fetch - user deduplication', () => {
   it('deduplicates users by userName (case-insensitive), keeping first occurrence', async () => {
     const payload = {
       data: [
@@ -607,7 +607,7 @@ describe('x-loc-request-users event', () => {
     await import('./page-script')
 
     // Capture a user into the buffer (live dispatch has no listener yet in the
-    // real world — here we await it just to know buffering has happened).
+    // real world - here we await it just to know buffering has happened).
     const firstDispatch = nextWindowEvent<CustomEvent>('x-loc-users-data')
     window.fetch('https://x.com/i/api/graphql/HomeTimeline', {})
     await firstDispatch
@@ -726,7 +726,7 @@ describe('x-loc-request-users event', () => {
     await import('./page-script')
 
     // Seen in the feed first, then again as a reply in a thread. The buffer
-    // keeps the most recent record — but must not let 'low' overwrite 'high',
+    // keeps the most recent record - but must not let 'low' overwrite 'high',
     // or replaying it would bury a feed account behind the reply queue.
     const first = nextWindowEvent<CustomEvent>('x-loc-users-data')
     window.fetch('https://x.com/i/api/graphql/HomeTimeline', {})
@@ -753,9 +753,9 @@ describe('x-loc-request-users event', () => {
 })
 
 // ---------------------------------------------------------------------------
-// XHR — header capture
+// XHR - header capture
 // ---------------------------------------------------------------------------
-describe('XHR — header capture', () => {
+describe('XHR - header capture', () => {
   it('dispatches x-loc-headers-captured when graphql XHR has authorization header', async () => {
     await import('./page-script')
     const eventP = nextWindowEvent<CustomEvent>('x-loc-headers-captured')
@@ -795,9 +795,9 @@ describe('XHR — header capture', () => {
 })
 
 // ---------------------------------------------------------------------------
-// XHR — bio extraction
+// XHR - bio extraction
 // ---------------------------------------------------------------------------
-describe('XHR — bio extraction', () => {
+describe('XHR - bio extraction', () => {
   it('dispatches x-loc-users-data from HomeTimeline XHR load event', async () => {
     await import('./page-script')
     const eventP = nextWindowEvent<CustomEvent>('x-loc-users-data')

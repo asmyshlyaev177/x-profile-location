@@ -135,7 +135,7 @@ describe('Stats', () => {
   })
 
   // A malformed or truncated body must not throw out of the counters and take
-  // the request down with it — stats are strictly observational.
+  // the request down with it - stats are strictly observational.
   it('survives bodies that are not the JSON it expects', () => {
     const s = new Stats()
     for (const body of ['', 'not json', '{', '[]', 'null', '{"usernames":5}']) {
@@ -148,7 +148,7 @@ describe('Stats', () => {
   })
 
   // The per-window user count, taken from the clientId already on the wire
-  // rather than from a COUNT(DISTINCT) scan — see bench/load.ts for why.
+  // rather than from a COUNT(DISTINCT) scan - see bench/load.ts for why.
   describe('distinct installs', () => {
     const contrib = (clientId: unknown) =>
       JSON.stringify({ clientId, entries: [{ u: 'a' }] })

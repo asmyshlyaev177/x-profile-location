@@ -311,7 +311,7 @@ var index_default = {
       return json({ error: "internal" }, 500);
     }
   },
-  // Retention cleanup, the only thing that ages votes out — see CLAUDE.md.
+  // Retention cleanup, the only thing that ages votes out - see CLAUDE.md.
   // `_controller` / `_ctx` stay loose so this file needs no workers-types.
   async scheduled(_controller, env2, _ctx) {
     const result = await env2.DB.prepare(
@@ -808,7 +808,7 @@ if (config.statsIntervalHours > 0) {
 }
 server.listen(config.port, config.host, () => {
   console.log(
-    `[x-loc-cache] listening on http://${config.host}:${config.port} \u2014 db ${config.dbPath} (cache ${config.cacheMb}MB, mmap ${config.mmapMb}MB)`
+    `[x-loc-cache] listening on http://${config.host}:${config.port} - db ${config.dbPath} (cache ${config.cacheMb}MB, mmap ${config.mmapMb}MB)`
   );
 });
 var closing = false;
@@ -816,7 +816,7 @@ for (const signal of ["SIGTERM", "SIGINT"]) {
   process.on(signal, () => {
     if (closing) return;
     closing = true;
-    console.log(`[x-loc-cache] ${signal} \u2014 draining`);
+    console.log(`[x-loc-cache] ${signal} - draining`);
     server.close(() => {
       void logStats("shutdown").finally(() => {
         db.close();

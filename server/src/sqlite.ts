@@ -1,4 +1,4 @@
-// SQLite backend — a D1-shaped adapter over better-sqlite3, implementing only
+// SQLite backend - a D1-shaped adapter over better-sqlite3, implementing only
 // db-types.ts. See "The Node deployment" in CLAUDE.md.
 
 import Database from 'better-sqlite3'
@@ -13,7 +13,7 @@ export interface SqliteConfig {
   /** SQLite page cache ceiling, in anonymous memory. Reads inside mmapMb bypass
    *  it; writes and the retention DELETE's write cursors fill it. */
   cacheMb: number
-  /** Address space backed by the OS page cache, reclaimed under pressure —
+  /** Address space backed by the OS page cache, reclaimed under pressure -
    *  safe well above free RAM, unlike cacheMb. */
   mmapMb: number
 }
@@ -109,7 +109,7 @@ export class SqliteDb implements Db {
   }
 }
 
-/** Open (creating if absent) and apply schema.sql, which is idempotent — there
+/** Open (creating if absent) and apply schema.sql, which is idempotent - there
  *  is no separate migration step to forget on a fresh box. */
 export function openDatabase(config: SqliteConfig): SqliteDb {
   const db = new Database(config.path)

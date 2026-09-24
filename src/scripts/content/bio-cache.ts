@@ -1,5 +1,5 @@
 // In memory so highlighting reads synchronously rather than racing mergeCached.
-// A fast path only — every bio also lands in IDB, and eviction falls back to it.
+// A fast path only - every bio also lands in IDB, and eviction falls back to it.
 
 import { getCached } from '../cache/cache'
 import type { AccountFacts } from '../profile'

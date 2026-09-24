@@ -28,7 +28,7 @@ import { initI18n, readCatalogue, t, UI_LANGUAGE_KEY } from './i18n'
 const RATING_BADGE = '★'
 
 async function syncRatingBadge(): Promise<void> {
-  // Paused means quiet everywhere — the popup hides the card too.
+  // Paused means quiet everywhere - the popup hides the card too.
   const stored = (await chrome.storage.local.get(
     EXTENSION_ENABLED_KEY,
   )) as Record<string, unknown>
@@ -98,7 +98,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // The content script cannot read `_locales/` without exposing it to x.com, so
 // it asks here instead. See "Localization" in CLAUDE.md.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Only the tab may ask this about itself — the id comes from the sender, so
+  // Only the tab may ask this about itself - the id comes from the sender, so
   // no page can name another tab to close.
   if (message?.type === MSG.CLOSE_TAB && sender.tab?.id != null) {
     void chrome.tabs.remove(sender.tab.id)
@@ -241,7 +241,7 @@ chrome.tabs.onReplaced?.addListener(
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === MSG.CLEAR_CACHE) {
     void (async () => {
-      // Everything is worth asking about again — the answers just went away.
+      // Everything is worth asking about again - the answers just went away.
       const state = await loadBroker()
       state.forgetAsked()
       await saveBroker(state)

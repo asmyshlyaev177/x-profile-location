@@ -1,5 +1,5 @@
 /**
- * English — the source dictionary, and the type every other locale is checked
+ * English - the source dictionary, and the type every other locale is checked
  * against.
  *
  * ── Rules for editing ────────────────────────────────────────────────────────
@@ -10,7 +10,7 @@
  *    config would drag Preact through esbuild for nothing. Inline emphasis and
  *    links go through the four tags `i18n/rich.tsx` understands.
  * 2. Adding a key here breaks the other fourteen files until they have it too.
- *    That is the point — `Dict` is derived from this object, so a missing
+ *    That is the point - `Dict` is derived from this object, so a missing
  *    translation is a type error rather than an English string appearing on a
  *    Japanese page.
  * 3. Brand names are not copy. "X-Pat", "X-Posed", "Chrome", "Quetta Browser"
@@ -28,7 +28,7 @@ export interface FaqEntry {
 
 export interface PageMeta {
   title: string
-  /** Under ~160 chars — anything past that is truncated in results. */
+  /** Under ~160 chars - anything past that is truncated in results. */
   description: string
   faq: FaqEntry[]
 }
@@ -43,7 +43,7 @@ export const en = {
     privacy: 'Privacy',
     comparison: 'Comparison',
     sourceOnGitHub: 'Source on GitHub',
-    home: 'X-Pat — home',
+    home: 'X-Pat - home',
   },
 
   language: {
@@ -163,7 +163,7 @@ export const en = {
       },
       spread: {
         title: 'Spread, not sprinted',
-        body: 'Roughly one lookup every 21 seconds, recomputed each time — stretching when you hover a lot, tightening when the window refills.',
+        body: 'Roughly one lookup every 21 seconds, recomputed each time - stretching when you hover a lot, tightening when the window refills.',
         readoutKey: 'Pace',
         readoutValue: 'window ÷ budget',
       },
@@ -211,9 +211,9 @@ export const en = {
     },
     hide: {
       title: 'Hide the countries you’d rather not read.',
-      p1: 'Once you can see where a post comes from, you can act on it. The country filter takes the places you’d rather skip — one country, or a whole region — and decides what happens to their tweets.',
-      p2: 'Collapsing is the default. The tweet folds down into a slim <b>🚫 Hidden · 🇮🇳 India</b> bar with a Show button, so you can still tell something was there, and one click brings it back for good. Where X reports a region instead of a country — NAM, EUR, SAS — the region filter catches it, so nothing slips through on a technicality. It follows the app store country when there’s one, and it leaves the tweet you opened on purpose alone.',
-      p3: 'The location filter is not the only handle you have. Block an organisation and every account X badges as belonging to it goes too, and accounts younger than a threshold you set get marked as they appear — marked, never hidden, because being new is not evidence of anything.',
+      p1: 'Once you can see where a post comes from, you can act on it. The country filter takes the places you’d rather skip - one country, or a whole region - and decides what happens to their tweets.',
+      p2: 'Collapsing is the default. The tweet folds down into a slim <b>🚫 Hidden · 🇮🇳 India</b> bar with a Show button, so you can still tell something was there, and one click brings it back for good. Where X reports a region instead of a country - NAM, EUR, SAS - the region filter catches it, so nothing slips through on a technicality. It follows the app store country when there’s one, and it leaves the tweet you opened on purpose alone.',
+      p3: 'The location filter is not the only handle you have. Block an organisation and every account X badges as belonging to it goes too, and accounts younger than a threshold you set get marked as they appear - marked, never hidden, because being new is not evidence of anything.',
       readoutCollapse: 'Collapse',
       readoutCollapseValue: 'Slim bar + Show',
       readoutHide: 'Hide',
@@ -258,7 +258,7 @@ export const en = {
   trust: {
     heading: 'An extension that reads your X session had better be specific.',
     lead: 'So here it is. Lookups go straight to x.com, the same way the site’s own requests do, and never through a server of ours. Your browser holds the results for 30 days, and the options page clears them whenever you want.',
-    body: 'There’s no analytics or telemetry in the extension. This website does use Google Analytics, for visit counts and which install button was clicked — nothing else.',
+    body: 'There’s no analytics or telemetry in the extension. This website does use Google Analytics, for visit counts and which install button was clicked - nothing else.',
     readPolicy: 'Read the full privacy policy',
     neverTitle: 'Never sent anywhere',
     neverNote: 'There’s no setting for these. The extension never reads them.',
@@ -280,7 +280,7 @@ export const en = {
 
   compareTeaser: {
     heading: 'Already using one of the others?',
-    lead: 'About twenty extensions put a flag next to a handle. The differences that matter are not on the feature list — they are in what the shared cache is allowed to do, and in what happens when X’s fifty lookups run out.',
+    lead: 'About twenty extensions put a flag next to a handle. The differences that matter are not on the feature list - they are in what the shared cache is allowed to do, and in what happens when X’s fifty lookups run out.',
     body: 'This one paces itself against the real budget in X’s own response headers and holds eight lookups back for the accounts you hover, so a busy thread finishes filling in instead of stopping halfway. The full table covers fourteen rows and names the three things X-Posed does better than this extension.',
     link: 'See the full comparison →',
   },
@@ -335,7 +335,7 @@ export const en = {
         note: 'Read from X’s own “About this account” data, not guessed from an IP address.',
       },
       signupSource: {
-        label: 'Sign-up source — Apple, Google Play or web',
+        label: 'Sign-up source - Apple, Google Play or web',
         note: '',
       },
       accountAge: { label: 'Account age', note: '' },
@@ -358,7 +358,7 @@ export const en = {
       },
       cacheServerSource: {
         label: 'Cache server source published',
-        note: 'The server that receives contributions, not just the extension that sends them. Ours is in the same repo, with deploy docs — you can read it, or run your own.',
+        note: 'The server that receives contributions, not just the extension that sends them. Ours is in the same repo, with deploy docs - you can read it, or run your own.',
       },
       crossChecked: {
         label: 'Cached entries cross-checked between installs',
@@ -379,11 +379,11 @@ export const en = {
       },
       surfaces: {
         title: 'It ships on more surfaces',
-        body: 'Firefox desktop, Firefox for Android, and a companion iPhone app. X-Pat is Chromium-only today — Chrome, Edge, Brave, and Quetta on Android. Firefox is planned, iOS is not.',
+        body: 'Firefox desktop, Firefox for Android, and a companion iPhone app. X-Pat is Chromium-only today - Chrome, Edge, Brave, and Quetta on Android. Firefox is planned, iOS is not.',
       },
       languageFilter: {
         title: 'It has a language filter',
-        body: 'We do not, on purpose. X’s per-post language field is wrong often enough that filtering on it produces posts vanishing for no visible reason. That is a defensible call rather than a missing feature — but if filtering by language is what you came for, X-Posed has it and we do not.',
+        body: 'We do not, on purpose. X’s per-post language field is wrong often enough that filtering on it produces posts vanishing for no visible reason. That is a defensible call rather than a missing feature - but if filtering by language is what you came for, X-Posed has it and we do not.',
       },
     },
     /** The competitors' `n/a` cell, spelled out for the table's own copy. */
@@ -398,7 +398,7 @@ export const en = {
       titleLead: 'X’s',
       titleAccent: '“About this account”',
       titleRest: ', and how to stop clicking for it.',
-      lead: 'X quietly knows which country every account posts from, and it will tell you — one profile at a time, three taps deep, for as many profiles as you have patience for. Here is where the panel lives, what it can and cannot answer, and what to do when you want the same fact for eighty replies instead of one.',
+      lead: 'X quietly knows which country every account posts from, and it will tell you - one profile at a time, three taps deep, for as many profiles as you have patience for. Here is where the panel lives, what it can and cannot answer, and what to do when you want the same fact for eighty replies instead of one.',
       whereHeading: 'Where the panel actually is',
       steps: {
         web: {
@@ -418,14 +418,14 @@ export const en = {
       cant1:
         'The panel is per-profile and modal. That is fine when you are vetting one account and useless when you are reading a reply thread, which is the moment the question usually comes up. A hundred replies is a hundred round trips through a menu, and by the third one you have lost the thread you were reading.',
       cant2:
-        'It is also not always populated. X returns no country for a fair number of accounts — often older or barely-active ones. When the field is genuinely empty there is nothing to reveal, and any tool claiming otherwise is guessing at an IP address.',
+        'It is also not always populated. X returns no country for a fair number of accounts - often older or barely-active ones. When the field is genuinely empty there is nothing to reveal, and any tool claiming otherwise is guessing at an IP address.',
       cant3:
         'And it says nothing about confidence. X internally marks some locations as ones it cannot stand behind; the panel shows you the country either way.',
       sameHeading: 'The same field, without the menu',
       same1:
-        'X-Pat reads exactly the field the panel reads — the same endpoint, using the X session already in your browser — and renders it as a flag in the hover card, and optionally inline in the timeline. No IP lookups, no third-party database, no account or API key.',
+        'X-Pat reads exactly the field the panel reads - the same endpoint, using the X session already in your browser - and renders it as a flag in the hover card, and optionally inline in the timeline. No IP lookups, no third-party database, no account or API key.',
       same2:
-        'It surfaces three things from that response: the country, the app store the account signed up through, and whether X flags the location as one it cannot verify — the confidence signal the panel leaves out. Join date and handle history stay where they are; the extension does not try to be the whole panel.',
+        'It surfaces three things from that response: the country, the app store the account signed up through, and whether X flags the location as one it cannot verify - the confidence signal the panel leaves out. Join date and handle history stay where they are; the extension does not try to be the whole panel.',
       same3:
         'You can also act on it: countries and regions you would rather not read can collapse behind a “Show” button, or hide. Collapse is the default, because a timeline that silently drops posts is a timeline you cannot trust.',
     },
@@ -440,7 +440,7 @@ export const en = {
       noVerdict1:
         'Every tell below has an innocent explanation. New accounts are new. Some people follow generously. Plenty of thoughtful posters have an emoji in their bio. Treating any one of these as proof will have you writing off ordinary strangers, which is both unpleasant and boring.',
       noVerdict2:
-        'What works is stacking them. An account three weeks old, following thousands, followed by dozens, first in the replies with a stock phrase — that combination is not a coincidence, and you can read it in about two seconds once you know where to look.',
+        'What works is stacking them. An account three weeks old, following thousands, followed by dozens, first in the replies with a stock phrase - that combination is not a coincidence, and you can read it in about two seconds once you know where to look.',
       colSignal: 'Signal',
       colTell: 'What it looks like',
       colCost: 'Cost to check',
@@ -463,7 +463,7 @@ export const en = {
         bio: {
           signal: 'Bio composition',
           tell: 'A row of flags and emoji where a sentence would go',
-          cost: 'Free — it is right there',
+          cost: 'Free - it is right there',
         },
         substance: {
           signal: 'Reply substance',
@@ -473,16 +473,16 @@ export const en = {
         location: {
           signal: 'Where the account is based',
           tell: 'Confident lecturing about a country the account has never posted from',
-          cost: 'Three taps, per profile — or inline',
+          cost: 'Three taps, per profile - or inline',
         },
       },
       hiddenHeading: 'The one you can’t see',
       hidden1:
-        'Five of the six signals above are already on screen. Follower counts, join date, the bio, the reply itself — X hands you all of it without being asked. The sixth is the one X keeps behind a menu: where the account actually posts from.',
+        'Five of the six signals above are already on screen. Follower counts, join date, the bio, the reply itself - X hands you all of it without being asked. The sixth is the one X keeps behind a menu: where the account actually posts from.',
       hidden2:
-        'It matters more than the others for a specific kind of annoyance — not spam exactly, but confident instruction about somewhere the account has no stake in. That reads very differently once you can see it, and X makes you open a panel per profile to find out.',
+        'It matters more than the others for a specific kind of annoyance - not spam exactly, but confident instruction about somewhere the account has no stake in. That reads very differently once you can see it, and X makes you open a panel per profile to find out.',
       hidden3:
-        '<b>X-Pat does that part.</b> It puts the country in the hover card and, if you want it, inline in the timeline — plus a warning when X itself cannot verify the location. It does not score accounts or judge replies for you; the other five signals stay your call. It just stops the one genuinely hidden fact from costing three taps.',
+        '<b>X-Pat does that part.</b> It puts the country in the hover card and, if you want it, inline in the timeline - plus a warning when X itself cannot verify the location. It does not score accounts or judge replies for you; the other five signals stay your call. It just stops the one genuinely hidden fact from costing three taps.',
     },
 
     comparison: {
@@ -490,17 +490,17 @@ export const en = {
       titleLead: 'X-Pat vs',
       titleAccent: 'X-Posed',
       titleRest: ', and the rest of the shelf.',
-      lead: 'About twenty extensions put a country flag next to an X handle. Three of them have meaningful numbers of users. Here is what each one actually does, what X-Pat does differently, and the three things X-Posed does better — which is the part most comparison pages leave out.',
+      lead: 'About twenty extensions put a country flag next to an X handle. Three of them have meaningful numbers of users. Here is what each one actually does, what X-Pat does differently, and the three things X-Posed does better - which is the part most comparison pages leave out.',
       featureHeading: 'Feature by feature',
       /** `{date}` is the scrape date, formatted in the reader's own locale. */
       featureLead:
-        'Every cell comes from a public store listing or a public repository, read on {date}. A dash means the listing does not say — for the two closed-source extensions that is not the same as a no, and it would be unfair to draw it as one.',
+        'Every cell comes from a public store listing or a public repository, read on {date}. A dash means the listing does not say - for the two closed-source extensions that is not the same as a no, and it would be unfair to draw it as one.',
       aheadHeading: 'Where X-Posed is ahead',
       differsHeading: 'What actually differs',
       differs1:
-        'Everything in this category depends on a shared cache. X allows one browser roughly fifty profile lookups every fifteen minutes, and a busy thread has more accounts than that — so every extension here that keeps working past the limit does it by reading a cache other people filled. The question is not whether there is a server. It is what that server is allowed to do.',
+        'Everything in this category depends on a shared cache. X allows one browser roughly fifty profile lookups every fifteen minutes, and a busy thread has more accounts than that - so every extension here that keeps working past the limit does it by reading a cache other people filled. The question is not whether there is a server. It is what that server is allowed to do.',
       differs2:
-        '<b>Ours is published, and you can run your own.</b> The cache server is in the same repository as the extension, with deployment docs for both Cloudflare Workers and a plain VPS. X-Posed publishes its extension — genuinely, and under MIT — but not the Worker its contributions are sent to. That is the piece you cannot check by reading the code you installed.',
+        '<b>Ours is published, and you can run your own.</b> The cache server is in the same repository as the extension, with deployment docs for both Cloudflare Workers and a plain VPS. X-Posed publishes its extension - genuinely, and under MIT - but not the Worker its contributions are sent to. That is the piece you cannot check by reading the code you installed.',
       differs3:
         '<b>A cached answer here needs corroboration.</b> Contributions are stored as per-install votes and the consensus is what gets served, with a confidence threshold you can raise in the options page. X-Posed’s own documentation describes storing the last accepted value for a handle, which means the most recent contributor decides. Both designs are honest about the same underlying problem: neither server can prove a contribution really came from X.',
       differs4:
@@ -512,8 +512,8 @@ export const en = {
       /** `{date}` the scrape date, `{href}` the issue tracker. */
       sourcesLead:
         'Read on {date}. Install counts and features move; if something below is out of date, it is an error rather than a position, and the <a href="{href}">issue tracker</a> is the fastest way to have it corrected.',
-      sourceLabel: ' — source: ',
-      sourceNotPublished: ' — source not published',
+      sourceLabel: ' - source: ',
+      sourceNotPublished: ' - source not published',
     },
   },
 
@@ -524,9 +524,9 @@ export const en = {
   pages: {
     home: {
       title:
-        'X-Pat — X account location finder: see the country of any X profile',
+        'X-Pat - X account location finder: see the country of any X profile',
       description:
-        'Check where any X account is from — a country flag on every profile, from X’s own data. VPN warnings, hide or highlight posts by country, age or keyword.',
+        'Check where any X account is from - a country flag on every profile, from X’s own data. VPN warnings, hide or highlight posts by country, age or keyword.',
       faq: [
         {
           q: 'How do I see what country an X account is from?',
@@ -534,11 +534,11 @@ export const en = {
         },
         {
           q: 'Is there an X account location finder or checker?',
-          a: 'That is what this extension is — an X account location checker that runs in your browser. There is no site to visit and no handle to paste: every profile you hover or scroll past is checked automatically against X’s own data, and the country appears as a flag right in the page.',
+          a: 'That is what this extension is - an X account location checker that runs in your browser. There is no site to visit and no handle to paste: every profile you hover or scroll past is checked automatically against X’s own data, and the country appears as a flag right in the page.',
         },
         {
           q: 'Can I share or screenshot a post with the flags included?',
-          a: 'Yes. Right-click any post — or use the button in the hover card — and it is copied as a PNG image with the flags embedded, ready to paste into a reply or a chat.',
+          a: 'Yes. Right-click any post - or use the button in the hover card - and it is copied as a PNG image with the flags embedded, ready to paste into a reply or a chat.',
         },
         {
           q: 'Can I tell if an X account is using a VPN?',
@@ -550,7 +550,7 @@ export const en = {
         },
         {
           q: 'Can I filter by anything other than country?',
-          a: 'Yes. You can block every account X badges as belonging to an organisation, mark accounts younger than a threshold you pick, and highlight accounts whose name or bio matches your keywords — or whose bio is mostly flag emoji. Age and keyword rules only ever mark a post; they never take it away. An allowlist and per-rule exceptions cover the accounts you want spared.',
+          a: 'Yes. You can block every account X badges as belonging to an organisation, mark accounts younger than a threshold you pick, and highlight accounts whose name or bio matches your keywords - or whose bio is mostly flag emoji. Age and keyword rules only ever mark a post; they never take it away. An allowlist and per-rule exceptions cover the accounts you want spared.',
         },
         {
           q: 'Does it need my X password or an API key?',
@@ -566,7 +566,7 @@ export const en = {
     aboutThisAccount: {
       title: 'X “About this account”: how to see it, and see it faster',
       description:
-        'X shows every account’s country under “About this account” — one profile at a time, behind a menu. Here’s where to find it, and how to get it inline instead.',
+        'X shows every account’s country under “About this account” - one profile at a time, behind a menu. Here’s where to find it, and how to get it inline instead.',
       faq: [
         {
           q: 'What is “About this account” on X?',
@@ -578,11 +578,11 @@ export const en = {
         },
         {
           q: 'Why can’t I see “About this account” for some users?',
-          a: 'X does not return a country for every account — older or less active accounts often have nothing on file. When the field is genuinely empty, no tool can fill it in, including this one.',
+          a: 'X does not return a country for every account - older or less active accounts often have nothing on file. When the field is genuinely empty, no tool can fill it in, including this one.',
         },
         {
           q: 'How do I see the country without opening every profile?',
-          a: 'That is the gap this extension closes. It reads the same field and renders it as a flag in the hover card and, optionally, inline in the timeline — so scanning a thread of eighty replies does not mean eighty menu visits.',
+          a: 'That is the gap this extension closes. It reads the same field and renders it as a flag in the hover card and, optionally, inline in the timeline - so scanning a thread of eighty replies does not mean eighty menu visits.',
         },
       ],
     },
@@ -594,7 +594,7 @@ export const en = {
       faq: [
         {
           q: 'What is engagement farming on X?',
-          a: 'Posting replies designed to harvest impressions rather than say anything — generic agreement, recycled outrage, or a stock phrase pasted under whichever post is trending. Since X began paying out on impressions there is a direct financial motive for it.',
+          a: 'Posting replies designed to harvest impressions rather than say anything - generic agreement, recycled outrage, or a stock phrase pasted under whichever post is trending. Since X began paying out on impressions there is a direct financial motive for it.',
         },
         {
           q: 'How can you tell if an X reply is from a bot or a farm?',
@@ -602,7 +602,7 @@ export const en = {
         },
         {
           q: 'What follower-to-following ratio suggests a farmed account?',
-          a: 'Following far more accounts than follow back — a ratio well under 0.1 — is the classic pattern, because mass-following is the cheapest way to get noticed. Plenty of ordinary new accounts look the same, so treat it as one input rather than a verdict.',
+          a: 'Following far more accounts than follow back - a ratio well under 0.1 - is the classic pattern, because mass-following is the cheapest way to get noticed. Plenty of ordinary new accounts look the same, so treat it as one input rather than a verdict.',
         },
         {
           q: 'Does the extension detect engagement farming?',
@@ -621,7 +621,7 @@ export const en = {
     comparison: {
       title: 'X-Posed alternative: X-Pat compared, feature by feature',
       description:
-        'An honest comparison of X-Pat against X-Posed and the two other most-installed X location extensions — including the three things X-Posed does better.',
+        'An honest comparison of X-Pat against X-Posed and the two other most-installed X location extensions - including the three things X-Posed does better.',
       faq: [
         {
           q: 'What is the best X-Posed alternative?',
@@ -629,7 +629,7 @@ export const en = {
         },
         {
           q: 'Is X-Pat open source?',
-          a: 'Yes, MIT licensed, and so is the cache server it talks to — both live in the same repository, with deployment docs for Cloudflare Workers and for a plain VPS. X-Posed also publishes its extension under MIT; what it does not publish is the Worker that receives community-cache contributions.',
+          a: 'Yes, MIT licensed, and so is the cache server it talks to - both live in the same repository, with deployment docs for Cloudflare Workers and for a plain VPS. X-Posed also publishes its extension under MIT; what it does not publish is the Worker that receives community-cache contributions.',
         },
         {
           q: 'Do these extensions need my X password?',
@@ -637,7 +637,7 @@ export const en = {
         },
         {
           q: 'Why does the flag stop appearing halfway down a thread?',
-          a: 'X allows one browser about fifty account lookups every fifteen minutes, and a busy thread contains more accounts than that. Extensions that hit the ceiling simply stop filling in flags. A shared cache is what avoids it — most profiles cost no lookup at all because someone else already resolved them — and X-Pat additionally reserves the last twenty percent of the window for accounts you hover yourself.',
+          a: 'X allows one browser about fifty account lookups every fifteen minutes, and a busy thread contains more accounts than that. Extensions that hit the ceiling simply stop filling in flags. A shared cache is what avoids it - most profiles cost no lookup at all because someone else already resolved them - and X-Pat additionally reserves the last twenty percent of the window for accounts you hover yourself.',
         },
       ],
     },
@@ -646,7 +646,7 @@ export const en = {
 
 /**
  * The shape every locale must satisfy. Derived from `en` rather than declared
- * separately so the two can never drift — adding a key above is what makes the
+ * separately so the two can never drift - adding a key above is what makes the
  * other fourteen files fail to compile until they have it.
  *
  * The mapped type strips `as const`'s literal types back to `string`, so a

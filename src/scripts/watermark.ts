@@ -7,7 +7,7 @@ const FONT = '600 12px system-ui, -apple-system, sans-serif'
 
 const INSET = 10
 
-/** Room a caller must leave under its content — a snapshot has none of its own. */
+/** Room a caller must leave under its content - a snapshot has none of its own. */
 export const WATERMARK_BAND = 18
 
 const INK_ON_LIGHT = 'rgba(15, 20, 25, 0.6)' // X's light-theme text colour

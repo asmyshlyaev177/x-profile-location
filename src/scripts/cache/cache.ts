@@ -10,7 +10,7 @@ export interface LocationData {
   // Nested rather than spread across LocationData, so the three fields the
   // shared cache may send stay visibly apart from the ones it must never see.
   facts?: Partial<AccountFacts>
-  // Orders revalidation, never contributed back — see "Revalidation" in
+  // Orders revalidation, never contributed back - see "Revalidation" in
   // ../prefetch/CLAUDE.md.
   votes?: number
 }

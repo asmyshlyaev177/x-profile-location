@@ -10,12 +10,12 @@ import {
   SHARED_CACHE_COUNT_KEY,
 } from '../constants'
 // Client for the community location cache (../../server). Only
-// location/source/accurate go over the wire — never bios or who looked up whom.
+// location/source/accurate go over the wire - never bios or who looked up whom.
 
 import { answerSignature, type LocationData } from './cache'
 
 // Distinct clients that must agree before a location is trusted. Still 1 on
-// purpose — see "Community cache consensus" in CLAUDE.md.
+// purpose - see "Community cache consensus" in CLAUDE.md.
 export let minConfidence: number = DEFAULT_MIN_CONFIDENCE
 
 export function setMinConfidence(value: unknown): void {
@@ -23,7 +23,7 @@ export function setMinConfidence(value: unknown): void {
 }
 
 const NEG_TTL_MS = 60 * 60 * 1000 // remember "server had nothing" for 1h
-// Don't re-query the same name within one lookup window — the same bound the
+// Don't re-query the same name within one lookup window - the same bound the
 // rest of the extension asks X on.
 const QUERIED_TTL_MS = LOOKUP_WINDOW_MS
 // Sent sooner on MAX_CONTRIB or a hidden tab.
@@ -75,7 +75,7 @@ function getClientId(): Promise<string> {
 const negativeCache = new Map<string, number>()
 const recentlyQueried = new Map<string, number>()
 
-// A failed request asked nobody anything — see "queried" in ./CLAUDE.md.
+// A failed request asked nobody anything - see "queried" in ./CLAUDE.md.
 function forgetQueried(batch: string[]): void {
   for (const u of batch) recentlyQueried.delete(u)
 }
@@ -275,7 +275,7 @@ export function flushContributions(): void {
   void flush()
 }
 
-// How much the cache holds — shown in the popup, and only while it is open.
+// How much the cache holds - shown in the popup, and only while it is open.
 // See "The count the popup shows" in CLAUDE.md.
 
 /** How often the popup re-asks while it is open. The server answers from a
@@ -286,7 +286,7 @@ export const COUNT_POLL_MS = 60_000
 const COUNT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
 /** Accounts the shared cache can answer for, or null. Outside the circuit
- *  breaker on purpose — see CLAUDE.md. */
+ *  breaker on purpose - see CLAUDE.md. */
 export async function fetchCacheCount(): Promise<number | null> {
   if (!isSharedCacheConfigured()) return null
   try {
@@ -316,7 +316,7 @@ export function rememberedCount(
 }
 
 /** Ask, and remember the answer for the next popup. Stored only when the
- *  number moved — every write wakes the worker and every tab's listener. */
+ *  number moved - every write wakes the worker and every tab's listener. */
 export async function refreshCacheCount(): Promise<number | null> {
   const n = await fetchCacheCount()
   if (n === null) return null

@@ -13,7 +13,7 @@ export const EVENTS = {
 
 export const X_GRAPHQL_PATH = 'x.com/i/api/graphql'
 
-/** Every tab the content script runs in — `chrome.tabs.query` and nothing else. */
+/** Every tab the content script runs in - `chrome.tabs.query` and nothing else. */
 export const X_TAB_PATTERNS = [
   '*://*.x.com/*',
   '*://x.com/*',
@@ -30,7 +30,7 @@ export const DEFAULT_PREFETCH_SHARE = 0.85
 /** How long a 429 pauses lookups when X sends no `x-rate-limit-reset`. */
 export const RATE_LIMIT_RESET_DEFAULT_MS = LOOKUP_WINDOW_MS / 3
 
-// Content script ⇄ service worker — see "Cross-tab lookup broker" in CLAUDE.md.
+// Content script ⇄ service worker - see "Cross-tab lookup broker" in CLAUDE.md.
 export const MSG = {
   CLEAR_CACHE: 'CLEAR_CACHE',
   SHARE_POST: 'SHARE_POST',
@@ -39,7 +39,7 @@ export const MSG = {
   GET_MESSAGES: 'GET_MESSAGES',
   /** Candidates this tab saw, already filtered against its own cache. */
   ENQUEUE: 'LOOKUP_ENQUEUE',
-  /** "What should I look up?" — answered with a handle or a wait. */
+  /** "What should I look up?" - answered with a handle or a wait. */
   NEXT: 'LOOKUP_NEXT',
   /** What the lookup cost, and what X's headers said afterwards. */
   REPORT: 'LOOKUP_REPORT',
@@ -50,15 +50,15 @@ export const MSG = {
 } as const
 
 // Which community-cache backend a build talks to, and empty to disable it
-// entirely. See "Shared cache backends" in CLAUDE.md — including why `?.`.
+// entirely. See "Shared cache backends" in CLAUDE.md - including why `?.`.
 export const CACHE_API_BASE =
   import.meta.env?.VITE_CACHE_API_BASE ?? 'https://xloc.vmirrormanv.xyz'
 
 // Every chrome.storage.local key the extension owns, read only through
-// settings.ts — see "Settings: keys, normalizers, defaults" in CLAUDE.md.
+// settings.ts - see "Settings: keys, normalizers, defaults" in CLAUDE.md.
 export const EXTENSION_ENABLED_KEY = 'extensionEnabled'
 export const BLOCKED_COUNTRIES_KEY = 'blockedCountries'
-// Members unchecked under a blocked region — see RegionExclusions.
+// Members unchecked under a blocked region - see RegionExclusions.
 export const REGION_EXCLUSIONS_KEY = 'regionExclusions'
 export const HIGHLIGHT_KEYWORDS_KEY = 'highlightKeywords'
 export const HIGHLIGHT_FLAGS_KEY = 'highlightFlags'

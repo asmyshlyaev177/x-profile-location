@@ -23,7 +23,7 @@ import {
   SHOW_SHARE_BUTTON_KEY,
   THEME_KEY,
 } from './constants'
-// The vocabulary of every setting — its choices, its type and the normalizer
+// The vocabulary of every setting - its choices, its type and the normalizer
 // that answers for `undefined`, which is what makes that answer the default.
 
 /** A stored value as something to read fields off; anything else reads empty. */
@@ -168,7 +168,7 @@ export const POPUP_SECTIONS = ['locations', 'keywords'] as const
 
 export type PopupSection = (typeof POPUP_SECTIONS)[number]
 
-/** The section to open, or null for all collapsed — which is also the default. */
+/** The section to open, or null for all collapsed - which is also the default. */
 export function normalizePopupSection(value: unknown): PopupSection | null {
   return POPUP_SECTIONS.includes(value as PopupSection)
     ? (value as PopupSection)
@@ -257,7 +257,7 @@ export const FILTER_RULES = [
 
 export type FilterRule = (typeof FILTER_RULES)[number]
 
-/** Account age is deliberately absent — see CLAUDE.md. */
+/** Account age is deliberately absent - see CLAUDE.md. */
 export const HIDING_RULES: readonly FilterRule[] = ['location', 'affiliation']
 
 /** Whether a rule may hide a post, as opposed to only marking it. */
@@ -288,7 +288,7 @@ export function normalizeHandleList(value: unknown): string[] {
 }
 
 /** Per-rule exceptions, with `HIGHLIGHT_EXCEPTIONS_KEY` folded into the
- *  `highlight` bucket — never migrated, see CLAUDE.md. */
+ *  `highlight` bucket - never migrated, see CLAUDE.md. */
 export function normalizeRuleExceptions(
   value: unknown,
   legacyHighlight?: unknown,
@@ -310,7 +310,7 @@ export function normalizeRuleExceptions(
 }
 
 // Every user-facing setting, with the function that makes a stored value safe
-// and — because it answers for `undefined` too — its default. Never read by hand.
+// and - because it answers for `undefined` too - its default. Never read by hand.
 
 import {
   canonicalLocation,
@@ -332,7 +332,7 @@ const asBoolean =
   (value: unknown): boolean =>
     value === undefined ? fallback : Boolean(value)
 
-// Regions are deliberately not expanded here — that would turn one removable
+// Regions are deliberately not expanded here - that would turn one removable
 // chip into fifty-seven. content.tsx expands them.
 const asLocationList = (v: unknown): string[] =>
   Array.isArray(v)
@@ -380,7 +380,7 @@ const asMatchMode = (value: unknown): MatchMode =>
   value === 'partial' ? 'partial' : 'word'
 
 // Versions up to 1.7.3 stored a bare string per keyword, and a string still
-// arrives from an export of one — it reads as the whole-word mode it had.
+// arrives from an export of one - it reads as the whole-word mode it had.
 function asKeyword(value: unknown): Keyword | null {
   const v = typeof value === 'string' ? { text: value } : asRecord(value)
   if (typeof v.text !== 'string') return null
@@ -454,7 +454,7 @@ export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
 // nothing changed, so a caller comparing by identity knows whether to write.
 
 // Whole-word unless the editor says otherwise, which is what every keyword
-// stored before 1.7.4 meant. Changed afterwards from the chip — withKeywordMode.
+// stored before 1.7.4 meant. Changed afterwards from the chip - withKeywordMode.
 export function withKeyword(
   keywords: Keyword[],
   keyword: string,
@@ -505,7 +505,7 @@ export interface SettingsFile {
 }
 
 /** Only keys the user actually set, so an import can't pin today's defaults.
- *  Never the client id — it would link two installs. */
+ *  Never the client id - it would link two installs. */
 export async function exportSettings(): Promise<SettingsFile> {
   const stored = await chrome.storage.local.get(SETTINGS_KEYS)
   const settings: Record<string, unknown> = {}

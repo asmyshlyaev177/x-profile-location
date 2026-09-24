@@ -8,7 +8,7 @@ import {
   parseXDate,
 } from './profile'
 
-// Copied from a recorded AboutAccountQuery response — the shapes below are
+// Copied from a recorded AboutAccountQuery response - the shapes below are
 // X's, not ours, so they are pinned to real captures rather than invented.
 const ABOUT_RESULT = {
   __typename: 'User',

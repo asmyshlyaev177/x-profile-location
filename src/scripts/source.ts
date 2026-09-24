@@ -1,5 +1,5 @@
 // X's `source` string ("Japan App Store", "web", null), classified once. The
-// store country outranks `account_based_in` — see "API" in CLAUDE.md.
+// store country outranks `account_based_in` - see "API" in CLAUDE.md.
 
 import { t } from './i18n'
 
@@ -63,7 +63,7 @@ function svgRoot(label: string): SVGSVGElement {
   svg.setAttribute('aria-hidden', 'true')
   svg.setAttribute('focusable', 'false')
   svg.classList.add('x-loc-glyph')
-  // Decorative here — the row that holds the glyph carries the accessible name.
+  // Decorative here - the row that holds the glyph carries the accessible name.
   const title = document.createElementNS(SVG_NS, 'title')
   title.textContent = label
   svg.appendChild(title)

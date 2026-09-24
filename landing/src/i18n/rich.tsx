@@ -3,13 +3,13 @@ import type { VNode } from 'preact'
 /**
  * A very small inline-markup renderer for dictionary strings.
  *
- * Dictionaries are plain `.ts` holding plain strings — no JSX — because
+ * Dictionaries are plain `.ts` holding plain strings - no JSX - because
  * `vite.config.ts` loads them at config-load time to build the sitemap and the
  * prerender list, exactly as it does `routes.ts`. But a good third of the
  * page's prose has emphasis or a link inside the sentence, and the alternative
  * to markup is splitting each of those into `…Before` / `…Accent` / `…After`
  * keys. That falls apart the moment a language moves the emphasised phrase,
- * which Japanese, Turkish and Arabic all do — the fragments would have to be
+ * which Japanese, Turkish and Arabic all do - the fragments would have to be
  * reassembled in an order the key names hardcode.
  *
  * So the sentence stays one string and carries four tags:
@@ -53,7 +53,7 @@ function element(frame: Frame): VNode {
 /**
  * Turns a dictionary string into renderable children.
  *
- * Unmatched or unknown markup is left as literal text rather than throwing —
+ * Unmatched or unknown markup is left as literal text rather than throwing -
  * a typo in one locale's copy should show up as a stray angle bracket on that
  * one page, not take the whole build down.
  */
@@ -72,7 +72,7 @@ export function rich(source: string): (string | VNode)[] {
     return true
   }
 
-  /** One matched tag, applied — or emitted as text when it closes nothing. */
+  /** One matched tag, applied - or emitted as text when it closes nothing. */
   const apply = (m: RegExpExecArray) => {
     const [raw, open, closing, href] = m
     if (open === 'br') {

@@ -10,7 +10,7 @@ export const es: Dict = {
     privacy: 'Privacidad',
     comparison: 'Comparativa',
     sourceOnGitHub: 'Código en GitHub',
-    home: 'X-Pat — inicio',
+    home: 'X-Pat - inicio',
   },
 
   language: {
@@ -176,7 +176,7 @@ export const es: Dict = {
       title: 'Oculta los países que prefieras saltarte.',
       p1: 'Una vez que ves de dónde viene una publicación, puedes actuar. Elige los países que quieras esquivar y decide qué pasa con sus tuits.',
       p2: 'Plegar es la opción por defecto. El tuit se encoge en una barra fina que pone <b>🚫 Oculto · 🇮🇳 India</b> con un botón Mostrar. Así sabes que algo había, y con un clic lo recuperas definitivamente. El filtro sigue el país de la tienda de apps si lo hay, y nunca toca el tuit que has abierto tú a propósito.',
-      p3: 'El país no es el único filtro que tienes. Bloquea una organización y se van todas las cuentas que X etiquete como suyas. Y las cuentas más nuevas de lo que marques aparecen señaladas — solo señaladas, nunca ocultas, porque ser nueva no demuestra nada.',
+      p3: 'El país no es el único filtro que tienes. Bloquea una organización y se van todas las cuentas que X etiquete como suyas. Y las cuentas más nuevas de lo que marques aparecen señaladas - solo señaladas, nunca ocultas, porque ser nueva no demuestra nada.',
       readoutCollapse: 'Plegar',
       readoutCollapseValue: 'Barra fina + Mostrar',
       readoutHide: 'Ocultar',
@@ -347,7 +347,7 @@ export const es: Dict = {
       },
       languageFilter: {
         title: 'Tiene filtro por idioma',
-        body: 'Nosotros no, y es adrede. El campo de idioma por tuit de X mete suficientes fallos como para que filtrar por él haga desaparecer publicaciones sin motivo aparente. Es una decisión defendible, no una carencia — pero si lo que buscas es filtrar por idioma, X-Posed lo tiene y nosotros no.',
+        body: 'Nosotros no, y es adrede. El campo de idioma por tuit de X mete suficientes fallos como para que filtrar por él haga desaparecer publicaciones sin motivo aparente. Es una decisión defendible, no una carencia - pero si lo que buscas es filtrar por idioma, X-Posed lo tiene y nosotros no.',
       },
     },
     notApplicable: 'n/d',
@@ -361,7 +361,7 @@ export const es: Dict = {
       titleLead: 'El panel de',
       titleAccent: '«Información de esta cuenta»',
       titleRest: ' en X, y cómo dejar de hacer tres clics para llegar a él.',
-      lead: 'X sabe de sobra desde qué país publica cada cuenta, y te lo cuenta si quieres — perfil a perfil, a tres toques de profundidad, los que te dé la paciencia. Aquí te digo dónde está ese panel, qué puede y qué no puede responder, y qué hacer cuando necesitas el mismo dato para ochenta respuestas en lugar de una.',
+      lead: 'X sabe de sobra desde qué país publica cada cuenta, y te lo cuenta si quieres - perfil a perfil, a tres toques de profundidad, los que te dé la paciencia. Aquí te digo dónde está ese panel, qué puede y qué no puede responder, y qué hacer cuando necesitas el mismo dato para ochenta respuestas en lugar de una.',
       whereHeading: 'Dónde está el panel realmente',
       steps: {
         web: {
@@ -381,14 +381,14 @@ export const es: Dict = {
       cant1:
         'El panel es por perfil y modal. Fenomenal si estás revisando una sola cuenta, un desastre cuando estás leyendo un hilo de respuestas, que es justo cuando surge la duda. Cien respuestas son cien viajes de ida y vuelta por un menú, y para la tercera ya has perdido el hilo que estabas leyendo.',
       cant2:
-        'Y no siempre tiene datos. X no devuelve país para un montón de cuentas — sobre todo las más antiguas o las que apenas se mueven. Cuando el campo está realmente vacío no hay nada que revelar, y cualquier herramienta que diga lo contrario está inventándoselo a partir de una IP.',
+        'Y no siempre tiene datos. X no devuelve país para un montón de cuentas - sobre todo las más antiguas o las que apenas se mueven. Cuando el campo está realmente vacío no hay nada que revelar, y cualquier herramienta que diga lo contrario está inventándoselo a partir de una IP.',
       cant3:
         'Y no dice nada sobre la fiabilidad. X marca internamente algunas ubicaciones como no verificadas, pero el panel te enseña el país igual.',
       sameHeading: 'El mismo campo, sin el menú',
       same1:
-        'X-Pat lee exactamente el campo que lee el panel — el mismo endpoint, usando la sesión de X que ya tienes abierta — y lo pinta como una bandera en la tarjeta emergente y, si quieres, integrada en el timeline. Sin consultas de IP, sin bases de datos de terceros, sin cuenta ni clave API.',
+        'X-Pat lee exactamente el campo que lee el panel - el mismo endpoint, usando la sesión de X que ya tienes abierta - y lo pinta como una bandera en la tarjeta emergente y, si quieres, integrada en el timeline. Sin consultas de IP, sin bases de datos de terceros, sin cuenta ni clave API.',
       same2:
-        'De esa respuesta extrae tres cosas: el país, la tienda de apps desde la que se registró la cuenta, y si X marca la ubicación como dudosa — la señal de confianza que el panel omite. La fecha de registro y el historial de @ se quedan como están; la extensión no pretende sustituir al panel entero.',
+        'De esa respuesta extrae tres cosas: el país, la tienda de apps desde la que se registró la cuenta, y si X marca la ubicación como dudosa - la señal de confianza que el panel omite. La fecha de registro y el historial de @ se quedan como están; la extensión no pretende sustituir al panel entero.',
       same3:
         'Y puedes actuar a partir de ahí: los países y regiones que prefieras saltarte pueden plegarse tras un botón «Mostrar», u ocultarse del todo. Plegar es la opción por defecto, porque un timeline que borra publicaciones en silencio es un timeline en el que no puedes confiar.',
     },
@@ -426,7 +426,7 @@ export const es: Dict = {
         bio: {
           signal: 'Composición de la bio',
           tell: 'Una hilera de banderas y emojis donde podría ir una frase',
-          cost: 'Gratis — salta a la vista',
+          cost: 'Gratis - salta a la vista',
         },
         substance: {
           signal: 'Contenido de la respuesta',
@@ -436,16 +436,16 @@ export const es: Dict = {
         location: {
           signal: 'De dónde publica la cuenta',
           tell: 'Dando lecciones sobre un país desde el que la cuenta jamás ha publicado',
-          cost: 'Tres toques por perfil — o integrado',
+          cost: 'Tres toques por perfil - o integrado',
         },
       },
       hiddenHeading: 'La que no puedes ver',
       hidden1:
         'Cinco de estas seis señales ya están a la vista. Conteo de seguidores, fecha de registro, la bio, la propia respuesta: X te lo da todo sin que se lo pidas. La sexta es la que X esconde tras un menú: el país desde el que publica realmente la cuenta.',
       hidden2:
-        'Esta importa más que las otras para un tipo concreto de fastidio — no exactamente spam, sino sentar cátedra sobre un sitio en el que la cuenta no se juega nada. Eso se lee muy distinto cuando puedes verlo, y X te obliga a abrir un panel por perfil para averiguarlo.',
+        'Esta importa más que las otras para un tipo concreto de fastidio - no exactamente spam, sino sentar cátedra sobre un sitio en el que la cuenta no se juega nada. Eso se lee muy distinto cuando puedes verlo, y X te obliga a abrir un panel por perfil para averiguarlo.',
       hidden3:
-        '<b>X-Pat se encarga de esa parte.</b> Pone el país en la tarjeta emergente y, si quieres, integrado en el timeline — más un aviso cuando ni el propio X puede verificar la ubicación. No puntúa cuentas ni juzga respuestas por ti; las otras cinco señales las valoras tú. Solo evita que el único dato que X esconde de verdad te cueste tres toques.',
+        '<b>X-Pat se encarga de esa parte.</b> Pone el país en la tarjeta emergente y, si quieres, integrado en el timeline - más un aviso cuando ni el propio X puede verificar la ubicación. No puntúa cuentas ni juzga respuestas por ti; las otras cinco señales las valoras tú. Solo evita que el único dato que X esconde de verdad te cueste tres toques.',
     },
 
     comparison: {
@@ -453,16 +453,16 @@ export const es: Dict = {
       titleLead: 'X-Pat frente a',
       titleAccent: 'X-Posed',
       titleRest: ', y al resto del escaparate.',
-      lead: 'Hay unas veinte extensiones que ponen una bandera de país junto a un @ de X. Tres de ellas tienen una base de usuarios que merece la pena mirar. Esto es lo que hace cada una de verdad, en qué se diferencia X-Pat, y las tres cosas que X-Posed hace mejor — que es la parte que la mayoría de comparativas se calla.',
+      lead: 'Hay unas veinte extensiones que ponen una bandera de país junto a un @ de X. Tres de ellas tienen una base de usuarios que merece la pena mirar. Esto es lo que hace cada una de verdad, en qué se diferencia X-Pat, y las tres cosas que X-Posed hace mejor - que es la parte que la mayoría de comparativas se calla.',
       featureHeading: 'Función por función',
       featureLead:
         'Cada celda viene de la ficha pública de la tienda o del repositorio público, consultados el {date}. Un guion significa que la ficha no lo dice: para las dos extensiones de código cerrado eso no equivale a un no, y sería injusto pintarlo como tal.',
       aheadHeading: 'Dónde X-Posed lleva ventaja',
       differsHeading: 'Lo que realmente cambia',
       differs1:
-        'Todo lo de esta categoría depende de una caché compartida. X permite a un navegador unas cincuenta consultas de perfil cada quince minutos, y un hilo movido tiene más cuentas que eso — así que cualquier extensión de esta lista que siga funcionando pasado el límite lo hace leyendo una caché que han llenado otros. La pregunta no es si hay un servidor. Es qué tiene permiso para hacer.',
+        'Todo lo de esta categoría depende de una caché compartida. X permite a un navegador unas cincuenta consultas de perfil cada quince minutos, y un hilo movido tiene más cuentas que eso - así que cualquier extensión de esta lista que siga funcionando pasado el límite lo hace leyendo una caché que han llenado otros. La pregunta no es si hay un servidor. Es qué tiene permiso para hacer.',
       differs2:
-        '<b>El nuestro está publicado, y puedes montarte el tuyo.</b> El servidor de caché está en el mismo repositorio que la extensión, con documentación de despliegue tanto para Cloudflare Workers como para un VPS normal. X-Posed publica su extensión — de verdad, bajo licencia MIT — pero no publica el Worker al que se envían las contribuciones. Esa es justo la pieza que no puedes comprobar leyendo el código que instalaste.',
+        '<b>El nuestro está publicado, y puedes montarte el tuyo.</b> El servidor de caché está en el mismo repositorio que la extensión, con documentación de despliegue tanto para Cloudflare Workers como para un VPS normal. X-Posed publica su extensión - de verdad, bajo licencia MIT - pero no publica el Worker al que se envían las contribuciones. Esa es justo la pieza que no puedes comprobar leyendo el código que instalaste.',
       differs3:
         '<b>Aquí una respuesta cacheada necesita corroboración.</b> Las contribuciones se guardan como votos por instalación y se sirve el consenso, con un umbral de confianza que puedes subir desde las opciones. La documentación de X-Posed describe que guarda el último valor aceptado para un @, es decir, decide el último que ha contribuido. Ambos diseños reconocen el mismo problema de fondo: ningún servidor puede demostrar que una contribución venga realmente de X.',
       differs4:
@@ -472,15 +472,15 @@ export const es: Dict = {
       sourcesHeading: 'Fuentes',
       sourcesLead:
         'Consultado el {date}. Las cifras de instalaciones y las funciones cambian con el tiempo; si algo de aquí abajo está desactualizado, es un error, no una postura, y el <a href="{href}">gestor de incidencias</a> es la vía más rápida para corregirlo.',
-      sourceLabel: ' — código: ',
-      sourceNotPublished: ' — código no publicado',
+      sourceLabel: ' - código: ',
+      sourceNotPublished: ' - código no publicado',
     },
   },
 
   pages: {
     home: {
       title:
-        'X-Pat — Ubicación de perfiles en X: mira de qué país es cualquier cuenta',
+        'X-Pat - Ubicación de perfiles en X: mira de qué país es cualquier cuenta',
       description:
         'Una bandera de país en cada perfil de X, con datos del propio X. Avisos de VPN, ocultar o resaltar publicaciones por país, organización, antigüedad o palabra clave. Gratis para Chrome.',
       faq: [
@@ -531,7 +531,7 @@ export const es: Dict = {
         },
         {
           q: '¿Cómo veo el país sin abrir cada perfil?',
-          a: 'Ese es justo el hueco que cierra esta extensión. Lee el mismo campo y lo dibuja como bandera en la tarjeta emergente y, si quieres, integrado en el timeline — así que revisar un hilo de ochenta respuestas no implica ochenta visitas al menú.',
+          a: 'Ese es justo el hueco que cierra esta extensión. Lee el mismo campo y lo dibuja como bandera en la tarjeta emergente y, si quieres, integrado en el timeline - así que revisar un hilo de ochenta respuestas no implica ochenta visitas al menú.',
         },
       ],
     },
@@ -551,7 +551,7 @@ export const es: Dict = {
         },
         {
           q: '¿Qué ratio seguidores/seguidos apunta a una cuenta cultivada?',
-          a: 'Seguir a muchísimas más cuentas de las que te siguen — un ratio muy por debajo de 0,1 — es el patrón de manual, porque el follow masivo es la forma más barata de hacerse ver. Eso sí, montones de cuentas nuevas perfectamente normales tienen esa pinta, así que tómalo como un indicio más, no como sentencia.',
+          a: 'Seguir a muchísimas más cuentas de las que te siguen - un ratio muy por debajo de 0,1 - es el patrón de manual, porque el follow masivo es la forma más barata de hacerse ver. Eso sí, montones de cuentas nuevas perfectamente normales tienen esa pinta, así que tómalo como un indicio más, no como sentencia.',
         },
         {
           q: '¿La extensión detecta el engagement farming?',
@@ -586,7 +586,7 @@ export const es: Dict = {
         },
         {
           q: '¿Por qué deja de aparecer la bandera a mitad de un hilo?',
-          a: 'X permite a un navegador unas cincuenta consultas de cuenta cada quince minutos, y un hilo movido tiene más cuentas que eso. Las extensiones que chocan con el límite simplemente dejan de rellenar banderas. La caché compartida es lo que lo evita — la mayoría de perfiles no cuesta consulta porque otro ya los resolvió — y X-Pat además reserva el último veinte por ciento de la ventana para las cuentas sobre las que tú pasas el ratón.',
+          a: 'X permite a un navegador unas cincuenta consultas de cuenta cada quince minutos, y un hilo movido tiene más cuentas que eso. Las extensiones que chocan con el límite simplemente dejan de rellenar banderas. La caché compartida es lo que lo evita - la mayoría de perfiles no cuesta consulta porque otro ya los resolvió - y X-Pat además reserva el último veinte por ciento de la ventana para las cuentas sobre las que tú pasas el ratón.',
         },
       ],
     },

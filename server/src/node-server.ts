@@ -47,7 +47,7 @@ const config = {
   trustProxy: bool('XLOC_TRUST_PROXY', true),
 }
 
-// Rate limiting — a crude fixed window per IP, generous because one IP is not
+// Rate limiting - a crude fixed window per IP, generous because one IP is not
 // one user. See "The Node deployment" in CLAUDE.md before lowering it.
 const buckets = new Map<string, { count: number; resetAt: number }>()
 
@@ -124,10 +124,10 @@ function toHeaders(req: IncomingMessage): Headers {
 }
 
 /** Null when the request has no fetch equivalent, which the caller answers 400.
- *  Scanners live in that gap — malformed input, not a server fault. */
+ *  Scanners live in that gap - malformed input, not a server fault. */
 function toRequest(req: IncomingMessage, body: string | null): Request | null {
   try {
-    // The handlers only read `url.pathname`, so the authority is cosmetic — but
+    // The handlers only read `url.pathname`, so the authority is cosmetic - but
     // it has to parse, and req.headers.host is attacker-controlled.
     const url = new URL(req.url ?? '/', 'http://localhost')
     return new Request(url, {
@@ -334,7 +334,7 @@ if (config.statsIntervalHours > 0) {
 
 server.listen(config.port, config.host, () => {
   console.log(
-    `[x-loc-cache] listening on http://${config.host}:${config.port} — db ${config.dbPath} ` +
+    `[x-loc-cache] listening on http://${config.host}:${config.port} - db ${config.dbPath} ` +
       `(cache ${config.cacheMb}MB, mmap ${config.mmapMb}MB)`,
   )
 })
@@ -344,7 +344,7 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.on(signal, () => {
     if (closing) return
     closing = true
-    console.log(`[x-loc-cache] ${signal} — draining`)
+    console.log(`[x-loc-cache] ${signal} - draining`)
     server.close(() => {
       // Flush the partial window: a box restarting daily would otherwise reset
       // the counters just before the interval that would have logged them.

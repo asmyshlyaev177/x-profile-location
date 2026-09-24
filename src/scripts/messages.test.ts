@@ -2,7 +2,7 @@
 //
 // Fourteen of the fifteen locales are translated outside this repo, so nothing
 // stops a file coming back with a key renamed, a `$1` dropped, or a whole
-// message missing — and every one of those is invisible until somebody with
+// message missing - and every one of those is invisible until somebody with
 // that browser language opens the popup. `t()` falls back to the key, which is
 // ugly on screen and silent in CI. This is what makes it loud instead.
 
@@ -15,7 +15,7 @@ import { UI_LOCALES } from './i18n'
 const LOCALES_DIR = join(import.meta.dirname, '../../public/_locales')
 const SRC_DIR = join(import.meta.dirname, '..')
 
-/** What ships, and what the language picker offers — one list, not two. */
+/** What ships, and what the language picker offers - one list, not two. */
 const EXPECTED_LOCALES = [...UI_LOCALES].sort()
 
 interface Entry {
@@ -41,11 +41,11 @@ function placeholders(message: string): string {
 // Keys assembled at runtime, so no literal `t('…')` mentions them. The value
 // is where they are built, for whoever has to find them.
 const DYNAMIC_KEYS: Record<string, string> = {
-  trustReports1: 'options.tsx — t(`trustReports${n}`)',
-  trustReports2: 'options.tsx — t(`trustReports${n}`)',
-  trustReports3: 'options.tsx — t(`trustReports${n}`)',
-  regionEastAsiaPacific: 'location-names.ts — REGION_MESSAGE',
-  regionEasternEuropeNonEu: 'location-names.ts — REGION_MESSAGE',
+  trustReports1: 'options.tsx - t(`trustReports${n}`)',
+  trustReports2: 'options.tsx - t(`trustReports${n}`)',
+  trustReports3: 'options.tsx - t(`trustReports${n}`)',
+  regionEastAsiaPacific: 'location-names.ts - REGION_MESSAGE',
+  regionEasternEuropeNonEu: 'location-names.ts - REGION_MESSAGE',
 }
 
 /** The keys the manifest substitutes rather than the code looking up. */
@@ -91,12 +91,12 @@ describe('message catalogues', () => {
 
   it('holds appDesc to the package description', () => {
     // The manifest reads `__MSG_appDesc__`, so package.json is no longer the
-    // source of it — but it is still what npm and the repo show.
+    // source of it - but it is still what npm and the repo show.
     expect(en.appDesc.message).toBe(pkg.description)
   })
 
   it('explains every substitution to translators', () => {
-    // Not every message needs a note — "Settings card title." told nobody
+    // Not every message needs a note - "Settings card title." told nobody
     // anything the key had not already said, and a rule that demands one
     // everywhere only teaches translators to skip them. A `$1` is different:
     // it is the one thing a translator can silently break, so what it holds
@@ -112,7 +112,7 @@ describe('message catalogues', () => {
   describe.each(locales)('%s', (locale) => {
     const catalogue = catalogues.get(locale)!
 
-    it('carries no descriptions — English is the only file that needs them', () => {
+    it('carries no descriptions - English is the only file that needs them', () => {
       // The browser ignores them, and fifteen copies of the same English notes
       // were a third of what `_locales` weighed. Translators read `en`.
       if (locale === 'en') return
@@ -124,7 +124,7 @@ describe('message catalogues', () => {
 
     it('names its own locale, so uiLocale() cannot disagree with it', () => {
       // The one message that is not a translation. It is how the extension
-      // knows which language its country names should be in — the browser's
+      // knows which language its country names should be in - the browser's
       // own UI-language APIs report the wrong one.
       expect(catalogue.localeTag.message).toBe(locale.replace('_', '-'))
     })

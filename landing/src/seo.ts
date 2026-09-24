@@ -14,7 +14,7 @@ import type { Dict } from './i18n/dict/en'
  *
  * If a real domain is registered later (`x-pat.app` is free), this constant and
  * the `_redirects` target in `redirect/_redirects` are the only two places that
- * need to change — everything else derives from `siteUrl`.
+ * need to change - everything else derives from `siteUrl`.
  */
 const PRODUCTION_URL = 'https://x-pat.pages.dev/'
 
@@ -25,7 +25,7 @@ const rawSiteUrl: string = import.meta.env?.VITE_SITE_URL ?? PRODUCTION_URL
  * Vite loads plain `.env` in *every* mode, production builds included, and
  * `pnpm deploy` ships the dist built on whichever machine ran it. A developer's
  * local `VITE_SITE_URL=http://localhost:5173` therefore used to end up in the
- * canonical and og:url of the live site — which tells Google the real pages are
+ * canonical and og:url of the live site - which tells Google the real pages are
  * duplicates of a host it cannot reach. A localhost value is only ever right
  * when the build is not for production.
  */
@@ -37,18 +37,18 @@ const resolvedSiteUrl =
 
 /**
  * Always ends in exactly one `/`. VITE_SITE_URL gets written both ways by hand,
- * and every consumer here concatenates a path onto it — without normalising,
+ * and every consumer here concatenates a path onto it - without normalising,
  * one spelling yields `…dev//og-image.png` and the other `…devog-image.png`.
  */
 export const siteUrl: string = resolvedSiteUrl.replace(/\/*$/, '/')
 
 /**
- * When the content last changed — the HEAD commit's date, injected by
+ * When the content last changed - the HEAD commit's date, injected by
  * `vite.config.ts` (see `scripts/build-date.mjs`).
  *
  * Deliberately not `new Date()`. This value feeds `og:updated_time`,
  * `last-modified` and schema.org `dateModified`, and a build-time clock marks
- * the site as freshly updated every time it is rebuilt — including rebuilds
+ * the site as freshly updated every time it is rebuilt - including rebuilds
  * that changed nothing. Google's guidance is that `dateModified` must reflect a
  * real change, and a date that always says "just now" is worth less than no
  * date at all.
@@ -63,7 +63,7 @@ export const buildDate: string =
 
 /**
  * Site-level constants. Per-page title and description live in the
- * dictionaries — they were here when there was only one page, and in
+ * dictionaries - they were here when there was only one page, and in
  * `routes.ts` when there was only one language.
  */
 export const seo = {
@@ -114,7 +114,7 @@ export function buildJsonLd(version: string, locale: LocaleDef, t: Dict) {
     inLanguage: locale.htmlLang,
     url: canonicalFor(HOME, locale),
     softwareVersion: version,
-    // Real content date, not build time — see `buildDate`. Google treats a
+    // Real content date, not build time - see `buildDate`. Google treats a
     // `dateModified` that never matches an actual change as a reason to stop
     // trusting the field.
     dateModified: buildDate,
@@ -125,12 +125,12 @@ export function buildJsonLd(version: string, locale: LocaleDef, t: Dict) {
   }
 }
 
-/** The homepage entry — the source of the site-wide description and URL. */
+/** The homepage entry - the source of the site-wide description and URL. */
 const HOME: RouteDef = routes[0]!
 
 /**
  * FAQPage structured data, built from the same array the page renders visibly.
- * Google requires the two to match; sharing the source is what guarantees it —
+ * Google requires the two to match; sharing the source is what guarantees it -
  * and in a translated site that guarantee is worth more, not less, because the
  * failure mode is schema in one language over copy in another.
  */
@@ -168,7 +168,7 @@ function jsonLdEl(data: unknown) {
  * `hreflang` for every *indexed* language this page exists in, plus
  * `x-default`.
  *
- * Emitted on each indexed document and listing the same set — the annotation
+ * Emitted on each indexed document and listing the same set - the annotation
  * is only valid if it is reciprocal, and a page that names its alternates
  * without being named back by them is ignored. A `noindex` locale is left out
  * on both sides for the same reason: an alternate Google may not index is one
@@ -227,8 +227,8 @@ export function buildHeadElements(
     }),
     metaEl({ name: 'description', content: description }),
     metaEl({ name: 'author', content: seo.author }),
-    // An unindexed locale keeps the rest of its head — the page is still
-    // shared and previewed — and only declines the index.
+    // An unindexed locale keeps the rest of its head - the page is still
+    // shared and previewed - and only declines the index.
     metaEl({
       name: 'robots',
       content: indexable ? 'index, follow, max-image-preview:large' : 'noindex',
@@ -249,7 +249,7 @@ export function buildHeadElements(
     metaEl({ property: 'og:site_name', content: seo.og.siteName }),
     metaEl({ property: 'og:locale', content: locale.ogLocale }),
 
-    // Twitter Card. No `twitter:site` — it takes an @handle, and the old value
+    // Twitter Card. No `twitter:site` - it takes an @handle, and the old value
     // was a URL, which Twitter's validator drops anyway.
     metaEl({ name: 'twitter:card', content: seo.twitter.card }),
     metaEl({ name: 'twitter:title', content: title }),

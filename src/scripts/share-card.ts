@@ -107,7 +107,7 @@ function locationChip(location: string): string {
   return `${flagFor(key)} ${localizedLocation(key)}`
 }
 
-/** What X said, in X's words — the VPN chip reads exactly as the on-page badge
+/** What X said, in X's words - the VPN chip reads exactly as the on-page badge
  *  does. See "The share card" in CLAUDE.md. */
 export function shareChips(data: LocationData): string[] {
   const chips: string[] = []
@@ -307,7 +307,7 @@ export function buildShareLayout(
 
 const CHIP_HEIGHT = 44
 
-/** The chip row, starting at `top`. Chips wrap rather than shrink or drop —
+/** The chip row, starting at `top`. Chips wrap rather than shrink or drop -
  *  losing the VPN caveat to a narrow card is the one misleading failure. */
 function chipOps(
   chips: string[],
@@ -404,12 +404,12 @@ export function renderShareCard(input: ShareInput): Promise<Blob> {
   return paintLayout((opts) => buildShareLayout(input, opts))
 }
 
-/** The account's About page as an image — same fields, same order as X. */
+/** The account's About page as an image - same fields, same order as X. */
 export function renderAboutCard(input: AboutInput): Promise<Blob> {
   return paintLayout((opts) => buildAboutLayout(input, opts))
 }
 
-/** Clipboard, falling back to a download — image writes need a live gesture.
+/** Clipboard, falling back to a download - image writes need a live gesture.
  *  The return value says which happened, so the toast can be honest. */
 export async function deliverShareCard(
   blob: Blob,

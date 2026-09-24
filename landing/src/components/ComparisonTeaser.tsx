@@ -6,7 +6,7 @@ import { useI18n } from '../i18n/context'
  * The homepage's five-row cut of the comparison, linking through to the full
  * page.
  *
- * Five rows rather than fifteen because this is not the comparison page — it is
+ * Five rows rather than fifteen because this is not the comparison page - it is
  * the thing that tells a visitor a comparison page exists. The rows shown are
  * the ones flagged `headline`, which are the architectural claims; the
  * feature-tick rows are mostly parity with X-Posed and would read as padding
@@ -14,7 +14,7 @@ import { useI18n } from '../i18n/context'
  *
  * Placed straight after the rate-limit section. It used to sit after Trust, on
  * the grounds that naming a competitor before the site has said what it does is
- * a page arguing with someone the reader has not met — but the reader who has
+ * a page arguing with someone the reader has not met - but the reader who has
  * met them is the one who arrived because their current extension stopped
  * answering, and that is the section immediately above.
  */

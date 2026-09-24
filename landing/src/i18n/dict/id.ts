@@ -1,6 +1,6 @@
 import type { Dict } from './en'
 
-/** Indonesian. "Kamu" throughout — "Anda" reads like a bank letter. */
+/** Indonesian. "Kamu" throughout - "Anda" reads like a bank letter. */
 export const id: Dict = {
   nav: {
     sections: 'Bagian',
@@ -10,7 +10,7 @@ export const id: Dict = {
     privacy: 'Privasi',
     comparison: 'Perbandingan',
     sourceOnGitHub: 'Kode sumber di GitHub',
-    home: 'X-Pat — beranda',
+    home: 'X-Pat - beranda',
   },
 
   language: {
@@ -112,7 +112,7 @@ export const id: Dict = {
 
   rateBudget: {
     link: 'Cara kerja jatah lookup',
-    heading: 'Batas laju X — diselesaikan, bukan ditabrak.',
+    heading: 'Batas laju X - diselesaikan, bukan ditabrak.',
     lead: 'Kamu pasti pernah liat gagalnya. Bagian atas utasan keisi, terus berhenti. Itu batasnya: lima puluh pengecekan akun tiap lima belas menit, padahal satu utasan rame isinya jauh lebih banyak dari itu.',
     body: 'Sebagian besar profil di sini nggak makan jatah. Mereka udah ada di cache, atau ada yang udah ngecek duluan dan cache bareng yang jawab. Sisanya dijatah rapi.',
     closing:
@@ -126,7 +126,7 @@ export const id: Dict = {
       },
       spread: {
         title: 'Disebar, bukan digas',
-        body: 'Sekitar sekali ngecek tiap 21 detik, dihitung ulang tiap kali — melar pas kamu banyak hover, ngerapat pas jendela keisi lagi.',
+        body: 'Sekitar sekali ngecek tiap 21 detik, dihitung ulang tiap kali - melar pas kamu banyak hover, ngerapat pas jendela keisi lagi.',
         readoutKey: 'Ritme',
         readoutValue: 'jendela ÷ jatah',
       },
@@ -168,14 +168,14 @@ export const id: Dict = {
       },
       cooldown: {
         name: 'Masa tunggu',
-        body: 'X ngebatasin jumlah pengecekan yang kamu dapat dalam 15 menit. Kalo mentok, hitung mundur ngasih tahu kapan batasnya kebuka — bukan ninggalin kamu bengong mikirin kok benderanya nggak muncul-muncul.',
+        body: 'X ngebatasin jumlah pengecekan yang kamu dapat dalam 15 menit. Kalo mentok, hitung mundur ngasih tahu kapan batasnya kebuka - bukan ninggalin kamu bengong mikirin kok benderanya nggak muncul-muncul.',
       },
     },
     hide: {
       title: 'Sembunyiin negara yang nggak mau kamu baca.',
       p1: 'Begitu kamu bisa lihat asal sebuah postingan, kamu bisa ngapa-ngapain. Pilih lokasi yang mau kamu lewatin dan tentuin nasib tweet mereka.',
       p2: 'Bawaannya melipat. Tweet-nya menciut jadi bilah tipis <b>🚫 Disembunyikan · 🇮🇳 India</b> dengan tombol Tampilkan, jadi kamu tetep tahu di situ ada sesuatu, dan sekali klik balikin permanen. Filter ini ngikutin negara toko aplikasi kalau ada, dan nggak ngusik tweet yang sengaja kamu buka.',
-      p3: 'Negara bukan satu-satunya pegangan kamu. Blokir organisasi dan semua akun yang dikasih label X sebagai bagian dari itu ikut kena, sementara akun yang lebih muda dari ambang yang kamu atur bakal ditandai begitu muncul — ditandai, nggak pernah disembunyiin, karena baru bukan bukti apa-apa.',
+      p3: 'Negara bukan satu-satunya pegangan kamu. Blokir organisasi dan semua akun yang dikasih label X sebagai bagian dari itu ikut kena, sementara akun yang lebih muda dari ambang yang kamu atur bakal ditandai begitu muncul - ditandai, nggak pernah disembunyiin, karena baru bukan bukti apa-apa.',
       readoutCollapse: 'Lipat',
       readoutCollapseValue: 'Bilah tipis + Tampilkan',
       readoutHide: 'Sembunyikan',
@@ -218,7 +218,7 @@ export const id: Dict = {
   trust: {
     heading: 'Ekstensi yang baca sesi X kamu harusnya ngomong jelas.',
     lead: 'Nah gini. Pengecekan langsung ke x.com, sama kayak request situsnya sendiri, dan nggak pernah lewat server kita. Browser kamu nyimpen hasilnya 30 hari, dan halaman opsi ngebersihin kapan aja kamu mau.',
-    body: 'Nggak ada analytics atau telemetry dalam ekstensi. Website ini emang pakai Google Analytics, buat jumlah kunjungan dan tombol install mana yang diklik — itu doang.',
+    body: 'Nggak ada analytics atau telemetry dalam ekstensi. Website ini emang pakai Google Analytics, buat jumlah kunjungan dan tombol install mana yang diklik - itu doang.',
     readPolicy: 'Baca kebijakan privasi selengkapnya',
     neverTitle: 'Nggak pernah dikirim ke mana-mana',
     neverNote: 'Nggak ada pengaturan buat ini. Ekstensi nggak pernah bacanya.',
@@ -240,7 +240,7 @@ export const id: Dict = {
 
   compareTeaser: {
     heading: 'Udah pakai yang lain?',
-    lead: 'Sekitar dua puluh ekstensi naro bendera di samping username. Perbedaan yang penting bukan di daftar fitur — tapi di apa yang boleh dilakukan cache bareng, dan di apa yang kejadian pas lima puluh pengecekan dari X habis.',
+    lead: 'Sekitar dua puluh ekstensi naro bendera di samping username. Perbedaan yang penting bukan di daftar fitur - tapi di apa yang boleh dilakukan cache bareng, dan di apa yang kejadian pas lima puluh pengecekan dari X habis.',
     body: 'Yang ini ngatur tempo sendiri berdasarkan jatah asli dari header respons X, dan nyisain delapan pengecekan buat akun yang kamu hover, jadi thread rame tetap kelar keisi, bukan berhenti di tengah. Tabel lengkapnya ada empat belas baris dan nyebutin tiga hal yang X-Posed lakuin lebih baik dari ekstensi ini.',
     link: 'Lihat perbandingan lengkap →',
   },
@@ -291,7 +291,7 @@ export const id: Dict = {
         note: 'Dibaca dari data "Tentang akun ini" milik X sendiri, bukan nebak dari alamat IP.',
       },
       signupSource: {
-        label: 'Sumber pendaftaran — Apple, Google Play, atau web',
+        label: 'Sumber pendaftaran - Apple, Google Play, atau web',
         note: '',
       },
       accountAge: { label: 'Umur akun', note: '' },
@@ -314,7 +314,7 @@ export const id: Dict = {
       },
       cacheServerSource: {
         label: 'Kode sumber server cache dipublikasi',
-        note: 'Server yang nerima kontribusi, bukan cuma ekstensi yang ngirim. Punya kita di repo yang sama, ada dokumen deploy — kamu bisa baca, atau jalanin sendiri.',
+        note: 'Server yang nerima kontribusi, bukan cuma ekstensi yang ngirim. Punya kita di repo yang sama, ada dokumen deploy - kamu bisa baca, atau jalanin sendiri.',
       },
       crossChecked: {
         label: 'Entri cache dicek silang antar install',
@@ -338,14 +338,14 @@ export const id: Dict = {
       },
       surfaces: {
         title: 'Dia tersedia di lebih banyak platform',
-        body: 'Firefox desktop, Firefox Android, dan aplikasi pendamping iPhone. X-Pat sekarang baru Chromium — Chrome, Edge, Brave, dan Quetta di Android. Firefox direncanain, iOS nggak.',
+        body: 'Firefox desktop, Firefox Android, dan aplikasi pendamping iPhone. X-Pat sekarang baru Chromium - Chrome, Edge, Brave, dan Quetta di Android. Firefox direncanain, iOS nggak.',
       },
       languageFilter: {
         title: 'Dia punya filter bahasa',
-        body: 'Kita nggak, sengaja. Kolom bahasa per postingan X cukup sering salah sampai nyaring pake itu bikin postingan ilang tanpa alasan yang jelas. Itu pilihan yang bisa dipertahanin, bukan fitur yang ketinggalan — tapi kalau filter bahasa yang kamu cari, X-Posed punya itu dan kita nggak.',
+        body: 'Kita nggak, sengaja. Kolom bahasa per postingan X cukup sering salah sampai nyaring pake itu bikin postingan ilang tanpa alasan yang jelas. Itu pilihan yang bisa dipertahanin, bukan fitur yang ketinggalan - tapi kalau filter bahasa yang kamu cari, X-Posed punya itu dan kita nggak.',
       },
     },
-    notApplicable: '—',
+    notApplicable: '-',
     testCount: '{count} tes',
     none: 'nggak ada',
   },
@@ -356,7 +356,7 @@ export const id: Dict = {
       titleLead: 'Fitur',
       titleAccent: '"Tentang akun ini"',
       titleRest: ' di X, dan cara berhenti ngeklik buat lihatnya.',
-      lead: 'X diam-diam tahu dari negara mana tiap akun nge-post, dan dia mau kasih tahu kamu — satu profil satu kali, tiga ketukan dalemnya, sebanyak profil yang kamu sabar. Berikut posisi panelnya, apa yang bisa dan nggak bisa dijawab, dan apa yang harus dilakuin pas kamu mau fakta yang sama buat delapan puluh balasan, bukan cuma satu.',
+      lead: 'X diam-diam tahu dari negara mana tiap akun nge-post, dan dia mau kasih tahu kamu - satu profil satu kali, tiga ketukan dalemnya, sebanyak profil yang kamu sabar. Berikut posisi panelnya, apa yang bisa dan nggak bisa dijawab, dan apa yang harus dilakuin pas kamu mau fakta yang sama buat delapan puluh balasan, bukan cuma satu.',
       whereHeading: 'Di mana panelnya sebenernya',
       steps: {
         web: {
@@ -374,16 +374,16 @@ export const id: Dict = {
       },
       cantHeading: 'Yang nggak bisa dijawab',
       cant1:
-        'Panelnya per profil dan modal. Itu nggak masalah pas kamu meriksa satu akun, dan nggak guna pas kamu baca utasan balasan — yang justru momen di mana pertanyaan itu biasanya muncul. Seratus balasan artinya seratus kali bolak-balik menu, dan pas yang ketiga kamu udah kehilangan utasan yang lagi kamu baca.',
+        'Panelnya per profil dan modal. Itu nggak masalah pas kamu meriksa satu akun, dan nggak guna pas kamu baca utasan balasan - yang justru momen di mana pertanyaan itu biasanya muncul. Seratus balasan artinya seratus kali bolak-balik menu, dan pas yang ketiga kamu udah kehilangan utasan yang lagi kamu baca.',
       cant2:
-        'Dia juga nggak selalu keisi. X nggak ngebalikin negara buat lumayan banyak akun — seringnya yang lebih tua atau nyaris nggak aktif. Pas kolomnya beneran kosong, nggak ada yang bisa diungkap, dan alat apa pun yang ngaku sebaliknya itu lagi nebak alamat IP.',
+        'Dia juga nggak selalu keisi. X nggak ngebalikin negara buat lumayan banyak akun - seringnya yang lebih tua atau nyaris nggak aktif. Pas kolomnya beneran kosong, nggak ada yang bisa diungkap, dan alat apa pun yang ngaku sebaliknya itu lagi nebak alamat IP.',
       cant3:
         'Dan dia nggak ngomong apa-apa soal tingkat keyakinan. Secara internal X nge-tag beberapa lokasi sebagai yang nggak bisa dia jamin; panelnya tetep nampilin negaranya juga.',
       sameHeading: 'Kolom yang sama, tanpa menu',
       same1:
-        'X-Pat baca persis kolom yang dibaca panel itu — endpoint yang sama, pakai sesi X yang udah ada di browser kamu — dan nampilin itu sebagai bendera di kartu hover, dan opsional inline di timeline. Nggak ada IP lookup, nggak ada database pihak ketiga, nggak ada akun atau kunci API.',
+        'X-Pat baca persis kolom yang dibaca panel itu - endpoint yang sama, pakai sesi X yang udah ada di browser kamu - dan nampilin itu sebagai bendera di kartu hover, dan opsional inline di timeline. Nggak ada IP lookup, nggak ada database pihak ketiga, nggak ada akun atau kunci API.',
       same2:
-        'Dia munculin tiga hal dari respons itu: negaranya, toko aplikasi tempat akun itu daftar, dan apakah X nge-tag lokasinya sebagai yang nggak bisa dia verifikasi — sinyal keyakinan yang panel tinggalin. Tanggal gabung dan riwayat username tetep di tempatnya; ekstensi ini nggak berusaha jadi keseluruhan panel.',
+        'Dia munculin tiga hal dari respons itu: negaranya, toko aplikasi tempat akun itu daftar, dan apakah X nge-tag lokasinya sebagai yang nggak bisa dia verifikasi - sinyal keyakinan yang panel tinggalin. Tanggal gabung dan riwayat username tetep di tempatnya; ekstensi ini nggak berusaha jadi keseluruhan panel.',
       same3:
         'Kamu juga bisa bertindak atas itu: negara dan wilayah yang nggak mau kamu baca bisa dilipet di belakang tombol "Tampilkan", atau disembunyiin. Bawaannya lipat, karena timeline yang diam-diam ngebuang postingan itu timeline yang nggak bisa kamu percaya.',
     },
@@ -398,7 +398,7 @@ export const id: Dict = {
       noVerdict1:
         'Setiap petunjuk di bawah punya penjelasan nggak bersalah. Akun baru ya emang baru. Ada orang yang murah hati nge-follow. Banyak penulis mikir yang punya emoji di bio. Nganggep salah satunya sebagai bukti bakal bikin kamu nge-judge orang biasa, yang selain nggak enak juga ngebosenin.',
       noVerdict2:
-        'Yang manjur itu numpukinnya. Akun umur tiga minggu, ngikutin ribuan, diikutin puluhan, pertama di balasan dengan frasa pasaran — kombinasi itu bukan kebetulan, dan kamu bisa bacanya dalam dua detik begitu tahu harus ngelihat ke mana.',
+        'Yang manjur itu numpukinnya. Akun umur tiga minggu, ngikutin ribuan, diikutin puluhan, pertama di balasan dengan frasa pasaran - kombinasi itu bukan kebetulan, dan kamu bisa bacanya dalam dua detik begitu tahu harus ngelihat ke mana.',
       colSignal: 'Sinyal',
       colTell: 'Keliatannya kayak apa',
       colCost: 'Ongkos ngecek',
@@ -421,7 +421,7 @@ export const id: Dict = {
         bio: {
           signal: 'Isi bio',
           tell: 'Sederet bendera dan emoji di tempat yang harusnya kalimat',
-          cost: 'Gratis — udah nongol langsung',
+          cost: 'Gratis - udah nongol langsung',
         },
         substance: {
           signal: 'Isi balasan',
@@ -431,16 +431,16 @@ export const id: Dict = {
         location: {
           signal: 'Di mana akun itu basisnya',
           tell: 'Pede ngegurui soal negara yang belum pernah jadi tempatnya nge-post',
-          cost: 'Tiga ketukan, per profil — atau inline',
+          cost: 'Tiga ketukan, per profil - atau inline',
         },
       },
       hiddenHeading: 'Yang ini nggak bisa kamu lihat',
       hidden1:
-        'Lima dari enam sinyal di atas udah ada di layar. Jumlah pengikut, tanggal gabung, bio, balasannya sendiri — X ngasih semua itu tanpa diminta. Yang keenam yang disimpen X di belakang menu: dari mana akun itu sebetulnya nge-post.',
+        'Lima dari enam sinyal di atas udah ada di layar. Jumlah pengikut, tanggal gabung, bio, balasannya sendiri - X ngasih semua itu tanpa diminta. Yang keenam yang disimpen X di belakang menu: dari mana akun itu sebetulnya nge-post.',
       hidden2:
-        'Itu lebih penting dari yang lain buat satu jenis gangguan tertentu — bukan spam persis, tapi instruksi penuh percaya diri tentang tempat yang nggak ada urusannya sama akun itu. Bacanya jadi beda banget begitu kamu bisa lihat, dan X maksa kamu buka panel per profil buat tahu.',
+        'Itu lebih penting dari yang lain buat satu jenis gangguan tertentu - bukan spam persis, tapi instruksi penuh percaya diri tentang tempat yang nggak ada urusannya sama akun itu. Bacanya jadi beda banget begitu kamu bisa lihat, dan X maksa kamu buka panel per profil buat tahu.',
       hidden3:
-        '<b>Itu yang dikerjain X-Pat.</b> Dia naro negaranya di kartu hover dan, kalau kamu mau, inline di timeline — plus peringatan pas X sendiri nggak bisa verifikasi lokasinya. Dia nggak nge-skor akun atau ngehakimi balasan buat kamu; lima sinyal lainnya tetep keputusan kamu. Dia cuma bikin satu-satunya fakta yang beneran tersembunyi berhenti ngabisin tiga ketukan.',
+        '<b>Itu yang dikerjain X-Pat.</b> Dia naro negaranya di kartu hover dan, kalau kamu mau, inline di timeline - plus peringatan pas X sendiri nggak bisa verifikasi lokasinya. Dia nggak nge-skor akun atau ngehakimi balasan buat kamu; lima sinyal lainnya tetep keputusan kamu. Dia cuma bikin satu-satunya fakta yang beneran tersembunyi berhenti ngabisin tiga ketukan.',
     },
 
     comparison: {
@@ -448,16 +448,16 @@ export const id: Dict = {
       titleLead: 'X-Pat vs',
       titleAccent: 'X-Posed',
       titleRest: ', dan sisa raknya.',
-      lead: 'Sekitar dua puluh ekstensi naro bendera negara di samping username X. Tiga di antaranya punya jumlah pengguna yang berarti. Ini apa yang sebenernya dilakuin tiap ekstensi, apa yang dilakuin X-Pat secara berbeda, dan tiga hal yang X-Posed lakuin lebih baik — bagian yang justru ditinggalin kebanyakan halaman perbandingan.',
+      lead: 'Sekitar dua puluh ekstensi naro bendera negara di samping username X. Tiga di antaranya punya jumlah pengguna yang berarti. Ini apa yang sebenernya dilakuin tiap ekstensi, apa yang dilakuin X-Pat secara berbeda, dan tiga hal yang X-Posed lakuin lebih baik - bagian yang justru ditinggalin kebanyakan halaman perbandingan.',
       featureHeading: 'Fitur per fitur',
       featureLead:
-        'Setiap sel dari listing toko publik atau repositori publik, dibaca pada {date}. Tanda hubung artinya listing-nya nggak nyebut — buat dua ekstensi yang sumbernya tertutup, itu nggak sama dengan "tidak", dan nggambarinnya begitu nggak adil.',
+        'Setiap sel dari listing toko publik atau repositori publik, dibaca pada {date}. Tanda hubung artinya listing-nya nggak nyebut - buat dua ekstensi yang sumbernya tertutup, itu nggak sama dengan "tidak", dan nggambarinnya begitu nggak adil.',
       aheadHeading: 'Di mana X-Posed unggul',
       differsHeading: 'Apa yang sebenernya beda',
       differs1:
-        'Semua di kategori ini bergantung sama cache bareng. X ngizinin satu browser sekitar lima puluh pengecekan profil tiap lima belas menit, dan utasan rame isinya jauh lebih banyak dari itu — jadi tiap ekstensi di sini yang tetep jalan lewat batas itu ngelakuinnya dengan baca cache yang diisi orang lain. Pertanyaannya bukan apa ada server. Tapi apa yang boleh dilakuin server itu.',
+        'Semua di kategori ini bergantung sama cache bareng. X ngizinin satu browser sekitar lima puluh pengecekan profil tiap lima belas menit, dan utasan rame isinya jauh lebih banyak dari itu - jadi tiap ekstensi di sini yang tetep jalan lewat batas itu ngelakuinnya dengan baca cache yang diisi orang lain. Pertanyaannya bukan apa ada server. Tapi apa yang boleh dilakuin server itu.',
       differs2:
-        '<b>Punya kita dipublikasi, dan kamu bisa jalanin sendiri.</b> Server cache-nya ada di repositori yang sama dengan ekstensinya, ada dokumen deploy buat Cloudflare Workers maupun VPS biasa. X-Posed mempublikasi ekstensinya — beneran, dan di bawah MIT — tapi bukan Worker tempat kontribusinya dikirim. Itu potongan yang nggak bisa kamu cek dengan baca kode yang kamu install.',
+        '<b>Punya kita dipublikasi, dan kamu bisa jalanin sendiri.</b> Server cache-nya ada di repositori yang sama dengan ekstensinya, ada dokumen deploy buat Cloudflare Workers maupun VPS biasa. X-Posed mempublikasi ekstensinya - beneran, dan di bawah MIT - tapi bukan Worker tempat kontribusinya dikirim. Itu potongan yang nggak bisa kamu cek dengan baca kode yang kamu install.',
       differs3:
         '<b>Jawaban dari cache di sini butuh pengesahan silang.</b> Kontribusi disimpen sebagai suara per install dan konsensusnya yang disajiin, dengan ambang keyakinan yang bisa kamu naikin di halaman opsi. Dokumentasi X-Posed sendiri ngejelasin penyimpanan nilai terakhir yang diterima buat suatu username, yang artinya kontributor terbaru yang nentuin. Kedua desain jujur tentang masalah mendasar yang sama: nggak ada server yang bisa buktiin kontribusi beneran datang dari X.',
       differs4:
@@ -467,14 +467,14 @@ export const id: Dict = {
       sourcesHeading: 'Sumber',
       sourcesLead:
         'Dibaca pada {date}. Jumlah install dan fitur berubah; kalau ada yang kedaluwarsa di bawah, itu kekeliruan bukan sikap, dan <a href="{href}">pelacak isu</a> cara paling cepet buat ngebenerinnya.',
-      sourceLabel: ' — sumber: ',
-      sourceNotPublished: ' — sumber nggak dipublikasi',
+      sourceLabel: ' - sumber: ',
+      sourceNotPublished: ' - sumber nggak dipublikasi',
     },
   },
 
   pages: {
     home: {
-      title: 'X-Pat — Lokasi Profil X: lihat negara profil X mana pun',
+      title: 'X-Pat - Lokasi Profil X: lihat negara profil X mana pun',
       description:
         'Bendera negara di setiap profil X, dari data X sendiri. Peringatan VPN, dan sembunyiin atau sorot postingan berdasar negara, organisasi, umur, atau kata kunci bio. Gratis buat Chrome.',
       faq: [
@@ -492,7 +492,7 @@ export const id: Dict = {
         },
         {
           q: 'Bisa nyaring selain negara?',
-          a: 'Bisa. Kamu bisa ngeblokir tiap akun yang dikasih label X sebagai bagian dari organisasi, nandain akun yang lebih muda dari ambang yang kamu pilih, dan nyorot akun yang nama atau bionya cocok sama kata kunci — atau bionya isinya mayoritas emoji bendera. Aturan umur dan kata kunci cuma nandain postingan; nggak pernah ngebuang. Daftar izin dan pengecualian per aturan ngelindungin akun yang mau kamu spare.',
+          a: 'Bisa. Kamu bisa ngeblokir tiap akun yang dikasih label X sebagai bagian dari organisasi, nandain akun yang lebih muda dari ambang yang kamu pilih, dan nyorot akun yang nama atau bionya cocok sama kata kunci - atau bionya isinya mayoritas emoji bendera. Aturan umur dan kata kunci cuma nandain postingan; nggak pernah ngebuang. Daftar izin dan pengecualian per aturan ngelindungin akun yang mau kamu spare.',
         },
         {
           q: 'Perlu password X-ku atau kunci API?',
@@ -508,7 +508,7 @@ export const id: Dict = {
     aboutThisAccount: {
       title: '"Tentang akun ini" di X: cara liatnya, dan liatnya lebih cepet',
       description:
-        'X nunjukin negara tiap akun di bawah "Tentang akun ini" — satu profil satu kali, di balik menu. Ini letaknya, dan cara dapetinnya secara inline.',
+        'X nunjukin negara tiap akun di bawah "Tentang akun ini" - satu profil satu kali, di balik menu. Ini letaknya, dan cara dapetinnya secara inline.',
       faq: [
         {
           q: 'Apa itu "Tentang akun ini" di X?',
@@ -520,11 +520,11 @@ export const id: Dict = {
         },
         {
           q: 'Kenapa "Tentang akun ini" nggak muncul buat sebagian pengguna?',
-          a: 'X nggak ngebalikin negara buat tiap akun — akun yang lebih tua atau kurang aktif seringnya nggak ada datanya. Pas kolomnya beneran kosong, nggak ada alat yang bisa ngisi, termasuk yang ini.',
+          a: 'X nggak ngebalikin negara buat tiap akun - akun yang lebih tua atau kurang aktif seringnya nggak ada datanya. Pas kolomnya beneran kosong, nggak ada alat yang bisa ngisi, termasuk yang ini.',
         },
         {
           q: 'Gimana cara lihat negaranya tanpa buka tiap profil?',
-          a: 'Itu celah yang ditutup ekstensi ini. Dia baca kolom yang sama dan nampilinnya sebagai bendera di kartu hover dan, kalau kamu mau, inline di timeline — jadi mindai utasan delapan puluh balasan nggak berarti delapan puluh kali kunjungan menu.',
+          a: 'Itu celah yang ditutup ekstensi ini. Dia baca kolom yang sama dan nampilinnya sebagai bendera di kartu hover dan, kalau kamu mau, inline di timeline - jadi mindai utasan delapan puluh balasan nggak berarti delapan puluh kali kunjungan menu.',
         },
       ],
     },
@@ -536,7 +536,7 @@ export const id: Dict = {
       faq: [
         {
           q: 'Apa itu engagement farming di X?',
-          a: 'Nge-post balasan yang dirancang buat manen impresi, bukan ngomong sesuatu — setuju generik, kemarahan daur ulang, atau frasa pasaran yang ditempel di bawah postingan mana pun yang lagi tren. Sejak X mulai bayar berdasarkan impresi, ada motif duit langsung buat itu.',
+          a: 'Nge-post balasan yang dirancang buat manen impresi, bukan ngomong sesuatu - setuju generik, kemarahan daur ulang, atau frasa pasaran yang ditempel di bawah postingan mana pun yang lagi tren. Sejak X mulai bayar berdasarkan impresi, ada motif duit langsung buat itu.',
         },
         {
           q: 'Gimana cara tahu balasan X dari bot atau farm?',
@@ -544,7 +544,7 @@ export const id: Dict = {
         },
         {
           q: 'Rasio pengikut-ngikutin yang gimana yang mencurigakan?',
-          a: 'Ngikutin jauh lebih banyak akun daripada yang ngikutin balik — rasio jauh di bawah 0,1 — pola klasiknya, karena ngikutin massal itu cara paling murah buat diperhatiin. Banyak akun baru biasa juga keliatannya gitu, jadi anggap aja satu masukan, bukan vonis.',
+          a: 'Ngikutin jauh lebih banyak akun daripada yang ngikutin balik - rasio jauh di bawah 0,1 - pola klasiknya, karena ngikutin massal itu cara paling murah buat diperhatiin. Banyak akun baru biasa juga keliatannya gitu, jadi anggap aja satu masukan, bukan vonis.',
         },
         {
           q: 'Ekstensi ini ngedeteksi engagement farming?',
@@ -563,7 +563,7 @@ export const id: Dict = {
     comparison: {
       title: 'Alternatif X-Posed: X-Pat dibandingin, fitur per fitur',
       description:
-        'Perbandingan jujur X-Pat lawan X-Posed dan dua ekstensi lokasi X paling banyak di-install lainnya — termasuk tiga hal yang X-Posed lakuin lebih baik.',
+        'Perbandingan jujur X-Pat lawan X-Posed dan dua ekstensi lokasi X paling banyak di-install lainnya - termasuk tiga hal yang X-Posed lakuin lebih baik.',
       faq: [
         {
           q: 'Alternatif X-Posed yang paling bagus apa?',
@@ -571,7 +571,7 @@ export const id: Dict = {
         },
         {
           q: 'X-Pat open source?',
-          a: 'Ya, lisensi MIT, dan begitu juga server cache yang dia ajak ngomong — dua-duanya di repositori yang sama, ada dokumen deploy buat Cloudflare Workers dan buat VPS biasa. X-Posed juga mempublikasi ekstensinya di bawah MIT; yang nggak dipublikasi adalah Worker yang nerima kontribusi cache komunitas.',
+          a: 'Ya, lisensi MIT, dan begitu juga server cache yang dia ajak ngomong - dua-duanya di repositori yang sama, ada dokumen deploy buat Cloudflare Workers dan buat VPS biasa. X-Posed juga mempublikasi ekstensinya di bawah MIT; yang nggak dipublikasi adalah Worker yang nerima kontribusi cache komunitas.',
         },
         {
           q: 'Ekstensi-ekstensi ini perlu password X-ku?',
@@ -579,7 +579,7 @@ export const id: Dict = {
         },
         {
           q: 'Kok benderanya berhenti muncul di tengah utasan?',
-          a: 'X ngizinin satu browser sekitar lima puluh pengecekan akun tiap lima belas menit, dan utasan rame isinya jauh lebih banyak dari itu. Ekstensi yang nabrak langit-langit ya berhenti ngisi bendera. Cache bareng yang ngehindarin — sebagian besar profil nggak makan jatah karena ada yang udah ngeresolve duluan — dan X-Pat nambah nyadangin dua puluh persen terakhir jendela buat akun yang kamu hover sendiri.',
+          a: 'X ngizinin satu browser sekitar lima puluh pengecekan akun tiap lima belas menit, dan utasan rame isinya jauh lebih banyak dari itu. Ekstensi yang nabrak langit-langit ya berhenti ngisi bendera. Cache bareng yang ngehindarin - sebagian besar profil nggak makan jatah karena ada yang udah ngeresolve duluan - dan X-Pat nambah nyadangin dua puluh persen terakhir jendela buat akun yang kamu hover sendiri.',
         },
       ],
     },

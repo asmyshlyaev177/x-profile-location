@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @import '@asmyshlyaev177/design-tokens/tokens.css';
 
-/* Typefaces. Archivo carries display and body — weight axis only, no `wdth`:
+/* Typefaces. Archivo carries display and body - weight axis only, no `wdth`:
    it costs 54 kB on the critical path for a 12% wider headline, about a second
    of mobile LCP. Azeret Mono is for data readouts, never body or headings.
    Latin-only variable subsets, self-hosted. */
@@ -97,7 +97,7 @@
 
      All three are worn as small text on a tint of themselves, so lightness is
      raised until the worst such ground clears Lc 62 and chroma is capped at the
-     sRGB boundary for that lightness — declare more and the browser clamps it.
+     sRGB boundary for that lightness - declare more and the browser clamps it.
      Re-derive rather than nudge by eye; see CLAUDE.md. */
   --color-xblue: oklch(80.5% 0.108 245.5);
   --color-attention: oklch(81% 0.158 78.9);
@@ -114,7 +114,7 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* cyan 183 — the extension's own mark colour, deliberately NOT X's blue */
+/* cyan 183 - the extension's own mark colour, deliberately NOT X's blue */
 :root {
   --brand-hue: 183;
   --accent-hue: 183;
@@ -129,7 +129,7 @@
 
     --shell: min(88rem, 100%);
     --gutter: clamp(1.25rem, 4vw, 3.5rem);
-    /* Sticky header height — anchors scroll-padding so deep links land right */
+    /* Sticky header height - anchors scroll-padding so deep links land right */
     --header-h: 3.75rem;
     color-scheme: dark;
   }
@@ -386,7 +386,7 @@
     }
   }
 
-  /* Native view timeline — no observer, no JS gate; browsers without support
+  /* Native view timeline - no observer, no JS gate; browsers without support
      show the finished state. Transform only: a scroll-driven fade is a parked
      state, and holding 4.5:1 through one means starting at 0.86 opacity. */
   @supports (animation-timeline: view()) {

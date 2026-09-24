@@ -3,7 +3,7 @@ import pkg from '../../package.json'
 
 export const baseManifest = {
   // The store listing title on Chrome and AMO, not just the in-browser label.
-  // AMO caps it at 50 characters — see "Store listing" in CLAUDE.md.
+  // AMO caps it at 50 characters - see "Store listing" in CLAUDE.md.
   name: '__MSG_appName__',
   short_name: '__MSG_appShortName__',
   version: pkg.version,
@@ -28,7 +28,7 @@ export const baseManifest = {
       48: 'assets/icons/icon-48x48.png',
       128: 'assets/icons/icon-128x128.png',
     },
-    // Toolbar tooltip. Was `pkg.name`, which is now the npm-style `x-pat` —
+    // Toolbar tooltip. Was `pkg.name`, which is now the npm-style `x-pat` -
     // correct as a package name, wrong as something a user reads.
     default_title: '__MSG_actionTitle__',
     // Its own page: pointing this at options.html capped the settings page at
@@ -42,7 +42,7 @@ export const baseManifest = {
     email: pkg.author.email,
   },
 
-  // Required for `chrome.runtime.openOptionsPage()` to work at all — see "Keys
+  // Required for `chrome.runtime.openOptionsPage()` to work at all - see "Keys
   // that are load-bearing" in CLAUDE.md.
   options_ui: {
     page: 'pages/options.html',
@@ -76,7 +76,7 @@ export const baseManifest = {
     },
   ],
   // Only the MAIN-world page-script chunks, appended by the build plugin. Never
-  // pages/* or a broad assets/* — that lets x.com fingerprint the extension.
+  // pages/* or a broad assets/* - that lets x.com fingerprint the extension.
   web_accessible_resources: [
     {
       resources: [],

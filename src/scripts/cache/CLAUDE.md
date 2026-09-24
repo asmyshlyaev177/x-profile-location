@@ -1,4 +1,4 @@
-# `src/scripts/cache` — what we already know
+# `src/scripts/cache` - what we already know
 
 `cache.ts` is the local answer (IndexedDB via idb-keyval, 30-day TTL, keys are lowercased
 usernames, `mergeCached` deep-merges `facts`). `shared-cache.ts` is the optional community
@@ -21,7 +21,7 @@ imports this module through Playwright's TypeScript loader, which leaves `import
 undefined, and a bare property access throws at import time and takes the suite down with
 it ("0 tests in 0 files").
 
-**`minConfidence` — how many distinct clients must agree — is still 1, deliberately.**
+**`minConfidence` - how many distinct clients must agree - is still 1, deliberately.**
 Measured 2026-07-27, 52 of 4242 profiles had reached 2, so raising it would drop what the
 cache can answer by ~99%, and a cache that answers nothing costs more than it protects.
 `VOTE_CAP` keeps only the 10 newest votes per handle anyway, so 2 guards against one
@@ -35,11 +35,11 @@ sqlite3 /var/lib/x-loc-cache/x-loc-cache.db \
 ```
 
 Confidence can only climb if the same handle is looked up first-hand twice, and a value
-this cache hands over is written to local IDB immediately — which is exactly the state in
+this cache hands over is written to local IDB immediately - which is exactly the state in
 which this end never looks it up. **5% of the prefetch share re-asks about accounts
 already known** for that reason, as well as to notice a relocation, and it spends that
 share on the _least_-corroborated account on screen first. `conf` is kept with the hit as
-`LocationData.votes` for exactly that ordering — it is never sent back, and the threshold
+`LocationData.votes` for exactly that ordering - it is never sent back, and the threshold
 still reads the server's live figure. See "Revalidation" in
 [`../prefetch/CLAUDE.md`](../prefetch/CLAUDE.md).
 
@@ -63,14 +63,14 @@ opens with a number, written only when it moves, since every write wakes the wor
 each open tab's storage listener. `at` is therefore when the number last _moved_, and one
 that hasn't in a week is dropped rather than shown. A server that 404s reads as "no
 answer": the line keeps what it had, or stays away. Nothing about the reader goes with the
-request — a bodyless GET, same response for everyone.
+request - a bodyless GET, same response for everyone.
 
 ## The count the popup shows
 
 `/v1/stats` is asked only while a popup is on screen, and three things keep it off the
 server: nobody asks without a popup open, the answer carries a `max-age` so a re-ask
 inside that window never leaves the browser, and the server memoises the count for the
-same window — so what does get through costs one `COUNT(*)` between every reader.
+same window - so what does get through costs one `COUNT(*)` between every reader.
 
 It sits **outside the circuit breaker** on purpose. The breaker exists to stop a
 scrolling timeline retrying a struggling server; this asks at most once a minute, and

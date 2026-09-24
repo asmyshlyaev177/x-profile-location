@@ -1,8 +1,8 @@
 /**
  * The build-time entry. Runs in Node, once per route × locale.
  *
- * It loads a locale's copy the same way the browser does — `loadDict`, one
- * dynamic import — rather than through a registry that names all fifteen. That
+ * It loads a locale's copy the same way the browser does - `loadDict`, one
+ * dynamic import - rather than through a registry that names all fifteen. That
  * is not symmetry for its own sake: a module statically importing every
  * dictionary is a module Rollup has to place in *some* chunk, and every
  * arrangement of that chunk relative to the client entry was wrong. Either the

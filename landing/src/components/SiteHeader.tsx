@@ -54,7 +54,7 @@ export function SiteHeader() {
 
           {/* Five links plus a wordmark plus a button only breathe from ~1024px;
               below that the install CTA is the only thing that matters anyway.
-              The language picker stays at every width — someone reading the
+              The language picker stays at every width - someone reading the
               wrong language cannot use the page at all, which is a worse
               problem than a cramped nav. */}
           <nav
@@ -96,7 +96,7 @@ export function SiteHeader() {
   )
 }
 
-// Simple Icons — github
+// Simple Icons - github
 function GitHubIcon() {
   return (
     <svg

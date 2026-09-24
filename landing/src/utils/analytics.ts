@@ -2,7 +2,7 @@
  * The one place the page talks to Google Analytics.
  *
  * `index.html` defines `window.gtag` synchronously (a stub that pushes onto
- * `dataLayer`) and only fetches the real ~87 kB bundle on idle — but *only when
+ * `dataLayer`) and only fetches the real ~87 kB bundle on idle - but *only when
  * `VITE_GA_MEASUREMENT_ID` is set*. Every local build leaves it empty, so
  * `gtag` is genuinely absent there and the optional call below is the whole
  * fallback: no analytics, no error, no `if (import.meta.env.PROD)` scattered

@@ -36,7 +36,7 @@ describe('enqueue', () => {
 
   // Opening a tweet queues its accounts while the feed's are still waiting.
   // The user is looking at the tweet, not the feed, so the newer batch goes
-  // first — appending left an opened thread behind a screenful it had scrolled
+  // first - appending left an opened thread behind a screenful it had scrolled
   // past, and the flags landed after the user had moved on again.
   it('puts a later batch in front of the earlier one', () => {
     const q = new CandidateQueue()
@@ -204,7 +204,7 @@ describe('priority queues', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Snapshots — the service worker is torn down between polls and reads its
+// Snapshots - the service worker is torn down between polls and reads its
 // queues back from storage.session, so a round trip has to be lossless.
 // ---------------------------------------------------------------------------
 describe('toJSON / from', () => {
@@ -284,7 +284,7 @@ describe('prefetchBudget', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The revalidation reserve — the slice of the share spent on what is cached
+// The revalidation reserve - the slice of the share spent on what is cached
 // ---------------------------------------------------------------------------
 describe('revalidateBudget', () => {
   const rate = (over: Partial<RateState> = {}): RateState => ({
@@ -299,7 +299,7 @@ describe('revalidateBudget', () => {
     expect(revalidateBudget(rate(), 0.8)).toBe(2)
   })
 
-  it('rounds down rather than up — the reserve is taken from the feed', () => {
+  it('rounds down rather than up - the reserve is taken from the feed', () => {
     // 50 * 0.7 = 35, a twentieth of which is 1.75.
     expect(revalidateBudget(rate(), 0.7)).toBe(1)
   })
@@ -328,7 +328,7 @@ describe('revalidateBudget', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Pacing — the budget is spread over the time left in the window
+// Pacing - the budget is spread over the time left in the window
 // ---------------------------------------------------------------------------
 describe('nextDelayMs', () => {
   const NOW = 1_000_000
@@ -345,8 +345,8 @@ describe('nextDelayMs', () => {
     ...over,
   })
   const opts = (over: PacingOptions = {}) => ({ ...PACING_DEFAULTS, ...over })
-  // Past the sprint: 20 of the 42-lookup share are gone — well past the quarter
-  // it covers — so the trickle answers, with 22 left to spread.
+  // Past the sprint: 20 of the 42-lookup share are gone - well past the quarter
+  // it covers - so the trickle answers, with 22 left to spread.
   const cruising = (over: Partial<RateState> = {}) =>
     paced({ remaining: 30, ...over })
 

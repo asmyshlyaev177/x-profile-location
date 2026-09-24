@@ -16,7 +16,7 @@ import css from './LocationChips.module.css'
 export interface LocationChipsProps {
   blocked: string[]
   exclusions: RegionExclusions
-  /** The host page's own chip styling — the popup and the options page differ. */
+  /** The host page's own chip styling - the popup and the options page differ. */
   classes: { chips: string; chip: string; flag: string; remove: string }
   onBlocked: (next: string[]) => void
   onExclusions: (next: RegionExclusions) => void

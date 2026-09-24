@@ -12,13 +12,13 @@ export interface AutocompleteProps {
   allowFreeInput?: boolean
   /** Close the dropdown after an option is selected (default: true) */
   closeOnSelect?: boolean
-  /** A search aid only — the value committed is always the option itself. */
+  /** A search aid only - the value committed is always the option itself. */
   aliases?: Record<string, string[]>
   renderOption?: (opt: string, matchedAlias?: string) => ComponentChild
 }
 
 // Lower is better: whole-string beats prefix beats substring, and a name beats
-// an alias at each tier — so "us" offers United States before Belarus.
+// an alias at each tier - so "us" offers United States before Belarus.
 function score(name: string, aliases: string[], query: string) {
   if (name === query) return 0
   if (aliases.includes(query)) return 1
@@ -163,7 +163,7 @@ export function Autocomplete({
   return (
     <div class={css.autocomplete}>
       {/* No aria-haspopup: a combobox implies `listbox`, and the popup below is
-          one — so stating it is redundant (ARIA: combobox role). */}
+          one - so stating it is redundant (ARIA: combobox role). */}
       <input
         ref={inputRef}
         class={css.input}

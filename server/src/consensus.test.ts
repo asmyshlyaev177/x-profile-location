@@ -41,7 +41,7 @@ describe('pickConsensus', () => {
   it('never answers below 1, which is what lets /v1/stats count cheaply', () => {
     // Every profile row is written from one of these, so `location_confidence`
     // is >= 1 on all of them and the count handleStats wants is the plain
-    // COUNT(*) — the filtered one means the same thing and costs a table scan.
+    // COUNT(*) - the filtered one means the same thing and costs a table scan.
     // If this ever returns 0, that query has to grow a WHERE clause again.
     for (const votes of [
       [vote(null)],

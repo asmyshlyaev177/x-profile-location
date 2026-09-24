@@ -15,12 +15,12 @@ import { localizedRoutes } from '../routes'
  * This replaced a redirect. `index.html` used to send a German browser from
  * `/` to `/de` before first paint; Google's guidance is that auto-redirecting
  * between language versions keeps crawlers and people from reaching the
- * others, so detection now produces an offer the reader takes or dismisses —
+ * others, so detection now produces an offer the reader takes or dismisses -
  * and either answer is remembered under the key the inline preference script
  * reads, so it is asked once.
  *
  * Client-only by construction: nothing renders until an effect has read
- * `navigator.languages`, so the prerendered document — what a crawler sees —
+ * `navigator.languages`, so the prerendered document - what a crawler sees -
  * never contains it. A fixed toast rather than a bar above the header, so its
  * late arrival shifts no layout.
  */

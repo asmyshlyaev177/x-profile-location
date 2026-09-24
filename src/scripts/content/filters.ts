@@ -1,4 +1,4 @@
-// Whether a rule acts on an account, and what to call it. Nothing here draws —
+// Whether a rule acts on an account, and what to call it. Nothing here draws -
 // see "Filters, hiding and marking" in CLAUDE.md.
 
 import {
@@ -35,7 +35,7 @@ let blockedCountries = new Set<string>()
 let blockedPicks: string[] = []
 let regionExclusions: RegionExclusions = {}
 // Per-rule exemptions: which accounts each filter must skip. `highlight` is the
-// old single-purpose exception list, generalised — see normalizeRuleExceptions.
+// old single-purpose exception list, generalised - see normalizeRuleExceptions.
 let ruleExceptions: RuleExceptions = normalizeRuleExceptions(undefined)
 // Accounts exempt from every rule at once.
 let alwaysShow = new Set<string>()
@@ -119,7 +119,7 @@ export function toggleRuleExceptions(
   writeRuleExceptions(next)
 }
 
-/** Already exempt from everything the button covers — so it reads as "undo". */
+/** Already exempt from everything the button covers - so it reads as "undo". */
 export function exceptedFromAll(
   userName: string,
   rules: FilterRule[],
@@ -128,7 +128,7 @@ export function exceptedFromAll(
   return rules.every((rule) => ruleExceptions[rule].includes(lc))
 }
 
-/** With no handle to judge by, the rule counts as acting — it cannot under-warn. */
+/** With no handle to judge by, the rule counts as acting - it cannot under-warn. */
 export function locationRuleActs(userName?: string | null): boolean {
   return !userName || !isExcepted('location', userName)
 }
@@ -162,8 +162,8 @@ export function getLocationDisplay(
   return { emoji: '🌐', label }
 }
 
-// The store country outranks the stated location — a store region is hard to
-// fake — and a stated one X flagged inaccurate does not count at all.
+// The store country outranks the stated location - a store region is hard to
+// fake - and a stated one X flagged inaccurate does not count at all.
 function effectiveBlockedLocation(data: LocationData): string | null {
   const { country: sourceCountry } = classifySource(data.source)
   if (sourceCountry) {
@@ -182,7 +182,7 @@ export interface FilterMatch {
   icon: string
 }
 
-/** Every rule an account matches, exceptions ignored — the button has to name
+/** Every rule an account matches, exceptions ignored - the button has to name
  *  an already-excepted rule to undo it. */
 export function ruleMatches(
   data: LocationData | null | undefined,
@@ -289,7 +289,7 @@ export function cellMatchFor(
   return activeMatches(userName, data)[0] ?? null
 }
 
-// Thunks, because the language can change while this script stays loaded — and
+// Thunks, because the language can change while this script stays loaded - and
 // still spelled `t('key')`, so messages.test.ts can see which keys are used.
 export const FILTER_RULE_LABEL: Record<FilterRule, () => string> = {
   highlight: () => t('ruleNameHighlight'),
