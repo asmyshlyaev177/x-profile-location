@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "publish": "bedframe publish -b",
     "server:update": "npm --prefix server run update",
+    "server:build": "pnpm --filter x-pat-cache build",
     "zip": "bedframe zip",
     "format": "oxfmt .",
     "lint": "oxlint --fix .",
