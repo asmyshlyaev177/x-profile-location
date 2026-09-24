@@ -220,6 +220,43 @@ describe.skipIf(MISSING.length > 0)('update.ts — the units', () => {
     expect(log()).not.toContain('systemctl daemon-reload')
   })
 
+  it('installs a unit that an installed one starts', () => {
+    // What happened on the live box: it had x-loc-backup from before compaction
+    // existed, and an update copied the version that gained
+    // OnSuccess=x-loc-vacuum.service but only noted the vacuum unit, so every
+    // verified backup went on to start a unit that was not there.
+    writeFileSync(
+      join(unitDir, 'x-loc-backup.service'),
+      '[Service]\nExecStart=x\n',
+    )
+    const vacuum =
+      '[Unit]\nOnFailure=x-loc-alert@%n.service\n[Service]\nExecStart=v\n'
+    writeInOrigin(
+      'server/deploy/x-loc-backup.service',
+      '[Unit]\nOnFailure=x-loc-alert@%n.service\nOnSuccess=x-loc-vacuum.service\n[Service]\nExecStart=x\n',
+    )
+    writeInOrigin('server/deploy/x-loc-vacuum.service', vacuum)
+    writeInOrigin(
+      'server/deploy/x-loc-alert@.service',
+      '[Service]\nExecStart=a\n',
+    )
+    commit('compaction')
+
+    const r = run()
+
+    expect(r.status).toBe(0)
+    expect(readFileSync(join(unitDir, 'x-loc-vacuum.service'), 'utf8')).toBe(
+      vacuum,
+    )
+    expect(r.stdout).not.toContain('x-loc-vacuum.service exists upstream')
+    expect(log().indexOf('systemctl daemon-reload')).toBeLessThan(
+      log().indexOf('systemctl restart x-loc-cache'),
+    )
+    // OnFailure= is not followed: the alert units stay opt-in.
+    expect(existsSync(join(unitDir, 'x-loc-alert@.service'))).toBe(false)
+    expect(r.stdout).toContain('x-loc-alert@.service exists upstream')
+  })
+
   it('reports a unit that exists upstream but was never installed here', () => {
     const r = run()
     expect(r.stdout).toContain('x-loc-backup.service')
@@ -374,9 +411,33 @@ describe('update.ts — the decisions on their own', () => {
     const plan = unitPlan(
       ['x-loc-cache.service', 'x-loc-backup.timer', 'lib.ts', 'Caddyfile'],
       (name) => name === 'x-loc-cache.service',
+      () => '[Unit]\nWants=network-online.target\n',
     )
     expect(plan.update).toEqual(['x-loc-cache.service'])
     expect(plan.unseen).toEqual(['x-loc-backup.timer'])
+  })
+
+  it('adds every unit an installed one starts, and the ones those start', () => {
+    const units: Record<string, string> = {
+      'a.service': 'OnSuccess=b.service\nWants=network-online.target\n',
+      'b.service': 'Requires=c.service d.service\nOnFailure=alert@%n.service\n',
+      'c.service': '# OnSuccess=e.service is a comment, not a directive\n',
+      'd.service': '',
+      'e.service': '',
+      'alert@.service': '',
+    }
+    const plan = unitPlan(
+      Object.keys(units),
+      (name) => name === 'a.service',
+      (name) => units[name]!,
+    )
+    expect(plan.update).toEqual([
+      'a.service',
+      'b.service',
+      'c.service',
+      'd.service',
+    ])
+    expect(plan.unseen).toEqual(['e.service', 'alert@.service'])
   })
 
   it('names the settings the live env file has never heard of', () => {

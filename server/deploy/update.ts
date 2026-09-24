@@ -37,19 +37,37 @@ export function isUnitFile(name: string): boolean {
   return /\.(service|timer)$/.test(name)
 }
 
-/** Only units this box already has; a new one upstream is reported, never
- *  copied in — the alert units are opt-in and need an env file. */
+// Directives that make systemd start the units they name. OnFailure= is left
+// out: every unit names x-loc-alert@ there, and the alert units are opt-in.
+const STARTS = /^\s*(?:OnSuccess|Requires|Wants|BindsTo)=(.*)$/gm
+
+function startedUnits(unitText: string): string[] {
+  return [...unitText.matchAll(STARTS)].flatMap(([, list]) =>
+    list!.trim().split(/\s+/),
+  )
+}
+
+/** The units this box already has, and every repo unit those start: without
+ *  it the starting unit runs and the one it starts never does. The rest is
+ *  reported, never copied in — the alert units are opt-in and need an env file. */
 export function unitPlan(
   repoUnits: string[],
   installed: (name: string) => boolean,
+  unitText: (name: string) => string,
 ): { update: string[]; unseen: string[] } {
-  const update: string[] = []
-  const unseen: string[] = []
-  for (const name of repoUnits.filter(isUnitFile)) {
-    if (installed(name)) update.push(name)
-    else unseen.push(name)
+  const units = repoUnits.filter(isUnitFile)
+  const wanted = new Set(units.filter(installed))
+  // A Set also visits what is added during the loop, so chains are followed.
+  for (const name of wanted) {
+    const started = startedUnits(unitText(name)).filter((u) =>
+      units.includes(u),
+    )
+    for (const unit of started) wanted.add(unit)
   }
-  return { update, unseen }
+  return {
+    update: units.filter((name) => wanted.has(name)),
+    unseen: units.filter((name) => !wanted.has(name)),
+  }
 }
 
 function envKeys(text: string): string[] {
@@ -105,14 +123,18 @@ function abiOk(): boolean {
 function syncUnits(): string[] {
   const source = join(REPO, 'server/deploy')
   const repoUnits = readdirSync(source)
-  const { update, unseen } = unitPlan(repoUnits, (name) =>
-    existsSync(join(UNIT_DIR, name)),
+  const { update, unseen } = unitPlan(
+    repoUnits,
+    (name) => existsSync(join(UNIT_DIR, name)),
+    (name) => readFileSync(join(source, name), 'utf8'),
   )
 
   const copied = update.filter((name) => {
     const from = join(source, name)
     const to = join(UNIT_DIR, name)
-    if (readFileSync(from, 'utf8') === readFileSync(to, 'utf8')) return false
+    const isCurrent =
+      existsSync(to) && readFileSync(from, 'utf8') === readFileSync(to, 'utf8')
+    if (isCurrent) return false
     // root is running this, so the copy is root-owned without being told.
     const r = run('install', ['-m', '644', from, to])
     if (!r.ok) die(`could not install ${name}: ${r.out}`)

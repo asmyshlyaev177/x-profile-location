@@ -31,9 +31,12 @@ sizes, `moveAside`, `guardSwap`, healthz polling. Policy stays in the scripts.
 The units live in git and run from `/etc/systemd/system`, so a pull that changes
 an `ExecStart=` changes nothing until they are copied and systemd is reloaded —
 which is how a `.sh` → `.ts` rename became `status=203/EXEC` on a timer that
-only fires at 10:00 UTC. `update.ts` copies **only units this box already has**, by
-name, and reports the rest: `x-loc-heartbeat` and `x-loc-alert@` are opt-in and
-need `/etc/x-loc-alert.env`.
+only fires at 10:00 UTC. `update.ts` copies **the units this box already has, and the
+units those start** (`OnSuccess=`, `Requires=`, `Wants=`, `BindsTo=`), and reports the
+rest: `x-loc-heartbeat` and `x-loc-alert@` are opt-in and need `/etc/x-loc-alert.env`,
+which is why `OnFailure=` is not followed. Copying only what was installed gave a box set
+up before compaction the backup unit with `OnSuccess=x-loc-vacuum.service` but not the
+vacuum unit, so compaction never ran (2026-09-24).
 
 Two other things it holds:
 
