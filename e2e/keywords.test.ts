@@ -28,6 +28,7 @@ import {
   removeKeyword,
   TWEET_ARTICLE,
   tweetArticles,
+  waitForCachedBio,
 } from './helpers'
 
 const MRNFT_TWEET = 'https://x.com/MRNFT_X/status/2053116341926629624'
@@ -191,10 +192,7 @@ async function replyWithBio(
   await link.waitFor({ timeout: 15_000 })
 
   // The bio lands in IDB after the TweetDetail response, not with it.
-  await expect
-    .poll(() => readCachedBio(page, screenName), { timeout: 15_000 })
-    .toBeTruthy()
-  const keyword = pickBioWord(await readCachedBio(page, screenName))
+  const keyword = pickBioWord(await waitForCachedBio(page, screenName))
   if (!keyword) throw new Error(`no usable word in @${screenName}'s bio`)
   return { article, link, keyword }
 }

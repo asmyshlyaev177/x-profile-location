@@ -34,7 +34,7 @@ import {
   mockLocationApis,
   navigateToTweetDetail,
   pickBioWord,
-  readCachedBio,
+  waitForCachedBio,
 } from './helpers'
 
 const BLOCKER_TWEET = 'https://x.com/jpotisch/status/2082644956880023812'
@@ -130,17 +130,6 @@ test('marks the keyword inside the bio it restored', async ({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** The bio the extension has cached for `screenName`, once it has landed. */
-async function waitForCachedBio(
-  page: Page,
-  screenName: string,
-): Promise<string> {
-  await expect
-    .poll(() => readCachedBio(page, screenName), { timeout: 15_000 })
-    .toBeTruthy()
-  return (await readCachedBio(page, screenName))!
-}
 
 /**
  * Hovers `screenName`'s name until the extension has processed the card.

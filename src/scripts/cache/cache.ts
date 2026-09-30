@@ -1,4 +1,4 @@
-import { clear, createStore, del, entries, get, set } from 'idb-keyval'
+import { clear, createStore, del, entries, get, set, update } from 'idb-keyval'
 import type { AccountFacts } from '../profile'
 
 export interface LocationData {
@@ -56,9 +56,23 @@ export async function mergeCached(
   username: string,
   partial: Partial<LocationData>,
 ): Promise<void> {
-  const key = username.toLowerCase()
-  const existing = await get<CachedEntry>(key, locStore)
-  const base: LocationData = existing?.data ?? {
+  // One readwrite transaction, not a read and then a write: the TweetDetail bio
+  // and the lookup's location land at once, and the later write erased the other.
+  await update<CachedEntry>(
+    username.toLowerCase(),
+    (existing) => ({
+      data: merged(existing?.data, partial),
+      fetchedAt: Date.now(),
+    }),
+    locStore,
+  )
+}
+
+function merged(
+  stored: LocationData | undefined,
+  partial: Partial<LocationData>,
+): LocationData {
+  const base: LocationData = stored ?? {
     location: null,
     locationAccurate: true,
     source: null,
@@ -67,7 +81,7 @@ export async function mergeCached(
   if (base.facts || partial.facts) {
     data.facts = { ...base.facts, ...partial.facts }
   }
-  await set(key, { data, fetchedAt: Date.now() }, locStore)
+  return data
 }
 
 export async function clearAllCache(): Promise<void> {

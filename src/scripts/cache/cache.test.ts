@@ -11,10 +11,11 @@ vi.mock('idb-keyval', () => ({
   del: vi.fn(),
   clear: vi.fn(),
   entries: vi.fn(),
+  update: vi.fn(),
 }))
 
 import { del, entries, get, set } from 'idb-keyval'
-import { cleanupCache, getCached, mergeCached, setCached } from './cache'
+import { cleanupCache, getCached, setCached } from './cache'
 import type { LocationData } from './cache'
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
@@ -131,142 +132,6 @@ describe('setCached', () => {
     await setCached('carlos', data)
     const result = await getCached('carlos')
     expect(result).toEqual(data)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// mergeCached
-// ---------------------------------------------------------------------------
-describe('mergeCached', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(set).mockResolvedValue(undefined)
-  })
-
-  it('creates a new entry with safe defaults when no existing entry is found', async () => {
-    vi.mocked(get).mockResolvedValue(undefined)
-    await mergeCached('new_user', { bio: 'hello' })
-
-    const [key, entry] = vi.mocked(set).mock.calls[0] as [
-      string,
-      { data: LocationData },
-    ]
-    expect(key).toBe('new_user')
-    expect(entry.data).toMatchObject({
-      location: null,
-      locationAccurate: true,
-      source: null,
-      bio: 'hello',
-    })
-  })
-
-  it('merges facts instead of replacing them, so each source keeps what it knew', async () => {
-    // The timeline gave us the relationship; AboutAccountQuery gives handle
-    // history. A shallow spread would drop whichever arrived first.
-    vi.mocked(get).mockResolvedValue({
-      data: {
-        location: null,
-        locationAccurate: true,
-        source: null,
-        facts: { blockedBy: true, createdAt: 1_700_000_000_000 },
-      } satisfies LocationData,
-      fetchedAt: Date.now() - 1_000,
-    })
-
-    await mergeCached('artemis', { facts: { handleChanges: 3 } })
-
-    const [, entry] = vi.mocked(set).mock.calls[0] as [
-      string,
-      { data: LocationData },
-    ]
-    expect(entry.data.facts).toEqual({
-      blockedBy: true,
-      createdAt: 1_700_000_000_000,
-      handleChanges: 3,
-    })
-  })
-
-  it('leaves facts absent entirely when neither side has any', async () => {
-    vi.mocked(get).mockResolvedValue(undefined)
-    await mergeCached('nobody', { bio: 'hi' })
-
-    const [, entry] = vi.mocked(set).mock.calls[0] as [
-      string,
-      { data: LocationData },
-    ]
-    expect('facts' in entry.data).toBe(false)
-  })
-
-  it('merges partial data into an existing entry, preserving other fields', async () => {
-    const existing: LocationData = {
-      location: 'France',
-      locationAccurate: true,
-      source: 'web',
-      bio: 'old bio',
-      displayName: 'Claire',
-    }
-    vi.mocked(get).mockResolvedValue({
-      data: existing,
-      fetchedAt: Date.now() - 1_000,
-    })
-
-    await mergeCached('claire', { bio: 'new bio' })
-
-    const [, entry] = vi.mocked(set).mock.calls[0] as [
-      string,
-      { data: LocationData },
-    ]
-    expect(entry.data.bio).toBe('new bio') // updated
-    expect(entry.data.location).toBe('France') // preserved
-    expect(entry.data.displayName).toBe('Claire') // preserved
-  })
-
-  it('overwrites multiple fields in one call', async () => {
-    const existing: LocationData = {
-      location: 'Spain',
-      locationAccurate: true,
-      source: 'web',
-      bio: 'bio',
-      displayName: 'Ana',
-    }
-    vi.mocked(get).mockResolvedValue({ data: existing, fetchedAt: Date.now() })
-
-    await mergeCached('ana', { location: 'Portugal', displayName: 'Ana P.' })
-
-    const [, entry] = vi.mocked(set).mock.calls[0] as [
-      string,
-      { data: LocationData },
-    ]
-    expect(entry.data.location).toBe('Portugal')
-    expect(entry.data.displayName).toBe('Ana P.')
-    expect(entry.data.bio).toBe('bio') // preserved
-  })
-
-  it('updates the fetchedAt timestamp on every merge', async () => {
-    const existing: LocationData = loc('Italy')
-    const oldFetchedAt = Date.now() - 3_600_000
-    vi.mocked(get).mockResolvedValue({
-      data: existing,
-      fetchedAt: oldFetchedAt,
-    })
-
-    const before = Date.now()
-    await mergeCached('diana', { bio: 'hi' })
-    const after = Date.now()
-
-    const [, entry] = vi.mocked(set).mock.calls[0] as [
-      string,
-      { fetchedAt: number },
-    ]
-    expect(entry.fetchedAt).toBeGreaterThanOrEqual(before)
-    expect(entry.fetchedAt).toBeLessThanOrEqual(after)
-  })
-
-  it('normalises the username to lowercase for both get and set', async () => {
-    vi.mocked(get).mockResolvedValue(undefined)
-    await mergeCached('EVE', { bio: 'bio' })
-    expect(vi.mocked(get).mock.calls[0][0]).toBe('eve')
-    expect(vi.mocked(set).mock.calls[0][0]).toBe('eve')
   })
 })
 

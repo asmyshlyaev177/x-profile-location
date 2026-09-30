@@ -300,9 +300,17 @@ export async function sortRepliesByLikes(page: Page): Promise<void> {
   if ((await trigger.count()) === 0) return
   if ((await trigger.textContent()) === 'Likes') return
 
-  await trigger.click()
-  await page.getByRole('menuitem', { name: 'Likes', exact: true }).click()
-  await expect(trigger).toHaveText('Likes', { timeout: 10_000 })
+  // Opened and chosen as one step: X re-renders while the page settles and
+  // closes an open menu with it, which left the click waiting on nothing.
+  await expect(async () => {
+    if ((await trigger.textContent()) !== 'Likes') {
+      await trigger.click()
+      await page
+        .getByRole('menuitem', { name: 'Likes', exact: true })
+        .click({ timeout: 2_000 })
+    }
+    await expect(trigger).toHaveText('Likes', { timeout: 2_000 })
+  }).toPass({ timeout: 15_000 })
   await waitForReplies(page)
 }
 
@@ -681,9 +689,12 @@ export async function mockAboutAccount(
     location_accurate?: boolean
     source?: string | null
   },
+  // Answers only once this settles, so a lookup can be held open mid-flight.
+  { until }: { until?: Promise<unknown> } = {},
 ): Promise<void> {
-  await page.route(/AboutAccountQuery/, (route) =>
-    route.fulfill({
+  await page.route(/AboutAccountQuery/, async (route) => {
+    await until
+    await route.fulfill({
       status: 200,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -699,8 +710,8 @@ export async function mockAboutAccount(
           },
         },
       }),
-    }),
-  )
+    })
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -921,6 +932,40 @@ export async function mockBlockedBy(
   }, screenName.toLowerCase())
 }
 
+/** What the extension cached for a user, or null when it holds no entry. */
+export async function readCachedData(
+  page: Page,
+  userName: string,
+): Promise<{ location?: string | null; bio?: string | null } | null> {
+  return page.evaluate(
+    (key) =>
+      new Promise<{ location?: string | null; bio?: string | null } | null>(
+        (resolve, reject) => {
+          const req = indexedDB.open('x-profile-location')
+          req.onerror = () => reject(req.error)
+          req.onsuccess = () => {
+            const db = req.result
+            if (!db.objectStoreNames.contains('location-data')) {
+              db.close()
+              return resolve(null)
+            }
+            const tx = db.transaction('location-data', 'readonly')
+            const getReq = tx.objectStore('location-data').get(key)
+            getReq.onsuccess = () => {
+              db.close()
+              resolve(getReq.result?.data ?? null)
+            }
+            getReq.onerror = () => {
+              db.close()
+              reject(getReq.error)
+            }
+          }
+        },
+      ),
+    userName.toLowerCase(),
+  )
+}
+
 /**
  * Reads the bio the extension cached for a user (page-script picks it out of the
  * timeline response and mergeCached stores it alongside the location data).
@@ -930,31 +975,18 @@ export async function readCachedBio(
   page: Page,
   userName: string,
 ): Promise<string | null> {
-  return page.evaluate(
-    (key) =>
-      new Promise<string | null>((resolve, reject) => {
-        const req = indexedDB.open('x-profile-location')
-        req.onerror = () => reject(req.error)
-        req.onsuccess = () => {
-          const db = req.result
-          if (!db.objectStoreNames.contains('location-data')) {
-            db.close()
-            return resolve(null)
-          }
-          const tx = db.transaction('location-data', 'readonly')
-          const getReq = tx.objectStore('location-data').get(key)
-          getReq.onsuccess = () => {
-            db.close()
-            resolve(getReq.result?.data?.bio ?? null)
-          }
-          getReq.onerror = () => {
-            db.close()
-            reject(getReq.error)
-          }
-        }
-      }),
-    userName.toLowerCase(),
-  )
+  return (await readCachedData(page, userName))?.bio ?? null
+}
+
+/** The bio the extension has cached for `userName`, once it has landed. */
+export async function waitForCachedBio(
+  page: Page,
+  userName: string,
+): Promise<string> {
+  await expect
+    .poll(() => readCachedBio(page, userName), { timeout: 15_000 })
+    .toBeTruthy()
+  return (await readCachedBio(page, userName))!
 }
 
 /**
