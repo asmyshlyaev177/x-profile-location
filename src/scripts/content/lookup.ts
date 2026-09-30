@@ -122,15 +122,11 @@ function aboutAccountHeaders(
 }
 
 /** Null means no profile at all, which is not "a profile with no location". */
-function toLocationData(
-  json: any,
-  storedBio: string | null,
-): LocationData | null {
+function toLocationData(json: any): LocationData | null {
   const result = json?.data?.user_result_by_screen_name?.result ?? null
   const profile = result?.about_profile ?? null
   if (!profile) return null
   return {
-    bio: storedBio,
     location: profile.account_based_in ?? null,
     locationAccurate: profile.location_accurate !== false,
     source: profile.source ?? null,
@@ -218,15 +214,17 @@ async function runLookup(
     checkedThisSession.add(userName.toLowerCase())
     cost.ok = true
 
-    const data = toLocationData(await resp.json(), stored?.bio ?? null)
-    if (!data) return { data: stored ?? null, cost }
-    data.votes = votesFor(data, stored)
+    const answer = toLocationData(await resp.json())
+    if (!answer) return { data: stored ?? null, cost }
+    answer.votes = votesFor(answer, stored)
 
-    rememberBio(userName, null, null, data.facts)
-    await mergeCached(userName, data)
+    rememberBio(userName, null, null, answer.facts)
+    // Written without a bio: the one in `stored` was read before the request
+    // went out, and a TweetDetail may have merged a newer one since.
+    await mergeCached(userName, answer)
     // Share this first-hand result so other users can skip the X call.
-    contributeLocation(userName, data)
-    return { data, cost }
+    contributeLocation(userName, answer)
+    return { data: { ...answer, bio: stored?.bio ?? null }, cost }
   } catch {
     // A request that threw still left the window; only X can say by how much.
     return { data: fallbackData, cost: { spent: true } }

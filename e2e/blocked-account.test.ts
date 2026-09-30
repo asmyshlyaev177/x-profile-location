@@ -2,11 +2,14 @@
  * The bio X withholds from a blocker's hover card, put back.
  *
  * Archetype:
- *   jpotisch — blocks the account this suite runs as. X serves a stripped hover
- *              card for a blocker: no bio, no follow button, no counts, just a
- *              "Profile Summary" button. The extension still holds the bio from
- *              the thread's own TweetDetail response, still highlights on it,
- *              and puts it back (syncBioRow).
+ *   jpotisch  — blocks the reader, by mock (mockBlockedBy). X serves a stripped
+ *               hover card for a blocker: no bio, no follow button, no counts,
+ *               just a "Profile Summary" button. The extension still holds the
+ *               bio from the thread's own TweetDetail response, still highlights
+ *               on it, and puts it back (syncBioRow).
+ *   svtv_news — blocks nobody, and has a bio the scrub keeps (location.test.ts
+ *               names it too). Its card, on its own post's page, already shows
+ *               the bio, so the extension must not add one.
  *
  * The page is jpotisch's own status page, and the card comes from the **primary**
  * tweet's author. That is worth stating because `syncPrimaryExceptionButton`
@@ -15,9 +18,9 @@
  * appears. The inline exception button is still the right belt-and-braces for
  * the cases where it doesn't.
  *
- * ⚠ Re-recording this needs a session that jpotisch actually blocks. If that
- * stops being true, the recording is the thing to re-cut; the assertions still
- * describe what the feature is for.
+ * The block is mocked because a real one cannot be arranged: jpotisch blocked
+ * the old recording account, not the one made for recording (September 2026).
+ * The mock changes only `blocked_by`, the one field that real block changed.
  *
  * All x.com traffic is recorded/replayed via HAR (see fixtures.ts).
  */
@@ -27,15 +30,16 @@ import {
   addKeyword,
   articleBy,
   HOVER_CARD,
+  mockBlockedBy,
   mockLocationApis,
+  navigateToTweetDetail,
   pickBioWord,
   readCachedBio,
-  tweetArticles,
-  waitForReplies,
 } from './helpers'
 
 const BLOCKER_TWEET = 'https://x.com/jpotisch/status/2082644956880023812'
 const BLOCKER = 'jpotisch'
+const NOT_BLOCKING = 'svtv_news'
 
 test('restores the bio X withholds when the account blocks you, and names the block', async ({
   page,
@@ -43,6 +47,7 @@ test('restores the bio X withholds when the account blocks you, and names the bl
   // Location is not what this test is about, and an unmocked lookup makes the
   // recording depend on the community cache's mood.
   await mockLocationApis(page, { account_based_in: 'United States' })
+  await mockBlockedBy(page, BLOCKER)
   await page.goto(BLOCKER_TWEET)
   await articleBy(page, BLOCKER).waitFor({ timeout: 15_000 })
 
@@ -71,18 +76,15 @@ test('adds no bio to a card that already has one', async ({ page }) => {
   // that has not blocked the reader gets X's own bio, and must not get a second
   // copy underneath it.
   await mockLocationApis(page, { account_based_in: 'United States' })
-  await page.goto(BLOCKER_TWEET)
-  await waitForReplies(page)
-
-  const { card, screenName } = await hoverSomeoneOtherThan(page, BLOCKER)
+  // One of its own posts rather than its profile: bios reach the extension with
+  // TweetDetail, and page-script.ts reads none from a profile timeline.
+  const tweetPath = await navigateToTweetDetail(page, NOT_BLOCKING)
+  await page.goto(`https://x.com${tweetPath}`)
 
   // The extension has to actually hold a bio for this account, or "no injected
   // bio" would pass for the wrong reason.
-  const cached = await readCachedBio(page, screenName)
-  expect(
-    cached,
-    `no cached bio for @${screenName} in this recording`,
-  ).toBeTruthy()
+  await waitForCachedBio(page, NOT_BLOCKING)
+  const card = await hoverAuthor(page, NOT_BLOCKING)
 
   await expect(card.locator('.x-loc-bio')).toHaveCount(0)
   await expect(card.locator('.x-loc-chip-block')).toHaveCount(0)
@@ -97,6 +99,7 @@ test('marks the keyword inside the bio it restored', async ({
   // own furniture, so a bio built inside the wrapper would be unmarkable — and
   // the card is the one place that answers "why is this post highlighted?".
   await mockLocationApis(page, { account_based_in: 'United States' })
+  await mockBlockedBy(page, BLOCKER)
   await page.goto(BLOCKER_TWEET)
   await articleBy(page, BLOCKER).waitFor({ timeout: 15_000 })
 
@@ -161,31 +164,4 @@ async function hoverAuthor(page: Page, screenName: string): Promise<Locator> {
     await expect(card.locator('.x-loc-hover')).toBeVisible({ timeout: 4_000 })
   }).toPass({ timeout: 25_000 })
   return card
-}
-
-/** Any other author on the page, hovered, with their handle. */
-async function hoverSomeoneOtherThan(
-  page: Page,
-  exclude: string,
-): Promise<{ card: Locator; screenName: string }> {
-  const articles = tweetArticles(page)
-  const count = await articles.count()
-
-  for (let i = 0; i < Math.min(count, 8); i++) {
-    const article = articles.nth(i)
-    const href =
-      (await article
-        .locator(
-          '[data-testid="User-Name"] a[href^="/"]:not([href*="/status/"])',
-        )
-        .first()
-        .getAttribute('href', { timeout: 5_000 })
-        .catch(() => null)) ?? ''
-    const screenName = href.replace(/^\//, '').split('/')[0]
-    if (!screenName || screenName.toLowerCase() === exclude.toLowerCase())
-      continue
-
-    return { card: await hoverAuthor(page, screenName), screenName }
-  }
-  throw new Error(`no author other than @${exclude} in this recording`)
 }

@@ -30,6 +30,12 @@ Set-Cookie are stripped when _recording_. Replaying existing HARs is unaffected.
 then **`pnpm run scrub`**, then flip `MODE` back and re-run under replay to prove
 the capture is usable. A recorded-but-unscrubbed HAR must never be committed.
 
+**Let the run end before closing UI mode.** The global teardown is what strips
+cookies and auth headers from the HARs, one plain `writeFile` each. Closing the UI
+while it ran (2026-09-30) cut 11 recordings at 512 KiB boundaries and left 21
+holding the live session cookie (`grep -l auth_token= e2e/recordings/*.har`). Any
+later CLI run's teardown redacts whatever parses; re-record what doesn't.
+
 Scrubbing is a pass over **every** recording, not only the new one: it
 pseudonymises handles, names, bios and avatars across the corpus, so it routinely
 rewrites HARs the current change never touched. Those diffs are the process
@@ -107,17 +113,22 @@ binary via `executablePath`; absent → bundled Chromium + `state.json`.
 - **Scope options-page locators to their section**. A bare `locator('select')` was
   unique until the prefetch dropdown shipped, then failed strict mode.
 - Don't index into the article list — use `TWEET_ARTICLE` / `PRIMARY_TWEET` /
-  `tweetArticles()` / `waitForReplies()` / `nthReply(page, n)` from `helpers.ts`.
-  `nthReply` counts **replies**, sidestepping the off-by-one a raw `.nth()` hits
-  when the page's own tweet is itself a reply. `mostLikedReply()` re-anchors on the
-  author's handle, because X's virtualised timeline recycles rows out from under a handle.
-- Which reply a test picks is often pinned by its recording — the HAR only holds
-  pages visited at record time. The second-level-reply test needs reply **2**
-  specifically (reply 1 has no thread under it); say so at the call site.
-- A few recordings depend on the **relationship between the recording session and
-  the account under test**. `blocked-account.test.ts` only captures anything worth
-  replaying if `@jpotisch` still blocks the recording account. Re-cut the
-  recording (or swap the archetype) rather than loosening assertions.
+  `tweetArticles()` / `waitForReplies()` / `mostLikedReply()` /
+  `mostRepliedReplyPath()` from `helpers.ts`. Both pickers count only rows
+  **below** the page's own tweet: a reply's page renders its parent above it, and
+  the parent outscores every reply. `mostLikedReply()` re-anchors on the author's
+  handle, because X's virtualised timeline recycles rows out from under a handle.
+- Pick replies by rank, never by position. X ranks replies per viewer, so a
+  positional pick lands elsewhere after a re-record: "reply 2" opened a page with
+  no replies for the new recording account (2026-09-30).
+- **A block is mocked, not recorded.** No account blocks the recording account
+  made in September 2026, so `mockBlockedBy()` rewrites `blocked_by` in every
+  GraphQL answer as the page reads it; the recording keeps X's real answer. It is
+  the one field a real block changed (compared on a recording made while
+  `@jpotisch` blocked the old account).
+- **A test needs an account's bio? Name the account.** The scrub blanks the bio of
+  every account no test source names, so a reply picked at random has none after
+  `pnpm scrub` (two tests passed only while X's new user shape leaked bios).
 - `addKeyword` / `removeKeyword` live in `helpers.ts` — they open the options page,
   so they cost no x.com traffic.
 - **Two runs at once break each other.** Both want the proxy on :8100, and

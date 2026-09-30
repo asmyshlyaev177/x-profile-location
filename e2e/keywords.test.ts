@@ -5,6 +5,9 @@
  *   MRNFT_X       — bio contains standalone "nft" → should highlight
  *   OldRoberts953 — "nft" only appears inside a longer word → must NOT highlight
  *                   (regression test for the word-boundary false-positive bug)
+ *   jk_rowling    — replies to her own post, for the reply hover card. Named
+ *                   because the scrub blanks every unnamed account's bio, and
+ *                   location.test.ts names her too.
  *
  * The last two cover the per-account escape hatch: the "🚫 Add exception"
  * button, which adds the account to the highlight bucket of RULE_EXCEPTIONS_KEY
@@ -23,13 +26,15 @@ import {
   PRIMARY_TWEET,
   readCachedBio,
   removeKeyword,
+  TWEET_ARTICLE,
   tweetArticles,
-  waitForReplies,
 } from './helpers'
 
 const MRNFT_TWEET = 'https://x.com/MRNFT_X/status/2053116341926629624'
 const OLD_ROBERTS_TWEET =
   'https://x.com/OldRoberts953/status/2053099310741401905'
+const SELF_REPLY_TWEET = 'https://x.com/jk_rowling/status/2100176797782450609'
+const SELF_REPLIER = 'jk_rowling'
 
 test('keyword highlights article when bio contains it as a standalone word, removing it un-highlights', async ({
   page,
@@ -122,12 +127,12 @@ test('highlight exception button works the same from a reply hover card', async 
   context,
   extensionId,
 }) => {
-  await page.goto(MRNFT_TWEET)
+  await page.goto(SELF_REPLY_TWEET)
   await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 })
 
   // Replies keep the original path honest: they get a real hover card, so the
   // button comes from processCard() rather than the inline injection above.
-  const target = await pickHighlightableReply(page)
+  const target = await replyWithBio(page, SELF_REPLIER)
 
   await addKeyword(context, extensionId, target.keyword)
   await expect(target.article).toHaveAttribute('data-x-loc-highlighted', {
@@ -171,36 +176,25 @@ test('highlight exception button works the same from a reply hover card', async 
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Any reply whose author the extension has a bio for, plus a keyword taken from
- * that bio. Which reply that is shifts between recordings — and a reply with no
- * bio can't be highlighted — so it is discovered rather than pinned to an index.
- */
-async function pickHighlightableReply(page: Page): Promise<{
-  article: Locator
-  link: Locator
-  keyword: string
-}> {
-  const articles = tweetArticles(page)
-  await waitForReplies(page)
+/** `screenName`'s reply below the page's own tweet, plus a keyword from its bio. */
+async function replyWithBio(
+  page: Page,
+  screenName: string,
+): Promise<{ article: Locator; link: Locator; keyword: string }> {
+  const byAuthor = `[data-testid="User-Name"] a[href="/${screenName}" i]`
+  // Not the page's own tweet: it has no hover card.
+  const article = page
+    .locator(`${TWEET_ARTICLE}:not([tabindex="-1"])`)
+    .filter({ has: page.locator(byAuthor) })
+    .first()
+  const link = article.locator(byAuthor).first()
+  await link.waitFor({ timeout: 15_000 })
 
-  const count = await articles.count()
-  for (let i = 0; i < Math.min(count, 6); i++) {
-    const article = articles.nth(i)
-    // Skip the tweet the page is about — it has no hover card.
-    if ((await article.getAttribute('tabindex')) === '-1') continue
-
-    const link = article
-      .locator('[data-testid="User-Name"] a[href^="/"]:not([href*="/status/"])')
-      .first()
-    if ((await link.count()) === 0) continue
-
-    const href = (await link.getAttribute('href')) ?? ''
-    const screenName = href.replace(/^\//, '').split('/')[0]
-    if (!screenName) continue
-
-    const keyword = pickBioWord(await readCachedBio(page, screenName))
-    if (keyword) return { article, link, keyword }
-  }
-  throw new Error('no reply with a cached bio in this recording')
+  // The bio lands in IDB after the TweetDetail response, not with it.
+  await expect
+    .poll(() => readCachedBio(page, screenName), { timeout: 15_000 })
+    .toBeTruthy()
+  const keyword = pickBioWord(await readCachedBio(page, screenName))
+  if (!keyword) throw new Error(`no usable word in @${screenName}'s bio`)
+  return { article, link, keyword }
 }

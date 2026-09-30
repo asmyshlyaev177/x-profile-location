@@ -302,6 +302,38 @@ describe('fetchLocationData', () => {
     expect(variables).not.toHaveProperty('userName')
   })
 
+  // Every TweetDetail delivers bios, often while a lookup for the same account
+  // is out. The lookup's copy was read before its request, so writing it back
+  // replaced the newer bio with the older one - null, for an account seen first.
+  it('writes no bio of its own: a newer one may have landed during the request', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            user_result_by_screen_name: {
+              result: {
+                about_profile: {
+                  account_based_in: 'Germany',
+                  location_accurate: true,
+                  source: 'web',
+                },
+              },
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    )
+
+    await fetchLocationData('bioinflight')
+
+    const writes = vi
+      .mocked(mergeCached)
+      .mock.calls.filter(([name]) => name === 'bioinflight')
+    expect(writes).not.toHaveLength(0)
+    for (const [, patch] of writes) expect(patch).not.toHaveProperty('bio')
+  })
+
   it('returns location data from API response', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
@@ -867,9 +899,10 @@ describe('fetchLocationData - error responses', () => {
 
     expect(data?.location).toBe('Canada')
     expect(data?.bio).toBe('existing bio')
+    // The stored bio stays through the merge; writing it back is the race above.
     expect(vi.mocked(mergeCached)).toHaveBeenCalledWith(
       'biomergeuser',
-      expect.objectContaining({ location: 'Canada', bio: 'existing bio' }),
+      expect.objectContaining({ location: 'Canada' }),
     )
   })
 

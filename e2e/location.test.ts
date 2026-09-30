@@ -4,16 +4,17 @@
  *
  * Archetypes:
  *   svtv_news       — accurate location, app-store source (📱 + flag)
- *   zgldz           — VPN detected (locationAccurate: false → ⚠ VPN badge)
- *   TheCriticalDri2 — accurate, web-only source (flag only, no store block)
+ *   jk_rowling      — VPN detected (locationAccurate: false → ⚠ VPN badge)
+ *   SpaceX          — accurate, web-only source (flag only, no store block)
  *   sotaproject     — any account with a location; used by the cache tests
  *
  * An account's VPN status is X's call and can change under us: sotaproject and
  * visegrad24 held the first and third slots until X flagged both as inaccurate
- * in July 2026. Each test therefore asserts agreement with the account's own
- * About page (the real contract) *and* the archetype it was picked for — so a
- * flagged account fails loudly, saying it needs replacing rather than pretending
- * the extension is wrong.
+ * in July 2026. In September 2026 zgldz lost the second (X marked it accurate
+ * again) and TheCriticalDri2 the third (now an Android App source). Each test
+ * therefore asserts agreement with the account's own About page (the real
+ * contract) *and* the archetype it was picked for — so a flagged account fails
+ * loudly, saying it needs replacing rather than pretending the extension is wrong.
  */
 import { test, expect, pinExtension } from './fixtures'
 import {
@@ -26,8 +27,8 @@ import {
   mockAboutAccount,
   mockLocationApis,
   mockSharedCache,
+  mostRepliedReplyPath,
   navigateToTweetDetail,
-  nthReply,
   officialAccountLocation,
   openOptionsPage,
   optionsSection,
@@ -71,9 +72,9 @@ test('VPN warning matches About page', async ({ page }) => {
   // value instead of the one the About page is about to be read for.
   await mockSharedCache(page, null)
 
-  const card = await hoverOwnTweet(page, 'zgldz')
+  const card = await hoverOwnTweet(page, 'jk_rowling')
   const fromCard = await hoverCardLocation(card)
-  const fromPage = await officialAccountLocation(page, 'zgldz')
+  const fromPage = await officialAccountLocation(page, 'jk_rowling')
 
   expect(fromCard.basedIn).toBe(fromPage.basedIn)
   expect(fromCard.appStoreCountry).toBe(fromPage.appStoreCountry)
@@ -90,9 +91,9 @@ test('no app store block; location matches About page', async ({ page }) => {
   // value instead of the one the About page is about to be read for.
   await mockSharedCache(page, null)
 
-  const card = await hoverOwnTweet(page, 'TheCriticalDri2')
+  const card = await hoverOwnTweet(page, 'SpaceX')
   const fromCard = await hoverCardLocation(card)
-  const fromPage = await officialAccountLocation(page, 'TheCriticalDri2')
+  const fromPage = await officialAccountLocation(page, 'SpaceX')
 
   expect(fromCard.basedIn).toBe(fromPage.basedIn)
   expect(fromCard.appStoreCountry).toBe(fromPage.appStoreCountry)
@@ -143,16 +144,14 @@ test('tweet detail: hover location shown for second-level reply', async ({
   await page.goto(`https://x.com${tweetPath}`)
   await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 })
 
-  // Open a reply's own detail page — second-level replies live there. The second
-  // reply specifically: it is the one with replies of its own, and the recording
-  // has its page. (The first reply's page has no replies, so the hover below
-  // would find nothing to hover.)
-  const replyStatusLink = (await nthReply(page, 2))
-    .locator('a[href*="/status/"]')
-    .first()
-  await replyStatusLink.waitFor({ timeout: 15_000 })
-  await replyStatusLink.click()
-  await page.waitForResponse(/AboutAccountQuery/, { timeout: 15_000 })
+  // Open a reply's own detail page — second-level replies live there, so it
+  // has to be a reply with replies of its own.
+  const replyPath = await mostRepliedReplyPath(page)
+  await page.locator(`${TWEET_ARTICLE} a[href="${replyPath}"]`).first().click()
+  // The page, not a lookup: background prefetch has usually looked the reply's
+  // author up before the click, so no AboutAccountQuery follows it. `commit`,
+  // because a replayed x.com never fires `load` (see stopWaitingForLoad).
+  await page.waitForURL(`https://x.com${replyPath}`, { waitUntil: 'commit' })
 
   // On the reply's detail page, hover a reply (= a second-level reply).
   const replyCard = await hoverAnyReplyForLocation(page)

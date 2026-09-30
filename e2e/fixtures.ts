@@ -62,6 +62,11 @@ export async function readSeededProfile(): Promise<SeededProfile | null> {
   return manifest
 }
 
+/** Chromium's saved windows and tabs (`<profile>/Sessions`), restored at launch. */
+function isSessionRestore(source: string): boolean {
+  return path.basename(source) === 'Sessions'
+}
+
 // All browser-side requests to X/Twitter APIs are recorded/replayed via HAR.
 export const CLIENT_SIDE_URL =
   /x\.com|twimg\.com|abs\.twimg\.com|api\.x\.com|pscp\.tv|analytics\.twitter\.com/
@@ -88,8 +93,14 @@ export const test = base.extend<Fixtures>({
     const seeded = await readSeededProfile()
 
     // Clone the seed rather than launching it: the browser rewrites the profile
-    // as it runs, and a failed run must not cost the login.
-    if (seeded) await cp(seeded.profileDir, userDataDir, { recursive: true })
+    // as it runs, and a failed run must not cost the login. The session files
+    // stay behind, or every test reopens the tabs left open when seeding, and
+    // each one runs X and the extension beside the page under test.
+    if (seeded)
+      await cp(seeded.profileDir, userDataDir, {
+        recursive: true,
+        filter: (source) => !isSessionRestore(source),
+      })
 
     const context = (await chromium.launchPersistentContext(userDataDir, {
       headless: !HEADED,

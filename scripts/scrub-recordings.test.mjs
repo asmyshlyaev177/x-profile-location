@@ -53,7 +53,47 @@ const legacyUser = () => ({
         { url: 'https://t.co/abcdefghij', expanded_url: 'https://me.example' },
       ],
     },
+    url: {
+      urls: [
+        {
+          url: 'https://t.co/klmnopqrst',
+          expanded_url: 'https://site.example',
+        },
+      ],
+    },
   },
+})
+
+/** X's user since 2026: no `legacy`, every self-described field its own
+ *  sibling of `core`. */
+const splitUser = () => ({
+  __typename: 'User',
+  core: { screen_name: HANDLE, name: NAME },
+  avatar: { image_url: 'https://pbs.twimg.com/profile_images/1/a.jpg' },
+  banner: { image_url: 'https://pbs.twimg.com/profile_banners/1/2' },
+  profile_bio: {
+    description: BIO,
+    entities: {
+      description: {
+        urls: [
+          {
+            url: 'https://t.co/abcdefghij',
+            expanded_url: 'https://me.example',
+          },
+        ],
+      },
+      url: {
+        urls: [
+          {
+            url: 'https://t.co/klmnopqrst',
+            expanded_url: 'https://site.example',
+          },
+        ],
+      },
+    },
+  },
+  location: { location: 'Somewhere' },
+  website: { url: 'https://t.co/klmnopqrst' },
 })
 
 const markupEntryWith = (html) => ({
@@ -131,6 +171,32 @@ describe('a user in a JSON body', () => {
     // Blanking `description` alone leaves the personal site in `entities`.
     expect(JSON.stringify(user)).not.toContain('me.example')
     expect(user.entities.description.urls).toEqual([])
+  })
+
+  it('loses the website X keeps parsed out beside the bio', () => {
+    const user = legacyUser()
+    walk(user, blankStats())
+    expect(JSON.stringify(user)).not.toContain('site.example')
+  })
+
+  it('handles the shape with no legacy: bio, location, website and banner beside core', () => {
+    const node = splitUser()
+    walk(node, blankStats())
+
+    expect(node.core.screen_name).toBe(synthetic(HANDLE))
+    expect(node.core.name).not.toBe(NAME)
+    expect(node.profile_bio.description).toBe('')
+    expect(node.location.location).toBe('')
+    expect(node.website.url).toBe('')
+    expect(node.avatar.image_url).toContain('default_profile')
+    expect(node.banner.image_url).toContain('default_profile')
+    expect(JSON.stringify(node)).not.toMatch(/me\.example|site\.example/)
+  })
+
+  it('counts the bio it blanked in that shape', () => {
+    const stats = blankStats()
+    walk(splitUser(), stats)
+    expect(stats.bios).toBeGreaterThan(0)
   })
 
   it('handles the core/legacy split, avatar sibling and all', () => {
@@ -383,6 +449,16 @@ describe('accounts the tests assert against', () => {
     expect(user.description).toBe(BIO)
     // The avatar goes regardless: no test asserts on a face.
     expect(user.profile_image_url_https).toContain('default_profile')
+  })
+
+  it('keep their bio in the shape with no legacy too', () => {
+    SUBJECTS.add(HANDLE.toLowerCase())
+    const node = splitUser()
+    walk(node, blankStats())
+
+    expect(node.core.screen_name).toBe(HANDLE)
+    expect(node.profile_bio.description).toBe(BIO)
+    expect(node.banner.image_url).toContain('default_profile')
   })
 
   it('keep them when they are inlined into a document too', () => {

@@ -41,7 +41,9 @@ identifier are dropped with a warning rather than quietly breaking a test.
 ### Every shape, every carrier — this took two goes to get right
 
 A user reaches a capture as GraphQL's `screen_name`, as the newer `core`/`legacy` split,
-and as Periscope's `twitter_screen_name` + `display_name`. It arrives as a JSON response
+as `core` with no `legacy` at all (bio, location, website and banner each their own
+sibling: `profile_bio`, `location`, `website`, `banner`, since 2026), and as Periscope's
+`twitter_screen_name` + `display_name`. It arrives as a JSON response
 body **and** inlined into the HTML of every server-rendered document, where X writes the
 signed-in account's name, bio, location, avatar and date of birth into
 `__INITIAL_STATE__`.
@@ -51,6 +53,10 @@ signed-in account's name, bio, location, avatar and date of birth into
 - Skipping HTML entirely left that account's handle in every capture (version one).
 - Running only the textual pass over HTML rewrote the handle and left the name, bio,
   location, avatar and birthdate beside it (version two).
+- Knowing only `legacy` left every bio, location and website of the 2026 shape in
+  place: 1,257 bios and 865 locations on 1,592 pseudonymised users in one re-record,
+  and in committed history until 2026-09-30. The stats line reading `bios 0` on a
+  fresh capture was the tell.
 
 So markup gets the **structural** pass too: locate the JSON around each user-shaped
 anchor by balancing braces (tracking string literals), confirm with `JSON.parse` before a
@@ -86,8 +92,9 @@ short or dictionary word used as a handle, so the guard is general, not a list.
   what was clicked. The whole body goes: none of it is under test, and matching names
   would need every trend known in advance, impossible when one recording is scrubbed
   alone.
-- **Bio links.** X keeps them parsed into `entities` with `expanded_url`, so blanking
-  `description` alone leaves the personal site the account linked to.
+- **Bio links and the website.** X keeps both parsed into `entities` (`description`
+  and `url`) with `expanded_url`, so blanking `description` alone leaves the personal
+  site the account linked to.
 - **Date of birth.** Deleted, not blanked — the strongest identifier a profile carries,
   and not knowing it is the normal state of every other user object in a capture.
 - **Post text**, guarded by an `id_str`/`rest_id` sibling so unrelated `text` fields
@@ -120,8 +127,9 @@ seeded profile's real X session, and X renders no post for a document whose sess
 names a different account: rewriting the id failed every x.com spec at its first tweet
 (2026-09-30). X's sign-in cannot be mocked - that is why the seeded profile exists - so
 neither can its cookies be rewritten to match. The id therefore identifies the recording
-account in every capture, public history included; recording with an account made for
-the purpose is what makes that harmless. The test pinning this is `keeps the account id`.
+account in every capture, public history included. Recordings made from 2026-09-30 use
+an account made for the purpose, which is what makes that harmless; older history holds
+the previous account's id. The test pinning this is `keeps the account id`.
 
 Country and trend location in the session and settings stay too. Whether replay
 tolerates changing them has not been tried.

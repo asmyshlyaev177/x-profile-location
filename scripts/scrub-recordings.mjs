@@ -209,13 +209,16 @@ function walk(node, stats) {
     stats.trends++
   }
 
-  // Shape B: core.screen_name, with avatar/legacy as siblings of `core`.
+  // Shape B: core.screen_name, the rest as siblings of `core`. The bio,
+  // location and website sat in `legacy` until X split each into its own
+  // object (2026); a scrub that knew only `legacy` left every bio in place.
   if (node.core && typeof node.core.screen_name === 'string') {
     const nested = node.core.screen_name
     rewriteUser(node.core, nested, stats)
     if (node.avatar) blankAvatar(node.avatar, 'image_url', stats)
-    if (node.legacy && typeof node.legacy === 'object') {
-      rewriteUser(node.legacy, nested, stats)
+    if (node.banner) blankAvatar(node.banner, 'image_url', stats)
+    for (const key of ['legacy', 'profile_bio', 'location', 'website']) {
+      if (isObject(node[key])) rewriteUser(node[key], nested, stats)
     }
   }
 
@@ -287,10 +290,11 @@ function rewriteUser(obj, handle, stats) {
       if (obj.description !== '') stats.bios++
       obj.description = ''
     }
-    // X keeps bio links parsed into `entities`, so blanking `description` alone
-    // leaves the personal site the account linked to.
-    if (obj.entities?.description?.urls?.length) {
-      obj.entities.description.urls = []
+    // X keeps bio links and the website parsed into `entities`, so blanking
+    // `description` alone leaves the personal site the account linked to.
+    for (const part of ['description', 'url']) {
+      if (!obj.entities?.[part]?.urls?.length) continue
+      obj.entities[part].urls = []
       stats.bios++
     }
     // Deleted rather than blanked: not knowing a birthday is the normal state

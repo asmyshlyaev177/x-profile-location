@@ -55,36 +55,15 @@ export async function waitForReplies(page: Page): Promise<void> {
   await tweetArticles(page).nth(1).waitFor({ timeout: 15_000 })
 }
 
-/** tabindex, or null if the row was recycled out from under us mid-read. */
-async function tabindexOf(article: Locator): Promise<string | null> {
-  return article.getAttribute('tabindex', { timeout: 5_000 }).catch(() => null)
-}
-
 /**
- * The nth reply (1-based) below the tweet the page is about.
- *
- * Counts *replies*, not articles: indexing the article list is an off-by-one
- * trap, because a page whose own tweet is a reply renders the parent above it.
- * Which reply a test wants is usually pinned by its HAR recording — say why at
- * the call site.
+ * Resolves once X has marked the page's own tweet. Rows count as replies only
+ * below that mark, and X sets it after the rows render: a scan that ran first
+ * found no replies at all.
  */
-export async function nthReply(page: Page, n: number): Promise<Locator> {
-  const articles = tweetArticles(page)
-  // Attached, not visible: all we do here is read tabindex off each row, and a
-  // reply below the fold is in the DOM before it has a box.
-  await articles.nth(1).waitFor({ state: 'attached', timeout: 15_000 })
-
-  const count = await articles.count()
-  let seenPrimary = false
-  let replies = 0
-  for (let i = 0; i < count; i++) {
-    if ((await tabindexOf(articles.nth(i))) === '-1') {
-      seenPrimary = true
-      continue
-    }
-    if (seenPrimary && ++replies === n) return articles.nth(i)
-  }
-  throw new Error(`fewer than ${n} replies below the primary tweet`)
+async function waitForPrimaryTweet(page: Page): Promise<void> {
+  await page
+    .locator(PRIMARY_TWEET)
+    .waitFor({ state: 'attached', timeout: 15_000 })
 }
 
 // ---------------------------------------------------------------------------
@@ -220,16 +199,91 @@ export async function readIdb(page: Page): Promise<string[]> {
   )
 }
 
-/** Likes from the action bar. aria-label reads "1,234 Likes. Like", or just
- *  "Like" when there are none. */
-async function likeCount(article: Locator): Promise<number> {
-  const label = await article
-    .locator('[data-testid="like"], [data-testid="unlike"]')
-    .first()
-    .getAttribute('aria-label', { timeout: 3_000 })
-    .catch(() => null)
-  const digits = label?.match(/^([\d,.]+)/)?.[1]
-  return digits ? Number(digits.replace(/[,.]/g, '')) : 0
+type ReplyRow = {
+  screenName: string
+  path: string
+  likes: number
+  replies: number
+}
+
+/** The replies among the first eight rows, below the page's own tweet, read in
+ *  one pass over the DOM. */
+function readReplies(page: Page): Promise<ReplyRow[]> {
+  return tweetArticles(page).evaluateAll((articles) => {
+    // aria-label reads "1,234 Likes. Like", or just "Like" when there are none.
+    const countIn = (article: Element, buttons: string): number => {
+      const label =
+        article.querySelector(buttons)?.getAttribute('aria-label') ?? ''
+      const digits = label.match(/^([\d,.]+)/)?.[1]
+      return digits ? Number(digits.replace(/[,.]/g, '')) : 0
+    }
+    const rows = articles.slice(0, 8)
+    // A reply's own page renders its parent above it, and the parent outscores
+    // every reply: only rows below the page's own tweet count.
+    const primary = rows.findIndex((a) => a.getAttribute('tabindex') === '-1')
+    if (primary < 0) return []
+    return rows.slice(primary + 1).flatMap((article) => {
+      const author = article
+        .querySelector(
+          '[data-testid="User-Name"] a[href^="/"]:not([href*="/status/"])',
+        )
+        ?.getAttribute('href')
+      const screenName = author?.replace(/^\//, '').split('/')[0] ?? ''
+      const path =
+        article.querySelector('a[href*="/status/"]')?.getAttribute('href') ?? ''
+      if (!screenName || !path) return []
+      const likes = countIn(
+        article,
+        '[data-testid="like"], [data-testid="unlike"]',
+      )
+      const replies = countIn(article, '[data-testid="reply"]')
+      return [{ screenName, path, likes, replies }]
+    })
+  })
+}
+
+/**
+ * The replies once two reads 600 ms apart agree. Read row by row, a list X
+ * re-rendered mid-scan (a re-sort does) left every vanished row waiting out its
+ * own timeout: 20 s gone before the hover it was picking for.
+ */
+async function settledReplies(page: Page): Promise<ReplyRow[]> {
+  await waitForReplies(page)
+  await waitForPrimaryTweet(page)
+  let rows: ReplyRow[] = []
+  let previous = ''
+  await expect
+    .poll(
+      async () => {
+        rows = await readReplies(page)
+        const read = JSON.stringify(rows)
+        const isSettled = rows.length > 0 && read === previous
+        previous = read
+        return isSettled
+      },
+      { timeout: 10_000, intervals: [600] },
+    )
+    .toBe(true)
+  return rows
+}
+
+/** The row with the highest `by`, the first of a tie. */
+function topReply(rows: ReplyRow[], by: 'likes' | 'replies'): ReplyRow | null {
+  return rows.reduce<ReplyRow | null>(
+    (top, row) => (!top || row[by] > top[by] ? row : top),
+    null,
+  )
+}
+
+/**
+ * Status path of the reply below the page's tweet with the most replies of its
+ * own. A reply's count is no promise its page lists any: one showing 10 opened
+ * on none for the recording account (September 2026), so take the busiest.
+ */
+export async function mostRepliedReplyPath(page: Page): Promise<string> {
+  const best = topReply(await settledReplies(page), 'replies')
+  if (!best) throw new Error('no reply below the primary tweet')
+  return best.path
 }
 
 /**
@@ -269,34 +323,9 @@ export async function mostLikedReply(page: Page): Promise<{
   link: Locator
   screenName: string
 }> {
-  const articles = tweetArticles(page)
   await waitForReplies(page)
   await sortRepliesByLikes(page)
-
-  const count = await articles.count()
-  let best: { screenName: string; likes: number } | null = null
-
-  for (let i = 0; i < Math.min(count, 8); i++) {
-    // Every read here is bounded and forgiving: X's virtualised timeline recycles
-    // rows constantly, so an article counted a moment ago may be gone by the time
-    // it is read. Without a timeout such a row hangs the whole test.
-    if ((await tabindexOf(articles.nth(i))) === '-1') continue
-
-    const href =
-      (await articles
-        .nth(i)
-        .locator(
-          '[data-testid="User-Name"] a[href^="/"]:not([href*="/status/"])',
-        )
-        .first()
-        .getAttribute('href', { timeout: 5_000 })
-        .catch(() => null)) ?? ''
-    const screenName = href.replace(/^\//, '').split('/')[0]
-    if (!screenName) continue
-
-    const likes = await likeCount(articles.nth(i))
-    if (!best || likes > best.likes) best = { screenName, likes }
-  }
+  const best = topReply(await settledReplies(page), 'likes')
   if (!best) throw new Error('no reply article on this page')
 
   const article = articleBy(page, best.screenName)
@@ -826,6 +855,70 @@ export async function mockSharedCache(
   )
 
   return { served, lookups, contributions }
+}
+
+/**
+ * Makes every GraphQL answer the page reads say `screenName` blocks the reader.
+ * `blocked_by` is the one field a real block changed (a recording made while an
+ * account blocked the old recording account sent bio and counts as before), so
+ * X draws its stripped card and the extension its chip. Applied as the page
+ * reads a response: the recording keeps X's real answer, and replay mocks alike.
+ */
+export async function mockBlockedBy(
+  page: Page,
+  screenName: string,
+): Promise<void> {
+  await page.addInitScript((blocker) => {
+    const proto = XMLHttpRequest.prototype
+    const textOf = Object.getOwnPropertyDescriptor(proto, 'responseText')!.get!
+    const responseOf = Object.getOwnPropertyDescriptor(proto, 'response')!.get!
+    const rewritten = new WeakMap<XMLHttpRequest, string>()
+
+    const markBlocked = (node: unknown): void => {
+      if (!node || typeof node !== 'object') return
+      const user = node as Record<string, any>
+      if (user.core?.screen_name?.toLowerCase() === blocker) {
+        user.relationship_perspectives = {
+          ...user.relationship_perspectives,
+          blocked_by: true,
+        }
+      }
+      Object.values(user).forEach(markBlocked)
+    }
+    // The prototype, not window.XMLHttpRequest: page-script.ts swaps the
+    // constructor, but every instance it hands out still reads through here.
+    const blockedText = (xhr: XMLHttpRequest): string => {
+      const text = textOf.call(xhr)
+      if (xhr.readyState !== 4 || !xhr.responseURL.includes('/graphql/'))
+        return text
+      if (!rewritten.has(xhr)) {
+        let json: unknown = null
+        try {
+          json = JSON.parse(text)
+        } catch {}
+        markBlocked(json)
+        rewritten.set(xhr, json === null ? text : JSON.stringify(json))
+      }
+      return rewritten.get(xhr)!
+    }
+
+    Object.defineProperty(proto, 'responseText', {
+      configurable: true,
+      get(this: XMLHttpRequest) {
+        return blockedText(this)
+      },
+    })
+    Object.defineProperty(proto, 'response', {
+      configurable: true,
+      get(this: XMLHttpRequest) {
+        if (this.responseType === '' || this.responseType === 'text')
+          return blockedText(this)
+        const body = responseOf.call(this)
+        if (this.responseType === 'json') markBlocked(body)
+        return body
+      },
+    })
+  }, screenName.toLowerCase())
 }
 
 /**
