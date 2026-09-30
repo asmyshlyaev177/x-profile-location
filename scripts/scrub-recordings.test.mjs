@@ -15,6 +15,7 @@ import {
   SUBJECTS,
   blankStats,
   scrubEntry,
+  scrubHar,
   scrubMarkup,
   scrubTelemetry,
   synthetic,
@@ -55,13 +56,15 @@ const legacyUser = () => ({
   },
 })
 
-const markupEntry = (user) => ({
+const markupEntryWith = (html) => ({
   request: { url: 'https://x.com/home', headers: [], queryString: [] },
   response: {
     headers: [],
-    content: { mimeType: 'text/html; charset=utf-8', text: documentWith(user) },
+    content: { mimeType: 'text/html; charset=utf-8', text: html },
   },
 })
+
+const markupEntry = (user) => markupEntryWith(documentWith(user))
 
 const jsonEntry = (body) => ({
   request: {
@@ -72,6 +75,20 @@ const jsonEntry = (body) => ({
   response: {
     headers: [],
     content: { mimeType: 'application/json', text: JSON.stringify(body) },
+  },
+})
+
+const formEntry = (text, params) => ({
+  request: {
+    method: 'POST',
+    url: 'https://x.com/i/api/1.1/example.json',
+    headers: [],
+    queryString: [],
+    postData: { mimeType: 'application/x-www-form-urlencoded', text, params },
+  },
+  response: {
+    headers: [],
+    content: { mimeType: 'application/json', text: '{}' },
   },
 })
 
@@ -373,6 +390,140 @@ describe('accounts the tests assert against', () => {
     const html = scrubMarkup(documentWith(legacyUser()), blankStats())
     expect(html).toContain(NAME)
     expect(html).toContain(HANDLE)
+  })
+})
+
+describe('the session the recording was made in', () => {
+  const ID = '2222222222'
+  const GUEST = '177777777777777777'
+  const USER_HASH = 'ab'.repeat(32)
+  const SSO = 'c29tZWdvb2dsZWFjY291bnQ='
+
+  const page = `<!DOCTYPE html><html><body><script>window.__INITIAL_STATE__=${JSON.stringify(
+    { session: { guestId: GUEST, user_id: ID } },
+  )};window.__META_DATA__=${JSON.stringify({
+    userHash: USER_HASH,
+    userId: ID,
+  })};</script></body></html>`
+
+  const recording = () => ({
+    log: {
+      entries: [
+        {
+          request: { url: 'https://x.com/home', headers: [], queryString: [] },
+          response: {
+            headers: [],
+            content: { mimeType: 'text/html; charset=utf-8', text: page },
+          },
+        },
+        jsonEntry({
+          ext: {
+            ssoConnections: {
+              r: { ok: [{ ssoIdHash: SSO, ssoProvider: 'Google' }] },
+            },
+          },
+        }),
+      ],
+    },
+  })
+
+  it('loses the ids that tie it to one browser and one Google sign-in', () => {
+    const out = scrubHar(recording(), blankStats())
+    for (const id of [GUEST, USER_HASH, SSO]) expect(out).not.toContain(id)
+  })
+
+  it('keeps the account id, which the seeded session has to match at replay', () => {
+    // Replay runs on the seeded profile's real X session, and X renders no
+    // post for a document whose session names another account. Rewriting this
+    // id failed every x.com spec at its first tweet (2026-09-30); X's sign-in
+    // cannot be mocked, so the id stays. See "What stays" in CLAUDE.md.
+    const har = recording()
+    scrubHar(har, blankStats())
+    const html = har.log.entries[0].response.content.text
+    expect(html).toContain(`"user_id":"${ID}"`)
+    expect(html).toContain(`"userId":"${ID}"`)
+  })
+
+  it('changes nothing the second time', () => {
+    const once = scrubHar(recording(), blankStats())
+
+    const stats = blankStats()
+    expect(scrubHar(JSON.parse(once), stats)).toBe(once)
+    expect(stats.sessionIds).toBe(0)
+  })
+
+  it('reaches one inside a JSON string, where \\" closes the value', () => {
+    const out = scrubHar(
+      {
+        log: {
+          entries: [jsonEntry({ blob: JSON.stringify({ guestId: GUEST }) })],
+        },
+      },
+      blankStats(),
+    )
+    expect(out).not.toContain(GUEST)
+  })
+
+  it('replaces a value carrying an escape whole, not up to the backslash', () => {
+    // JSON.stringify never writes /, but X's inline script can; stopping
+    // at the backslash left the tail behind and still passed --check.
+    const entry = markupEntryWith(
+      `<script>window.__META_DATA__={"userHash":"abc\\u002Fdef"};</script>`,
+    )
+    scrubHar({ log: { entries: [entry] } }, blankStats())
+    expect(entry.response.content.text).toContain(
+      `"userHash":"${'0'.repeat(64)}"`,
+    )
+  })
+
+  it('leaves an empty one empty', () => {
+    const stats = blankStats()
+    const entry = jsonEntry({ ssoIdHash: '' })
+    scrubHar({ log: { entries: [entry] } }, stats)
+    expect(entry.response.content.text).toBe('{"ssoIdHash":""}')
+    expect(stats.sessionIds).toBe(0)
+  })
+})
+
+describe('a form body', () => {
+  it('loses a handle from its parsed params as well as its text', () => {
+    // The HAR keeps a form body twice, and the params copy was never rewritten.
+    synthetic(HANDLE)
+    const entry = formEntry(`screen_name=${HANDLE}`, [
+      { name: 'screen_name', value: HANDLE },
+    ])
+    expect(scrubHar({ log: { entries: [entry] } }, blankStats())).not.toContain(
+      HANDLE,
+    )
+  })
+
+  it('loses a quoted handle and session id from percent-encoded text too', () => {
+    // Every form body in the recordings is percent-encoded, and `%22` put a
+    // digit in front of the handle, so the token boundary never matched.
+    synthetic(HANDLE)
+    const log = JSON.stringify([
+      { screen_name: HANDLE, guestId: '177777777777777777' },
+    ])
+    const entry = formEntry(`log=${encodeURIComponent(log)}&debug=true`, [
+      { name: 'log', value: log },
+      { name: 'debug', value: 'true' },
+    ])
+    const out = scrubHar({ log: { entries: [entry] } }, blankStats())
+
+    expect(out).not.toContain(HANDLE)
+    expect(out).not.toContain('177777777777777777')
+    // Pairs with nothing to scrub keep their bytes, which is what --check needs.
+    expect(entry.request.postData.text).toMatch(/&debug=true$/)
+  })
+
+  it('changes nothing the second time', () => {
+    synthetic(HANDLE)
+    const log = JSON.stringify([{ screen_name: HANDLE }])
+    const entry = formEntry(`log=${encodeURIComponent(log)}`, [
+      { name: 'log', value: log },
+    ])
+    const once = scrubHar({ log: { entries: [entry] } }, blankStats())
+    expect(scrubHar(JSON.parse(once), blankStats())).toBe(once)
   })
 })
 

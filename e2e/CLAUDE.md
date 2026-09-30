@@ -78,6 +78,11 @@ binary via `executablePath`; absent → bundled Chromium + `state.json`.
   silently never loads. Use Brave or Chromium.
 - Anti-detection: `--disable-blink-features=AutomationControlled` +
   `ignoreDefaultArgs: ['--enable-automation']` → `navigator.webdriver === false`.
+- **Replay runs on this login too, not only recording.** X's sign-in cannot be
+  mocked, so a replayed page has to match the seeded session: never rewrite its
+  cookies (`twid` and the rest) in a fixture, and never scrub the account id a page
+  carries. Rewriting that id failed every x.com spec at its first tweet
+  (2026-09-30). When the x.com specs fail on login, re-seed with `pnpm e2e:profile`.
 
 ## Gotchas
 
@@ -115,6 +120,12 @@ binary via `executablePath`; absent → bundled Chromium + `state.json`.
   recording (or swap the archetype) rather than loosening assertions.
 - `addKeyword` / `removeKeyword` live in `helpers.ts` — they open the options page,
   so they cost no x.com traffic.
+- **Two runs at once break each other.** Both want the proxy on :8100, and
+  `reuseExistingServer` hands the second run the first run's proxy, which dies when
+  that run ends. Every test after reports `Error setting proxy mode: fetch failed`
+  (`ECONNREFUSED`). Check `ss -ltn | grep 8100` before starting one.
+- **Never `route.fulfill` a Chrome Web Store navigation** - Chromium 147 crashes
+  outright, taking the context with it. `route.abort()` it (`rating-ask.test.ts`).
 
 ## Firefox is checked by hand, not by Playwright
 

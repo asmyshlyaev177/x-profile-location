@@ -366,6 +366,31 @@ export async function openPopupPage(
   return popup
 }
 
+/** Writes straight to the extension's storage, as an earlier session would have. */
+export async function seedStorage(
+  context: BrowserContext,
+  extensionId: string,
+  items: Record<string, unknown>,
+): Promise<void> {
+  const page = await openPopupPage(context, extensionId)
+  await page.evaluate((i) => chrome.storage.local.set(i), items)
+  await page.close()
+}
+
+export async function readStorage(
+  context: BrowserContext,
+  extensionId: string,
+  key: string,
+): Promise<unknown> {
+  const page = await openPopupPage(context, extensionId)
+  const value = await page.evaluate(
+    (k) => chrome.storage.local.get(k).then((items) => items[k]),
+    key,
+  )
+  await page.close()
+  return value
+}
+
 /** Expands one of the popup's collapsed filter sections, if it isn't already. */
 export async function openPopupSection(
   popup: Page,

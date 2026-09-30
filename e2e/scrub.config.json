@@ -1,7 +1,7 @@
 {
   "//": "Policy for scripts/scrub-recordings.mjs. See CONTRIBUTING.md § Recordings must be scrubbed.",
 
-  "//no-names-here": "This file names no account, and none may be added. Which handles survive a scrub is DERIVED, not declared: any handle a test source references is an account the suite asserts against, so it and its bio stay; every other handle in a capture is an incidental third party and is pseudonymised. That keeps the rule in one place — if a test stops naming an account, the next scrub anonymises it automatically, and the recording account (which no test names) is removed without ever being written down.",
+  "//no-names-here": "This file names no account, and none may be added. Which handles survive a scrub is DERIVED, not declared: any handle a test source references is an account the suite asserts against, so it and its bio stay; every other handle in a capture is an incidental third party and is pseudonymised. That keeps the rule in one place — if a test stops naming an account, the next scrub anonymises it automatically, and the recording account's handle (which no test names) is removed without ever being written down. Its numeric id stays: replay needs it to match the seeded session (see What stays in scripts/CLAUDE.md).",
 
   "//testSources": "Scanned to find those referenced handles. Globs are relative to the repo root.",
   "testSources": ["e2e/*.test.ts", "e2e/helpers.ts"],

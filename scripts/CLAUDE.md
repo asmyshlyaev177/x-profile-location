@@ -30,8 +30,9 @@ identity exactly when a **test source names it**, because that is what "the suit
 against this account" looks like. Those accounts keep handle, display name and bio (the
 keyword tests match real bio text) plus country, app-store source and creation date — the
 data under test. Everyone else is an incidental third party and is pseudonymised. The
-recording account is named by no test, so it is removed without ever being written down,
-and an account a test stops naming is anonymised by the next run.
+recording account is named by no test, so its handle, name and bio go without ever being
+written down - but not its numeric id (see "What stays") - and an account a test stops
+naming is anonymised by the next run.
 
 Only handles that actually occur in the recordings are considered, so an English word in
 a comment cannot promote a random account. Handles too code-like to tell from an
@@ -93,6 +94,15 @@ short or dictionary word used as a handle, so the guard is general, not a list.
   (labels, tooltips, i18n) are left alone.
 - **Session fields in bodies**, such as Periscope's token exchange, which returns a
   cookie where nothing was looking for one.
+- **Session ids**: `guestId`, `userHash` and the Google sign-in `ssoIdHash`, each
+  replaced by a fixed placeholder of the same shape. None names anybody, but each ties
+  every capture to one browser or one Google account. Until 2026-09-30 `ssoIdHash` was
+  in 29 committed recordings. Replay does not read them: the suite passed without them.
+- **Form bodies, twice.** A HAR stores a form body as `postData.text` and again parsed
+  into `postData.params`; only the text copy used to be rewritten. The text is
+  percent-encoded, and `%22` puts a digit before a quoted handle where no token
+  boundary matches, so each value is decoded, rewritten and re-encoded, and a pair with
+  nothing to change keeps its bytes.
 - **Not X's JavaScript.** ~80% of a HAR's bytes, but public static assets with no personal
   data, and replay needs them to render. Blind token replacement inside minified code is
   a good way to corrupt it. Size is a side effect here; identity is the goal.
@@ -101,6 +111,20 @@ URLs are rewritten for every entry whatever its content type — an avatar path 
 handle, and `routeFromHAR` matches on the request URL, so a rewritten body behind an
 unrewritten URL simply fails to match at replay. X's reserved first-path segments (`i`
 above all) are exempt.
+
+### What stays
+
+**The recording account's numeric id**, in the document's `session.user_id`, in
+`__META_DATA__.userId` and in every URL and beacon built from them. Replay runs on the
+seeded profile's real X session, and X renders no post for a document whose session
+names a different account: rewriting the id failed every x.com spec at its first tweet
+(2026-09-30). X's sign-in cannot be mocked - that is why the seeded profile exists - so
+neither can its cookies be rewritten to match. The id therefore identifies the recording
+account in every capture, public history included; recording with an account made for
+the purpose is what makes that harmless. The test pinning this is `keeps the account id`.
+
+Country and trend location in the session and settings stay too. Whether replay
+tolerates changing them has not been tried.
 
 ### Mapping, and what it is not
 

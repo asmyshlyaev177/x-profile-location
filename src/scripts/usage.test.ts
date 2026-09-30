@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   __resetUsageMemo,
   dayKey,
+  isAnswered,
   noteActiveDay,
   noteRatingAskShown,
   RATE_PROMPT_IGNORED_SNOOZE_MS,
@@ -107,6 +108,26 @@ describe('deciding whether to ask for a rating', () => {
     expect(shouldAskForRating(used(10), later, now)).toBe(false)
     expect(shouldAskForRating(used(10), later, now + 1000)).toBe(true)
   })
+
+  it('holds off after an ignored ask the same way', () => {
+    const now = Date.UTC(2026, 7, 3)
+    const asked = { status: 'asked' as const, snoozeUntil: now + 1000 }
+    expect(shouldAskForRating(used(10), asked, now)).toBe(false)
+    expect(shouldAskForRating(used(10), asked, now + 1000)).toBe(true)
+  })
+})
+
+describe('telling an answer from an ask', () => {
+  // Only an answer takes a bar off the other tabs. A bar merely being shown
+  // somewhere is not one, or every tab's own note would close its own bar.
+  it.each([
+    ['idle', false],
+    ['asked', false],
+    ['later', true],
+    ['done', true],
+  ] as const)('%s is an answer: %s', (status, expected) => {
+    expect(isAnswered({ status, snoozeUntil: 0 })).toBe(expected)
+  })
 })
 
 describe('recording the answer', () => {
@@ -128,6 +149,27 @@ describe('recording the answer', () => {
       snoozeUntil: 0,
     })
   })
+
+  it('never turns a closed ask back into a snooze', async () => {
+    // A bar still up in another tab offers Later after the reader has rated in
+    // the popup. Written as asked, that rating came back as a question in a
+    // fortnight - reproduced against the built extension.
+    await setRatePromptState('done', Date.UTC(2026, 7, 3))
+    await setRatePromptState('later', Date.UTC(2026, 7, 4))
+
+    expect(stored.current[RATE_PROMPT_KEY]).toEqual({
+      status: 'done',
+      snoozeUntil: 0,
+    })
+  })
+
+  it('writes a closing answer at once, before any read', () => {
+    // The popup's "Rate it" is a link, and the store tab it opens closes the
+    // popup. A write queued behind a read can be lost with the page.
+    void setRatePromptState('done')
+
+    expect(setMock).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('reading back what was stored', () => {
@@ -147,6 +189,13 @@ describe('reading back what was stored', () => {
   it('keeps a real snooze', () => {
     expect(normalizeRatePrompt({ status: 'later', snoozeUntil: 5 })).toEqual({
       status: 'later',
+      snoozeUntil: 5,
+    })
+  })
+
+  it('keeps an ignored ask', () => {
+    expect(normalizeRatePrompt({ status: 'asked', snoozeUntil: 5 })).toEqual({
+      status: 'asked',
       snoozeUntil: 5,
     })
   })
@@ -186,11 +235,28 @@ describe('an ask that was ignored', () => {
     await noteRatingAskShown(now)
 
     expect(stored.current[RATE_PROMPT_KEY]).toEqual({
-      status: 'later',
+      status: 'asked',
       snoozeUntil: now + RATE_PROMPT_IGNORED_SNOOZE_MS,
     })
     expect(await ratingAskDue(now)).toBe(false)
     expect(await ratingAskDue(now + RATE_PROMPT_IGNORED_SNOOZE_MS)).toBe(true)
+  })
+
+  it('goes quiet again each time it is ignored', async () => {
+    // Only an ask from idle used to be recorded. Once the first snooze ran
+    // out, no ask was recorded again, and the bar came back on every page load
+    // until it was answered - reproduced against the built extension.
+    stored.current[USAGE_STATS_KEY] = used
+    const now = Date.UTC(2026, 7, 20)
+    stored.current[RATE_PROMPT_KEY] = { status: 'later', snoozeUntil: now - 1 }
+
+    await noteRatingAskShown(now)
+
+    expect(stored.current[RATE_PROMPT_KEY]).toEqual({
+      status: 'asked',
+      snoozeUntil: now + RATE_PROMPT_IGNORED_SNOOZE_MS,
+    })
+    expect(await ratingAskDue(now + 60_000)).toBe(false)
   })
 
   it('never shortens a snooze the user asked for', async () => {
@@ -211,6 +277,33 @@ describe('an ask that was ignored', () => {
     await noteRatingAskShown()
 
     expect(stored.current[RATE_PROMPT_KEY]).toMatchObject({ status: 'done' })
+  })
+})
+
+describe('showing the bar, from every state the prompt can be in', () => {
+  // The rules above, checked against every state at once: whatever came
+  // before, a bar just shown is not due again right away, a snooze the reader
+  // chose keeps its length, and a closed ask stays closed.
+  const now = Date.UTC(2026, 8, 30)
+  const BEFORE = {
+    'never asked': { status: 'idle', snoozeUntil: 0 },
+    'ignored, snooze over': { status: 'asked', snoozeUntil: now - 1 },
+    'ignored, still snoozed': { status: 'asked', snoozeUntil: now + 1 },
+    'Later, snooze over': { status: 'later', snoozeUntil: now - 1 },
+    'Later, still snoozed': { status: 'later', snoozeUntil: now + 1 },
+    answered: { status: 'done', snoozeUntil: 0 },
+  } as const
+
+  it.each(Object.entries(BEFORE))('%s', async (_, before) => {
+    stored.current[USAGE_STATS_KEY] = { activeDays: 30, lastDay: '2026-09-30' }
+    stored.current[RATE_PROMPT_KEY] = before
+
+    await noteRatingAskShown(now)
+    const after = normalizeRatePrompt(stored.current[RATE_PROMPT_KEY])
+
+    expect(await ratingAskDue(now)).toBe(false)
+    if (before.status === 'done') expect(after).toEqual(before)
+    else expect(after.snoozeUntil).toBeGreaterThanOrEqual(before.snoozeUntil)
   })
 })
 

@@ -79,4 +79,20 @@ export async function setSettings(
   await page.close()
 }
 
+/** Reads one key back through an extension page, for the same reason. */
+export async function readStorage(
+  context: BrowserContext,
+  extensionId: string,
+  key: string,
+): Promise<unknown> {
+  const page = await context.newPage()
+  await page.goto(`chrome-extension://${extensionId}/pages/options.html`)
+  const value = await page.evaluate(
+    (k) => chrome.storage.local.get(k).then((items) => items[k]),
+    key,
+  )
+  await page.close()
+  return value
+}
+
 export { expect }

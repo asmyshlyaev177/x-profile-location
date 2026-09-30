@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LOOKUP_WINDOW_MS, MSG } from './constants'
 import { LookupBroker } from './prefetch/lookup-broker'
+import { RATE_PROMPT_IGNORED_SNOOZE_MS } from './usage'
 
 // ---------------------------------------------------------------------------
 // The broker's own rules are lookup-broker.test.ts. This file is about the
@@ -402,6 +403,47 @@ describe('pacing settings', () => {
       listener({ prefetchShare: { newValue: 0.9 } }, 'sync')
     }
     aboutGap(await gapAfterOneLookup(37), WINDOW / 12)
+  })
+})
+
+// The toolbar star is the only part of the ask someone who never opens the
+// popup sees. It has to agree with the popup card and the bar on X, so it is
+// synced off the same storage changes that move either of them.
+describe('the rating badge', () => {
+  const USED = { usageStats: { activeDays: 30, lastDay: '2026-09-30' } }
+
+  function storageChanged(key: string) {
+    for (const listener of env.listeners['storage.onChanged'] ?? []) {
+      listener({ [key]: { newValue: env.local[key] } }, 'local')
+    }
+  }
+
+  const lastBadge = () =>
+    env.chrome.action.setBadgeText.mock.calls.at(-1)?.[0]?.text
+
+  it('lights up when a day of use makes the ask due', async () => {
+    await loadWorker({}, { ...USED })
+    storageChanged('usageStats')
+
+    await vi.waitFor(() => expect(lastBadge()).toBe('★'))
+  })
+
+  it('goes out once a page on X has asked', async () => {
+    await loadWorker({}, { ...USED })
+    env.local.ratePrompt = {
+      status: 'asked',
+      snoozeUntil: Date.now() + RATE_PROMPT_IGNORED_SNOOZE_MS,
+    }
+    storageChanged('ratePrompt')
+
+    await vi.waitFor(() => expect(lastBadge()).toBe(''))
+  })
+
+  it('stays out while the extension is paused', async () => {
+    await loadWorker({}, { ...USED, extensionEnabled: false })
+    storageChanged('extensionEnabled')
+
+    await vi.waitFor(() => expect(lastBadge()).toBe(''))
   })
 })
 

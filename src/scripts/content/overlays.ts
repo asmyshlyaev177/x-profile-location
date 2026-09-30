@@ -3,9 +3,12 @@
 
 import type { LocationData } from '../cache/cache'
 import { t } from '../i18n'
+import { normalizeRatePrompt } from '../settings'
 import { classifySource } from '../source'
 import {
+  isAnswered,
   noteRatingAskShown,
+  RATING_ASK_DELAY_MS,
   ratingAskDue,
   REVIEW_URL,
   setRatePromptState,
@@ -166,13 +169,22 @@ export function showLocationOverlay(
 
 // The rating ask - see "The rating ask" in CLAUDE.md for its rules.
 
-/** Long enough that the flag it is riding on has been read. */
-const RATING_ASK_DELAY_MS = 6000
-
 let ratingAskConsidered = false
+let ratingAskCountdown: ReturnType<typeof setTimeout> | null = null
+
+/** Set on the bar once "Rate it" has turned it into the share ask. */
+const SHARE_STAGE = 'share'
 
 export function dismissRatingAsk(): void {
   document.getElementById(RATING_ASK_ID)?.remove()
+}
+
+/** An answer given in another tab or the popup closes the question here too. */
+export function withdrawAnsweredAsk(storedPrompt: unknown): void {
+  if (!isAnswered(normalizeRatePrompt(storedPrompt))) return
+  const bar = document.getElementById(RATING_ASK_ID)
+  // This page's own "Rate it" arrives as a change too; its share ask stays.
+  if (bar?.dataset.stage !== SHARE_STAGE) bar?.remove()
 }
 
 /** Inlined by `?inline`: a fetchable extension URL is something x.com can
@@ -204,6 +216,7 @@ function ratingAskButton(
  *  proven friendly, asked for the one thing that moves installs. */
 function swapToShareAsk(bar: HTMLElement): void {
   bar.replaceChildren()
+  bar.dataset.stage = SHARE_STAGE
 
   const message = document.createElement('span')
   message.className = 'x-loc-ask-msg'
@@ -222,9 +235,7 @@ function swapToShareAsk(bar: HTMLElement): void {
   bar.appendChild(ratingAskButton(t('rateAskNo'), true, dismissRatingAsk))
 }
 
-function showRatingAsk(): void {
-  if (document.getElementById(RATING_ASK_ID)) return
-
+function buildRatingAsk(): HTMLElement {
   const bar = document.createElement('div')
   bar.id = RATING_ASK_ID
   bar.setAttribute('role', 'status')
@@ -260,31 +271,40 @@ function showRatingAsk(): void {
     ratingAskButton(t('rateAskLater'), true, () => answer('later')),
   )
   bar.appendChild(ratingAskButton(t('rateAskNo'), true, () => answer('done')))
+  return bar
+}
 
-  document.body.appendChild(bar)
+/** A bar still up from an earlier ask is asking again, so it is noted again. */
+function showRatingAsk(): void {
+  if (!document.getElementById(RATING_ASK_ID)) {
+    document.body.appendChild(buildRatingAsk())
+  }
   // Written before it can be answered, so a page navigated away from still
   // counts as asked. The answer buttons overwrite it.
   void noteRatingAskShown()
 }
 
 /** Called once per page, after the day has been counted. */
-export async function considerRatingAsk(
-  stillEnabled: () => boolean,
-): Promise<void> {
+export function considerRatingAsk(stillEnabled: () => boolean): void {
   if (ratingAskConsidered) return
   ratingAskConsidered = true
-
-  if (!stillEnabled()) return
-  if (!(await ratingAskDue())) return
-
-  setTimeout(() => {
-    // Both can have changed during the wait, and the other two toasts carry
-    // information where this carries a request.
-    if (!stillEnabled()) return
-    if (document.getElementById(RATE_TOAST_ID)) return
-    if (document.getElementById(LOCATION_TOAST_ID)) return
-    showRatingAsk()
+  // One at a time: a running countdown reads the state as it ends anyway.
+  if (ratingAskCountdown !== null) return
+  ratingAskCountdown = setTimeout(() => {
+    ratingAskCountdown = null
+    void askIfStillDue(stillEnabled)
   }, RATING_ASK_DELAY_MS)
+}
+
+/** Read when the wait ends, not when it starts: in those seconds another tab
+ *  can ask first, or the popup can be answered. */
+async function askIfStillDue(stillEnabled: () => boolean): Promise<void> {
+  if (!(await ratingAskDue())) return
+  // The other two toasts carry information where this carries a request.
+  if (!stillEnabled()) return
+  if (document.getElementById(RATE_TOAST_ID)) return
+  if (document.getElementById(LOCATION_TOAST_ID)) return
+  showRatingAsk()
 }
 /** X's window, as the newest answer reported it. 0 while nothing is limited. */
 export function rateLimitResetsAt(): number {
@@ -323,4 +343,8 @@ export function __resetOverlays(): void {
   }
   dismissRatingAsk()
   ratingAskConsidered = false
+  if (ratingAskCountdown !== null) {
+    clearTimeout(ratingAskCountdown)
+    ratingAskCountdown = null
+  }
 }

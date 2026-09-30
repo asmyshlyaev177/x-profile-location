@@ -291,12 +291,26 @@ seeding `Africa` and `South Asia` blocks ~60 countries on a fresh install. See
 toolbar badge (service-worker), the bar over X (`showRatingAsk`, `RATING_ASK_ID`), and the
 popup card. They must agree, or a badge invites a click into an empty popup - hence pausing
 clears the badge, and hence the hover card is **not** one of them (transient, re-rendered
-dozens of times a session). It is decided **once per page, on the first flag drawn**,
-re-armed by a `usageStats`/`ratePrompt` storage change, because X is left open for days.
+dozens of times a session). A page **starts its six-second countdown on the first flag
+drawn** and reads `ratingAskDue()` when the countdown **ends**, because in those seconds
+another tab can ask first or the popup can be answered (both reproduced as a second ask).
+A `usageStats`/`ratePrompt` storage change re-arms it, because X is left open for days.
 
-`noteRatingAskShown()` writes a three-day snooze the moment the bar renders, so navigating
-away doesn't re-ask, and it only ever writes from `idle` - never shorten a fortnight the
-reader chose. The bar has **no dismiss timer** and **yields the bottom-centre slot**
+`ratePrompt.status` is `idle` → `asked` (a bar shown, three-day snooze) → `later` (fourteen
+days) or `done` (rated or refused; final). `noteRatingAskShown()` writes `asked` whenever the
+ask was **open** - never asked, or a snooze that has run out - so navigating away doesn't
+re-ask. It used to write only from `idle`, and from the second ask on every X page load
+showed the bar until it was answered. It never writes over a live snooze or `done`.
+
+**An answer anywhere closes every bar still asking**: a `later` or `done` change takes the
+bar off each tab (`withdrawAnsweredAsk`). `asked` is its own status for this reason alone -
+each page's note of its own ask arrives as a change too, and a note must not read as an
+answer. The page that clicked "Rate it" keeps its share ask (`data-stage="share"`).
+`setRatePromptState('later')` reads first and refuses to reopen `done`, which a bar left up
+in another tab once did; `done` is written without a read, because the store tab a popup
+link opens can close the popup before a read returns.
+
+The bar has **no dismiss timer** and **yields the bottom-centre slot**
 (`showRateLimitToast` and `renderLocationToast` dismiss it), and it **names itself** (icon,
 "X-Pat", sentence) because unattributed it reads as X asking. The icon is the shipped PNG
 via Vite's `?inline`: `chrome.runtime.getURL` would need it in `web_accessible_resources`,

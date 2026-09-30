@@ -25,6 +25,9 @@ one tab_, and neither a unit test nor `visual/` can hold two of them.
   duplicate-suppression one needs a _slow_ answer (3s, clear of the 1.5s pacing
   floor): with an instant one the shared IndexedDB dedups on its own and the
   test passes whether or not anything is coordinating.
+- **Never `route.fulfill` a Chrome Web Store navigation** - Chromium 147 crashes
+  outright, taking the context with it. `route.abort()` it, as
+  `rating-ask.test.ts` does for "Rate it".
 
 Anything split across contexts — a message between the content script and the
 service worker, anything about more than one tab — owes a test here. Two halves

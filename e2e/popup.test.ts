@@ -24,11 +24,13 @@ import {
   pickBioWord,
   PRIMARY_TWEET,
   readCachedBio,
+  seedStorage,
 } from './helpers'
 
 import {
   RATE_PROMPT_MIN_DAYS,
   RATE_PROMPT_SNOOZE_MS,
+  REVIEW_URL,
 } from '../src/scripts/usage'
 
 const MRNFT_TWEET = 'https://x.com/MRNFT_X/status/2053116341926629624'
@@ -155,15 +157,6 @@ test('a country added in the popup is stored under its canonical name', async ({
  *
  * No recording — nothing here touches x.com.
  */
-async function seedUsage(
-  context: Parameters<typeof openPopupPage>[0],
-  extensionId: string,
-  patch: Record<string, unknown>,
-): Promise<void> {
-  const seed = await openPopupPage(context, extensionId)
-  await seed.evaluate((p) => chrome.storage.local.set(p), patch)
-  await seed.close()
-}
 
 test('the rating ask waits for a few days of actual use', async ({
   context,
@@ -171,7 +164,7 @@ test('the rating ask waits for a few days of actual use', async ({
 }) => {
   // Days on which a flag was drawn, not days installed: an install that has
   // never resolved a profile has no opinion to give.
-  await seedUsage(context, extensionId, {
+  await seedStorage(context, extensionId, {
     [USAGE_STATS_KEY]: {
       activeDays: RATE_PROMPT_MIN_DAYS - 1,
       lastDay: '2026-08-03',
@@ -182,7 +175,7 @@ test('the rating ask waits for a few days of actual use', async ({
   await expect(tooSoon.getByText(/Rate it/)).toHaveCount(0)
   await tooSoon.close()
 
-  await seedUsage(context, extensionId, {
+  await seedStorage(context, extensionId, {
     [USAGE_STATS_KEY]: {
       activeDays: RATE_PROMPT_MIN_DAYS,
       lastDay: '2026-08-03',
@@ -193,10 +186,7 @@ test('the rating ask waits for a few days of actual use', async ({
   await expect(earned.getByText(/Rate it/)).toBeVisible({ timeout: 5_000 })
   // The store's own id, not chrome.runtime.id — which is a different random
   // string for every unpacked build, this one included.
-  await expect(earned.getByText(/Rate it/)).toHaveAttribute(
-    'href',
-    /chromewebstore\.google\.com/,
-  )
+  await expect(earned.getByText(/Rate it/)).toHaveAttribute('href', REVIEW_URL)
   await earned.close()
 })
 
@@ -204,7 +194,7 @@ test('Later puts the ask away, and the next popup honours it', async ({
   context,
   extensionId,
 }) => {
-  await seedUsage(context, extensionId, {
+  await seedStorage(context, extensionId, {
     [USAGE_STATS_KEY]: { activeDays: 30, lastDay: '2026-08-03' },
   })
 
@@ -231,7 +221,7 @@ test('Later puts the ask away, and the next popup honours it', async ({
 test('No thanks is final', async ({ context, extensionId }) => {
   // The one behaviour worth being certain about: an extension that asks again
   // after being told no is one people uninstall rather than answer.
-  await seedUsage(context, extensionId, {
+  await seedStorage(context, extensionId, {
     [USAGE_STATS_KEY]: { activeDays: 30, lastDay: '2026-08-03' },
   })
 
@@ -258,7 +248,7 @@ test('the toolbar icon carries the ask, and drops it when answered', async ({
   // The badge is the only surface a user who never opens the popup will see,
   // and the only one no unit test can reach: it is set by the service worker,
   // off a storage change, through an API that exists nowhere else.
-  await seedUsage(context, extensionId, {
+  await seedStorage(context, extensionId, {
     [USAGE_STATS_KEY]: { activeDays: 30, lastDay: '2026-08-03' },
   })
 
@@ -281,7 +271,7 @@ test('pausing the extension takes the badge down with it', async ({
 }) => {
   // Quiet everywhere while paused, or the badge points at a popup that has
   // deliberately hidden the card.
-  await seedUsage(context, extensionId, {
+  await seedStorage(context, extensionId, {
     [USAGE_STATS_KEY]: { activeDays: 30, lastDay: '2026-08-03' },
   })
 

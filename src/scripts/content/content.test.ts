@@ -5,7 +5,15 @@ import {
 } from '../constants'
 import { REGION_MEMBERS } from '../countries/countries'
 import type { Keyword } from '../keywords'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Hoist chrome global - must run before module-level code in content.tsx
@@ -119,7 +127,14 @@ import { keywordRangesIn } from './highlight'
 import { locationSummaryText } from './overlays'
 import { getCached, mergeCached, clearAllCache } from '../cache/cache'
 import type { FilterRule } from '../settings'
-import { dayKey, __resetUsageMemo } from '../usage'
+import {
+  dayKey,
+  RATE_PROMPT_IGNORED_SNOOZE_MS,
+  RATE_PROMPT_SNOOZE_MS,
+  RATING_ASK_DELAY_MS,
+  REVIEW_URL,
+  __resetUsageMemo,
+} from '../usage'
 import { renderAboutCard, renderShareCard } from '../share-card'
 import {
   contributeLocation,
@@ -936,6 +951,9 @@ describe('the rate-limit toast', () => {
 
   it('carries a share button that opens the post composer', async () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    // Restored even on failure. Left in place, its calls were read as the
+    // rating ask's under --sequence.shuffle (seed 1790761314771).
+    onTestFinished(() => open.mockRestore())
     respondRateLimited(300)
     await fetchLocationData('rl_share')
 
@@ -5615,8 +5633,41 @@ describe('the rating ask on the page', () => {
 
   const bar = () => document.getElementById('x-loc-ask-toast')
 
+  const buttonLabels = () =>
+    [...bar()!.querySelectorAll('button')].map((b) => b.textContent)
+
+  function clickButton(label: string) {
+    ;(
+      [...bar()!.querySelectorAll('button')].find(
+        (b) => b.textContent === label,
+      ) as HTMLButtonElement
+    ).click()
+  }
+
+  /** Every value this page wrote to the prompt, oldest first. */
+  const promptWrites = () =>
+    vi
+      .mocked(chromeGlobal.storage.local.set)
+      .mock.calls.map((c: unknown[]) => c[0] as Record<string, unknown>)
+      .filter((patch: Record<string, unknown>) => RATE_PROMPT_KEY in patch)
+      .map((patch: Record<string, unknown>) => patch[RATE_PROMPT_KEY])
+
+  /** A write to the prompt as this page sees it, whichever context made it. */
+  function promptChangesTo(prompt: unknown) {
+    seedUsage(5, prompt)
+    onChangedCallback({ [RATE_PROMPT_KEY]: { newValue: prompt } }, 'local')
+  }
+
+  async function askNow() {
+    seedUsage(5)
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(RATING_ASK_DELAY_MS + 1000)
+    expect(bar()).not.toBeNull()
+  }
+
   beforeEach(() => {
     __resetUsageMemo()
+    vi.mocked(chromeGlobal.storage.local.set).mockClear()
     vi.useFakeTimers({ shouldAdvanceTime: true })
   })
 
@@ -5634,10 +5685,7 @@ describe('the rating ask on the page', () => {
 
     await vi.advanceTimersByTimeAsync(7000)
 
-    const buttons = [...bar()!.querySelectorAll('button')].map(
-      (b) => b.textContent,
-    )
-    expect(buttons).toEqual(['Rate it ★', 'Later', 'No thanks'])
+    expect(buttonLabels()).toEqual(['Rate it ★', 'Later', 'No thanks'])
     // Named, on a page it does not own: an unattributed bar over X reads as X
     // asking, and nobody can rate what they cannot identify.
     expect(bar()!.textContent).toContain('X-Pat')
@@ -5666,35 +5714,101 @@ describe('the rating ask on the page', () => {
   it('counts as asked the moment it is shown', async () => {
     // A page closed on an unanswered ask must not mean the next page asks
     // again. Being ignored is worth a few days of silence on its own.
+    await askNow()
+
+    expect(promptWrites()[0]).toMatchObject({ status: 'asked' })
+  })
+
+  it('counts a repeat ask too, once an earlier snooze is over', async () => {
+    // Only an ask from idle used to be written down. After the first snooze
+    // ran out, the bar came back on every page load until it was answered.
+    seedUsage(5, { status: 'later', snoozeUntil: Date.now() - 1 })
+    await hoverWithFlag('someone')
+    await vi.advanceTimersByTimeAsync(RATING_ASK_DELAY_MS + 1000)
+
+    expect(bar()).not.toBeNull()
+    const written = promptWrites()[0] as { status: string; snoozeUntil: number }
+    expect(written.status).toBe('asked')
+    expect(written.snoozeUntil).toBeGreaterThan(
+      Date.now() + RATE_PROMPT_IGNORED_SNOOZE_MS - 60_000,
+    )
+  })
+
+  it.each([
+    ['answered in the popup', { status: 'done', snoozeUntil: 0 }],
+    [
+      'asked by another tab',
+      {
+        status: 'asked',
+        snoozeUntil: Date.now() + RATE_PROMPT_IGNORED_SNOOZE_MS,
+      },
+    ],
+  ])('stays away when it is %s during the countdown', async (_, prompt) => {
+    // Decided when the wait ends, not when it starts: the badge lights up as
+    // the day is counted, and six seconds is time enough to click it.
     seedUsage(5)
     await hoverWithFlag('someone')
-    await vi.advanceTimersByTimeAsync(7000)
+    promptChangesTo(prompt)
 
-    const written = vi
-      .mocked(chromeGlobal.storage.local.set)
-      .mock.calls.map((c: unknown[]) => c[0] as Record<string, unknown>)
-      .find((patch: Record<string, unknown>) => RATE_PROMPT_KEY in patch)
-    expect(written![RATE_PROMPT_KEY]).toMatchObject({ status: 'later' })
+    await vi.advanceTimersByTimeAsync(RATING_ASK_DELAY_MS + 1000)
+    expect(bar()).toBeNull()
   })
 
   it('goes away on an answer, and records it', async () => {
-    seedUsage(5)
-    await hoverWithFlag('someone')
-    await vi.advanceTimersByTimeAsync(7000)
+    await askNow()
 
-    ;(
-      [...bar()!.querySelectorAll('button')].find(
-        (b) => b.textContent === 'No thanks',
-      ) as HTMLButtonElement
-    ).click()
+    clickButton('No thanks')
     await flushAsync()
 
     expect(bar()).toBeNull()
-    const last = vi
-      .mocked(chromeGlobal.storage.local.set)
-      .mock.calls.map((c: unknown[]) => c[0] as Record<string, unknown>)
-      .findLast((patch: Record<string, unknown>) => RATE_PROMPT_KEY in patch)
-    expect(last![RATE_PROMPT_KEY]).toMatchObject({ status: 'done' })
+    expect(promptWrites().at(-1)).toMatchObject({ status: 'done' })
+  })
+
+  it('puts itself off for a fortnight on Later, not the few days of an ignored ask', async () => {
+    await askNow()
+
+    clickButton('Later')
+    await flushAsync()
+
+    expect(bar()).toBeNull()
+    const written = promptWrites().at(-1) as {
+      status: string
+      snoozeUntil: number
+    }
+    expect(written.status).toBe('later')
+    expect(written.snoozeUntil).toBeGreaterThan(
+      Date.now() + RATE_PROMPT_SNOOZE_MS - 60_000,
+    )
+  })
+
+  it.each([
+    ['rated or refused', { status: 'done', snoozeUntil: 0 }],
+    [
+      'put off',
+      { status: 'later', snoozeUntil: Date.now() + RATE_PROMPT_SNOOZE_MS },
+    ],
+  ])(
+    'is taken off the page when it is %s in another tab or the popup',
+    async (_, answer) => {
+      // Left up, it asks a question already answered - and its Later could
+      // turn a rating back into a snooze.
+      await askNow()
+
+      promptChangesTo(answer)
+      expect(bar()).toBeNull()
+    },
+  )
+
+  it('stays up when another tab only asks as well', async () => {
+    // Every page's note that it asked arrives as a storage change - its own
+    // included - so a note must not read as an answer.
+    await askNow()
+
+    promptChangesTo({
+      status: 'asked',
+      snoozeUntil: Date.now() + RATE_PROMPT_IGNORED_SNOOZE_MS,
+    })
+    expect(buttonLabels()).toEqual(['Rate it ★', 'Later', 'No thanks'])
   })
 
   it('waits for an answer rather than taking the question away', async () => {
@@ -5713,36 +5827,25 @@ describe('the rating ask on the page', () => {
     // The one audience already proven friendly, asked for the one thing that
     // moves installs - without a second interruption of its own.
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
-    seedUsage(5)
-    await hoverWithFlag('someone')
-    await vi.advanceTimersByTimeAsync(7000)
+    onTestFinished(() => open.mockRestore())
+    await askNow()
 
-    ;(
-      [...bar()!.querySelectorAll('button')].find(
-        (b) => b.textContent === 'Rate it ★',
-      ) as HTMLButtonElement
-    ).click()
+    clickButton('Rate it ★')
     await flushAsync()
 
-    expect(open.mock.calls[0]?.[0]).toContain('chromewebstore.google.com')
-    const written = vi
-      .mocked(chromeGlobal.storage.local.set)
-      .mock.calls.map((c: unknown[]) => c[0] as Record<string, unknown>)
-      .findLast((patch: Record<string, unknown>) => RATE_PROMPT_KEY in patch)
-    expect(written![RATE_PROMPT_KEY]).toMatchObject({ status: 'done' })
+    expect(open.mock.calls[0]?.[0]).toBe(REVIEW_URL)
+    expect(promptWrites().at(-1)).toMatchObject({ status: 'done' })
 
     // The bar stays, repurposed: share and dismiss, no rating buttons left.
     expect(bar()).not.toBeNull()
-    const labels = [...bar()!.querySelectorAll('button')].map(
-      (b) => b.textContent,
-    )
-    expect(labels).toEqual(['Share X-Pat', 'No thanks'])
+    expect(buttonLabels()).toEqual(['Share X-Pat', 'No thanks'])
 
-    ;(
-      [...bar()!.querySelectorAll('button')].find(
-        (b) => b.textContent === 'Share X-Pat',
-      ) as HTMLButtonElement
-    ).click()
+    // This page's own "done" comes back to it as a storage change, like an
+    // answer from anywhere else, and must leave the share ask up.
+    promptChangesTo({ status: 'done', snoozeUntil: 0 })
+    expect(buttonLabels()).toEqual(['Share X-Pat', 'No thanks'])
+
+    clickButton('Share X-Pat')
     const shareUrl = open.mock.calls[1]?.[0] as string
     expect(shareUrl).toContain('https://x.com/intent/post?text=')
     expect(decodeURIComponent(shareUrl)).toContain('https://x-pat.pages.dev')

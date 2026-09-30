@@ -10,6 +10,9 @@ export const RATE_PROMPT_SNOOZE_MS = 14 * 24 * 60 * 60 * 1000
 
 export const RATE_PROMPT_IGNORED_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000
 
+/** Long enough that the flag the bar is riding on has been read. */
+export const RATING_ASK_DELAY_MS = 6000
+
 export const REVIEW_URL =
   'https://chromewebstore.google.com/detail/mooomapkphlmpilnlcnpoilondlppbhi/reviews'
 
@@ -31,9 +34,17 @@ export function shouldAskForRating(
   prompt: RatePromptState,
   now: number = Date.now(),
 ): boolean {
+  return usage.activeDays >= RATE_PROMPT_MIN_DAYS && isAskOpen(prompt, now)
+}
+
+/** Neither closed for good nor inside a snooze. */
+function isAskOpen(prompt: RatePromptState, now: number): boolean {
   if (prompt.status === 'done') return false
-  if (usage.activeDays < RATE_PROMPT_MIN_DAYS) return false
-  return prompt.status !== 'later' || now >= prompt.snoozeUntil
+  return prompt.status === 'idle' || now >= prompt.snoozeUntil
+}
+
+export function isAnswered(prompt: RatePromptState): boolean {
+  return prompt.status === 'later' || prompt.status === 'done'
 }
 
 let notedDay: string | null = null
@@ -71,24 +82,33 @@ export async function ratingAskDue(now: number = Date.now()): Promise<boolean> {
   )
 }
 
+async function readRatePrompt(): Promise<RatePromptState> {
+  const stored = await chrome.storage.local.get(RATE_PROMPT_KEY)
+  return normalizeRatePrompt(stored[RATE_PROMPT_KEY])
+}
+
 export async function noteRatingAskShown(
   now: number = Date.now(),
 ): Promise<void> {
-  const stored = await chrome.storage.local.get(RATE_PROMPT_KEY)
-  if (normalizeRatePrompt(stored[RATE_PROMPT_KEY]).status !== 'idle') return
+  // Any open ask, not only a first one: a snooze that ran out and went
+  // unrecorded brought the bar back on every page load.
+  if (!isAskOpen(await readRatePrompt(), now)) return
 
   await chrome.storage.local.set({
     [RATE_PROMPT_KEY]: {
-      status: 'later',
+      status: 'asked',
       snoozeUntil: now + RATE_PROMPT_IGNORED_SNOOZE_MS,
     } satisfies RatePromptState,
   })
 }
 
 export async function setRatePromptState(
-  status: RatePromptState['status'],
+  status: 'later' | 'done',
   now: number = Date.now(),
 ): Promise<void> {
+  // Only Later reads first, so a bar left up elsewhere cannot reopen a closed
+  // ask. 'done' is written at once: the popup can close before a read returns.
+  if (status === 'later' && (await readRatePrompt()).status === 'done') return
   await chrome.storage.local.set({
     [RATE_PROMPT_KEY]: {
       status,

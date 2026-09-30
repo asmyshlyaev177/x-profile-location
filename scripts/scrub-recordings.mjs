@@ -123,6 +123,25 @@ function synthetic(handle) {
 
 const displayNameFor = (handle) => `User ${synthetic(handle).slice(5, 9)}`
 
+/** Ids tying a capture to one browser or Google sign-in, as same-shape placeholders.
+ *  Not the account id: replay needs it — see "What stays" in CLAUDE.md. */
+const SESSION_ID_PLACEHOLDERS = {
+  guestId: '100000000000000001',
+  userHash: '0'.repeat(64),
+  ssoIdHash: `${'A'.repeat(43)}=`,
+}
+
+const SESSION_KEYS = Object.keys(SESSION_ID_PLACEHOLDERS).join('|')
+
+// Plain JSON, whose value may carry escapes, and JSON inside a string, where \" ends it.
+const sessionIdRes = () => [
+  new RegExp(`("(${SESSION_KEYS})"\\s*:\\s*")((?:[^"\\\\]|\\\\.)*)(?=")`, 'g'),
+  new RegExp(
+    `(\\\\"(${SESSION_KEYS})\\\\"\\s*:\\s*\\\\")([^"\\\\]*)(?=\\\\")`,
+    'g',
+  ),
+]
+
 /** A trend name this script has already rewritten — makes re-runs no-ops. */
 const SYNTHETIC_TREND = /^Trend [0-9a-f]{4}$/
 
@@ -299,14 +318,50 @@ function rewriteUser(obj, handle, stats) {
 
 // Textual pass — handles in URLs, entity mentions, nested JSON strings
 
-/** Every known handle as a whole token, in URLs and JSON bodies only — never in
- *  X's JS bundles. See "What else goes, and why" in CLAUDE.md. */
+/** Handles and session ids in URLs, bodies and markup, never X's JS bundles.
+ *  See "What else goes, and why" in CLAUDE.md. */
 function rewriteText(text, stats) {
   if (!text) return text
   let out = text
   for (const [lc, fake] of seen) out = replaceToken(out, lc, fake, stats)
+  return blankSessionIds(out, stats)
+}
+
+function blankSessionIds(text, stats) {
+  let out = text
+  for (const re of sessionIdRes()) {
+    out = out.replace(re, (match, open, key, value) => {
+      const placeholder = SESSION_ID_PLACEHOLDERS[key]
+      if (value === '' || value === placeholder) return match
+      stats.sessionIds++
+      return `${open}${placeholder}`
+    })
+  }
   return out
 }
+
+/** Pair by pair, each value decoded first: `%22` puts a digit before a quoted
+ *  handle, which no token boundary matches. Untouched pairs keep their bytes. */
+function rewriteFormText(text, stats) {
+  return text
+    .split('&')
+    .map((pair) => {
+      const eq = pair.indexOf('=')
+      if (eq === -1) return pair
+      let value
+      try {
+        value = decodeURIComponent(pair.slice(eq + 1).replace(/\+/g, ' '))
+      } catch {
+        return rewriteText(pair, stats)
+      }
+      const rewritten = rewriteText(value, stats)
+      if (rewritten === value) return pair
+      return `${pair.slice(0, eq)}=${encodeURIComponent(rewritten).replace(/%20/g, '+')}`
+    })
+    .join('&')
+}
+
+const isForm = (mime) => /x-www-form-urlencoded/.test(mime || '')
 
 function replaceToken(text, from, to, stats) {
   // Case-insensitive: X echoes handles back with whatever casing the client sent,
@@ -497,11 +552,16 @@ function scrubUrls(entry, stats) {
       h.value = rewriteText(h.value, stats)
     }
   }
-  if (entry.request?.postData?.text) {
-    entry.request.postData.text = rewriteText(
-      entry.request.postData.text,
-      stats,
-    )
+  const body = entry.request?.postData
+  if (body?.text) {
+    body.text = isForm(body.mimeType)
+      ? rewriteFormText(body.text, stats)
+      : rewriteText(body.text, stats)
+  }
+  // A form body is stored twice, as text and parsed into params; rewriting only
+  // the text leaves whatever it named in the params copy.
+  for (const p of body?.params ?? []) {
+    if (typeof p.value === 'string') p.value = rewriteText(p.value, stats)
   }
 }
 
@@ -653,6 +713,7 @@ function scrubStdin() {
  *  out of the report — a property of the capture, not of the scrub. */
 const STAT_KEYS = [
   'handles',
+  'sessionIds',
   'names',
   'bios',
   'pii',
@@ -816,7 +877,8 @@ function main() {
   }
 
   console.log(
-    `\n  handles ${totals.handles} · names ${totals.names} · bios ${totals.bios} · ` +
+    `\n  handles ${totals.handles} · session ids ${totals.sessionIds} · ` +
+      `names ${totals.names} · bios ${totals.bios} · ` +
       `avatars ${totals.avatars} · posts ${totals.posts}\n` +
       `  birthdates ${totals.pii} · trends ${totals.trends} · ` +
       `event beacons ${totals.telemetry} · session blobs ${totals.credentials} · ` +
@@ -836,6 +898,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) main()
 
 export {
   scrubEntry,
+  scrubHar,
   scrubMarkup,
   scrubTelemetry,
   walk,

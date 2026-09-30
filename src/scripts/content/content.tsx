@@ -106,6 +106,7 @@ import {
   renderLocationToast,
   showLocationOverlay,
   showRateLimitToast,
+  withdrawAnsweredAsk,
   __resetOverlays,
 } from './overlays'
 import {
@@ -435,6 +436,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
     // Re-arm, or a tab left open across the day that earns the ask never asks -
     // and X is exactly the page people leave open for days.
     rearmRatingAsk()
+  }
+  if (changes[RATE_PROMPT_KEY]) {
+    withdrawAnsweredAsk(changes[RATE_PROMPT_KEY].newValue)
   }
   applyFilterChanges(changes)
   applyDisplayChanges(changes)

@@ -12,7 +12,12 @@ import {
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { RATE_PROMPT_MIN_DAYS, RATE_PROMPT_SNOOZE_MS } from '../scripts/usage'
+import {
+  RATE_PROMPT_IGNORED_SNOOZE_MS,
+  RATE_PROMPT_MIN_DAYS,
+  RATE_PROMPT_SNOOZE_MS,
+  REVIEW_URL,
+} from '../scripts/usage'
 import { COUNT_POLL_MS } from '../scripts/cache/shared-cache'
 import { REGION_MEMBERS } from '../scripts/countries/countries'
 
@@ -380,7 +385,7 @@ describe('the rating ask', () => {
     // link has to be the store's own.
     const { findByText } = mountStored(enoughUse)
     const link = (await findByText(/Rate it/)) as HTMLAnchorElement
-    expect(link.href).toContain('chromewebstore.google.com')
+    expect(link.href).toBe(REVIEW_URL)
   })
 
   it('does not ask while the extension is paused', async () => {
@@ -401,7 +406,7 @@ describe('the rating ask', () => {
     const { findByText, queryByText } = mountStored({})
 
     const link = (await findByText('Rate ★')) as HTMLAnchorElement
-    expect(link.href).toContain('chromewebstore.google.com')
+    expect(link.href).toBe(REVIEW_URL)
     expect(queryByText(/Rate it/)).toBeNull()
   })
 
@@ -414,6 +419,31 @@ describe('the rating ask', () => {
     await waitFor(() =>
       expect(lastWrite(RATE_PROMPT_KEY)).toMatchObject({ status: 'done' }),
     )
+  })
+
+  it('stays away while the bar on X waits out its snooze', async () => {
+    // The bar notes its ask the moment it renders. Read as never asked, the
+    // card would ask a second time minutes after the page did.
+    const { queryByText } = mountStored({
+      ...enoughUse,
+      [RATE_PROMPT_KEY]: {
+        status: 'asked',
+        snoozeUntil: Date.now() + RATE_PROMPT_IGNORED_SNOOZE_MS,
+      },
+    })
+    await waitFor(() =>
+      expect(document.querySelector('[aria-expanded]')).toBeTruthy(),
+    )
+
+    expect(queryByText(/Rate it/)).toBeNull()
+  })
+
+  it('comes back once that snooze is over', async () => {
+    const { findByText } = mountStored({
+      ...enoughUse,
+      [RATE_PROMPT_KEY]: { status: 'asked', snoozeUntil: Date.now() - 1 },
+    })
+    expect(await findByText(/Rate it/)).toBeTruthy()
   })
 
   it('stays gone once answered', async () => {

@@ -194,10 +194,13 @@ export function normalizeUsageStats(value: unknown): UsageStats {
   }
 }
 
-/** 'done' covers rating and refusing alike: a second ask loses the install. */
+/** 'asked' is a bar nobody answered - not an answer, so it closes no other tab's
+ *  bar. 'done' covers rating and refusing alike: a second ask loses the install. */
+const RATE_PROMPT_STATUSES = ['idle', 'asked', 'later', 'done'] as const
+
 export interface RatePromptState {
-  status: 'idle' | 'later' | 'done'
-  /** Epoch ms the snooze expires. Meaningless unless status is 'later'. */
+  status: (typeof RATE_PROMPT_STATUSES)[number]
+  /** Epoch ms the snooze expires. Meaningless for 'idle' and 'done'. */
   snoozeUntil: number
 }
 
@@ -205,10 +208,9 @@ export function normalizeRatePrompt(value: unknown): RatePromptState {
   const v = asRecord(value)
   const until = finiteNumber(v.snoozeUntil)
   return {
-    status:
-      v.status === 'later' || v.status === 'done'
-        ? (v.status as 'later' | 'done')
-        : 'idle',
+    status: RATE_PROMPT_STATUSES.includes(v.status as RatePromptState['status'])
+      ? (v.status as RatePromptState['status'])
+      : 'idle',
     snoozeUntil: until === null || until < 0 ? 0 : until,
   }
 }
