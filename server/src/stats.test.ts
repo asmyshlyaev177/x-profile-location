@@ -1,7 +1,9 @@
+import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import worker from './index'
-import { openDatabase } from './sqlite'
-import { requestKind, Stats } from './stats'
+import { WHOLE_TABLE, type ScanPolicy } from './scan'
+import { openDatabase, type SqliteDb } from './sqlite'
+import { countTotals, requestKind, Stats, type Totals } from './stats'
 
 const lookupReq = (...names: string[]) => JSON.stringify({ usernames: names })
 const lookupResp = (n: number) =>
@@ -277,5 +279,76 @@ describe('requestKind', () => {
         isServedPath ? 'preflight' : 'other',
       )
     }
+  })
+})
+
+describe('countTotals', () => {
+  const NOW = Date.parse('2026-06-01T00:00:00Z')
+  const HOUR = 60 * 60 * 1000
+
+  // Offsets straddle both windows' edges: users24h and users7d count a client
+  // seen at the edge itself (seen_at >= now - window), and not one a ms older.
+  const seedVotes = fc.array(
+    fc.record({
+      user: fc.constantFrom('a', 'b', 'c', 'd'),
+      client: fc.constantFrom('c1', 'c2', 'c3', 'c4'),
+      age: fc.constantFrom(
+        0,
+        24 * HOUR,
+        24 * HOUR + 1,
+        168 * HOUR,
+        168 * HOUR + 1,
+        900 * HOUR,
+      ),
+    }),
+  )
+
+  /** The queries the stats line ran as single statements before it was chunked. */
+  function oracle(db: SqliteDb): Totals {
+    const one = (sql: string, ...args: number[]) =>
+      db.raw
+        .prepare(sql)
+        .pluck()
+        .get(...args) as number
+    const distinctSince = (hours: number) =>
+      one(
+        'SELECT COUNT(DISTINCT client_id) FROM location_votes WHERE seen_at >= ?',
+        NOW - hours * HOUR,
+      )
+    return {
+      profiles: one('SELECT COUNT(*) FROM profiles'),
+      votes: one('SELECT COUNT(*) FROM location_votes'),
+      users24h: distinctSince(24),
+      users7d: distinctSince(168),
+    }
+  }
+
+  it('matches the single-statement counts at any chunk size', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        seedVotes,
+        fc.integer({ min: 1, max: 20 }),
+        async (votes, chunkRows) => {
+          const db = openDatabase({ path: ':memory:', cacheMb: 8, mmapMb: 0 })
+          try {
+            const insert = db.raw.prepare(
+              'INSERT OR REPLACE INTO location_votes (username, client_id, seen_at) VALUES (?, ?, ?)',
+            )
+            for (const v of votes) insert.run(v.user, v.client, NOW - v.age)
+            db.raw
+              .prepare(
+                'INSERT INTO profiles (username) SELECT DISTINCT username FROM location_votes',
+              )
+              .run()
+            const policy: ScanPolicy = { chunkRows, pause: async () => {} }
+            expect(await countTotals(db, NOW, policy)).toEqual(oracle(db))
+            expect(await countTotals(db, NOW, WHOLE_TABLE)).toEqual(oracle(db))
+          } finally {
+            db.close()
+          }
+        },
+      ),
+      { numRuns: 300 },
+    )
   })
 })

@@ -1,13 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
 import worker, { VOTE_RETENTION_MS as RETENTION_MS, type Env } from './index'
 
-// Minimal D1 stand-in that records the prepared SQL and bound args.
-function mockDb(runResult: unknown = {}) {
+// Minimal D1 stand-in that records the prepared SQL and bound args. `rowids`
+// is the MIN/MAX every table reports to the rowid walk in scan.ts.
+function mockDb(runResult: unknown = {}, rowids = { lo: 1, hi: 1 }) {
   const run = vi.fn().mockResolvedValue(runResult)
-  const bind = vi.fn((..._args: unknown[]) => ({ run }))
-  const prepare = vi.fn((_sql: string) => ({ bind, run }))
+  const all = vi.fn().mockResolvedValue({ results: [rowids] })
+  const bind = vi.fn((..._args: unknown[]) => ({ run, all }))
+  const prepare = vi.fn((_sql: string) => ({ bind, run, all }))
   return { env: { DB: { prepare } } as unknown as Env, prepare, bind, run }
 }
+
+/** The vote DELETE binds the rowid range first, then the cutoff. */
+const cutoffOf = (bind: ReturnType<typeof mockDb>['bind']) =>
+  bind.mock.calls[0]![2] as number
 
 describe('scheduled - retention cleanup', () => {
   it('deletes votes older than the retention window', async () => {
@@ -18,17 +24,18 @@ describe('scheduled - retention cleanup', () => {
 
     // A DELETE against location_votes filtered on seen_at, then the profiles
     // that DELETE just stripped of their last vote.
-    expect(prepare).toHaveBeenCalledTimes(2)
-    const sql = prepare.mock.calls[0][0]
-    expect(sql).toContain('DELETE FROM location_votes')
-    expect(sql).toContain('seen_at < ?')
-    const orphans = prepare.mock.calls[1][0]
-    expect(orphans).toContain('DELETE FROM profiles')
-    expect(orphans).toContain('NOT EXISTS')
+    const deletes = prepare.mock.calls
+      .map(([sql]) => sql)
+      .filter((sql) => sql.startsWith('DELETE'))
+    expect(deletes).toHaveLength(2)
+    expect(deletes[0]).toContain('DELETE FROM location_votes')
+    expect(deletes[0]).toContain('seen_at < ?')
+    expect(deletes[1]).toContain('DELETE FROM profiles')
+    expect(deletes[1]).toContain('NOT EXISTS')
     expect(run).toHaveBeenCalledTimes(2)
 
     // Cutoff is "now minus 60 days", evaluated at call time.
-    const cutoff = bind.mock.calls[0][0] as number
+    const cutoff = cutoffOf(bind)
     expect(cutoff).toBeGreaterThanOrEqual(before - RETENTION_MS)
     expect(cutoff).toBeLessThanOrEqual(Date.now() - RETENTION_MS)
   })
@@ -36,9 +43,16 @@ describe('scheduled - retention cleanup', () => {
   it('never deletes rows within the retention window (cutoff is strictly in the past)', async () => {
     const { env, bind } = mockDb()
     await worker.scheduled(null, env)
-    const cutoff = bind.mock.calls[0][0] as number
     // A vote seen "now" is well above the cutoff, so it survives.
-    expect(cutoff).toBeLessThan(Date.now())
+    expect(cutoffOf(bind)).toBeLessThan(Date.now())
+  })
+
+  it('keeps D1 to one DELETE per table however many rows it holds', async () => {
+    // D1 caps the queries one Worker invocation may run, so the chunked walk
+    // the Node server uses would fail there once a table grew past a few.
+    const { env, run } = mockDb({}, { lo: 1, hi: 50_000_000 })
+    await worker.scheduled(null, env)
+    expect(run).toHaveBeenCalledTimes(2)
   })
 
   // The count node-server.ts logs - votes deleted, not profiles expired. The two backends report it in different

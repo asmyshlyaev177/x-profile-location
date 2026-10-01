@@ -79,6 +79,36 @@ function pickConsensus(votes) {
   };
 }
 
+// src/scan.ts
+var WHOLE_TABLE = {
+  chunkRows: Number.MAX_SAFE_INTEGER,
+  pause: async () => {
+  }
+};
+async function forEachRowidRange(db2, table, policy, visit) {
+  const { results } = await db2.prepare(
+    `SELECT (SELECT MIN(rowid) FROM ${table}) AS lo, (SELECT MAX(rowid) FROM ${table}) AS hi`
+  ).all();
+  const first = results?.[0]?.lo;
+  const last = results?.[0]?.hi;
+  if (first == null || last == null) return;
+  for (let lo = first; lo <= last; lo += policy.chunkRows) {
+    await visit(lo, Math.min(lo + policy.chunkRows - 1, last));
+    await policy.pause();
+  }
+}
+function oneAtATime() {
+  let tail = Promise.resolve();
+  const pending = /* @__PURE__ */ new Set();
+  return (name, job) => {
+    if (pending.has(name)) return void 0;
+    pending.add(name);
+    tail = tail.then(job).catch(() => {
+    }).finally(() => pending.delete(name));
+    return tail;
+  };
+}
+
 // src/index.ts
 var MAX_BATCH = 100;
 var VOTE_RETENTION_MS = 60 * 24 * 60 * 60 * 1e3;
@@ -311,26 +341,38 @@ var index_default = {
       return json({ error: "internal" }, 500);
     }
   },
-  // Retention cleanup, the only thing that ages votes out - see CLAUDE.md.
-  // `_controller` / `_ctx` stay loose so this file needs no workers-types.
+  // Retention cleanup on the Worker's cron. `_controller` / `_ctx` stay loose
+  // so this file needs no workers-types.
   async scheduled(_controller, env2, _ctx) {
-    const result = await env2.DB.prepare(
-      "DELETE FROM location_votes WHERE seen_at < ?"
-    ).bind(Date.now() - VOTE_RETENTION_MS).run();
-    await env2.DB.prepare(
-      `DELETE FROM profiles
-        WHERE NOT EXISTS (
-                SELECT 1 FROM location_votes v WHERE v.username = profiles.username
-              )`
-    ).run();
-    return rowsChanged(result);
+    return pruneExpired(env2, Date.now(), WHOLE_TABLE);
   }
 };
+async function pruneExpired(env2, now, policy) {
+  const cutoff = now - VOTE_RETENTION_MS;
+  let deleted = 0;
+  await forEachRowidRange(env2.DB, "location_votes", policy, async (lo, hi) => {
+    const result = await env2.DB.prepare(
+      "DELETE FROM location_votes WHERE rowid BETWEEN ? AND ? AND seen_at < ?"
+    ).bind(lo, hi, cutoff).run();
+    deleted += rowsChanged(result);
+  });
+  await forEachRowidRange(env2.DB, "profiles", policy, async (lo, hi) => {
+    await env2.DB.prepare(
+      `DELETE FROM profiles
+        WHERE rowid BETWEEN ? AND ?
+          AND NOT EXISTS (
+                SELECT 1 FROM location_votes v WHERE v.username = profiles.username
+              )`
+    ).bind(lo, hi).run();
+  });
+  return deleted;
+}
 
 // src/sqlite.ts
 import Database from "better-sqlite3";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { setImmediate as nextTurn } from "node:timers/promises";
 var DEFAULT_SQLITE_CONFIG = {
   // Past this it copies pages the OS already caches for mmap: 256 held ~200 MB
   // more at 600k profiles for no speed-up, while 2 doubled the retention pass.
@@ -338,6 +380,22 @@ var DEFAULT_SQLITE_CONFIG = {
   mmapMb: 512,
   busyTimeoutMs: 5e3
 };
+var SCAN_CHUNK_ROWS = 250;
+var SCAN_SLICE_MS = 10;
+function yieldingScan({
+  chunkRows = SCAN_CHUNK_ROWS,
+  sliceMs = SCAN_SLICE_MS
+} = {}) {
+  let sliceStart = performance.now();
+  return {
+    chunkRows,
+    async pause() {
+      if (performance.now() - sliceStart < sliceMs) return;
+      await nextTurn();
+      sliceStart = performance.now();
+    }
+  };
+}
 var BoundStatement = class {
   #stmt;
   #args;
@@ -400,6 +458,17 @@ var SqliteDb = class {
   /** Hand back the driver for lifecycle work (checkpointing, PRAGMA optimize). */
   get raw() {
     return this.#db;
+  }
+  /** Checkpoints and empties the WAL, or gives up at once while another
+   *  connection holds a snapshot — the backup's VACUUM INTO, for minutes —
+   *  rather than wait out busy_timeout with the event loop held. */
+  truncateWal() {
+    this.#db.pragma("busy_timeout = 0");
+    try {
+      this.#db.pragma("wal_checkpoint(TRUNCATE)");
+    } finally {
+      this.#db.pragma(`busy_timeout = ${DEFAULT_SQLITE_CONFIG.busyTimeoutMs}`);
+    }
   }
   close() {
     this.#db.pragma("optimize");
@@ -566,6 +635,43 @@ var Stats = class {
     return snap;
   }
 };
+var HOUR_MS = 60 * 60 * 1e3;
+async function countProfiles(db2, policy) {
+  let profiles = 0;
+  await forEachRowidRange(db2, "profiles", policy, async (lo, hi) => {
+    const { results } = await db2.prepare("SELECT COUNT(*) AS n FROM profiles WHERE rowid BETWEEN ? AND ?").bind(lo, hi).all();
+    profiles += results?.[0]?.n ?? 0;
+  });
+  return profiles;
+}
+async function scanVotes(db2, since, policy) {
+  let votes = 0;
+  const lastSeen = /* @__PURE__ */ new Map();
+  await forEachRowidRange(db2, "location_votes", policy, async (lo, hi) => {
+    const { results: counted2 } = await db2.prepare(
+      "SELECT COUNT(*) AS n FROM location_votes WHERE rowid BETWEEN ? AND ?"
+    ).bind(lo, hi).all();
+    votes += counted2?.[0]?.n ?? 0;
+    const { results: recent } = await db2.prepare(
+      `SELECT client_id, MAX(seen_at) AS last FROM location_votes
+          WHERE rowid BETWEEN ? AND ? AND seen_at >= ? GROUP BY client_id`
+    ).bind(lo, hi, since).all();
+    for (const r of recent ?? []) {
+      lastSeen.set(
+        r.client_id,
+        Math.max(lastSeen.get(r.client_id) ?? 0, r.last)
+      );
+    }
+  });
+  return { votes, lastSeen };
+}
+async function countTotals(db2, now, policy) {
+  const profiles = await countProfiles(db2, policy);
+  const { votes, lastSeen } = await scanVotes(db2, now - 168 * HOUR_MS, policy);
+  const dayAgo = now - 24 * HOUR_MS;
+  const users24h = [...lastSeen.values()].filter((at) => at >= dayAgo).length;
+  return { profiles, votes, users24h, users7d: lastSeen.size };
+}
 
 // src/node-server.ts
 function num(name, fallback) {
@@ -697,12 +803,6 @@ var db = openDatabase({
 });
 var env = { DB: db };
 var stats = new Stats();
-async function activeUsers(hours) {
-  const { results } = await db.prepare(
-    "SELECT COUNT(DISTINCT client_id) AS n FROM location_votes WHERE seen_at >= ?"
-  ).bind(Date.now() - hours * 60 * 60 * 1e3).all();
-  return results?.[0]?.n ?? 0;
-}
 function dbBytes() {
   let total = 0;
   for (const suffix of ["", "-wal"]) {
@@ -715,19 +815,17 @@ function dbBytes() {
 }
 async function logStats(reason) {
   try {
+    const scan = reason === "shutdown" ? WHOLE_TABLE : yieldingScan();
+    const totals = await countTotals(db, Date.now(), scan);
     const counters = stats.drain();
-    const { results } = await db.prepare(
-      "SELECT (SELECT COUNT(*) FROM profiles) AS profiles, (SELECT COUNT(*) FROM location_votes) AS votes"
-    ).all();
-    const totals = results?.[0];
     console.log(
       `[x-loc-cache] stats ${JSON.stringify({
         reason,
         ...counters,
-        users24h: await activeUsers(24),
-        users7d: await activeUsers(24 * 7),
-        profiles: totals?.profiles ?? 0,
-        votes: totals?.votes ?? 0,
+        users24h: totals.users24h,
+        users7d: totals.users7d,
+        profiles: totals.profiles,
+        votes: totals.votes,
         dbMb: Math.round(dbBytes() / (1024 * 1024) * 100) / 100,
         rssMb: Math.round(process.memoryUsage().rss / (1024 * 1024))
       })}`
@@ -783,13 +881,14 @@ var server = createServer((req, res) => {
 });
 server.keepAliveTimeout = 61e3;
 server.headersTimeout = 65e3;
+var maintain = oneAtATime();
 var retentionMs = config.retentionHours * 60 * 60 * 1e3;
 async function runRetention() {
   const startedAt = Date.now();
   try {
-    const deleted = await index_default.scheduled(null, env);
+    const deleted = await pruneExpired(env, Date.now(), yieldingScan());
     sweepBuckets(Date.now());
-    db.raw.pragma("wal_checkpoint(TRUNCATE)");
+    db.truncateWal();
     console.log(
       `[x-loc-cache] retention: deleted ${deleted} vote(s) in ${Date.now() - startedAt}ms`
     );
@@ -797,12 +896,12 @@ async function runRetention() {
     console.error("[x-loc-cache] retention failed:", err);
   }
 }
-setInterval(() => void runRetention(), retentionMs).unref();
-setTimeout(() => void runRetention(), 6e4).unref();
+setInterval(() => void maintain("retention", runRetention), retentionMs).unref();
+setTimeout(() => void maintain("retention", runRetention), 6e4).unref();
 setInterval(() => sweepBuckets(Date.now()), config.rateWindowMs * 10).unref();
 if (config.statsIntervalHours > 0) {
   setInterval(
-    () => void logStats("interval"),
+    () => void maintain("stats", () => logStats("interval")),
     config.statsIntervalHours * 60 * 60 * 1e3
   ).unref();
 }

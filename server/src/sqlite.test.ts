@@ -3,9 +3,17 @@
 // db-types.ts adapter is a faithful stand-in for D1 - the handler code under
 // test is not mocked at any layer.
 
+import Database from 'better-sqlite3'
+import fc from 'fast-check'
+import { mkdtempSync, rmSync, statSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import worker, { VOTE_RETENTION_MS, type Env } from './index.ts'
-import { openDatabase, type SqliteDb } from './sqlite.ts'
+import type { Db } from './db-types.ts'
+import worker, { pruneExpired, VOTE_RETENTION_MS, type Env } from './index.ts'
+import { WHOLE_TABLE, type ScanPolicy } from './scan.ts'
+import { openDatabase, yieldingScan, type SqliteDb } from './sqlite.ts'
+import { countTotals } from './stats.ts'
 
 let db: SqliteDb
 let env: Env
@@ -133,9 +141,6 @@ describe('sqlite backend - round trip', () => {
   })
 
   it('persists across a reopen of the same file', async () => {
-    const { mkdtempSync, rmSync } = await import('node:fs')
-    const { join } = await import('node:path')
-    const { tmpdir } = await import('node:os')
     const dir = mkdtempSync(join(tmpdir(), 'xloc-'))
     const path = join(dir, 'test.db')
 
@@ -289,7 +294,305 @@ describe('sqlite backend - retention', () => {
   })
 })
 
+describe('sqlite backend - chunked retention', () => {
+  const NOW = Date.parse('2026-06-01T00:00:00Z')
+  const CUTOFF = NOW - VOTE_RETENTION_MS
+  const DAY = 24 * 60 * 60 * 1000
+
+  interface SeedVote {
+    user: string
+    client: string
+    /** From the cutoff: below zero is expired, zero and above is kept. */
+    offset: number
+    isHole: boolean
+  }
+  interface SeedProfile {
+    user: string
+    isHole: boolean
+  }
+  interface SeedTable {
+    votes: SeedVote[]
+    profiles: SeedProfile[]
+  }
+
+  /** Inserted in array order, so rowid order is array order; holes are deleted
+   *  afterwards and leave gaps in the rowids for the chunk edges to land on. */
+  function seededDb(table: SeedTable): SqliteDb {
+    const target = openDatabase({ path: ':memory:', cacheMb: 8, mmapMb: 0 })
+    const vote = target.raw.prepare(
+      'INSERT INTO location_votes (username, client_id, location, seen_at) VALUES (?, ?, ?, ?)',
+    )
+    const profile = target.raw.prepare(
+      'INSERT INTO profiles (username, location, location_confidence) VALUES (?, ?, 1)',
+    )
+    for (const v of table.votes)
+      vote.run(v.user, v.client, 'Peru', CUTOFF + v.offset)
+    for (const p of table.profiles) profile.run(p.user, 'Peru')
+    const dropVote = target.raw.prepare(
+      'DELETE FROM location_votes WHERE username = ? AND client_id = ?',
+    )
+    const dropProfile = target.raw.prepare(
+      'DELETE FROM profiles WHERE username = ?',
+    )
+    for (const v of table.votes.filter((row) => row.isHole))
+      dropVote.run(v.user, v.client)
+    for (const p of table.profiles.filter((row) => row.isHole))
+      dropProfile.run(p.user)
+    return target
+  }
+
+  function remaining(target: SqliteDb): {
+    votes: unknown[]
+    profiles: unknown[]
+  } {
+    const column = (sql: string) => target.raw.prepare(sql).pluck().all()
+    return {
+      votes: column(
+        "SELECT username || '/' || client_id FROM location_votes ORDER BY rowid",
+      ),
+      profiles: column('SELECT username FROM profiles ORDER BY rowid'),
+    }
+  }
+
+  // Few names, so profiles collect several votes and some votes outlive others;
+  // 'e' can only ever be a profile without a vote.
+  const seedTable: fc.Arbitrary<SeedTable> = fc.record({
+    votes: fc.uniqueArray(
+      fc.record({
+        user: fc.constantFrom('a', 'b', 'c', 'd'),
+        client: fc.constantFrom('c1', 'c2', 'c3'),
+        offset: fc.constantFrom(-DAY, -1, 0, 1),
+        isHole: fc.boolean(),
+      }),
+      { selector: (v) => `${v.user}/${v.client}` },
+    ),
+    profiles: fc.uniqueArray(
+      fc.record({
+        user: fc.constantFrom('a', 'b', 'c', 'd', 'e'),
+        isHole: fc.boolean(),
+      }),
+      { selector: (p) => p.user },
+    ),
+  })
+
+  /** Retention as it was before chunking: two statements, no rowid walk, so
+   *  a bug in scan.ts cannot hide in the answer it is compared with. */
+  function pruneInTwoStatements(target: SqliteDb): number {
+    const { changes } = target.raw
+      .prepare('DELETE FROM location_votes WHERE seen_at < ?')
+      .run(CUTOFF)
+    target.raw
+      .prepare(
+        'DELETE FROM profiles WHERE NOT EXISTS (SELECT 1 FROM location_votes v WHERE v.username = profiles.username)',
+      )
+      .run()
+    return changes
+  }
+
+  it('deletes what the two unchunked statements delete, at any chunk size', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        seedTable,
+        fc.integer({ min: 1, max: 16 }),
+        async (table, chunkRows) => {
+          const whole = seededDb(table)
+          const chunked = seededDb(table)
+          try {
+            const expected = pruneInTwoStatements(whole)
+            const policy: ScanPolicy = { chunkRows, pause: async () => {} }
+            expect(await pruneExpired({ DB: chunked }, NOW, policy)).toBe(
+              expected,
+            )
+            expect(remaining(chunked)).toEqual(remaining(whole))
+          } finally {
+            whole.close()
+            chunked.close()
+          }
+        },
+      ),
+      { numRuns: 300 },
+    )
+  })
+
+  function contributeTo(target: SqliteDb, u: string, clientId: string) {
+    return worker.fetch(
+      new Request('http://cache.test/v1/loc', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          entries: [{ u, loc: 'Peru', src: 'web' }],
+        }),
+      }),
+      { DB: target },
+    )
+  }
+
+  const sortedRows = (target: SqliteDb) => {
+    const { votes, profiles } = remaining(target)
+    return { votes: [...votes].sort(), profiles: [...profiles].sort() }
+  }
+
+  it('ends where contributing first and pruning after would, with contributions between chunks', async () => {
+    // A contribution is two writes, the vote then the profile; between chunks
+    // on Node one can land anywhere in the walk. Its vote is never expired, so
+    // the end state cannot depend on where it landed.
+    const midWalk = fc.array(
+      fc.record({
+        u: fc.constantFrom('a', 'b', 'c', 'd', 'e'),
+        clientId: fc.constantFrom('c1', 'c2', 'c3'),
+      }),
+      { maxLength: 8 },
+    )
+    await fc.assert(
+      fc.asyncProperty(
+        seedTable,
+        midWalk,
+        fc.integer({ min: 1, max: 6 }),
+        async (table, contributions, chunkRows) => {
+          const oracle = seededDb(table)
+          const chunked = seededDb(table)
+          try {
+            for (const c of contributions)
+              await contributeTo(oracle, c.u, c.clientId)
+            pruneInTwoStatements(oracle)
+
+            const queue = [...contributions]
+            const pause = async () => {
+              const next = queue.shift()
+              if (next) await contributeTo(chunked, next.u, next.clientId)
+            }
+            await pruneExpired({ DB: chunked }, NOW, { chunkRows, pause })
+            for (const c of queue) await contributeTo(chunked, c.u, c.clientId)
+            expect(sortedRows(chunked)).toEqual(sortedRows(oracle))
+          } finally {
+            oracle.close()
+            chunked.close()
+          }
+        },
+      ),
+      { numRuns: 200 },
+    )
+  })
+
+  it('reads every range with an index seek, the bounds included', async () => {
+    // A walk that opens with a full scan holds the event loop for that scan,
+    // which is the stall the chunks exist to avoid.
+    const target = seededDb({ votes: [], profiles: [] })
+    const prepared = new Set<string>()
+    const recording: Db = {
+      prepare: (sql) => {
+        prepared.add(sql)
+        return target.prepare(sql)
+      },
+      batch: (statements) => target.batch(statements),
+    }
+    // Fresh, so retention leaves rows behind and the stats walk has ranges to read.
+    target.raw
+      .prepare(
+        "INSERT INTO location_votes (username, client_id, seen_at) VALUES ('a', 'c1', ?)",
+      )
+      .run(NOW)
+    target.raw.prepare("INSERT INTO profiles (username) VALUES ('a')").run()
+    const policy: ScanPolicy = { chunkRows: 1, pause: async () => {} }
+    await pruneExpired({ DB: recording }, NOW, policy)
+    await countTotals(recording, NOW, policy)
+
+    // Two bounds reads, two DELETEs, and the stats walk's three range reads.
+    expect(prepared.size).toBe(7)
+    for (const sql of prepared) {
+      const binds = Array.from({ length: sql.split('?').length - 1 }, () => 0)
+      const plan = target.raw
+        .prepare(`EXPLAIN QUERY PLAN ${sql}`)
+        .all(...binds) as { detail: string }[]
+      const scans = plan.filter(
+        (row) =>
+          row.detail.startsWith('SCAN') && row.detail !== 'SCAN CONSTANT ROW',
+      )
+      expect({ sql, scans }).toEqual({ sql, scans: [] })
+    }
+    target.close()
+  })
+
+  /** Event-loop turns taken while a pass runs, and the pauses it asked for. */
+  async function turnsDuring(policy: ScanPolicy): Promise<[number, number]> {
+    const users = Array.from({ length: 20 }, (_, i) => `u${i}`)
+    const target = seededDb({
+      votes: users.map((user, i) => ({
+        user,
+        client: 'c1',
+        offset: i % 2 ? -1 : 1,
+        isHole: false,
+      })),
+      profiles: users.map((user) => ({ user, isHole: false })),
+    })
+    let pauses = 0
+    const counted: ScanPolicy = {
+      chunkRows: policy.chunkRows,
+      pause: () => {
+        pauses++
+        return policy.pause()
+      },
+    }
+    let turns = 0
+    let isDone = false
+    const tick = (): void => {
+      if (isDone) return
+      turns++
+      setImmediate(tick)
+    }
+    setImmediate(tick)
+    await pruneExpired({ DB: target }, NOW, counted)
+    isDone = true
+    target.close()
+    return [turns, pauses]
+  }
+
+  it('gives the event loop a turn between chunks once a slice is spent', async () => {
+    const [turns, pauses] = await turnsDuring(
+      yieldingScan({ chunkRows: 1, sliceMs: 0 }),
+    )
+    expect(pauses).toBe(40) // one per row of each table
+    expect(turns).toBeGreaterThanOrEqual(pauses - 1)
+
+    // Inside a slice, and in one statement, the pass keeps the loop throughout.
+    expect(
+      (await turnsDuring(yieldingScan({ chunkRows: 1, sliceMs: 60_000 })))[0],
+    ).toBe(0)
+    expect((await turnsDuring(WHOLE_TABLE))[0]).toBe(0)
+  })
+})
+
 describe('sqlite adapter', () => {
+  it('truncates the WAL without waiting on a reader that holds a snapshot', () => {
+    // The backup's VACUUM INTO is such a reader for up to minutes; waiting out
+    // busy_timeout there would hold the event loop for 5 s.
+    const dir = mkdtempSync(join(tmpdir(), 'x-loc-wal-'))
+    const path = join(dir, 'x-loc-cache.db')
+    const writer = openDatabase({ path, cacheMb: 8, mmapMb: 0 })
+    const reader = new Database(path)
+    try {
+      writer.raw.prepare("INSERT INTO profiles (username) VALUES ('a')").run()
+      reader.prepare('BEGIN').run()
+      reader.prepare('SELECT COUNT(*) FROM profiles').get()
+      writer.raw.prepare("INSERT INTO profiles (username) VALUES ('b')").run()
+
+      const startedAt = performance.now()
+      writer.truncateWal()
+      expect(performance.now() - startedAt).toBeLessThan(1000)
+      expect(writer.raw.pragma('busy_timeout', { simple: true })).toBe(5000)
+
+      // With the reader gone, the next call empties the WAL.
+      reader.prepare('COMMIT').run()
+      writer.truncateWal()
+      expect(statSync(`${path}-wal`).size).toBe(0)
+    } finally {
+      reader.close()
+      writer.close()
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('applies the tuning pragmas', () => {
     const wal = db.raw.pragma('journal_mode', { simple: true })
     expect(wal).toBe('memory') // :memory: databases cannot use WAL

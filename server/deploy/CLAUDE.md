@@ -92,7 +92,7 @@ after it.
 
 ## The two "is this copy short" baselines differ
 
-Retention deletes profiles ([`../src/index.ts`](../src/index.ts) `scheduled()`),
+Retention deletes profiles ([`../src/index.ts`](../src/index.ts) `pruneExpired()`),
 so `profiles` shrinks on its own and the two scripts cannot check a copy the same
 way.
 

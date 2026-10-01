@@ -12,8 +12,8 @@ here can quietly break. Deploy scripts have their own notes in
 
 ## Cached for 60 days, then re-earned
 
-`scheduled()` deletes votes past `VOTE_RETENTION_MS`, then the profiles left with
-no votes at all. A handle nobody looks at leaves the database; the next client to
+`pruneExpired()` — the Worker's cron, a daily interval on Node — deletes votes past
+`VOTE_RETENTION_MS`, then the profiles left with no votes at all. A handle nobody looks at leaves the database; the next client to
 want it misses, reads it from X on hover or in the background, and contributes it
 back, which rebuilds the row. So a location is only as old as the last person who
 looked at it, and dead accounts cost nothing.
@@ -60,7 +60,7 @@ and `contrib-limit.ts` raises the price of manufacturing ids.
 
 **`/v1/stats` counts unfiltered**, though `/v1/loc/batch` serves only
 `location_confidence > 0`. The counts are the same number: `pickConsensus` never returns
-below 1, so no row is written below 1, and `scheduled()` removes a profile rather than
+below 1, so no row is written below 1, and `pruneExpired()` removes a profile rather than
 zeroing it. What differs is cost — the filter cannot use the username index and drops to
 a table scan (5.3ms against 0.05ms over 200k rows), and better-sqlite3 is synchronous, so
 that gap is an event-loop stall.
@@ -69,16 +69,51 @@ The count is memoised for `STATS_TTL_MS` and clients are told the same, so the e
 costs one `COUNT` per 3 minutes rather than one per reader. `COUNT(*)` is a full scan (7.8ms
 at 10k-user scale, README "Benchmarks") — the memo is not a nicety.
 
-**The consensus recompute has no date filter.** `scheduled()` physically deletes votes
+**The consensus recompute has no date filter.** `pruneExpired()` physically deletes votes
 older than `VOTE_RETENTION_MS`, so every row still in the table is inside the window by
 construction. That makes deletion the single source of truth for the 60-day bound and
 lets the query ride the primary key. The retention `DELETE` itself has no `seen_at` index
 to ride: a full scan spending the abundant read budget, deliberately traded against
-taxing every insert's ~50x scarcer write budget.
+taxing every insert's ~50x scarcer write budget. It walks the table in rowid ranges, so
+the scan never needs one either — see "Maintenance walks rowid ranges".
 
 Contributions over a client's budget are dropped **silently**, with `{ ok: true }`
 either way — the client ignores the body, and a rejection would tell a poisoner when to
 rotate its id.
+
+## Maintenance walks rowid ranges (scan.ts)
+
+Retention and the stats line's totals read whole tables once a day; both intervals start
+at boot with the same period. On better-sqlite3 a statement holds the
+event loop for as long as it runs, so as single statements they were one long silence:
+on one core under `MemoryMax=640M`, 12 s at 554 MB and 40-58 s at 1.1 GB, every request
+in it timing out (2026-09-30).
+
+- `forEachRowidRange` splits the work into ranges of the table's own rowid b-tree: one
+  pass, no index. A `LIMIT`-chunked DELETE re-reads the table from the start for every
+  chunk, which is why chunking once looked like it needed a `seen_at` index.
+- Its bounds are two scalar subqueries. `SELECT MIN(rowid), MAX(rowid)` looks like two
+  seeks and is a full scan — SQLite only seeks for a lone MIN or MAX — and it opened
+  every walk with the one stall chunking exists to avoid. `sqlite.test.ts` fails on any
+  `SCAN` in a statement the walks prepare.
+- Node passes `yieldingScan()`: 250 rowids a statement and a turn of the event loop every
+  10 ms. The measurements behind both numbers sit beside them in `sqlite.ts`.
+- `node-server.ts` runs the two walks through `oneAtATime()`: back to back, so the stats
+  line counts what retention left and one walk holds the loop at a time, and a pass still
+  running when its interval fires again is skipped, not stacked.
+- The Worker's `scheduled()` passes `WHOLE_TABLE`, one DELETE per table after a read of
+  its bounds: D1 caps the queries one invocation may run, and a long D1 query blocks
+  nothing. `scheduled.test.ts` fails if the cron starts chunking.
+- The profile sweep stays a sweep of every profile, not of the ones this pass emptied: a
+  pass cut short by a restart is finished by the next, and a profile that never had a
+  vote still goes (`sqlite.test.ts`).
+- A distinct count cannot be summed across chunks, so `countTotals` keeps each install's
+  last `seen_at` in a map — only installs seen in the last 7 days, tens of thousands.
+- The shutdown stats line takes `WHOLE_TABLE`: no connection is left to serve by then, and
+  a scan that yields would let the 5 s exit timer cut it short.
+- Measured after (2026-10-01, same box): with the file at 1.1 GB in 640 MB the slowest
+  chunk took 0.56 s, and no request in the tick timed out up to 1.36 GB. Past the memory
+  limit what grows is latency — README "Where it slows down".
 
 ## The contribution budget (contrib-limit.ts)
 
@@ -146,8 +181,8 @@ represented at all; these answer 405 or 400 and count as `other` rather than sur
 **Stats cost what they measure.** Per-window counters are in-process and reset on each log
 line, so a restart loses the partial window (hence the SIGTERM flush). The distinct-installs
 figure comes from the `client_id` already in `location_votes` — no new tracking — but there
-is no index on `seen_at`, so it is a full scan: ~230ms over 5.4M votes, a synchronous
-event-loop stall. Fine once a day; never on a request path. It counts _contributors_, a
+is no index on `seen_at`, so it is a full scan, walked in chunks that give way to requests
+("Maintenance walks rowid ranges"). Once a day; never on a request path. It counts _contributors_, a
 floor on active users: counting readers would mean identifying lookups, which is exactly
 what this server promises not to be able to do.
 

@@ -1,15 +1,24 @@
 // Load benchmark: `node --experimental-strip-types bench/load.ts [--users N]`.
 // p50/p95/p99, because a mean hides the event-loop stalls that matter here.
 
-import { rmSync, statSync } from 'node:fs'
+import { constants, copyFileSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import worker, { type Env } from '../src/index.ts'
+import { monitorEventLoopDelay } from 'node:perf_hooks'
+import { setTimeout as sleep } from 'node:timers/promises'
+import worker, {
+  __resetStats,
+  type Env,
+  pruneExpired,
+  VOTE_RETENTION_MS,
+} from '../src/index.ts'
 import {
   DEFAULT_SQLITE_CONFIG,
   openDatabase,
   type SqliteDb,
+  yieldingScan,
 } from '../src/sqlite.ts'
+import { countTotals } from '../src/stats.ts'
 
 const DEFAULTS = {
   // Distinct anonymous installs. The figure the sizing question is asked in.
@@ -17,9 +26,9 @@ const DEFAULTS = {
   // Distinct handles ever looked up — timelines overlap heavily, so this grows
   // far slower than the user count.
   profiles: 2_000_000,
-  // Votes are capped at 10 per handle (VOTE_CAP), but most handles are seen by
-  // one or two installs. The generator below averages ~2.4, giving ~4.8M rows.
-  voteAvg: 2.4,
+  // Most handles are seen by one install: on 2026-10-01 production had more
+  // than one vote on ~6% of profiles, and none expected past 20%.
+  multiPct: 6,
 }
 
 const args = process.argv.slice(2)
@@ -29,13 +38,31 @@ function arg(name: string, fallback: number): number {
 }
 const USERS = arg('users', DEFAULTS.users)
 const PROFILES = arg('profiles', DEFAULTS.profiles)
+const MULTI_PCT = arg('multi-pct', DEFAULTS.multiPct)
 const KEEP = args.includes('--keep')
 
-const DB_PATH = join(tmpdir(), `x-loc-bench-${PROFILES}-${USERS}.db`)
+const DB_PATH = join(
+  tmpdir(),
+  `x-loc-bench-${PROFILES}-${USERS}-${MULTI_PCT}pct.db`,
+)
+// Measurements write to a copy: the retention pass and the contributions change
+// the data, and --keep promises the next run the same data this one saw.
+const RUN_PATH = `${DB_PATH}.run`
 const DAY = 24 * 60 * 60 * 1000
-const VOTE_RETENTION_DAYS = 60
+const RETENTION_DAYS = VOTE_RETENTION_MS / DAY
 
 // Generation
+
+/** Votes on profile `i`: one, or for MULTI_PCT of profiles two or three, with
+ *  one in 20 of those at the vote cap (VOTE_CAP) — ~2.7 on average. */
+function votesOn(i: number): number {
+  if (i % 100 >= MULTI_PCT) return 1
+  const nth = Math.floor(i / 100) * MULTI_PCT + (i % 100)
+  if (nth % 20 === 0) return 10
+  if (nth % 3 === 0) return 3
+  return 2
+}
+
 const COUNTRIES = [
   'United States',
   'Japan',
@@ -71,16 +98,14 @@ function generate(db: SqliteDb): void {
     const username = `user${i}`
     const loc = COUNTRIES[i % COUNTRIES.length]!
     const src = SOURCES[i % SOURCES.length]!
-    // seen_at spread across the retention window, so a retention pass deletes
-    // roughly one day's worth — the steady state, not a first-run backlog.
-    const seenAt = now - Math.floor((i % VOTE_RETENTION_DAYS) * DAY)
+    // seen_at spread over the retention window plus one day, so a retention
+    // pass deletes that oldest day — the steady state, not a first-run backlog.
+    // Without the extra day nothing is past the cutoff and the pass times only
+    // its scans.
+    const seenAt = now - (i % (RETENTION_DAYS + 1)) * DAY
 
-    // A fifth of handles are "popular" and sit at the vote cap; the rest have
-    // one or two. Averages ~2.4 votes/handle.
-    let nVotes = 2
-    if (i % 20 === 0) nVotes = 10
-    else if (i % 3 === 0) nVotes = 3
-    insProfile.run(username, loc, src, 1, Math.min(nVotes, 10), seenAt)
+    const nVotes = votesOn(i)
+    insProfile.run(username, loc, src, 1, nVotes, seenAt)
     for (let j = 0; j < nVotes; j++) {
       insVote.run(
         username,
@@ -99,6 +124,10 @@ function generate(db: SqliteDb): void {
     }
   }
   raw.exec('COMMIT')
+  // The day buckets count back from this, so a rerun a week later must use it
+  // as "now" too, or its retention pass deletes eight days instead of one.
+  raw.exec('CREATE TABLE bench_meta (generated_at INTEGER NOT NULL)')
+  raw.prepare('INSERT INTO bench_meta VALUES (?)').run(now)
   raw.exec('ANALYZE')
   console.log(
     `  generated ${PROFILES.toLocaleString()} profiles / ${votes.toLocaleString()} votes ` +
@@ -169,11 +198,43 @@ const CACHE_MB = Number(
   process.env.XLOC_CACHE_MB ?? DEFAULT_SQLITE_CONFIG.cacheMb,
 )
 const MMAP_MB = Number(process.env.XLOC_MMAP_MB ?? DEFAULT_SQLITE_CONFIG.mmapMb)
-const db = openDatabase({ path: DB_PATH, cacheMb: CACHE_MB, mmapMb: MMAP_MB })
-const env: Env = { DB: db }
-if (fresh) generate(db)
+/** With its WAL files: a -wal left by an interrupted run would be replayed
+ *  into the next copy. */
+function removeRunCopy(): void {
+  for (const suffix of ['', '-wal', '-shm']) {
+    rmSync(RUN_PATH + suffix, { force: true })
+  }
+}
 
-const sizeMb = statSync(DB_PATH).size / (1024 * 1024)
+if (fresh) {
+  const gen = openDatabase({
+    path: DB_PATH,
+    cacheMb: CACHE_MB,
+    mmapMb: MMAP_MB,
+  })
+  generate(gen)
+  gen.close()
+}
+removeRunCopy()
+// A reflink where the filesystem supports one (btrfs, xfs): instant, and the
+// copy starts with nothing in the page cache, so "cold cache" needs no root.
+copyFileSync(DB_PATH, RUN_PATH, constants.COPYFILE_FICLONE)
+const db = openDatabase({ path: RUN_PATH, cacheMb: CACHE_MB, mmapMb: MMAP_MB })
+const env: Env = { DB: db }
+const generatedAt = (() => {
+  try {
+    return db.raw
+      .prepare('SELECT generated_at FROM bench_meta')
+      .pluck()
+      .get() as number
+  } catch {
+    throw new Error(`${DB_PATH} predates bench_meta: delete it to regenerate`)
+  }
+})()
+// One ms past generation: the oldest bucket is then just past the cutoff.
+const dataNow = generatedAt + 1
+
+const sizeMb = statSync(RUN_PATH).size / (1024 * 1024)
 console.log(
   `size: ${sizeMb.toFixed(0)} MB  |  page cache: ${CACHE_MB} MB  |  mmap: ${MMAP_MB} MB  |  users: ${USERS.toLocaleString()}\n`,
 )
@@ -219,31 +280,43 @@ results.push(
   ),
 )
 
-// Stats queries — full scans, no index. The reason this benchmark exists.
+// /v1/stats counts profiles in one statement on the request path, at most
+// once per STATS_TTL_MS.
 results.push(
-  await time('stats: COUNT(DISTINCT client_id) 24h', 5, async () => {
-    await db
-      .prepare(
-        'SELECT COUNT(DISTINCT client_id) AS n FROM location_votes WHERE seen_at >= ?',
-      )
-      .bind(Date.now() - DAY)
-      .all()
-  }),
-)
-results.push(
-  await time('stats: COUNT(*) both tables', 5, async () => {
-    await db
-      .prepare(
-        'SELECT (SELECT COUNT(*) FROM profiles) AS profiles, (SELECT COUNT(*) FROM location_votes) AS votes',
-      )
-      .all()
+  await time('GET /v1/stats, count not cached', 5, async () => {
+    __resetStats()
+    await worker.fetch(new Request('http://localhost/v1/stats'), env)
   }),
 )
 
-// Retention: one pass, deleting ~1 day of the window.
-results.push(
-  await time('retention pass (daily)', 1, () => worker.scheduled(null, env)),
+/** Total time, and the longest the event loop went without a turn: what a
+ *  request arriving mid-pass waits behind. */
+async function maintenance<T>(
+  fn: () => Promise<T>,
+): Promise<{ value: T; ms: number; stallMs: number }> {
+  const loop = monitorEventLoopDelay({ resolution: 1 })
+  loop.enable()
+  // It records nothing until its timer first fires, which a pass would delay.
+  await sleep(5)
+  const startedAt = performance.now()
+  const value = await fn()
+  const ms = performance.now() - startedAt
+  // The monitor records a stall when its timer next fires, not before.
+  await sleep(5)
+  loop.disable()
+  return { value, ms, stallMs: loop.max / 1e6 }
+}
+
+// The daily tick, chunked as node-server.ts runs it: the stats line's totals,
+// then retention deleting the generator's oldest day.
+const statsLine = await maintenance(() =>
+  countTotals(db, dataNow, yieldingScan()),
 )
+const retention = await maintenance(() =>
+  pruneExpired(env, dataNow, yieldingScan()),
+)
+const votesBefore = statsLine.value.votes
+const votesDeleted = retention.value
 
 const pad = (s: string, n: number) => s.padEnd(n)
 const num = (v: number) => `${v.toFixed(2)}ms`.padStart(10)
@@ -267,6 +340,26 @@ for (const r of results) {
   )
 }
 
-console.log(`\nrss: ${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB`)
+for (const [name, run] of [
+  ['stats line totals (chunked)', statsLine],
+  ['retention pass (chunked)', retention],
+] as const) {
+  console.log(
+    `${pad(name, 38)}total ${num(run.ms)}   longest stall ${num(run.stallMs)}`,
+  )
+}
+
+const deletedPct = (100 * votesDeleted) / Math.max(1, votesBefore)
+console.log(
+  `\nretention deleted ${votesDeleted.toLocaleString()} of ${votesBefore.toLocaleString()} votes (${deletedPct.toFixed(1)}%)`,
+)
+console.log(`rss: ${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB`)
 db.close()
+removeRunCopy()
 if (!KEEP) rmSync(DB_PATH, { force: true })
+if (votesDeleted === 0) {
+  console.error(
+    'retention deleted nothing, so its row timed only the scans: the oldest generated day must be past VOTE_RETENTION_MS',
+  )
+  process.exitCode = 1
+}

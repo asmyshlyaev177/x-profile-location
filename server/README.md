@@ -564,12 +564,11 @@ and `location_votes` has `PRIMARY KEY (username, client_id)`, so both
 `WHERE username IN (…)` queries already ride an existing index on its leading
 column.
 
-Worth revisiting only if `location_votes` reaches the tens of millions of rows,
-where the once-a-day DELETE starts blocking long enough to notice —
-better-sqlite3 is synchronous, so that pause is time the server isn't answering.
-The fix then is chunked deletion _plus_ the index (chunking alone re-scans the
-table for every chunk), not the index on its own. At 5M rows the pause is ~1 s
-once a day, against a client that waits 5 s before giving up.
+Nor does chunking the DELETE need one. better-sqlite3 is synchronous, so the
+pass runs as rowid ranges that give the event loop a turn every 10 ms
+([`src/scan.ts`](src/scan.ts)); each range is a stretch of the table's own
+b-tree, so the walk is one pass. A `LIMIT`-chunked DELETE would need the index,
+because it re-reads the table from the start for every chunk.
 
 `XLOC_RATE_LIMIT` deserves a note: **one IP is not one user.** Offices,
 universities and mobile CGNAT put many installs behind a single address, and the
@@ -1077,20 +1076,21 @@ sqlite3 /tmp/rehearse.db 'PRAGMA integrity_check; SELECT COUNT(*) FROM profiles;
 ### Performance at 10k users
 
 `pnpm bench` builds a database the size a ~10k-user deployment reaches and times
-every operation the server performs against it. Defaults: **2M profiles / 5.4M
-votes / 603 MB**, 10k distinct installs. Sizing rationale is in
+every operation the server performs against it. Defaults: **2M profiles**, 10k
+distinct installs, more than one vote on 6% of profiles. Sizing rationale is in
 [`bench/load.ts`](bench/load.ts) — profiles grow far slower than users because
 timelines overlap heavily, and votes are capped at 10 per handle.
 
-`--profiles` and `--users` size the generated database, and it reads
-`XLOC_CACHE_MB` / `XLOC_MMAP_MB` from the environment like the server does, so a
-run can stand in for a smaller box. `--keep` leaves the file for a second run
-against the same data. Put `TMPDIR` on a real disk — a tmpfs `/tmp` charges the
-database to the same memory the run is measuring.
+`--profiles` and `--users` size the generated database and `--multi-pct` sets
+the share of profiles with more than one vote (6 by default, production's on
+2026-10-01). It reads `XLOC_CACHE_MB` / `XLOC_MMAP_MB` from the environment like
+the server does, so a run can stand in for a smaller box. `--keep` leaves the
+file for a second run against the same data. Put `TMPDIR` on a real disk — a
+tmpfs `/tmp` charges the database to the same memory the run is measuring.
 
 Measured on Node 24.10, `cache_size` 256 MB (the default then; it is 16 MB now,
-see "Tuning"), `mmap` 512 MB. The numbers that
-matter are the **single-core** column — a Ryzen 7 7735HS pinned to one core with
+see "Tuning"), `mmap` 512 MB, on an older shape of the bench with ~2.7 votes per
+profile: 5.4M votes, 603 MB. The numbers that matter are the **single-core** column — a Ryzen 7 7735HS pinned to one core with
 `taskset -c 0` under a 640 MB cgroup, standing in for a 1 vCPU VPS:
 
 | Operation                           | 1 core p50 | 1 core p99 | 16 cores p50 |
@@ -1098,9 +1098,6 @@ matter are the **single-core** column — a Ryzen 7 7735HS pinned to one core wi
 | lookup, 100 names, all hits         | 0.45 ms    | 9.46 ms    | 0.40 ms      |
 | lookup, 100 names, 50% miss         | 0.26 ms    | 1.16 ms    | 0.25 ms      |
 | contribute, 50 entries              | 3.32 ms    | 8.26 ms    | 1.80 ms      |
-| `COUNT(*)` both tables (stats)      | 7.82 ms    | —          | 6.88 ms      |
-| `COUNT(DISTINCT client_id)` (stats) | 252 ms     | 1005 ms    | 217 ms       |
-| retention pass, one day's votes     | 1469 ms    | —          | 199 ms       |
 
 Over HTTP, that single core sustained, with **zero errors**:
 
@@ -1120,29 +1117,22 @@ contributions are buffered 30 s. Against ~900 req/s of measured write-heavy
 capacity that is **two orders of magnitude of headroom on one vCPU**. CPU is
 nowhere near the binding constraint; storage is, as in the sizing note above.
 
-**How long the daily stats line takes.** Measured on one core at 10k-user scale
-(5.4M votes): **~530 ms total** — `users24h` 228 ms + `users7d` 298 ms + the two
-`COUNT(*)`s 7 ms (626 ms on the first run, before the page cache is warm). It
-scales linearly with the votes table, so at the few-thousand-vote scale a new
-deployment starts at, it is under a millisecond.
+Two full scans run once a day, back to back — the stats and retention intervals
+both start at boot with the same 24 h period:
 
-Because better-sqlite3 is synchronous, that time is a stall rather than a slow
-query. Under a realistic 10 req/s load the effect is contained: p50 stayed
-2.6 ms, and the worst request that landed inside the tick took **525 ms** —
-nowhere near the client's 5 s timeout, and a timeout would degrade to "no data"
-and a direct X call anyway. Once a day, this is a fine trade.
-
-Two slow operations, both once a day and both deliberate:
-
-- **`COUNT(DISTINCT client_id)`** backs `users24h` / `users7d`. There is no index
-  on `seen_at` (see `schema.sql`), so it is a full scan that grows linearly with
-  the votes table. better-sqlite3 is synchronous, so 217 ms is an event-loop
-  stall — every in-flight request waits. Fine daily; **do not shorten
+- **The stats line's totals.** `users24h` / `users7d` count distinct installs in
+  the votes table, and there is no index on `seen_at` (see `schema.sql`), so it
+  is a scan that grows linearly with the table. **Do not shorten
   `XLOC_STATS_INTERVAL_HOURS` to minutes without dropping these two fields** and
   keeping the free per-window `users` count, which is derived from the clientId
   already on the wire and costs nothing.
-- **The retention pass** at 199 ms, for the same reason and with the same
-  verdict.
+- **The retention pass**, the larger by far. Deleting a day of votes rewrites
+  most pages of `location_votes` and its key through the WAL.
+
+better-sqlite3 is synchronous, so a single statement would hold every request
+for the whole scan. Both run instead as rowid chunks that give the event loop a
+turn every 10 ms, so the tick slows requests rather than stopping them —
+measured under "Where it slows down".
 
 **Memory holds, and the swapfile is why.** With a 603 MB database, RSS reads
 ~900 MB, which looks alarming against `MemoryMax=640M` — but the run completes
@@ -1162,73 +1152,84 @@ process has to fault the file in itself:
 | lookup 100 names, p50 | 0.44 ms | 0.44 ms | 12.14 ms |
 | contribute 50, p50 | 1.84 ms | 2.15 ms | 13.43 ms |
 | `COUNT(*)` both, p95 | 60 ms | 1275 ms | 2847 ms |
-| retention pass | 1041 ms | 4364 ms | 7452 ms |
 | RSS | 890 MB | 641 MB | 677 MB |
 
 Swap keeps the **request path** at its unconstrained latency: the anonymous page
 cache is what gets paged out, and the hot b-tree pages stay mapped. Without it
 the kernel has nothing to reclaim but those mapped pages, so every lookup
-re-faults from disk and the whole table degrades 5-30x. The retention pass
-slows either way — it walks 5.4M rows that no longer fit — and at 7.5 s without
-swap it exceeds the client's 5 s abort, which is three failures away from
-opening its ten-minute circuit breaker. **Do not skip step 3.**
+re-faults from disk and the whole table degrades 5-30x. **Do not skip step 3.**
 
-Both maintenance stalls scale with the votes table, so they are the growth
-signal to watch, not RSS. At the size a small deployment actually reaches —
-600k profiles / 1.6M votes / 170 MB, on a box sharing its RAM with something
-else (`XLOC_CACHE_MB=128` under `MemoryMax=320M`) — the retention pass is
-691 ms and lookups are 0.41 ms.
+The database size — `dbMb` in the stats line — is the growth signal to watch,
+not RSS; see "Where it slows down". On 2026-10-01 this deployment held ~500k profiles
+for ~300 users, about 80 MB in the bench's shape.
 
-#### Where it breaks: 10M profiles
+#### Where it slows down: memory
 
-Not memory, and not the request path. Same box, same core, `MemoryMax=640M`
-with swap, page cache dropped, against **10M profiles / 27.2M votes /
-3084 MB** — a database three times the size of the machine's RAM:
+Not at the daily tick, and not with a timeout. Retention and the stats line walk
+their tables one after the other in rowid chunks that give the event loop a turn
+every 10 ms (`CLAUDE.md`, "Maintenance walks rowid ranges"), so the tick slows
+requests instead of stopping them. The client aborts each request at 5 s, and
+three failures in a row open its circuit breaker (30 s, doubling per trip to ten
+minutes).
 
-| Operation | 600k / 170 MB | 2M / 603 MB | 10M / 3084 MB |
-| ------------------------------ | ------------- | ----------- | ------------- |
-| lookup 100 names, p50 | 0.41 ms | 0.44 ms | 0.47 ms |
-| lookup 100 names, p95 | 0.84 ms | 2.21 ms | 9.03 ms |
-| contribute 50, p50 | 3.35 ms | 2.15 ms | 6.79 ms |
-| `COUNT(DISTINCT client_id)` | 89 ms | 223 ms | 5098 ms |
-| `COUNT(*)` both tables | 2 ms | 7 ms | 18346 ms |
-| retention pass | 691 ms | 4364 ms | 45847 ms |
-| RSS | 373 MB | 641 MB | 577 MB |
+Measured 2026-10-01 with the committed bundle under the unit's limits — one
+core, `MemoryMax=640M` with swap, in an 800 MB slice shared with the backup,
+which is what 1 GB leaves after the OS and Caddy. The databases are
+`pnpm bench --profiles N --keep` in the default vote shape, read from a cold
+page cache, under 10 req/s of lookups and contributions with the client's 5 s
+timeout:
 
-Lookups and contributions barely move — both are primary-key seeks, and their
-cost is the batch size, not the table. RSS does not move either: it is bounded
-by `XLOC_CACHE_MB` plus whatever mapped pages the cgroup will hold, so a
-database can exceed RAM by any factor without an OOM.
+| | 79 MB | 295 MB | 597 MB | 1203 MB |
+| --- | --- | --- | --- | --- |
+| profiles / votes | 500k / 0.55M | 1.84M / 2.0M | 3.68M / 4.1M | 7.36M / 8.1M |
+| users, at the 2026-09-30 ratio | ~300 | ~1,100 | ~2,200 | ~4,400 |
+| daily tick, start to finish | 1.9 s | 5.9 s | 14.4 s | 55 s |
+| p99 during the tick | 95 ms | 49 ms | 234 ms | 288 ms |
+| requests timed out in it | 0 of 20 | 0 of 59 | 0 of 144 | 0 of 550 |
+| p50 outside maintenance | 2-3 ms | 2-3 ms | 5 ms | 14-20 ms |
+| backup, total | 4 s | 13 s | 53 s | 160 s |
+| p99 during the backup | 62 ms | 39 ms | 2.4 s | 1.2 s |
 
-What breaks is the **once-a-day maintenance, and it breaks together**.
-Retention (46 s), the two `COUNT(DISTINCT client_id)` scans (5 s each) and
-`COUNT(*)` (18 s) all land in the same tick, and better-sqlite3 is synchronous —
-so that is **~75 seconds in which the process answers nothing at all**,
-`/healthz` included, because it is one event loop. The client aborts at 5 s and
-opens a ten-minute circuit breaker after three failures, so every install that
-hovers during the daily tick loses the shared cache for ten minutes. At
-2M/603 MB the same tick is ~10 s: bad, survivable. At 10M it is an outage.
+Nothing timed out, even with the file at twice the memory the service may use.
+What the 640 MB changes is speed. Past it, lookups fault pages in from disk, so
+p50 outside maintenance goes from 2-5 ms to 14-20 ms, and p99 during the backup
+reaches 1-2.4 s: under the client's 5 s, but that is the margin left. So memory
+is the upgrade to plan once `dbMb` passes ~600 MB — a 2 GB box, with
+`MemoryMax` raised to match (see "Tuning").
 
-The backup run gets expensive at the same point but degrades gracefully,
-being `Nice=10` and `IOSchedulingClass=idle` in its own process: `VACUUM INTO`
-44 s, gzip 68 s, a 662 MB archive. Disk is then the ceiling — 3.0 GB live plus a
+With more than one vote on 20% of profiles, the most production is expected to
+reach, the same profiles take more room: 675 MB at ~2,200 users (tick 19 s, p99
+126 ms, backup 82 s) and 1361 MB at ~4,400 (tick 59 s, p99 94 ms, backup 175 s),
+again with no timeouts.
+
+The users row maps size linearly from ~300 users on ~500k profiles. Overlapping
+timelines should make profiles grow slower than users, so it is the pessimistic
+end. A Vultr vCPU and disk are also slower than the laptop core and NVMe that
+stood in for them, so every time here is a floor. `/v1/stats` still counts
+profiles in one statement on a cache miss, at most once per `STATS_TTL_MS`: at
+most 0.16 s up to 675 MB and 0.95 s at 1361 MB, measured without the memory
+limit.
+
+Further out, in the bench's older shape of ~2.7 votes per profile, at **10M
+profiles / 27.2M votes / 3084 MB** — three times the machine's RAM — lookups in
+process still held (p95 9 ms) and RSS stayed bounded by `XLOC_CACHE_MB` plus
+whatever mapped pages the cgroup would hold, so a database can exceed RAM by any
+factor without an OOM.
+
+At that size the backup degrades gracefully, being `Nice=10` and
+`IOSchedulingClass=idle` in its own process: `VACUUM INTO` 44 s, gzip 68 s, a
+662 MB archive. Disk is then the ceiling — 3.0 GB live plus a
 transient 3.0 GB snapshot plus the five kept archives is ~9.2 GB, and auto-vacuum wants
 another 3.0 GB free on top. A 25 GB instance disk holds that; the vote cap is
 what keeps it from being 10x worse, since 10M profiles at `VOTE_CAP` rather than
-the measured 2.7 votes each would be ~11 GB live.
+2.7 votes each would be ~11 GB live.
 
 That peak is why the run preflights the disk and why the timer is every other
 day rather than nightly — see "Backups".
 
-Two fixes, neither worth building before the numbers demand it. Retention wants
-chunked deletion *plus* the `seen_at` index (chunking alone re-scans per chunk;
-see "Indexes: don't add any"). The stats scans want dropping, or moving off the
-serving process — the free per-window `users` count costs nothing and is derived
-from the clientId already on the wire.
-
-Getting there means 167k new handles a day sustained for 60 days, against ~10k
-today: retention bounds `profiles` at the distinct handles seen inside the
-window, so this is a traffic ceiling, not a slow leak.
+Retention bounds `profiles` at the distinct handles seen inside the 60-day
+window, so size follows traffic, not age: ~500k profiles is ~8k new handles a
+day, and each column above is that rate multiplied.
 
 ### Usage stats
 

@@ -4,6 +4,7 @@
 import { admitContributions } from './contrib-limit.ts'
 import { pickConsensus, type LocationVote } from './consensus.ts'
 import type { Db, DbBoundStatement } from './db-types.ts'
+import { forEachRowidRange, WHOLE_TABLE, type ScanPolicy } from './scan.ts'
 
 export interface Env {
   DB: Db
@@ -378,28 +379,48 @@ export default {
     }
   },
 
-  // Retention cleanup, the only thing that ages votes out - see CLAUDE.md.
-  // `_controller` / `_ctx` stay loose so this file needs no workers-types.
+  // Retention cleanup on the Worker's cron. `_controller` / `_ctx` stay loose
+  // so this file needs no workers-types.
   async scheduled(
     _controller: unknown,
     env: Env,
     _ctx?: unknown,
   ): Promise<number> {
-    const result = await env.DB.prepare(
-      'DELETE FROM location_votes WHERE seen_at < ?',
-    )
-      .bind(Date.now() - VOTE_RETENTION_MS)
-      .run()
+    return pruneExpired(env, Date.now(), WHOLE_TABLE)
+  },
+}
 
-    // Then the profiles those votes were the last evidence for; `profiles` can
-    // shrink, which deploy/backup.ts allows for. See CLAUDE.md.
+/** Retention, the only thing that ages votes out - see CLAUDE.md. Returns the
+ *  votes deleted, which node-server.ts logs. */
+export async function pruneExpired(
+  env: Env,
+  now: number,
+  policy: ScanPolicy,
+): Promise<number> {
+  const cutoff = now - VOTE_RETENTION_MS
+  let deleted = 0
+  await forEachRowidRange(env.DB, 'location_votes', policy, async (lo, hi) => {
+    const result = await env.DB.prepare(
+      'DELETE FROM location_votes WHERE rowid BETWEEN ? AND ? AND seen_at < ?',
+    )
+      .bind(lo, hi, cutoff)
+      .run()
+    deleted += rowsChanged(result)
+  })
+
+  // Then every profile left without a vote, not only those this pass emptied,
+  // so a pass cut short is finished by the next; `profiles` can shrink, which
+  // deploy/backup.ts allows for. See CLAUDE.md.
+  await forEachRowidRange(env.DB, 'profiles', policy, async (lo, hi) => {
     await env.DB.prepare(
       `DELETE FROM profiles
-        WHERE NOT EXISTS (
+        WHERE rowid BETWEEN ? AND ?
+          AND NOT EXISTS (
                 SELECT 1 FROM location_votes v WHERE v.username = profiles.username
               )`,
-    ).run()
-
-    return rowsChanged(result)
-  },
+    )
+      .bind(lo, hi)
+      .run()
+  })
+  return deleted
 }

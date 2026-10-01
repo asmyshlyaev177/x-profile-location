@@ -1,7 +1,9 @@
 // Request counters for the Node deployment: in-process, per window, no per-IP
 // accounting ever. See "Stats cost what they measure" in CLAUDE.md.
 
+import type { Db } from './db-types.ts'
 import { ROUTES, routeOf, type Route } from './index.ts'
+import { forEachRowidRange, type ScanPolicy } from './scan.ts'
 
 /** What a request counts as: the route that served it, a CORS preflight for
  *  one of those routes, or anything else. */
@@ -231,4 +233,74 @@ export class Stats {
     this.#latencyHist.clear()
     return snap
   }
+}
+
+const HOUR_MS = 60 * 60 * 1000
+
+/** The stats line's database figures. `users24h` / `users7d` are installs that
+ *  contributed in the window: a floor on active users, never readers. */
+export interface Totals {
+  profiles: number
+  votes: number
+  users24h: number
+  users7d: number
+}
+
+async function countProfiles(db: Db, policy: ScanPolicy): Promise<number> {
+  let profiles = 0
+  await forEachRowidRange(db, 'profiles', policy, async (lo, hi) => {
+    const { results } = await db
+      .prepare('SELECT COUNT(*) AS n FROM profiles WHERE rowid BETWEEN ? AND ?')
+      .bind(lo, hi)
+      .all<{ n: number }>()
+    profiles += results?.[0]?.n ?? 0
+  })
+  return profiles
+}
+
+/** Both statements read the same chunk, so each page of the table is read once. */
+async function scanVotes(
+  db: Db,
+  since: number,
+  policy: ScanPolicy,
+): Promise<{ votes: number; lastSeen: Map<string, number> }> {
+  let votes = 0
+  const lastSeen = new Map<string, number>()
+  await forEachRowidRange(db, 'location_votes', policy, async (lo, hi) => {
+    const { results: counted } = await db
+      .prepare(
+        'SELECT COUNT(*) AS n FROM location_votes WHERE rowid BETWEEN ? AND ?',
+      )
+      .bind(lo, hi)
+      .all<{ n: number }>()
+    votes += counted?.[0]?.n ?? 0
+    const { results: recent } = await db
+      .prepare(
+        `SELECT client_id, MAX(seen_at) AS last FROM location_votes
+          WHERE rowid BETWEEN ? AND ? AND seen_at >= ? GROUP BY client_id`,
+      )
+      .bind(lo, hi, since)
+      .all<{ client_id: string; last: number }>()
+    for (const r of recent ?? []) {
+      lastSeen.set(
+        r.client_id,
+        Math.max(lastSeen.get(r.client_id) ?? 0, r.last),
+      )
+    }
+  })
+  return { votes, lastSeen }
+}
+
+/** A distinct count cannot be summed across chunks, so installs are gathered
+ *  by id and counted once at the end. */
+export async function countTotals(
+  db: Db,
+  now: number,
+  policy: ScanPolicy,
+): Promise<Totals> {
+  const profiles = await countProfiles(db, policy)
+  const { votes, lastSeen } = await scanVotes(db, now - 168 * HOUR_MS, policy)
+  const dayAgo = now - 24 * HOUR_MS
+  const users24h = [...lastSeen.values()].filter((at) => at >= dayAgo).length
+  return { profiles, votes, users24h, users7d: lastSeen.size }
 }

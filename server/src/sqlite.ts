@@ -5,7 +5,9 @@ import Database from 'better-sqlite3'
 import type { Statement } from 'better-sqlite3'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { setImmediate as nextTurn } from 'node:timers/promises'
 import type { Db, DbBoundStatement, DbStatement } from './db-types.ts'
+import type { ScanPolicy } from './scan.ts'
 
 export interface SqliteConfig {
   /** File path, or ':memory:' for tests. */
@@ -25,6 +27,31 @@ export const DEFAULT_SQLITE_CONFIG = {
   mmapMb: 512,
   busyTimeoutMs: 5000,
 } as const
+
+// Full-table scans run in chunks of this many rows and give the event loop a
+// turn every slice. At 250 the slowest chunks (p99, the profile sweep) took 7 ms
+// on one core with the file in memory and 32 ms with 1.1 GB in 640 MB; 100 cost
+// 12% more in total, 1000 took 55 ms. Retention and the stats line interleave,
+// so a request waits up to two slices plus the chunks that overrun them.
+const SCAN_CHUNK_ROWS = 250
+const SCAN_SLICE_MS = 10
+
+/** A statement blocks the event loop for as long as it runs on this driver, so
+ *  a scan here gives the loop a turn once a slice has run `sliceMs`. */
+export function yieldingScan({
+  chunkRows = SCAN_CHUNK_ROWS,
+  sliceMs = SCAN_SLICE_MS,
+}: { chunkRows?: number; sliceMs?: number } = {}): ScanPolicy {
+  let sliceStart = performance.now()
+  return {
+    chunkRows,
+    async pause() {
+      if (performance.now() - sliceStart < sliceMs) return
+      await nextTurn()
+      sliceStart = performance.now()
+    },
+  }
+}
 
 class BoundStatement implements DbBoundStatement {
   #stmt: Statement
@@ -100,6 +127,18 @@ export class SqliteDb implements Db {
   /** Hand back the driver for lifecycle work (checkpointing, PRAGMA optimize). */
   get raw(): Database.Database {
     return this.#db
+  }
+
+  /** Checkpoints and empties the WAL, or gives up at once while another
+   *  connection holds a snapshot — the backup's VACUUM INTO, for minutes —
+   *  rather than wait out busy_timeout with the event loop held. */
+  truncateWal(): void {
+    this.#db.pragma('busy_timeout = 0')
+    try {
+      this.#db.pragma('wal_checkpoint(TRUNCATE)')
+    } finally {
+      this.#db.pragma(`busy_timeout = ${DEFAULT_SQLITE_CONFIG.busyTimeoutMs}`)
+    }
   }
 
   close(): void {

@@ -33,10 +33,10 @@ CREATE TABLE IF NOT EXISTS location_votes (
 --     the PK (username, client_id) leading column for every `WHERE username IN (…)`.
 --   * a seen_at index is still not worth it, even though the retention cleanup
 --     (`DELETE ... WHERE seen_at < ?`, followed by the profiles left with no
---     votes at all — see scheduled() in src/index.ts) scans on
---     seen_at: that DELETE runs weekly and spends the abundant read budget,
+--     votes at all — see pruneExpired() in src/index.ts) scans on
+--     seen_at: that DELETE runs daily and spends the abundant read budget,
 --     whereas an index would add a write to every vote INSERT — taxing D1's ~50x
---     scarcer write budget on the hot path to speed up a cold one. The weekly
+--     scarcer write budget on the hot path to speed up a cold one. The daily
 --     full-table scan is the cheaper trade.
 --
 -- The second point was re-measured on the SQLite backend, where the write-budget

@@ -8,9 +8,15 @@ import {
 } from 'node:http'
 import { mkdirSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import worker, { type Env } from './index.ts'
-import { DEFAULT_SQLITE_CONFIG, openDatabase, type SqliteDb } from './sqlite.ts'
-import { requestKind, Stats } from './stats.ts'
+import worker, { pruneExpired, type Env } from './index.ts'
+import { oneAtATime, WHOLE_TABLE } from './scan.ts'
+import {
+  DEFAULT_SQLITE_CONFIG,
+  openDatabase,
+  yieldingScan,
+  type SqliteDb,
+} from './sqlite.ts'
+import { countTotals, requestKind, Stats } from './stats.ts'
 
 // Config
 function num(name: string, fallback: number): number {
@@ -183,18 +189,6 @@ const db: SqliteDb = openDatabase({
 const env: Env = { DB: db }
 const stats = new Stats()
 
-/** Distinct anonymous installs that contributed in the last `hours`: a full
- *  scan, once a day, never on a request path. See CLAUDE.md. */
-async function activeUsers(hours: number): Promise<number> {
-  const { results } = await db
-    .prepare(
-      'SELECT COUNT(DISTINCT client_id) AS n FROM location_votes WHERE seen_at >= ?',
-    )
-    .bind(Date.now() - hours * 60 * 60 * 1000)
-    .all<{ n: number }>()
-  return results?.[0]?.n ?? 0
-}
-
 /** Bytes on disk, main file plus the WAL that has not been checkpointed yet. */
 function dbBytes(): number {
   let total = 0
@@ -212,22 +206,21 @@ function dbBytes(): number {
  *  its own window rather than everything since boot. */
 async function logStats(reason: 'interval' | 'shutdown'): Promise<void> {
   try {
+    // At shutdown no connection is left to serve, and a scan that yields would
+    // let the 5 s exit timer cut it short.
+    const scan = reason === 'shutdown' ? WHOLE_TABLE : yieldingScan()
+    const totals = await countTotals(db, Date.now(), scan)
+    // After the scan, which spans many turns: a SIGTERM during it logs the
+    // shutdown line, and that line has to carry this window's counters.
     const counters = stats.drain()
-    const { results } = await db
-      .prepare(
-        'SELECT (SELECT COUNT(*) FROM profiles) AS profiles,' +
-          ' (SELECT COUNT(*) FROM location_votes) AS votes',
-      )
-      .all<{ profiles: number; votes: number }>()
-    const totals = results?.[0]
     console.log(
       `[x-loc-cache] stats ${JSON.stringify({
         reason,
         ...counters,
-        users24h: await activeUsers(24),
-        users7d: await activeUsers(24 * 7),
-        profiles: totals?.profiles ?? 0,
-        votes: totals?.votes ?? 0,
+        users24h: totals.users24h,
+        users7d: totals.users7d,
+        profiles: totals.profiles,
+        votes: totals.votes,
         dbMb: Math.round((dbBytes() / (1024 * 1024)) * 100) / 100,
         rssMb: Math.round(process.memoryUsage().rss / (1024 * 1024)),
       })}`,
@@ -299,15 +292,20 @@ const server = createServer((req, res) => {
 server.keepAliveTimeout = 61_000
 server.headersTimeout = 65_000
 
+// Retention and the stats line both walk whole tables, and their intervals fire
+// together; queued, the stats line counts what retention left, one walk holds
+// the loop at a time, and a pass slower than its interval is not stacked.
+const maintain = oneAtATime()
+
 // Retention: an interval, run once shortly after boot so a box that reboots
 // daily still prunes. unref() keeps it from holding the process open.
 const retentionMs = config.retentionHours * 60 * 60 * 1000
 async function runRetention(): Promise<void> {
   const startedAt = Date.now()
   try {
-    const deleted = await worker.scheduled(null, env)
+    const deleted = await pruneExpired(env, Date.now(), yieldingScan())
     sweepBuckets(Date.now())
-    db.raw.pragma('wal_checkpoint(TRUNCATE)')
+    db.truncateWal()
     // Logged even for `deleted 0`: without a success line, an absent log cannot
     // be told from a timer that never fired.
     console.log(
@@ -317,8 +315,8 @@ async function runRetention(): Promise<void> {
     console.error('[x-loc-cache] retention failed:', err)
   }
 }
-setInterval(() => void runRetention(), retentionMs).unref()
-setTimeout(() => void runRetention(), 60_000).unref()
+setInterval(() => void maintain('retention', runRetention), retentionMs).unref()
+setTimeout(() => void maintain('retention', runRetention), 60_000).unref()
 // Buckets are also swept between retention runs; the map is small but the sweep
 // is O(n) and there is no reason to let it sit for a whole day.
 setInterval(() => sweepBuckets(Date.now()), config.rateWindowMs * 10).unref()
@@ -327,7 +325,7 @@ setInterval(() => sweepBuckets(Date.now()), config.rateWindowMs * 10).unref()
 // without touching how often data is pruned.
 if (config.statsIntervalHours > 0) {
   setInterval(
-    () => void logStats('interval'),
+    () => void maintain('stats', () => logStats('interval')),
     config.statsIntervalHours * 60 * 60 * 1000,
   ).unref()
 }
