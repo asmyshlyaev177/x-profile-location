@@ -4,7 +4,7 @@
 import { admitContributions } from './contrib-limit.ts'
 import { pickConsensus, type LocationVote } from './consensus.ts'
 import type { Db, DbBoundStatement } from './db-types.ts'
-import { forEachRowidRange, WHOLE_TABLE, type ScanPolicy } from './scan.ts'
+import { forEachUsernameRange, WHOLE_TABLE, type ScanPolicy } from './scan.ts'
 
 export interface Env {
   DB: Db
@@ -399,28 +399,54 @@ export async function pruneExpired(
 ): Promise<number> {
   const cutoff = now - VOTE_RETENTION_MS
   let deleted = 0
-  await forEachRowidRange(env.DB, 'location_votes', policy, async (lo, hi) => {
-    const result = await env.DB.prepare(
-      'DELETE FROM location_votes WHERE rowid BETWEEN ? AND ? AND seen_at < ?',
-    )
-      .bind(lo, hi, cutoff)
-      .run()
-    deleted += rowsChanged(result)
-  })
+  await forEachUsernameRange(
+    env.DB,
+    'location_votes',
+    policy,
+    async (after, upTo) => {
+      deleted += rowsChanged(await deleteExpiredVotes(env, after, upTo, cutoff))
+    },
+  )
 
   // Then every profile left without a vote, not only those this pass emptied,
   // so a pass cut short is finished by the next; `profiles` can shrink, which
   // deploy/backup.ts allows for. See CLAUDE.md.
-  await forEachRowidRange(env.DB, 'profiles', policy, async (lo, hi) => {
-    await env.DB.prepare(
-      `DELETE FROM profiles
-        WHERE rowid BETWEEN ? AND ?
-          AND NOT EXISTS (
-                SELECT 1 FROM location_votes v WHERE v.username = profiles.username
-              )`,
-    )
-      .bind(lo, hi)
-      .run()
-  })
+  await forEachUsernameRange(
+    env.DB,
+    'profiles',
+    policy,
+    async (after, upTo) => {
+      await deleteVotelessProfiles(env, after, upTo)
+    },
+  )
   return deleted
+}
+
+function deleteExpiredVotes(
+  env: Env,
+  after: string,
+  upTo: string,
+  cutoff: number,
+): Promise<unknown> {
+  return env.DB.prepare(
+    'DELETE FROM location_votes WHERE username > ? AND username <= ? AND seen_at < ?',
+  )
+    .bind(after, upTo, cutoff)
+    .run()
+}
+
+function deleteVotelessProfiles(
+  env: Env,
+  after: string,
+  upTo: string,
+): Promise<unknown> {
+  return env.DB.prepare(
+    `DELETE FROM profiles
+      WHERE username > ? AND username <= ?
+        AND NOT EXISTS (
+              SELECT 1 FROM location_votes v WHERE v.username = profiles.username
+            )`,
+  )
+    .bind(after, upTo)
+    .run()
 }

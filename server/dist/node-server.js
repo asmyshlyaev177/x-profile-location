@@ -81,21 +81,30 @@ function pickConsensus(votes) {
 
 // src/scan.ts
 var WHOLE_TABLE = {
-  chunkRows: Number.MAX_SAFE_INTEGER,
+  chunkRows: Infinity,
   pause: async () => {
   }
 };
-async function forEachRowidRange(db2, table, policy, visit) {
-  const { results } = await db2.prepare(
-    `SELECT (SELECT MIN(rowid) FROM ${table}) AS lo, (SELECT MAX(rowid) FROM ${table}) AS hi`
-  ).all();
-  const first = results?.[0]?.lo;
-  const last = results?.[0]?.hi;
-  if (first == null || last == null) return;
-  for (let lo = first; lo <= last; lo += policy.chunkRows) {
-    await visit(lo, Math.min(lo + policy.chunkRows - 1, last));
+async function forEachUsernameRange(db2, table, policy, visit) {
+  const { results } = await db2.prepare(`SELECT MAX(username) AS last FROM ${table}`).all();
+  const last = results?.[0]?.last ?? null;
+  if (last === null) return;
+  const endAfter = rangeEnds(db2, table, last, policy.chunkRows);
+  for (let after = ""; after !== last; ) {
+    const upTo = await endAfter(after);
+    await visit(after, upTo);
     await policy.pause();
+    after = upTo;
   }
+}
+function rangeEnds(db2, table, last, rows) {
+  if (!Number.isFinite(rows)) return async () => last;
+  const sql = `SELECT username FROM ${table} WHERE username > ? AND username <= ?
+    ORDER BY username LIMIT 1 OFFSET ?`;
+  return async (after) => {
+    const { results } = await db2.prepare(sql).bind(after, last, rows - 1).all();
+    return results?.[0]?.username ?? last;
+  };
 }
 function oneAtATime() {
   let tail = Promise.resolve();
@@ -350,22 +359,37 @@ var index_default = {
 async function pruneExpired(env2, now, policy) {
   const cutoff = now - VOTE_RETENTION_MS;
   let deleted = 0;
-  await forEachRowidRange(env2.DB, "location_votes", policy, async (lo, hi) => {
-    const result = await env2.DB.prepare(
-      "DELETE FROM location_votes WHERE rowid BETWEEN ? AND ? AND seen_at < ?"
-    ).bind(lo, hi, cutoff).run();
-    deleted += rowsChanged(result);
-  });
-  await forEachRowidRange(env2.DB, "profiles", policy, async (lo, hi) => {
-    await env2.DB.prepare(
-      `DELETE FROM profiles
-        WHERE rowid BETWEEN ? AND ?
-          AND NOT EXISTS (
-                SELECT 1 FROM location_votes v WHERE v.username = profiles.username
-              )`
-    ).bind(lo, hi).run();
-  });
+  await forEachUsernameRange(
+    env2.DB,
+    "location_votes",
+    policy,
+    async (after, upTo) => {
+      deleted += rowsChanged(await deleteExpiredVotes(env2, after, upTo, cutoff));
+    }
+  );
+  await forEachUsernameRange(
+    env2.DB,
+    "profiles",
+    policy,
+    async (after, upTo) => {
+      await deleteVotelessProfiles(env2, after, upTo);
+    }
+  );
   return deleted;
+}
+function deleteExpiredVotes(env2, after, upTo, cutoff) {
+  return env2.DB.prepare(
+    "DELETE FROM location_votes WHERE username > ? AND username <= ? AND seen_at < ?"
+  ).bind(after, upTo, cutoff).run();
+}
+function deleteVotelessProfiles(env2, after, upTo) {
+  return env2.DB.prepare(
+    `DELETE FROM profiles
+      WHERE username > ? AND username <= ?
+        AND NOT EXISTS (
+              SELECT 1 FROM location_votes v WHERE v.username = profiles.username
+            )`
+  ).bind(after, upTo).run();
 }
 
 // src/sqlite.ts
@@ -636,33 +660,43 @@ var Stats = class {
   }
 };
 var HOUR_MS = 60 * 60 * 1e3;
+async function countInRange(db2, table, after, upTo) {
+  const { results } = await db2.prepare(
+    `SELECT COUNT(*) AS n FROM ${table} WHERE username > ? AND username <= ?`
+  ).bind(after, upTo).all();
+  return results?.[0]?.n ?? 0;
+}
 async function countProfiles(db2, policy) {
   let profiles = 0;
-  await forEachRowidRange(db2, "profiles", policy, async (lo, hi) => {
-    const { results } = await db2.prepare("SELECT COUNT(*) AS n FROM profiles WHERE rowid BETWEEN ? AND ?").bind(lo, hi).all();
-    profiles += results?.[0]?.n ?? 0;
+  await forEachUsernameRange(db2, "profiles", policy, async (after, upTo) => {
+    profiles += await countInRange(db2, "profiles", after, upTo);
   });
   return profiles;
+}
+async function installsSeenInRange(db2, after, upTo, since) {
+  const { results } = await db2.prepare(
+    `SELECT client_id, MAX(seen_at) AS last FROM location_votes
+        WHERE username > ? AND username <= ? AND seen_at >= ? GROUP BY client_id`
+  ).bind(after, upTo, since).all();
+  return results ?? [];
 }
 async function scanVotes(db2, since, policy) {
   let votes = 0;
   const lastSeen = /* @__PURE__ */ new Map();
-  await forEachRowidRange(db2, "location_votes", policy, async (lo, hi) => {
-    const { results: counted2 } = await db2.prepare(
-      "SELECT COUNT(*) AS n FROM location_votes WHERE rowid BETWEEN ? AND ?"
-    ).bind(lo, hi).all();
-    votes += counted2?.[0]?.n ?? 0;
-    const { results: recent } = await db2.prepare(
-      `SELECT client_id, MAX(seen_at) AS last FROM location_votes
-          WHERE rowid BETWEEN ? AND ? AND seen_at >= ? GROUP BY client_id`
-    ).bind(lo, hi, since).all();
-    for (const r of recent ?? []) {
-      lastSeen.set(
-        r.client_id,
-        Math.max(lastSeen.get(r.client_id) ?? 0, r.last)
-      );
+  await forEachUsernameRange(
+    db2,
+    "location_votes",
+    policy,
+    async (after, upTo) => {
+      votes += await countInRange(db2, "location_votes", after, upTo);
+      for (const r of await installsSeenInRange(db2, after, upTo, since)) {
+        lastSeen.set(
+          r.client_id,
+          Math.max(lastSeen.get(r.client_id) ?? 0, r.last)
+        );
+      }
     }
-  });
+  );
   return { votes, lastSeen };
 }
 async function countTotals(db2, now, policy) {

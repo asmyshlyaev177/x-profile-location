@@ -1,17 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
 import worker, { VOTE_RETENTION_MS as RETENTION_MS, type Env } from './index'
 
-// Minimal D1 stand-in that records the prepared SQL and bound args. `rowids`
-// is the MIN/MAX every table reports to the rowid walk in scan.ts.
-function mockDb(runResult: unknown = {}, rowids = { lo: 1, hi: 1 }) {
+// Minimal D1 stand-in that records the prepared SQL and bound args. Every table
+// reports the same last username to the walk in scan.ts.
+function mockDb(runResult: unknown = {}) {
   const run = vi.fn().mockResolvedValue(runResult)
-  const all = vi.fn().mockResolvedValue({ results: [rowids] })
+  const all = vi.fn().mockResolvedValue({ results: [{ last: 'z' }] })
   const bind = vi.fn((..._args: unknown[]) => ({ run, all }))
   const prepare = vi.fn((_sql: string) => ({ bind, run, all }))
   return { env: { DB: { prepare } } as unknown as Env, prepare, bind, run }
 }
 
-/** The vote DELETE binds the rowid range first, then the cutoff. */
+/** The vote DELETE binds the username range first, then the cutoff. */
 const cutoffOf = (bind: ReturnType<typeof mockDb>['bind']) =>
   bind.mock.calls[0]![2] as number
 
@@ -49,10 +49,13 @@ describe('scheduled - retention cleanup', () => {
 
   it('keeps D1 to one DELETE per table however many rows it holds', async () => {
     // D1 caps the queries one Worker invocation may run, so the chunked walk
-    // the Node server uses would fail there once a table grew past a few.
-    const { env, run } = mockDb({}, { lo: 1, hi: 50_000_000 })
+    // the Node server uses would fail there once a table grew past a few. That
+    // walk also asks where each range ends, which is what the count catches:
+    // per table, its last username and one DELETE, nothing else.
+    const { env, prepare, run } = mockDb()
     await worker.scheduled(null, env)
     expect(run).toHaveBeenCalledTimes(2)
+    expect(prepare).toHaveBeenCalledTimes(4)
   })
 
   // The count node-server.ts logs - votes deleted, not profiles expired. The two backends report it in different

@@ -3,7 +3,11 @@
 
 import type { Db } from './db-types.ts'
 import { ROUTES, routeOf, type Route } from './index.ts'
-import { forEachRowidRange, type ScanPolicy } from './scan.ts'
+import {
+  forEachUsernameRange,
+  type ScanPolicy,
+  type ScannedTable,
+} from './scan.ts'
 
 /** What a request counts as: the route that served it, a CORS preflight for
  *  one of those routes, or anything else. */
@@ -246,19 +250,52 @@ export interface Totals {
   users7d: number
 }
 
+async function countInRange(
+  db: Db,
+  table: ScannedTable,
+  after: string,
+  upTo: string,
+): Promise<number> {
+  const { results } = await db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM ${table} WHERE username > ? AND username <= ?`,
+    )
+    .bind(after, upTo)
+    .all<{ n: number }>()
+  return results?.[0]?.n ?? 0
+}
+
 async function countProfiles(db: Db, policy: ScanPolicy): Promise<number> {
   let profiles = 0
-  await forEachRowidRange(db, 'profiles', policy, async (lo, hi) => {
-    const { results } = await db
-      .prepare('SELECT COUNT(*) AS n FROM profiles WHERE rowid BETWEEN ? AND ?')
-      .bind(lo, hi)
-      .all<{ n: number }>()
-    profiles += results?.[0]?.n ?? 0
+  await forEachUsernameRange(db, 'profiles', policy, async (after, upTo) => {
+    profiles += await countInRange(db, 'profiles', after, upTo)
   })
   return profiles
 }
 
-/** Both statements read the same chunk, so each page of the table is read once. */
+interface InstallSeen {
+  client_id: string
+  last: number
+}
+
+/** Each install's newest vote in the range, counting only those since `since`. */
+async function installsSeenInRange(
+  db: Db,
+  after: string,
+  upTo: string,
+  since: number,
+): Promise<InstallSeen[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT client_id, MAX(seen_at) AS last FROM location_votes
+        WHERE username > ? AND username <= ? AND seen_at >= ? GROUP BY client_id`,
+    )
+    .bind(after, upTo, since)
+    .all<InstallSeen>()
+  return results ?? []
+}
+
+/** The count and the installs read the same range, from pages still cached. */
 async function scanVotes(
   db: Db,
   since: number,
@@ -266,28 +303,20 @@ async function scanVotes(
 ): Promise<{ votes: number; lastSeen: Map<string, number> }> {
   let votes = 0
   const lastSeen = new Map<string, number>()
-  await forEachRowidRange(db, 'location_votes', policy, async (lo, hi) => {
-    const { results: counted } = await db
-      .prepare(
-        'SELECT COUNT(*) AS n FROM location_votes WHERE rowid BETWEEN ? AND ?',
-      )
-      .bind(lo, hi)
-      .all<{ n: number }>()
-    votes += counted?.[0]?.n ?? 0
-    const { results: recent } = await db
-      .prepare(
-        `SELECT client_id, MAX(seen_at) AS last FROM location_votes
-          WHERE rowid BETWEEN ? AND ? AND seen_at >= ? GROUP BY client_id`,
-      )
-      .bind(lo, hi, since)
-      .all<{ client_id: string; last: number }>()
-    for (const r of recent ?? []) {
-      lastSeen.set(
-        r.client_id,
-        Math.max(lastSeen.get(r.client_id) ?? 0, r.last),
-      )
-    }
-  })
+  await forEachUsernameRange(
+    db,
+    'location_votes',
+    policy,
+    async (after, upTo) => {
+      votes += await countInRange(db, 'location_votes', after, upTo)
+      for (const r of await installsSeenInRange(db, after, upTo, since)) {
+        lastSeen.set(
+          r.client_id,
+          Math.max(lastSeen.get(r.client_id) ?? 0, r.last),
+        )
+      }
+    },
+  )
   return { votes, lastSeen }
 }
 

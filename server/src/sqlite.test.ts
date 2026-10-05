@@ -12,8 +12,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Db } from './db-types.ts'
 import worker, { pruneExpired, VOTE_RETENTION_MS, type Env } from './index.ts'
 import { WHOLE_TABLE, type ScanPolicy } from './scan.ts'
-import { openDatabase, yieldingScan, type SqliteDb } from './sqlite.ts'
+import { openDatabase, SqliteDb, yieldingScan } from './sqlite.ts'
 import { countTotals } from './stats.ts'
+import { createRowidDatabase } from './test-helpers.ts'
 
 let db: SqliteDb
 let env: Env
@@ -315,10 +316,23 @@ describe('sqlite backend - chunked retention', () => {
     profiles: SeedProfile[]
   }
 
-  /** Inserted in array order, so rowid order is array order; holes are deleted
-   *  afterwards and leave gaps in the rowids for the chunk edges to land on. */
-  function seededDb(table: SeedTable): SqliteDb {
-    const target = openDatabase({ path: ':memory:', cacheMb: 8, mmapMb: 0 })
+  // Production walks rowid tables until vacuum.ts converts them, and an older
+  // archive restores to them, so the walk has to agree on both layouts.
+  const LAYOUTS = ['without rowid', 'rowid'] as const
+  type Layout = (typeof LAYOUTS)[number]
+
+  function emptyDb(layout: Layout): SqliteDb {
+    if (layout === 'rowid') return new SqliteDb(createRowidDatabase(':memory:'))
+    return openDatabase({ path: ':memory:', cacheMb: 8, mmapMb: 0 })
+  }
+
+  /** Holes are deleted once everything is in, so range edges land next to
+   *  usernames that are gone. */
+  function seededDb(
+    table: SeedTable,
+    layout: Layout = 'without rowid',
+  ): SqliteDb {
+    const target = emptyDb(layout)
     const vote = target.raw.prepare(
       'INSERT INTO location_votes (username, client_id, location, seen_at) VALUES (?, ?, ?, ?)',
     )
@@ -348,9 +362,9 @@ describe('sqlite backend - chunked retention', () => {
     const column = (sql: string) => target.raw.prepare(sql).pluck().all()
     return {
       votes: column(
-        "SELECT username || '/' || client_id FROM location_votes ORDER BY rowid",
+        "SELECT username || '/' || client_id FROM location_votes ORDER BY username, client_id",
       ),
-      profiles: column('SELECT username FROM profiles ORDER BY rowid'),
+      profiles: column('SELECT username FROM profiles ORDER BY username'),
     }
   }
 
@@ -375,7 +389,7 @@ describe('sqlite backend - chunked retention', () => {
     ),
   })
 
-  /** Retention as it was before chunking: two statements, no rowid walk, so
+  /** Retention as it was before chunking: two statements, no range walk, so
    *  a bug in scan.ts cannot hide in the answer it is compared with. */
   function pruneInTwoStatements(target: SqliteDb): number {
     const { changes } = target.raw
@@ -389,14 +403,15 @@ describe('sqlite backend - chunked retention', () => {
     return changes
   }
 
-  it('deletes what the two unchunked statements delete, at any chunk size', async () => {
+  it('deletes what the two unchunked statements delete, at any chunk size, on either layout', async () => {
     await fc.assert(
       fc.asyncProperty(
         seedTable,
         fc.integer({ min: 1, max: 16 }),
-        async (table, chunkRows) => {
-          const whole = seededDb(table)
-          const chunked = seededDb(table)
+        fc.constantFrom(...LAYOUTS),
+        async (table, chunkRows, layout) => {
+          const whole = seededDb(table, layout)
+          const chunked = seededDb(table, layout)
           try {
             const expected = pruneInTwoStatements(whole)
             const policy: ScanPolicy = { chunkRows, pause: async () => {} }
@@ -426,11 +441,6 @@ describe('sqlite backend - chunked retention', () => {
       }),
       { DB: target },
     )
-  }
-
-  const sortedRows = (target: SqliteDb) => {
-    const { votes, profiles } = remaining(target)
-    return { votes: [...votes].sort(), profiles: [...profiles].sort() }
   }
 
   it('ends where contributing first and pruning after would, with contributions between chunks', async () => {
@@ -464,7 +474,7 @@ describe('sqlite backend - chunked retention', () => {
             }
             await pruneExpired({ DB: chunked }, NOW, { chunkRows, pause })
             for (const c of queue) await contributeTo(chunked, c.u, c.clientId)
-            expect(sortedRows(chunked)).toEqual(sortedRows(oracle))
+            expect(remaining(chunked)).toEqual(remaining(oracle))
           } finally {
             oracle.close()
             chunked.close()
@@ -475,43 +485,52 @@ describe('sqlite backend - chunked retention', () => {
     )
   })
 
-  it('reads every range with an index seek, the bounds included', async () => {
+  it('reads every range with an index seek, the bounds included, on either layout', async () => {
     // A walk that opens with a full scan holds the event loop for that scan,
     // which is the stall the chunks exist to avoid.
-    const target = seededDb({ votes: [], profiles: [] })
-    const prepared = new Set<string>()
-    const recording: Db = {
-      prepare: (sql) => {
-        prepared.add(sql)
-        return target.prepare(sql)
-      },
-      batch: (statements) => target.batch(statements),
-    }
-    // Fresh, so retention leaves rows behind and the stats walk has ranges to read.
-    target.raw
-      .prepare(
-        "INSERT INTO location_votes (username, client_id, seen_at) VALUES ('a', 'c1', ?)",
+    for (const layout of LAYOUTS) {
+      // Fresh, so retention leaves rows behind and the stats walk has ranges
+      // to read.
+      const target = seededDb(
+        {
+          votes: ['a', 'b'].map((user) => ({
+            user,
+            client: 'c1',
+            offset: DAY,
+            isHole: false,
+          })),
+          profiles: ['a', 'b'].map((user) => ({ user, isHole: false })),
+        },
+        layout,
       )
-      .run(NOW)
-    target.raw.prepare("INSERT INTO profiles (username) VALUES ('a')").run()
-    const policy: ScanPolicy = { chunkRows: 1, pause: async () => {} }
-    await pruneExpired({ DB: recording }, NOW, policy)
-    await countTotals(recording, NOW, policy)
+      const prepared = new Set<string>()
+      const recording: Db = {
+        prepare: (sql) => {
+          prepared.add(sql)
+          return target.prepare(sql)
+        },
+        batch: (statements) => target.batch(statements),
+      }
+      const policy: ScanPolicy = { chunkRows: 1, pause: async () => {} }
+      await pruneExpired({ DB: recording }, NOW, policy)
+      await countTotals(recording, NOW, policy)
 
-    // Two bounds reads, two DELETEs, and the stats walk's three range reads.
-    expect(prepared.size).toBe(7)
-    for (const sql of prepared) {
-      const binds = Array.from({ length: sql.split('?').length - 1 }, () => 0)
-      const plan = target.raw
-        .prepare(`EXPLAIN QUERY PLAN ${sql}`)
-        .all(...binds) as { detail: string }[]
-      const scans = plan.filter(
-        (row) =>
-          row.detail.startsWith('SCAN') && row.detail !== 'SCAN CONSTANT ROW',
-      )
-      expect({ sql, scans }).toEqual({ sql, scans: [] })
+      // Per table, its last username and where each range ends. Then two
+      // DELETEs and the stats walk's three range reads.
+      expect(prepared.size).toBe(9)
+      for (const sql of prepared) {
+        const binds = Array.from({ length: sql.split('?').length - 1 }, () => 0)
+        const plan = target.raw
+          .prepare(`EXPLAIN QUERY PLAN ${sql}`)
+          .all(...binds) as { detail: string }[]
+        const scans = plan.filter(
+          (row) =>
+            row.detail.startsWith('SCAN') && row.detail !== 'SCAN CONSTANT ROW',
+        )
+        expect({ layout, sql, scans }).toEqual({ layout, sql, scans: [] })
+      }
+      target.close()
     }
-    target.close()
   })
 
   /** Event-loop turns taken while a pass runs, and the pauses it asked for. */
@@ -560,6 +579,22 @@ describe('sqlite backend - chunked retention', () => {
       (await turnsDuring(yieldingScan({ chunkRows: 1, sliceMs: 60_000 })))[0],
     ).toBe(0)
     expect((await turnsDuring(WHOLE_TABLE))[0]).toBe(0)
+  })
+})
+
+describe('sqlite backend - table layout', () => {
+  it('creates both tables without a rowid', () => {
+    // Each primary key is then its table, not a second b-tree of the same keys.
+    // The measurement is under "Tables are WITHOUT ROWID" in CLAUDE.md.
+    const layouts = db.raw
+      .prepare(
+        "SELECT name, wr FROM pragma_table_list WHERE schema = 'main' AND name IN ('profiles', 'location_votes') ORDER BY name",
+      )
+      .all()
+    expect(layouts).toEqual([
+      { name: 'location_votes', wr: 1 },
+      { name: 'profiles', wr: 1 },
+    ])
   })
 })
 

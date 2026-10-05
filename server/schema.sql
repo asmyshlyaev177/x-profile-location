@@ -8,6 +8,9 @@
 -- Only the AboutAccountQuery-derived fields live here (location / source /
 -- location_accurate). Bio and displayName are intentionally NOT stored: clients
 -- get those for free from the timeline JSON, so there is nothing to share.
+--
+-- WITHOUT ROWID: each primary key is its table, not a second copy of its keys.
+-- Older files keep a rowid until deploy/vacuum.ts converts them (CLAUDE.md).
 
 CREATE TABLE IF NOT EXISTS profiles (
   username            TEXT    PRIMARY KEY,        -- lowercased handle
@@ -16,7 +19,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   location_accurate   INTEGER NOT NULL DEFAULT 1, -- 0/1; X's "location may be inaccurate" flag
   location_confidence INTEGER NOT NULL DEFAULT 0, -- distinct clients backing the winning tuple
   updated_at          INTEGER NOT NULL DEFAULT 0  -- ms epoch of last consensus update
-);
+) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS location_votes (
   username          TEXT    NOT NULL,             -- lowercased handle
@@ -26,7 +29,7 @@ CREATE TABLE IF NOT EXISTS location_votes (
   location_accurate INTEGER NOT NULL DEFAULT 1,
   seen_at           INTEGER NOT NULL DEFAULT 0,   -- ms epoch this client last observed the value
   PRIMARY KEY (username, client_id)               -- one (latest) vote per client per user
-);
+) WITHOUT ROWID;
 
 -- No secondary indexes on location_votes, deliberately:
 --   * a username index would just duplicate the primary key — SQLite already uses
@@ -45,4 +48,5 @@ CREATE TABLE IF NOT EXISTS location_votes (
 -- (1492ms vs 1138ms) as well as inserts 171% slower and the file 20% larger: the
 -- scan was never the cost, deleting the rows was, and a second index is one more
 -- structure each delete has to update. See "Indexes: don't add any" in README.md
--- for the full numbers. Do not add one without re-running that measurement.
+-- for the full numbers. Do not add one without re-running that measurement,
+-- which predates WITHOUT ROWID: index entries now carry the whole key, not a rowid.

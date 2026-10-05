@@ -1,6 +1,6 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// Compact the cache database: `sudo .../deploy/vacuum.ts [-y]`, by hand and
-// never on a timer. See CLAUDE.md and "Compacting the database" in README.md.
+// Compact the cache database, converting tables from the old rowid layout:
+// `sudo .../deploy/vacuum.ts [-y]`. See CLAUDE.md and README "Compacting".
 
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -33,7 +33,72 @@ import {
   sqlite,
   stamp,
   uid,
+  type CommandResult,
+  type Inspection,
 } from './lib.ts'
+
+// Through .read: as an argument, the CLI takes schema.sql's opening `--` for
+// an option and refuses the whole file.
+const READ_SCHEMA = `.read '${join(import.meta.dirname, '..', 'schema.sql')}'`
+
+// Each table with its `wr` flag, 1 for WITHOUT ROWID; never SQLite's own.
+const LAYOUT_SQL = `SELECT name || ' ' || wr FROM pragma_table_list
+  WHERE schema = 'main' AND type = 'table' AND name NOT LIKE 'sqlite!_%' ESCAPE '!';`
+
+function layoutOf(result: CommandResult): Map<string, string> {
+  if (!result.ok) return new Map()
+  const lines = result.out.split('\n').filter((line) => line.includes(' '))
+  return new Map(lines.map((line) => line.split(' ') as [string, string]))
+}
+
+/** Tables whose rowid differs from what schema.sql declares: production's two
+ *  until they are converted. A file that is not there has none. */
+export function tablesInOldLayout(dbFile: string, asUser?: string): string[] {
+  if (!existsSync(dbFile)) return []
+  const declared = layoutOf(sqlite([':memory:', READ_SCHEMA, LAYOUT_SQL]))
+  const live = layoutOf(sqlite([dbFile, LAYOUT_SQL], asUser))
+  return [...declared.keys()]
+    .filter((t) => live.has(t) && live.get(t) !== declared.get(t))
+    .sort()
+}
+
+function vacuumInto(dbFile: string, tmp: string): CommandResult {
+  return sqlite(
+    ['-cmd', '.timeout 5000', dbFile, `VACUUM INTO '${tmp}'`],
+    OWNER,
+  )
+}
+
+/** A new file from schema.sql, filled from the live one by column name and in
+ *  key order. VACUUM INTO would copy the old layout along with the rows. */
+function convertInto(dbFile: string, tmp: string): CommandResult {
+  const created = sqlite([tmp, READ_SCHEMA], OWNER)
+  if (!created.ok) return created
+  const copies = [...layoutOf(sqlite([tmp, LAYOUT_SQL], OWNER)).keys()].map(
+    (table) => copyStatement(tmp, table),
+  )
+  return sqlite(
+    [
+      '-cmd',
+      '.timeout 5000',
+      tmp,
+      `ATTACH '${dbFile}' AS live; BEGIN; ${copies.join(' ')} COMMIT;`,
+    ],
+    OWNER,
+  )
+}
+
+function copyStatement(tmp: string, table: string): string {
+  const [columns = '', key = ''] = sqlite(
+    [
+      tmp,
+      `SELECT group_concat(name, ', ') FROM pragma_table_info('${table}');`,
+      `SELECT group_concat(name, ', ') FROM (SELECT name FROM pragma_table_info('${table}') WHERE pk > 0 ORDER BY pk);`,
+    ],
+    OWNER,
+  ).out.split('\n')
+  return `INSERT INTO main.${table} (${columns}) SELECT ${columns} FROM live.${table} ORDER BY ${key};`
+}
 
 export interface VacuumArgs {
   assumeYes: boolean
@@ -131,6 +196,47 @@ function wantedByLastBackup(backupDir: string, dbFile: string): boolean {
   return true
 }
 
+interface RowCounts {
+  profiles: number
+  votes: number
+}
+
+/** Counted with the service down, so nothing can change them before the
+ *  comparison — which is what makes a shorter rebuild proof of a bad copy. */
+function countLive(dbFile: string): RowCounts {
+  const counted = sqlite(
+    [
+      dbFile,
+      'SELECT (SELECT COUNT(*) FROM profiles), (SELECT COUNT(*) FROM location_votes);',
+    ],
+    OWNER,
+  )
+  const [profiles = NaN, votes = NaN] = counted.out.split('|').map(Number)
+  if (!Number.isInteger(profiles) || !Number.isInteger(votes)) {
+    die(`could not count the live database — keeping it: ${counted.out}`)
+  }
+  return { profiles, votes }
+}
+
+/** The checks backup.ts runs on a snapshot, plus the counts taken before. */
+function verifyRebuild(tmp: string, live: RowCounts): Inspection {
+  const found = inspect(tmp, OWNER)
+  const short =
+    found.profiles === null ||
+    found.profiles < live.profiles ||
+    found.votes === null ||
+    found.votes < live.votes
+  if (found.integrity !== 'ok' || short) {
+    die(
+      'the rebuilt database failed verification — keeping the original.',
+      `integrity_check: ${found.integrity}`,
+      `profiles: ${found.profiles} rebuilt vs ${live.profiles} live`,
+      `votes: ${found.votes} rebuilt vs ${live.votes} live`,
+    )
+  }
+  return found
+}
+
 async function main(): Promise<void> {
   loadEnvFile()
 
@@ -147,6 +253,7 @@ async function main(): Promise<void> {
 
   const before = preflight(DB)
   if (!args.assumeYes) await confirmOrExit(DB)
+  const outdated = tablesInOldLayout(DB, OWNER)
 
   const STAMP = stamp()
   // Same directory as the database, so the final mv is atomic (one filesystem).
@@ -157,31 +264,17 @@ async function main(): Promise<void> {
   run('systemctl', ['stop', SERVICE])
   guard.stopped = true
 
-  // Counted with the service down, so nothing can change it before the
-  // comparison — which is what makes a shorter rebuild proof of a bad copy.
-  const source = sqlite([DB, 'SELECT COUNT(*) FROM profiles;'], OWNER)
-  const sourceProfiles = Number(source.out)
+  const live = countLive(DB)
 
   // The whole of the downtime: 0.6 s on a 236 MB database, scaling with it.
   const rebuildStartedAt = Date.now()
-  const rebuild = sqlite(
-    ['-cmd', '.timeout 5000', DB, `VACUUM INTO '${TMP}'`],
-    OWNER,
-  )
+  const rebuild =
+    outdated.length > 0 ? convertInto(DB, TMP) : vacuumInto(DB, TMP)
   if (!rebuild.ok)
-    die(`VACUUM INTO failed — keeping the original: ${rebuild.out}`)
+    die(`the rebuild failed — keeping the original: ${rebuild.out}`)
   const rebuildMs = Date.now() - rebuildStartedAt
 
-  // The checks backup.ts runs on a snapshot, plus the count taken above.
-  const found = inspect(TMP, OWNER)
-  const short = found.profiles === null || found.profiles < sourceProfiles
-  if (found.integrity !== 'ok' || found.votes === null || short) {
-    die(
-      'the rebuilt database failed verification — keeping the original.',
-      `integrity_check: ${found.integrity}`,
-      `profiles: ${found.profiles} rebuilt vs ${sourceProfiles} live`,
-    )
-  }
+  const found = verifyRebuild(TMP, live)
 
   // Everything that can fail has; from here to the swap is a single mv.
   run('chown', [`${OWNER}:${OWNER}`, TMP])
@@ -216,8 +309,12 @@ async function main(): Promise<void> {
     })
     run('chown', [`${OWNER}:${OWNER}`, join(BACKUP_DIR, VACUUM_STATUS_FILE)])
   }
+  const converted =
+    outdated.length > 0
+      ? `converted ${outdated.join(', ')} to the layout schema.sql declares, `
+      : ''
   console.log(
-    `compacted ${DB}: ${before} -> ${after} bytes (${reclaimPct(before, after)}% reclaimed), ${found.profiles} profiles / ${found.votes} votes — rebuild ${secs(rebuildMs)}, service down ${secs(downtimeMs)}`,
+    `${converted}compacted ${DB}: ${before} -> ${after} bytes (${reclaimPct(before, after)}% reclaimed), ${found.profiles} profiles / ${found.votes} votes — rebuild ${secs(rebuildMs)}, service down ${secs(downtimeMs)}`,
   )
   console.log(
     `the original is kept as ${DB}.replaced-${STAMP} — delete it once this has proven out`,

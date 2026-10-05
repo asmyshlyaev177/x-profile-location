@@ -163,10 +163,10 @@ so it is the only one shaped against a crowd all asking the same question:
 - The query is a bare `COUNT(*)`, not `WHERE location_confidence > 0`, though
   it is the latter that `/v1/loc/batch` serves. They are the same number —
   `pickConsensus` never returns a confidence below 1, so no row is written
-  below it — and the filtered form cannot use the `username` index: 5.3ms
-  against 0.05ms over 200k rows, which better-sqlite3 makes an event-loop stall
-  rather than a slow query. Do not add an index to "fix" that; see
-  [Indexes](#indexes-dont-add-any).
+  below it — and the filtered form decodes every row, where the bare one adds
+  up each page's row count: 26 ms against 0.33 ms over 623k profiles, which
+  better-sqlite3 makes an event-loop stall rather than a slow query. Do not add
+  an index to "fix" that; see [Indexes](#indexes-dont-add-any).
 
 It counts as its own line (`statsReads`) in the daily stats, so `other` still
 means what it did: scanners.
@@ -561,13 +561,14 @@ the hot path, forever.
 
 The read paths need nothing either: `profiles.username` is a `TEXT PRIMARY KEY`
 and `location_votes` has `PRIMARY KEY (username, client_id)`, so both
-`WHERE username IN (…)` queries already ride an existing index on its leading
-column.
+`WHERE username IN (…)` queries already seek on the primary key, the b-tree each
+table is stored in.
 
 Nor does chunking the DELETE need one. better-sqlite3 is synchronous, so the
-pass runs as rowid ranges that give the event loop a turn every 10 ms
-([`src/scan.ts`](src/scan.ts)); each range is a stretch of the table's own
-b-tree, so the walk is one pass. A `LIMIT`-chunked DELETE would need the index,
+pass runs as username ranges that give the event loop a turn every 10 ms
+([`src/scan.ts`](src/scan.ts)); each range is a stretch of the primary key's
+b-tree. Finding where a range ends reads it once more, so the walk reads the
+table twice and never more. A `LIMIT`-chunked DELETE would need the index,
 because it re-reads the table from the start for every chunk.
 
 `XLOC_RATE_LIMIT` deserves a note: **one IP is not one user.** Offices,
@@ -884,6 +885,24 @@ sudo /opt/x-loc-cache/server/deploy/vacuum.ts        # prompts first
 sudo /opt/x-loc-cache/server/deploy/vacuum.ts -y     # or don't
 ```
 
+**Converting from the old layout.** Until 2026-10 `schema.sql` made both tables
+with a rowid, and a file made then keeps them, because `CREATE TABLE IF NOT
+EXISTS` never changes a table that exists. `vacuum.ts` converts it. When a
+table's layout differs from `schema.sql`, the rebuild is a new file made from
+`schema.sql` with the rows copied over in key order, instead of `VACUUM INTO`.
+The checks, the swap and the kept original are the same. Deploy the code first,
+since it serves both layouts, then:
+
+```bash
+sudo systemctl start x-loc-backup.service             # a fresh archive first
+sudo /opt/x-loc-cache/server/deploy/vacuum.ts -y
+```
+
+On a copy of production (165 MB, 623k profiles) that came to 111 MB, with the
+service down for 2.9 s. Code from before the change cannot read the new tables,
+so going back means the kept `x-loc-cache.db.replaced-<stamp>` or an archive
+from before. Delete that file by hand once the new one has proven out.
+
 **Why nothing is scheduled.** `location_votes` is keyed
 `(username, client_id)` while retention ages rows out by `seen_at`, so the
 daily delete frees space scattered across the b-tree — which is exactly where
@@ -1127,10 +1146,10 @@ both start at boot with the same 24 h period:
   keeping the free per-window `users` count, which is derived from the clientId
   already on the wire and costs nothing.
 - **The retention pass**, the larger by far. Deleting a day of votes rewrites
-  most pages of `location_votes` and its key through the WAL.
+  most pages of `location_votes` through the WAL.
 
 better-sqlite3 is synchronous, so a single statement would hold every request
-for the whole scan. Both run instead as rowid chunks that give the event loop a
+for the whole scan. Both run instead as username ranges that give the event loop a
 turn every 10 ms, so the tick slows requests rather than stopping them —
 measured under "Where it slows down".
 
@@ -1166,8 +1185,8 @@ for ~300 users, about 80 MB in the bench's shape.
 #### Where it slows down: memory
 
 Not at the daily tick, and not with a timeout. Retention and the stats line walk
-their tables one after the other in rowid chunks that give the event loop a turn
-every 10 ms (`CLAUDE.md`, "Maintenance walks rowid ranges"), so the tick slows
+their tables one after the other in username ranges that give the event loop a turn
+every 10 ms (`CLAUDE.md`, "Maintenance walks username ranges"), so the tick slows
 requests instead of stopping them. The client aborts each request at 5 s, and
 three failures in a row open its circuit breaker (30 s, doubling per trip to ten
 minutes).
@@ -1195,7 +1214,10 @@ What the 640 MB changes is speed. Past it, lookups fault pages in from disk, so
 p50 outside maintenance goes from 2-5 ms to 14-20 ms, and p99 during the backup
 reaches 1-2.4 s: under the client's 5 s, but that is the margin left. So memory
 is the upgrade to plan once `dbMb` passes ~600 MB — a 2 GB box, with
-`MemoryMax` raised to match (see "Tuning").
+`MemoryMax` raised to match (see "Tuning"). The table was measured before the
+tables went `WITHOUT ROWID` (2026-10-05). The same profiles now take about a
+third less space, so each column's profiles fit in about two thirds of its
+`dbMb` (`CLAUDE.md`, "Tables are WITHOUT ROWID").
 
 With more than one vote on 20% of profiles, the most production is expected to
 reach, the same profiles take more room: 675 MB at ~2,200 users (tick 19 s, p99
@@ -1208,7 +1230,8 @@ end. A Vultr vCPU and disk are also slower than the laptop core and NVMe that
 stood in for them, so every time here is a floor. `/v1/stats` still counts
 profiles in one statement on a cache miss, at most once per `STATS_TTL_MS`: at
 most 0.16 s up to 675 MB and 0.95 s at 1361 MB, measured without the memory
-limit.
+limit. That count read only the key index then; it now reads the table itself,
+about three times the pages.
 
 Further out, in the bench's older shape of ~2.7 votes per profile, at **10M
 profiles / 27.2M votes / 3084 MB** — three times the machine's RAM — lookups in
@@ -1407,7 +1430,7 @@ rebuild, which is the host's job:
 
 ```bash
 docker compose stop
-docker run --rm -v x-loc-cache-data:/data alpine:3 \
+docker run --rm -v x-loc-data:/data alpine:3 \
   sh -c 'apk add --no-cache sqlite >/dev/null && sqlite3 /data/x-loc-cache.db "VACUUM;"'
 docker compose start
 ```

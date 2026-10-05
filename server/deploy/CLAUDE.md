@@ -130,7 +130,7 @@ then run out of disk mid-compress.
 - **`integrity_check`, not `quick_check`, and on the source as well as the copy.** Neither
   subsumes the other: `VACUUM INTO` repacks free-page faults away in the copy while
   leaving them in the source, and an index out of sync with its table crosses over
-  verbatim (measured on sqlite 3.37 and 3.53). ~1.2 s per 236 MB, in its own process,
+  verbatim (measured on sqlite 3.37 and 3.53, while the primary keys were indexes). ~1.2 s per 236 MB, in its own process,
   after the snapshot is stored — a copy of a failing database is worth having.
 - The snapshot _is_ the database rebuilt, so the gap between the two file sizes is what a
   VACUUM would hand back: measured, free, and written to a plain text file the heartbeat
@@ -143,7 +143,9 @@ result is verified before anything is replaced and the original stays as
 `*.replaced-<stamp>`. The service is stopped for the whole rebuild on purpose — a live
 snapshot would silently drop every contribution arriving before the swap, where a client
 that cannot reach the server keeps its votes. It is also the one script that can fill the
-disk the server writes to.
+disk the server writes to. When a table still has the rowid `schema.sql` dropped in 2026-10,
+the new file is made from `schema.sql` and filled in key order instead, because `VACUUM INTO`
+would copy the old layout along with the rows.
 
 **`restore.ts`** verifies the archive _before_ stopping the service, so a bad one costs no
 downtime.

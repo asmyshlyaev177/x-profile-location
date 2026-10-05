@@ -61,27 +61,47 @@ and `contrib-limit.ts` raises the price of manufacturing ids.
 **`/v1/stats` counts unfiltered**, though `/v1/loc/batch` serves only
 `location_confidence > 0`. The counts are the same number: `pickConsensus` never returns
 below 1, so no row is written below 1, and `pruneExpired()` removes a profile rather than
-zeroing it. What differs is cost — the filter cannot use the username index and drops to
-a table scan (5.3ms against 0.05ms over 200k rows), and better-sqlite3 is synchronous, so
-that gap is an event-loop stall.
+zeroing it. What differs is cost. The bare count adds up each page's row count, while the
+filter decodes every row: 0.33 ms against 26 ms over 623k profiles (2026-10-05). better-sqlite3
+is synchronous, so that gap is an event-loop stall.
 
 The count is memoised for `STATS_TTL_MS` and clients are told the same, so the endpoint
-costs one `COUNT` per 3 minutes rather than one per reader. `COUNT(*)` is a full scan (7.8ms
-at 10k-user scale, README "Benchmarks") — the memo is not a nicety.
+costs one `COUNT` per 3 minutes rather than one per reader. `COUNT(*)` still reads every page
+of `profiles`, which took up to 0.95 s at 1361 MB past the memory limit (README "Where it slows
+down", on the old layout) — the memo is not a nicety.
 
 **The consensus recompute has no date filter.** `pruneExpired()` physically deletes votes
 older than `VOTE_RETENTION_MS`, so every row still in the table is inside the window by
 construction. That makes deletion the single source of truth for the 60-day bound and
 lets the query ride the primary key. The retention `DELETE` itself has no `seen_at` index
 to ride: a full scan spending the abundant read budget, deliberately traded against
-taxing every insert's ~50x scarcer write budget. It walks the table in rowid ranges, so
-the scan never needs one either — see "Maintenance walks rowid ranges".
+taxing every insert's ~50x scarcer write budget. It walks the table in username ranges,
+so the scan never needs one either — see "Maintenance walks username ranges".
 
 Contributions over a client's budget are dropped **silently**, with `{ ok: true }`
 either way — the client ignores the body, and a rejection would tell a poisoner when to
 rotate its id.
 
-## Maintenance walks rowid ranges (scan.ts)
+## Tables are WITHOUT ROWID
+
+- Each primary key is its table. With a rowid it was a second b-tree holding the keys
+  again, so every vote stored its username and 36-character client id twice.
+- Measured 2026-10-05 on a copy of production (623k profiles, 693k votes), on the laptop:
+  165 MB with rowid tables, 111 MB converted. Retention went from 1.08 s to 0.42 s and the
+  stats walk from 0.79 s to 0.35 s, deleting and counting the same rows.
+- `CREATE TABLE IF NOT EXISTS` never changes a table that exists, so a file made earlier
+  keeps its rowid until `deploy/vacuum.ts` converts it, by hand after a backup (README
+  "Compacting the database"). On that copy the service was down 2.9 s.
+- Not at boot: `update.ts` rolls back when `/healthz` is slow, and the code it rolls back
+  to cannot read the new tables. A boot rebuild that committed late left that code running
+  with retention failing every day (reproduced in review, 2026-10-05).
+- Until then the code runs on rowid tables, and an archive from before restores to them, so
+  `sqlite.test.ts` runs the walk on both layouts.
+- One-way: code from before walks rowid ranges, and on the new tables its retention and
+  stats line fail. The way back is the `.replaced-<stamp>` file `vacuum.ts` keeps, which is
+  deleted by hand once the new one has proven out, or an older archive.
+
+## Maintenance walks username ranges (scan.ts)
 
 Retention and the stats line's totals read whole tables once a day; both intervals start
 at boot with the same period. On better-sqlite3 a statement holds the
@@ -89,21 +109,26 @@ event loop for as long as it runs, so as single statements they were one long si
 on one core under `MemoryMax=640M`, 12 s at 554 MB and 40-58 s at 1.1 GB, every request
 in it timing out (2026-09-30).
 
-- `forEachRowidRange` splits the work into ranges of the table's own rowid b-tree: one
-  pass, no index. A `LIMIT`-chunked DELETE re-reads the table from the start for every
-  chunk, which is why chunking once looked like it needed a `seen_at` index.
-- Its bounds are two scalar subqueries. `SELECT MIN(rowid), MAX(rowid)` looks like two
-  seeks and is a full scan — SQLite only seeks for a lone MIN or MAX — and it opened
-  every walk with the one stall chunking exists to avoid. `sqlite.test.ts` fails on any
-  `SCAN` in a statement the walks prepare.
-- Node passes `yieldingScan()`: 250 rowids a statement and a turn of the event loop every
-  10 ms. The measurements behind both numbers sit beside them in `sqlite.ts`.
+- `forEachUsernameRange` splits the work into ranges of the primary key, which both
+  tables lead with, so it needs no extra index. A `LIMIT`-chunked DELETE re-reads the table
+  from the start for every chunk, which is why chunking once looked like it needed a
+  `seen_at` index. Until 2026-10-05 the ranges were rowids, which the tables no longer have.
+- Its one bound is `MAX(username)`, read alone. SQLite seeks for a lone MIN or MAX, but
+  `SELECT MIN(x), MAX(x)` together is a full scan, the one stall chunking exists to avoid.
+  `sqlite.test.ts` fails on any `SCAN` in a statement the walks prepare, on both layouts.
+- Ranges are half-open, `username > after AND username <= upTo`, from `''`: a username has
+  one character at least. `upTo` comes from an `OFFSET` that steps through the range's rows,
+  so every range is read twice. A range ends on a whole username, so a votes range can run
+  up to 14 rows over.
+- Node passes `yieldingScan()`: 250 rows a statement and a turn of the event loop every
+  10 ms. The measurements behind both numbers sit beside them in `sqlite.ts`, taken on
+  rowid ranges.
 - `node-server.ts` runs the two walks through `oneAtATime()`: back to back, so the stats
   line counts what retention left and one walk holds the loop at a time, and a pass still
   running when its interval fires again is skipped, not stacked.
-- The Worker's `scheduled()` passes `WHOLE_TABLE`, one DELETE per table after a read of
-  its bounds: D1 caps the queries one invocation may run, and a long D1 query blocks
-  nothing. `scheduled.test.ts` fails if the cron starts chunking.
+- The Worker's `scheduled()` passes `WHOLE_TABLE`: per table, its last username and one
+  DELETE, with no `OFFSET`. D1 caps the queries one invocation may run, and a long D1 query
+  blocks nothing. `scheduled.test.ts` fails if the cron starts chunking.
 - The profile sweep stays a sweep of every profile, not of the ones this pass emptied: a
   pass cut short by a restart is finished by the next, and a profile that never had a
   vote still goes (`sqlite.test.ts`).
@@ -182,7 +207,7 @@ represented at all; these answer 405 or 400 and count as `other` rather than sur
 line, so a restart loses the partial window (hence the SIGTERM flush). The distinct-installs
 figure comes from the `client_id` already in `location_votes` — no new tracking — but there
 is no index on `seen_at`, so it is a full scan, walked in chunks that give way to requests
-("Maintenance walks rowid ranges"). Once a day; never on a request path. It counts _contributors_, a
+("Maintenance walks username ranges"). Once a day; never on a request path. It counts _contributors_, a
 floor on active users: counting readers would mean identifying lookups, which is exactly
 what this server promises not to be able to do.
 

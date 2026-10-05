@@ -34,6 +34,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createRowidDatabase } from '../src/test-helpers.ts'
 import { isOutOfSpace } from './alert.ts'
 import { autoVacuumPct, rootRefusal } from './backup.ts'
 
@@ -1091,6 +1092,77 @@ exec ${realSqlite3()} "$@"`,
       'Somewhere',
     )
     db.close()
+  })
+
+  /** Both tables in key order, every column, to compare across a conversion. */
+  function rowsOf(file: string): Record<string, unknown[]> {
+    const db = new Database(file, { readonly: true })
+    const rows = {
+      profiles: db.prepare('SELECT * FROM profiles ORDER BY username').all(),
+      votes: db
+        .prepare('SELECT * FROM location_votes ORDER BY username, client_id')
+        .all(),
+    }
+    db.close()
+    return rows
+  }
+
+  /** `wr` per table: 1 without a rowid, as schema.sql declares them. */
+  function layoutOf(file: string): Record<string, number> {
+    const db = new Database(file, { readonly: true })
+    const rows = db
+      .prepare(
+        "SELECT name, wr FROM pragma_table_list WHERE schema = 'main' AND name IN ('profiles', 'location_votes')",
+      )
+      .all() as { name: string; wr: number }[]
+    db.close()
+    return Object.fromEntries(rows.map((r) => [r.name, r.wr]))
+  }
+
+  /** Production's file before the conversion: rowid tables, real-looking rows,
+   *  and the values that copy least obviously — NULLs and a false flag. */
+  function seedRowidDatabase(): void {
+    createRowidDatabase(dbPath).close()
+    seed(dbPath, 300)
+    const db = new Database(dbPath)
+    db.prepare('INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?)').run(
+      'x'.repeat(50),
+      null,
+      null,
+      0,
+      1,
+      0,
+    )
+    db.prepare('INSERT INTO location_votes VALUES (?, ?, ?, ?, ?, ?)').run(
+      'x'.repeat(50),
+      'f08bba6e-7c60-460b-85dc-f24dc9555c65',
+      null,
+      null,
+      0,
+      Date.now(),
+    )
+    db.pragma('wal_checkpoint(TRUNCATE)')
+    db.close()
+  }
+
+  it('converts rowid tables into the layout schema.sql declares, keeping every row', () => {
+    seedRowidDatabase()
+    const before = rowsOf(dbPath)
+    expect(layoutOf(dbPath)).toEqual({ profiles: 0, location_votes: 0 })
+
+    const r = run(VACUUM, ['-y'], vacuumStubs(join(dir, 'systemctl.log')))
+    expect(r.stderr).toBe('')
+    expect(r.status).toBe(0)
+    expect(r.stdout).toContain('converted location_votes, profiles')
+    expect(r.stdout).toContain('healthz ok')
+
+    expect(layoutOf(dbPath)).toEqual({ profiles: 1, location_votes: 1 })
+    expect(rowsOf(dbPath)).toEqual(before)
+
+    // The rollback the script prints puts back the rowid tables, every row.
+    const original = r.stdout.match(/kept as (\S+)/)![1]!
+    expect(layoutOf(original)).toEqual({ profiles: 0, location_votes: 0 })
+    expect(rowsOf(original)).toEqual(before)
   })
 
   it('leaves nothing of the old database beside the new one', () => {

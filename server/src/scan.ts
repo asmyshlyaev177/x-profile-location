@@ -1,10 +1,10 @@
-// Full-table work split into rowid ranges, so a long scan can give way between
-// them. Backend-agnostic: index.ts runs it on D1 as well as on better-sqlite3.
+// Full-table work split into username ranges, so a long scan can give way
+// between them. Runs on D1 and better-sqlite3, with or without a rowid.
 
 import type { Db } from './db-types.ts'
 
 export interface ScanPolicy {
-  /** Rows of rowid space per statement. */
+  /** Rows per statement, plus the rest of the votes of the username it ends on. */
   chunkRows: number
   /** Awaited after every chunk; the Node server gives its event loop a turn. */
   pause: () => Promise<void>
@@ -13,34 +13,52 @@ export interface ScanPolicy {
 /** One statement per table, for D1: it caps the queries a Worker invocation
  *  may run, and a long query there blocks nothing. */
 export const WHOLE_TABLE: ScanPolicy = {
-  chunkRows: Number.MAX_SAFE_INTEGER,
+  chunkRows: Infinity,
   pause: async () => {},
 }
 
 export type ScannedTable = 'profiles' | 'location_votes'
 
-/** Calls `visit` over consecutive rowid ranges covering the table as it stood
- *  when the walk began. A row inserted since has a higher rowid and is left
- *  for the next walk; rowids never change under UPDATE. */
-export async function forEachRowidRange(
+/** Calls `visit` for each range `username > after AND username <= upTo`, in
+ *  order, up to the last username the table held when the walk began. */
+export async function forEachUsernameRange(
   db: Db,
   table: ScannedTable,
   policy: ScanPolicy,
-  visit: (lo: number, hi: number) => Promise<void>,
+  visit: (after: string, upTo: string) => Promise<void>,
 ): Promise<void> {
-  // One subquery per bound: SQLite answers a lone MIN or MAX with a seek, but
-  // both in one SELECT make it scan the whole table first.
   const { results } = await db
-    .prepare(
-      `SELECT (SELECT MIN(rowid) FROM ${table}) AS lo, (SELECT MAX(rowid) FROM ${table}) AS hi`,
-    )
-    .all<{ lo: number | null; hi: number | null }>()
-  const first = results?.[0]?.lo
-  const last = results?.[0]?.hi
-  if (first == null || last == null) return
-  for (let lo = first; lo <= last; lo += policy.chunkRows) {
-    await visit(lo, Math.min(lo + policy.chunkRows - 1, last))
+    .prepare(`SELECT MAX(username) AS last FROM ${table}`)
+    .all<{ last: string | null }>()
+  const last = results?.[0]?.last ?? null
+  if (last === null) return
+  const endAfter = rangeEnds(db, table, last, policy.chunkRows)
+  // USERNAME_RE takes one character at least, so every username sorts after ''.
+  for (let after = ''; after !== last; ) {
+    const upTo = await endAfter(after)
+    await visit(after, upTo)
     await policy.pause()
+    after = upTo
+  }
+}
+
+/** The username `rows` rows past `after`, or `last` when fewer are left. */
+function rangeEnds(
+  db: Db,
+  table: ScannedTable,
+  last: string,
+  rows: number,
+): (after: string) => Promise<string> {
+  // WHOLE_TABLE: an OFFSET past the end would step through every row to say so.
+  if (!Number.isFinite(rows)) return async () => last
+  const sql = `SELECT username FROM ${table} WHERE username > ? AND username <= ?
+    ORDER BY username LIMIT 1 OFFSET ?`
+  return async (after) => {
+    const { results } = await db
+      .prepare(sql)
+      .bind(after, last, rows - 1)
+      .all<{ username: string }>()
+    return results?.[0]?.username ?? last
   }
 }
 
