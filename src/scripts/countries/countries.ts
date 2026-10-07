@@ -837,12 +837,33 @@ export function expandLocations(
   return out
 }
 
+// Built once: the location rule asks agreedPlace for every account it judges.
+const REGIONS_BY_MEMBER = new Map<string, Set<string>>()
+for (const [region, members] of Object.entries(REGION_MEMBERS)) {
+  for (const member of members) {
+    const name = canonicalLocation(member)
+    const regions = REGIONS_BY_MEMBER.get(name) ?? new Set<string>()
+    REGIONS_BY_MEMBER.set(name, regions.add(region))
+  }
+}
+
 /** The regions a country belongs to, for explaining *why* something matched. */
 export function regionsContaining(location: string): string[] {
-  const name = canonicalLocation(location)
-  return Object.keys(REGION_MEMBERS).filter((region) =>
-    REGION_MEMBERS[region].some((m) => canonicalLocation(m) === name),
-  )
+  return [...(REGIONS_BY_MEMBER.get(canonicalLocation(location)) ?? [])]
+}
+
+function isRegionOf(region: string, member: string): boolean {
+  return REGIONS_BY_MEMBER.get(member)?.has(region) ?? false
+}
+
+/** The more specific of two names for one place, or null when they name two
+ *  places: a Germany store and a "Europe" location agree on Germany. */
+export function agreedPlace(a: string, b: string): string | null {
+  const first = canonicalLocation(a)
+  const second = canonicalLocation(b)
+  if (first === second || isRegionOf(second, first)) return first
+  if (isRegionOf(first, second)) return second
+  return null
 }
 
 /** The locations the options page offers, aliases folded away. */

@@ -240,7 +240,31 @@
     "message": "Lokasi"
   },
   "cardLocationsDesc": {
-    "message": "Ini menampilkan ⚠️ alih-alih benderanya. Berdasarkan negara toko, atau lokasi akun jika tidak ditandai sebagai VPN. Tidak pernah berlaku untuk postingan yang Anda buka."
+    "message": "Ini menampilkan ⚠️ alih-alih benderanya. Tidak pernah berlaku untuk postingan yang Anda buka."
+  },
+  "matchPlace": {
+    "message": "Jika toko aplikasi dan lokasi berbeda"
+  },
+  "matchPlaceStore": {
+    "message": "Toko aplikasi"
+  },
+  "matchPlaceLocation": {
+    "message": "Lokasi"
+  },
+  "matchPlaceDesc": {
+    "message": "Negara toko aplikasi tidak berubah karena VPN. Lokasi adalah tempat akun berbasis menurut X."
+  },
+  "matchWebAccounts": {
+    "message": "Cocokkan akun web berdasarkan lokasi"
+  },
+  "matchWebAccountsDesc": {
+    "message": "Akun web tidak punya negara toko, jadi hanya lokasi yang bisa dicocokkan."
+  },
+  "matchVpnLocations": {
+    "message": "Blokir juga lokasi VPN"
+  },
+  "matchVpnLocationsDesc": {
+    "message": "Nonaktif: lokasi yang ditandai X sebagai VPN tidak pernah cocok. Toko dan lokasi yang sama tetap dihitung."
   },
   "locationPlaceholder": {
     "message": "Cari negara dan wilayah — nama, kode, atau nama panggilan…"

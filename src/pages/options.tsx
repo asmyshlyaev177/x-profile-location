@@ -1,6 +1,7 @@
 import {
   ACCOUNT_AGE_CHOICES,
   type AccountAgeFilter,
+  canVpnLocationDecide,
   DEFAULT_MIN_CONFIDENCE,
   defaultSetting,
   exportSettings,
@@ -9,6 +10,7 @@ import {
   formatAgeChoice,
   type HideBlockedMode,
   importSettings,
+  type LocationMatching,
   MIN_CONFIDENCE_CHOICES,
   normalizeAccountAge,
   normalizeHandle,
@@ -18,8 +20,10 @@ import {
   normalizePrefetchShare,
   normalizeRuleExceptions,
   normalizeTheme,
+  onStoredSettingChange,
   OPTIONS_TABS,
   type OptionsTabId,
+  type PreferredPlace,
   PREFETCH_SHARE_CHOICES,
   type PrefetchPacing,
   readSetting,
@@ -30,6 +34,7 @@ import {
   type ThemePreference,
   withKeyword,
   withLocation,
+  withLocationMatching,
 } from '../scripts/settings'
 import {
   ACCOUNT_AGE_KEY,
@@ -42,6 +47,7 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  LOCATION_MATCHING_KEY,
   LOOKUP_LIMIT_PER_WINDOW,
   LOOKUP_WINDOW_MINUTES,
   MIN_CONFIDENCE_KEY,
@@ -76,6 +82,7 @@ import {
 } from '../scripts/countries/countries'
 import { KeywordAddRow, KeywordChips } from '../components/KeywordChips'
 import { LocationChips } from '../components/LocationChips'
+import { PlaceSelect } from '../components/PlaceSelect'
 import { isMobile } from '../scripts/device'
 import type { Keyword, MatchMode } from '../scripts/keywords'
 import { isSharedCacheConfigured } from '../scripts/cache/shared-cache'
@@ -209,6 +216,97 @@ function Stack({ children }: { children: ComponentChildren }) {
   return <div class={css.stack}>{children}</div>
 }
 
+interface MatchingToggleProps {
+  label: string
+  description: string
+  checked: boolean
+  disabled?: boolean
+  onToggle: (checked: boolean) => void
+}
+
+function MatchingToggle({
+  label,
+  description,
+  checked,
+  disabled = false,
+  onToggle,
+}: MatchingToggleProps) {
+  const control = (
+    <input
+      type="checkbox"
+      checked={checked}
+      disabled={disabled}
+      onChange={(e) => onToggle((e.target as HTMLInputElement).checked)}
+    />
+  )
+  return (
+    <Setting
+      label={label}
+      description={description}
+      disabled={disabled}
+      control={control}
+    />
+  )
+}
+
+function PlaceSetting({
+  place,
+  onPlace,
+}: {
+  place: PreferredPlace
+  onPlace: (value: string) => void
+}) {
+  return (
+    <Setting
+      label={t('matchPlace')}
+      description={t('matchPlaceDesc')}
+      clickable={false}
+      control={
+        <PlaceSelect
+          className={css.modeSelect}
+          place={place}
+          onPlace={onPlace}
+        />
+      }
+    />
+  )
+}
+
+interface LocationMatchingProps {
+  matching: LocationMatching
+  onChange: (next: LocationMatching) => void
+}
+
+/** Which of the store and the stated location the blocked list goes by. */
+function LocationMatchingSettings({
+  matching,
+  onChange,
+}: LocationMatchingProps) {
+  const edit = (patch: Record<string, unknown>) =>
+    onChange(withLocationMatching(matching, patch))
+  return (
+    <>
+      <PlaceSetting
+        place={matching.preferredPlace}
+        onPlace={(value) => edit({ preferredPlace: value })}
+      />
+      <MatchingToggle
+        label={t('matchWebAccounts')}
+        description={t('matchWebAccountsDesc')}
+        checked={matching.isLocationUsedWithoutStore}
+        onToggle={(checked) => edit({ isLocationUsedWithoutStore: checked })}
+      />
+      <MatchingToggle
+        label={t('matchVpnLocations')}
+        description={t('matchVpnLocationsDesc')}
+        checked={matching.isVpnLocationCounted}
+        disabled={!canVpnLocationDecide(matching)}
+        onToggle={(checked) => edit({ isVpnLocationCounted: checked })}
+      />
+    </>
+  )
+}
+
 // A settings page's branches are its settings; splitting into five tab
 // components is not a linter's call.
 // oxlint-disable-next-line complexity
@@ -220,6 +318,9 @@ export function Options() {
   const [affiliations, setAffiliations] = useState<string[]>([])
   const [accountAge, setAccountAge] = useState<AccountAgeFilter>(
     defaultSetting(ACCOUNT_AGE_KEY),
+  )
+  const [matching, setMatching] = useState<LocationMatching>(
+    defaultSetting(LOCATION_MATCHING_KEY),
   )
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [newKeywordMode, setNewKeywordMode] = useState<MatchMode>('word')
@@ -299,6 +400,7 @@ export function Options() {
         setEnabled(readSetting(EXTENSION_ENABLED_KEY, result))
         setBlocked(readSetting(BLOCKED_COUNTRIES_KEY, result))
         setExclusions(readSetting(REGION_EXCLUSIONS_KEY, result))
+        setMatching(readSetting(LOCATION_MATCHING_KEY, result))
         setAffiliations(readSetting(BLOCKED_AFFILIATIONS_KEY, result))
         setAccountAge(readSetting(ACCOUNT_AGE_KEY, result))
         setKeywords(readSetting(HIGHLIGHT_KEYWORDS_KEY, result))
@@ -344,6 +446,7 @@ export function Options() {
   }, [])
 
   useEffect(startThemeSync, [])
+  useEffect(() => onStoredSettingChange(LOCATION_MATCHING_KEY, setMatching), [])
 
   function selectTab(next: OptionsTabId) {
     setTab(next)
@@ -458,6 +561,11 @@ export function Options() {
   function updatePacing(next: PrefetchPacing) {
     setPacing(next)
     chrome.storage.local.set({ [PREFETCH_PACING_KEY]: next })
+  }
+
+  function updateMatching(next: LocationMatching) {
+    setMatching(next)
+    chrome.storage.local.set({ [LOCATION_MATCHING_KEY]: next })
   }
 
   function updateHideMode(mode: HideBlockedMode) {
@@ -834,6 +942,11 @@ export function Options() {
                 <p class={css.empty}>{t('emptyNoLocations')}</p>
               )}
             </Stack>
+
+            <LocationMatchingSettings
+              matching={matching}
+              onChange={updateMatching}
+            />
           </Card>
 
           <Card title={t('cardFiltered')} description={t('cardFilteredDesc')}>

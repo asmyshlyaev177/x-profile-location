@@ -10,6 +10,7 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  LOCATION_MATCHING_KEY,
   MIN_CONFIDENCE_KEY,
   MSG,
   RATE_PROMPT_KEY,
@@ -130,6 +131,7 @@ import {
   setAlwaysShow,
   setBlockedAffiliations,
   setBlockedPicks,
+  setLocationMatching,
   setRegionExclusions,
   setRuleExceptions,
   toggleRuleExceptions,
@@ -195,6 +197,7 @@ chrome.storage.local
     EXTENSION_ENABLED_KEY,
     BLOCKED_COUNTRIES_KEY,
     REGION_EXCLUSIONS_KEY,
+    LOCATION_MATCHING_KEY,
     HIGHLIGHT_KEYWORDS_KEY,
     HIGHLIGHT_FLAGS_KEY,
     SHOW_LOCATION_IN_FEED_KEY,
@@ -217,6 +220,7 @@ chrome.storage.local
     setEnabled(readSetting(EXTENSION_ENABLED_KEY, r))
     setBlockedPicks(readSetting(BLOCKED_COUNTRIES_KEY, r))
     setRegionExclusions(readSetting(REGION_EXCLUSIONS_KEY, r))
+    setLocationMatching(readSetting(LOCATION_MATCHING_KEY, r))
     setHighlightKeywords(readSetting(HIGHLIGHT_KEYWORDS_KEY, r))
     setHighlightFlags(readSetting(HIGHLIGHT_FLAGS_KEY, r))
     showLocationInFeed = readSetting(SHOW_LOCATION_IN_FEED_KEY, r)
@@ -327,6 +331,10 @@ function applyFilterChanges(changes: StorageChanges): void {
   })
   onSettingChange(changes, REGION_EXCLUSIONS_KEY, (value) => {
     setRegionExclusions(value)
+    void refreshHiddenTweets()
+  })
+  onSettingChange(changes, LOCATION_MATCHING_KEY, (value) => {
+    setLocationMatching(value)
     void refreshHiddenTweets()
   })
   // Both keys arrive together, so the general one wins and the legacy one is a

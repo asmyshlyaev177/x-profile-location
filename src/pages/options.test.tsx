@@ -9,6 +9,7 @@ import {
   BLOCKED_COUNTRIES_KEY,
   EXTENSION_ENABLED_KEY,
   HIGHLIGHT_EXCEPTIONS_KEY,
+  LOCATION_MATCHING_KEY,
   MIN_CONFIDENCE_KEY,
   OPTIONS_TAB_KEY,
   PREFETCH_PACING_KEY,
@@ -19,7 +20,13 @@ import {
   SHOW_ADVANCED_KEY,
   THEME_KEY,
 } from '../scripts/constants'
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { REGION_MEMBERS } from '../scripts/countries/countries'
 import type { OptionsTabId } from '../scripts/settings'
@@ -34,6 +41,20 @@ vi.mock('../scripts/cache/shared-cache', () => ({
 // Mutable backing store for the chrome.storage.local mock. It has to be in
 // place before options.tsx is imported below - the module renders itself into
 // document.body on import, which reads storage.
+type StorageListener = (
+  changes: Record<string, { newValue?: unknown }>,
+  area: string,
+) => void
+const storageListeners = new Set<StorageListener>()
+
+/** Another page's write, as chrome.storage announces it to every open page. */
+function announceWrite(changes: Record<string, unknown>) {
+  const wrapped = Object.fromEntries(
+    Object.entries(changes).map(([key, newValue]) => [key, { newValue }]),
+  )
+  for (const listener of storageListeners) listener(wrapped, 'local')
+}
+
 const storedRef: { current: Record<string, unknown> } = { current: {} }
 const setMock = vi.fn()
 
@@ -43,7 +64,14 @@ const setMock = vi.fn()
       get: vi.fn(() => Promise.resolve({ ...storedRef.current })),
       set: setMock,
     },
-    onChanged: { addListener: vi.fn() },
+    onChanged: {
+      addListener: vi.fn((listener: StorageListener) =>
+        storageListeners.add(listener),
+      ),
+      removeListener: vi.fn((listener: StorageListener) =>
+        storageListeners.delete(listener),
+      ),
+    },
   },
   runtime: { sendMessage: vi.fn().mockResolvedValue(undefined) },
 }
@@ -650,5 +678,89 @@ describe('theme', () => {
 
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
     expect(setMock).toHaveBeenCalledWith({ [THEME_KEY]: 'system' })
+  })
+})
+
+describe('which place a blocked location goes by', () => {
+  const WEB = 'Match web accounts by location'
+  const VPN = 'Block VPN locations too'
+
+  function placeSelect(root: ParentNode) {
+    return section(root, BLOCKED_LABEL).querySelector(
+      'select',
+    ) as HTMLSelectElement
+  }
+
+  function box(root: ParentNode, text: string) {
+    const label = [
+      ...section(root, BLOCKED_LABEL).querySelectorAll('label'),
+    ].find((el) => el.textContent?.includes(text))
+    return label?.querySelector('input') as HTMLInputElement
+  }
+
+  it('writes each choice to the key the content script reads', async () => {
+    const { container } = mountStored({}, 'filters')
+    await waitFor(() => expect(placeSelect(container)).toBeTruthy())
+
+    fireEvent.change(placeSelect(container), { target: { value: 'location' } })
+    expect(setMock).toHaveBeenLastCalledWith({
+      [LOCATION_MATCHING_KEY]: {
+        preferredPlace: 'location',
+        isLocationUsedWithoutStore: true,
+        isVpnLocationCounted: false,
+      },
+    })
+
+    fireEvent.click(box(container, VPN))
+    expect(setMock).toHaveBeenLastCalledWith({
+      [LOCATION_MATCHING_KEY]: {
+        preferredPlace: 'location',
+        isLocationUsedWithoutStore: true,
+        isVpnLocationCounted: true,
+      },
+    })
+  })
+
+  it('follows a write from another page, so it never writes an old value back', async () => {
+    const { container } = mountStored({}, 'filters')
+    await waitFor(() => expect(placeSelect(container)).toBeTruthy())
+
+    act(() =>
+      announceWrite({
+        [LOCATION_MATCHING_KEY]: {
+          preferredPlace: 'location',
+          isLocationUsedWithoutStore: true,
+          isVpnLocationCounted: false,
+        },
+      }),
+    )
+    await waitFor(() => expect(placeSelect(container).value).toBe('location'))
+    fireEvent.click(box(container, VPN))
+
+    expect(setMock).toHaveBeenLastCalledWith({
+      [LOCATION_MATCHING_KEY]: {
+        preferredPlace: 'location',
+        isLocationUsedWithoutStore: true,
+        isVpnLocationCounted: true,
+      },
+    })
+  })
+
+  it('greys out the VPN box while no stated location could decide', async () => {
+    const { container } = mountStored(
+      {
+        [LOCATION_MATCHING_KEY]: {
+          preferredPlace: 'store',
+          isLocationUsedWithoutStore: false,
+          isVpnLocationCounted: false,
+        },
+      },
+      'filters',
+    )
+    await waitFor(() => expect(box(container, VPN)?.disabled).toBe(true))
+
+    fireEvent.click(box(container, WEB))
+
+    await waitFor(() => expect(box(container, VPN).disabled).toBe(false))
   })
 })

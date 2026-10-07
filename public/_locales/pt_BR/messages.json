@@ -240,7 +240,31 @@
     "message": "Localizações"
   },
   "cardLocationsDesc": {
-    "message": "Estes mostram ⚠️ em vez da bandeira. Baseia-se no país da loja ou na localização da conta quando não está marcada como VPN. Nunca se aplica ao post que você abriu."
+    "message": "Estes mostram ⚠️ em vez da bandeira. Nunca se aplica ao post que você abriu."
+  },
+  "matchPlace": {
+    "message": "Se a loja e a localização forem diferentes"
+  },
+  "matchPlaceStore": {
+    "message": "Loja"
+  },
+  "matchPlaceLocation": {
+    "message": "Localização"
+  },
+  "matchPlaceDesc": {
+    "message": "O país da loja de apps não muda com uma VPN. A localização é onde o X diz que a conta está."
+  },
+  "matchWebAccounts": {
+    "message": "Filtrar contas web pela localização"
+  },
+  "matchWebAccountsDesc": {
+    "message": "Contas web não têm país de loja, então a localização é a única coisa a comparar."
+  },
+  "matchVpnLocations": {
+    "message": "Bloquear também localizações com VPN"
+  },
+  "matchVpnLocationsDesc": {
+    "message": "Desligado: uma localização que o X marca como VPN nunca corresponde. Loja e localização que concordam contam de qualquer jeito."
   },
   "locationPlaceholder": {
     "message": "Buscar países e regiões — nome, código ou apelido…"

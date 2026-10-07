@@ -240,7 +240,31 @@
     "message": "위치"
   },
   "cardLocationsDesc": {
-    "message": "해당 위치는 플래그 대신 ⚠️로 표시됩니다. 스토어 국가 또는 VPN으로 표시되지 않은 계정 위치를 기준으로 합니다. 열어본 게시물에는 적용되지 않습니다."
+    "message": "해당 위치는 플래그 대신 ⚠️로 표시됩니다. 열어본 게시물에는 적용되지 않습니다."
+  },
+  "matchPlace": {
+    "message": "스토어와 위치가 다를 때"
+  },
+  "matchPlaceStore": {
+    "message": "스토어"
+  },
+  "matchPlaceLocation": {
+    "message": "위치"
+  },
+  "matchPlaceDesc": {
+    "message": "스토어 국가는 VPN으로 바뀌지 않습니다. 위치는 X가 계정이 있다고 밝힌 곳입니다."
+  },
+  "matchWebAccounts": {
+    "message": "웹 계정은 위치로 판단"
+  },
+  "matchWebAccountsDesc": {
+    "message": "웹 계정에는 스토어 국가가 없으므로 위치로만 판단할 수 있습니다."
+  },
+  "matchVpnLocations": {
+    "message": "VPN 위치도 차단"
+  },
+  "matchVpnLocationsDesc": {
+    "message": "끄면: X가 VPN으로 표시한 위치는 일치하지 않습니다. 스토어와 위치가 같으면 어느 쪽이든 적용됩니다."
   },
   "locationPlaceholder": {
     "message": "국가 및 지역 검색 — 이름, 코드, 별칭…"

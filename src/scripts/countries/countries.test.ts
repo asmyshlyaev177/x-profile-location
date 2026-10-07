@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  agreedPlace,
   CANONICAL_LOCATIONS,
   COUNTRY_FLAGS,
   LOCATION_ALIASES,
@@ -243,6 +244,35 @@ describe('regionsContaining', () => {
 
   it('is empty for something no region claims', () => {
     expect(regionsContaining('Atlantis')).toEqual([])
+  })
+})
+
+// Going by the location, a store country and a stated location that agree let
+// the rule ignore X's VPN flag, so "agree" has to survive X naming either side as
+// a region - and the rule then judges the more specific of the two, or a country
+// the reader unchecked under a region would come back through the region's name.
+describe('agreedPlace', () => {
+  it('agrees on one country, whichever name X used', () => {
+    expect(agreedPlace('Japan', 'Japan')).toBe('Japan')
+    expect(agreedPlace('USA', 'United States')).toBe('United States')
+  })
+
+  it('agrees on the country when the other side is a region holding it', () => {
+    expect(agreedPlace('Germany', 'Europe')).toBe('Germany')
+    expect(agreedPlace('Europe', 'Germany')).toBe('Germany')
+  })
+
+  it('disagrees on two countries, even ones sharing a region', () => {
+    expect(agreedPlace('China', 'Hong Kong')).toBeNull()
+    expect(agreedPlace('Germany', 'France')).toBeNull()
+  })
+
+  it('disagrees on two regions where neither holds the other', () => {
+    expect(agreedPlace('North America', 'Africa')).toBeNull()
+  })
+
+  it('disagrees on a place no table knows, rather than throwing', () => {
+    expect(agreedPlace('Atlantis', 'Japan')).toBeNull()
   })
 })
 

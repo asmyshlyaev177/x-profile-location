@@ -240,7 +240,31 @@
     "message": "Standorte"
   },
   "cardLocationsDesc": {
-    "message": "Diese zeigen ⚠️ statt ihrer Flagge. Richtet sich nach dem Store-Land oder dem Kontostandort, wenn dieser nicht als VPN gekennzeichnet ist. Gilt nie für den von dir geöffneten Post."
+    "message": "Diese zeigen ⚠️ statt ihrer Flagge. Gilt nie für den von dir geöffneten Post."
+  },
+  "matchPlace": {
+    "message": "Wenn App-Store und Standort abweichen"
+  },
+  "matchPlaceStore": {
+    "message": "App-Store"
+  },
+  "matchPlaceLocation": {
+    "message": "Standort"
+  },
+  "matchPlaceDesc": {
+    "message": "Das Store-Land ändert sich mit einem VPN nicht. Der Standort ist der Ort, an dem X das Konto verortet."
+  },
+  "matchWebAccounts": {
+    "message": "Web-Konten nach Standort abgleichen"
+  },
+  "matchWebAccountsDesc": {
+    "message": "Web-Konten haben kein Store-Land, also bleibt nur der Standort zum Abgleich."
+  },
+  "matchVpnLocations": {
+    "message": "Auch VPN-Standorte blockieren"
+  },
+  "matchVpnLocationsDesc": {
+    "message": "Aus: Ein Standort, den X als VPN kennzeichnet, passt nie. Stimmen Store und Standort überein, zählen sie in beiden Fällen."
   },
   "locationPlaceholder": {
     "message": "Länder und Regionen suchen — Name, Code oder Spitzname…"

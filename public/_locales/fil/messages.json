@@ -240,7 +240,31 @@
     "message": "Mga Lokasyon"
   },
   "cardLocationsDesc": {
-    "message": "Nagpapakita ang mga ito ng ⚠️ imbes na bandila. Nakabatay sa store country, o sa lokasyon ng account kapag hindi naka-flag bilang VPN. Hindi kailanman nalalapat sa post na binuksan mo."
+    "message": "Nagpapakita ang mga ito ng ⚠️ imbes na bandila. Hindi kailanman nalalapat sa post na binuksan mo."
+  },
+  "matchPlace": {
+    "message": "Kung magkaiba ang app store at lokasyon"
+  },
+  "matchPlaceStore": {
+    "message": "App store"
+  },
+  "matchPlaceLocation": {
+    "message": "Lokasyon"
+  },
+  "matchPlaceDesc": {
+    "message": "Hindi nagbabago ang bansa ng app store kahit may VPN. Ang lokasyon ay kung saan sinasabi ng X na nakabase ang account."
+  },
+  "matchWebAccounts": {
+    "message": "Itugma ang mga web account ayon sa lokasyon"
+  },
+  "matchWebAccountsDesc": {
+    "message": "Walang bansa ng app store ang mga web account, kaya lokasyon lang ang maitutugma."
+  },
+  "matchVpnLocations": {
+    "message": "I-block din ang mga lokasyong VPN"
+  },
+  "matchVpnLocationsDesc": {
+    "message": "Kapag naka-off: hindi kailanman tumutugma ang lokasyong minarkahan ng X bilang VPN. Binibilang pa rin ang app store at lokasyong magkatugma."
   },
   "locationPlaceholder": {
     "message": "Maghanap ng mga bansa at rehiyon — pangalan, code o palayaw…"

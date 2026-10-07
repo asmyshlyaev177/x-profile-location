@@ -240,7 +240,31 @@
     "message": "Konumlar"
   },
   "cardLocationsDesc": {
-    "message": "Bunlar bayrakları yerine ⚠️ gösterir. Mağaza ülkesine veya VPN olarak işaretlenmediğinde hesap konumuna göre belirlenir. Açtığınız gönderiye asla uygulanmaz."
+    "message": "Bunlar bayrakları yerine ⚠️ gösterir. Açtığınız gönderiye asla uygulanmaz."
+  },
+  "matchPlace": {
+    "message": "Mağaza ve konum farklıysa"
+  },
+  "matchPlaceStore": {
+    "message": "Uygulama mağazası"
+  },
+  "matchPlaceLocation": {
+    "message": "Konum"
+  },
+  "matchPlaceDesc": {
+    "message": "Mağaza ülkesi VPN ile değişmez. Konum, X'in hesabın bulunduğunu söylediği yerdir."
+  },
+  "matchWebAccounts": {
+    "message": "Web hesaplarını konuma göre eşleştir"
+  },
+  "matchWebAccountsDesc": {
+    "message": "Web hesaplarının mağaza ülkesi yoktur, bu yüzden eşleştirilebilecek tek şey konumdur."
+  },
+  "matchVpnLocations": {
+    "message": "VPN konumlarını da engelle"
+  },
+  "matchVpnLocationsDesc": {
+    "message": "Kapalı: X'in VPN olarak işaretlediği bir konum asla eşleşmez. Uyuşan mağaza ve konum her durumda sayılır."
   },
   "locationPlaceholder": {
     "message": "Ülkeleri ve bölgeleri ara — ad, kod veya takma ad…"

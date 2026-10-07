@@ -4,6 +4,7 @@
 import type { LocationData } from '../cache/cache'
 import { t } from '../i18n'
 import { normalizeRatePrompt } from '../settings'
+import { agreedPlace } from '../countries/countries'
 import { classifySource } from '../source'
 import {
   isAnswered,
@@ -16,7 +17,7 @@ import {
 } from '../usage'
 import toolbarIconUrl from '../../assets/icons/icon-32x32.png?inline'
 import { LOCATION_TOAST_ID, RATE_TOAST_ID, RATING_ASK_ID } from '../styles'
-import { getLocationDisplay } from './filters'
+import { getLocationDisplay, judgedPlace } from './filters'
 
 let rateLimitResetAt = 0
 let rateLimitToastInterval: ReturnType<typeof setInterval> | null = null
@@ -116,14 +117,17 @@ const LOCATION_TOAST_MS = 2500
 let locationToastTimer: ReturnType<typeof setTimeout> | null = null
 
 /** One-line summary for the swipe overlay, or '' when there is nothing to say.
- *  A store country matching the stated location drops the VPN warning. */
+ *  Names the place the location rule judges; agreeing places drop the VPN warning. */
 export function locationSummaryText(
   data: LocationData,
   userName?: string | null,
 ): string {
   const { country: sourceCountry } = classifySource(data.source)
-  const corroborated = sourceCountry !== null && sourceCountry === data.location
-  const country = sourceCountry ?? data.location
+  const corroborated =
+    sourceCountry !== null &&
+    data.location !== null &&
+    agreedPlace(sourceCountry, data.location) !== null
+  const country = judgedPlace(data) ?? sourceCountry ?? data.location
 
   const parts: string[] = []
   if (country) {

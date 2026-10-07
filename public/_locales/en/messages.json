@@ -299,7 +299,39 @@
     "message": "Locations"
   },
   "cardLocationsDesc": {
-    "message": "These show ⚠️ instead of their flag. Goes by the store country, or the account location when it isn't flagged as VPN. Never applies to the post you opened."
+    "message": "These show ⚠️ instead of their flag. Never applies to the post you opened."
+  },
+  "matchPlace": {
+    "message": "If app store and location differ",
+    "description": "Label on the selector choosing which of an account's two places a blocked location goes by when they name different places: the country of the app store the account uses, or the location X states for it. Used in both the popup and the settings page."
+  },
+  "matchPlaceStore": {
+    "message": "App store",
+    "description": "Option in that selector: go by the app store's country."
+  },
+  "matchPlaceLocation": {
+    "message": "Location",
+    "description": "Option in that selector: go by the location X states for the account."
+  },
+  "matchPlaceDesc": {
+    "message": "An app store country doesn't change with a VPN. The location is where X says the account is based.",
+    "description": "Explanation under that selector on the settings page."
+  },
+  "matchWebAccounts": {
+    "message": "Match web accounts by location",
+    "description": "Checkbox. Accounts that use X on the web have no app store, so only their stated location can match a blocked location. Used in both the popup and the settings page."
+  },
+  "matchWebAccountsDesc": {
+    "message": "Web accounts have no app store country, so the location is the only thing to match.",
+    "description": "Explanation under that checkbox on the settings page."
+  },
+  "matchVpnLocations": {
+    "message": "Block VPN locations too",
+    "description": "Checkbox. When ticked, a location X marks as possibly inaccurate (VPN) still matches a blocked location. Used in both the popup and the settings page."
+  },
+  "matchVpnLocationsDesc": {
+    "message": "Off: a location X marks as VPN never matches. An app store and location that agree count either way.",
+    "description": "Explanation under that checkbox on the settings page."
   },
   "locationPlaceholder": {
     "message": "Search countries and regions — name, code or nickname…",

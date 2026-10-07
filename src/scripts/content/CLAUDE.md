@@ -186,6 +186,20 @@ which is what the section below is about; that is also why `.x-loc-icon-abbr` ca
 the swap was 12px of post height appearing and disappearing
 (`visual/location-row.spec.ts` measures it).
 
+## Which place a location rule judges
+
+`judgedPlace()` (filters.ts) picks the one place a blocked list is compared against, from the store country (`classifySource`) and X's stated location. `LOCATION_MATCHING_KEY` holds the reader's choices.
+
+- Going by the store (the default), the store alone decides and the location and the VPN flag are ignored. That is the rule shipped before the setting existed, so an untouched install hides what it hid; `filters.test.ts` sweeps every source × location × flag under seven block lists against it.
+- Going by the location, a store and a location that agree count whatever the VPN flag says, and the rule judges the more specific of the two (`agreedPlace`). Judging the region instead let a country unchecked under a blocked region back in through the region's own name (found in review, 2026-10-07).
+- Going by the location when they disagree, the location counts only if it is accurate or `isVpnLocationCounted` is ticked (default off); otherwise nothing is judged, not even the store (Alex's call, 2026-10-07).
+- An account with no store is judged by its location only with `isLocationUsedWithoutStore` (default on), and a VPN-flagged one only with the VPN box ticked.
+- The flag gets no say where the store agrees because on 2026-09-19, about 13:00-15:00 UTC, X added it to 3.2% of accounts it had called accurate and took it from 14.1% of flagged ones. In two of three of those flips the location and source stayed the same (production dump of 2026-10-05, accounts two installs saw on either side of the change).
+- In that dump, 79% of accounts have a store and a location that agree, 10% have a store and a different location (6.6% of all accounts flagged VPN), and 10% have no store.
+- The swipe toast (`locationSummaryText`, overlays.ts) names the judged place and drops the VPN warning for agreeing places, so it matches the verdict.
+- The popup and the options page follow each other's writes (`onStoredSettingChange`), so a tab left open never writes back a value it read before.
+- The ⚠️ on each flag in the info row marks a blocked place, not this rule's verdict, so a store flag can carry ⚠️ on a post the rule leaves alone.
+
 ## Resizing without moving the scroll
 
 X's virtualised timeline compensates for a cell resized where the reader can't see it by

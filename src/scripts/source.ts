@@ -1,5 +1,5 @@
-// X's `source` string ("Japan App Store", "web", null), classified once. The
-// store country outranks `account_based_in` - see "API" in CLAUDE.md.
+// X's `source` string ("Japan App Store", "web", null), classified once. Which of
+// it and `account_based_in` a filter goes by is judgedPlace's call, in filters.ts.
 
 import { t } from './i18n'
 

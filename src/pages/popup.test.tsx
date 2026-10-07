@@ -2,6 +2,7 @@ import {
   BLOCKED_COUNTRIES_KEY,
   EXTENSION_ENABLED_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  LOCATION_MATCHING_KEY,
   POPUP_SECTION_KEY,
   RATE_PROMPT_KEY,
   REGION_EXCLUSIONS_KEY,
@@ -9,7 +10,13 @@ import {
   SHARED_CACHE_KEY,
   USAGE_STATS_KEY,
 } from '../scripts/constants'
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/preact'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -26,6 +33,20 @@ const SOUTH_ASIA = REGION_MEMBERS['South Asia']
 // Mutable backing store for the chrome.storage.local mock. It has to be in
 // place before popup.tsx is imported below - the module renders itself into
 // document.body on import, which reads storage.
+type StorageListener = (
+  changes: Record<string, { newValue?: unknown }>,
+  area: string,
+) => void
+const storageListeners = new Set<StorageListener>()
+
+/** Another page's write, as chrome.storage announces it to every open page. */
+function announceWrite(changes: Record<string, unknown>) {
+  const wrapped = Object.fromEntries(
+    Object.entries(changes).map(([key, newValue]) => [key, { newValue }]),
+  )
+  for (const listener of storageListeners) listener(wrapped, 'local')
+}
+
 const storedRef: { current: Record<string, unknown> } = { current: {} }
 const setMock = vi.fn()
 
@@ -35,7 +56,14 @@ const setMock = vi.fn()
       get: vi.fn(() => Promise.resolve({ ...storedRef.current })),
       set: setMock,
     },
-    onChanged: { addListener: vi.fn() },
+    onChanged: {
+      addListener: vi.fn((listener: StorageListener) =>
+        storageListeners.add(listener),
+      ),
+      removeListener: vi.fn((listener: StorageListener) =>
+        storageListeners.delete(listener),
+      ),
+    },
   },
   runtime: {
     sendMessage: vi.fn().mockResolvedValue(undefined),
@@ -314,6 +342,102 @@ describe('editing the filters from the popup', () => {
       Object.keys(c[0] as object),
     )
     expect(written.filter((key) => key !== SHARED_CACHE_COUNT_KEY)).toEqual([])
+  })
+})
+
+describe('which place a blocked location goes by', () => {
+  const PLACE = /If app store and location differ/
+  const WEB = /Match web accounts by location/
+  const VPN = /Block VPN locations too/
+
+  it('writes the place picked for when the two differ, keeping the rest', async () => {
+    const { getByLabelText } = mountStored({ [POPUP_SECTION_KEY]: 'locations' })
+
+    fireEvent.change(await waitFor(() => getByLabelText(PLACE)), {
+      target: { value: 'location' },
+    })
+
+    await waitFor(() =>
+      expect(lastWrite(LOCATION_MATCHING_KEY)).toEqual({
+        preferredPlace: 'location',
+        isLocationUsedWithoutStore: true,
+        isVpnLocationCounted: false,
+      }),
+    )
+  })
+
+  it('ticks the VPN box without touching the other two', async () => {
+    const { getByLabelText } = mountStored({
+      [POPUP_SECTION_KEY]: 'locations',
+      [LOCATION_MATCHING_KEY]: {
+        preferredPlace: 'location',
+        isLocationUsedWithoutStore: false,
+        isVpnLocationCounted: false,
+      },
+    })
+    const vpn = (await waitFor(() => getByLabelText(VPN))) as HTMLInputElement
+    await waitFor(() => expect(vpn.checked).toBe(false))
+
+    fireEvent.click(vpn)
+
+    await waitFor(() =>
+      expect(lastWrite(LOCATION_MATCHING_KEY)).toEqual({
+        preferredPlace: 'location',
+        isLocationUsedWithoutStore: false,
+        isVpnLocationCounted: true,
+      }),
+    )
+  })
+
+  it('follows a write from another page, so it never writes an old value back', async () => {
+    // The options page, open in another tab, switched to the location; ticking a
+    // box here afterwards must not put the store back.
+    const { getByLabelText } = mountStored({ [POPUP_SECTION_KEY]: 'locations' })
+    const place = (await waitFor(() =>
+      getByLabelText(PLACE),
+    )) as HTMLSelectElement
+
+    act(() =>
+      announceWrite({
+        [LOCATION_MATCHING_KEY]: {
+          preferredPlace: 'location',
+          isLocationUsedWithoutStore: true,
+          isVpnLocationCounted: false,
+        },
+      }),
+    )
+    await waitFor(() => expect(place.value).toBe('location'))
+    fireEvent.click(getByLabelText(VPN))
+
+    await waitFor(() =>
+      expect(lastWrite(LOCATION_MATCHING_KEY)).toEqual({
+        preferredPlace: 'location',
+        isLocationUsedWithoutStore: true,
+        isVpnLocationCounted: true,
+      }),
+    )
+  })
+
+  it('greys out the VPN box while no stated location could decide', async () => {
+    // Going by the store with web accounts off, every match is a store country
+    // or a store and location that agree, so the box would change nothing.
+    const { getByLabelText } = mountStored({
+      [POPUP_SECTION_KEY]: 'locations',
+      [LOCATION_MATCHING_KEY]: {
+        preferredPlace: 'store',
+        isLocationUsedWithoutStore: false,
+        isVpnLocationCounted: false,
+      },
+    })
+    await waitFor(() =>
+      expect((getByLabelText(VPN) as HTMLInputElement).disabled).toBe(true),
+    )
+
+    fireEvent.click(getByLabelText(WEB))
+
+    await waitFor(() =>
+      expect((getByLabelText(VPN) as HTMLInputElement).disabled).toBe(false),
+    )
   })
 })
 

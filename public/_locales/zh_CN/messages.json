@@ -240,7 +240,31 @@
     "message": "地区"
   },
   "cardLocationsDesc": {
-    "message": "这些地区将显示 ⚠️ 而非旗标。以商店所属国家为准，若未标记为 VPN 则以账号所在地为准。始终不适用于您打开的帖子。"
+    "message": "这些地区将显示 ⚠️ 而非旗标。始终不适用于您打开的帖子。"
+  },
+  "matchPlace": {
+    "message": "应用商店与所在地不同时"
+  },
+  "matchPlaceStore": {
+    "message": "应用商店"
+  },
+  "matchPlaceLocation": {
+    "message": "所在地"
+  },
+  "matchPlaceDesc": {
+    "message": "应用商店所属国家不会因 VPN 改变。所在地是 X 所说的账号所在之处。"
+  },
+  "matchWebAccounts": {
+    "message": "按所在地匹配网页账号"
+  },
+  "matchWebAccountsDesc": {
+    "message": "网页账号没有商店所属国家，只能按所在地匹配。"
+  },
+  "matchVpnLocations": {
+    "message": "同时屏蔽 VPN 所在地"
+  },
+  "matchVpnLocationsDesc": {
+    "message": "关闭时：X 标记为 VPN 的所在地永不匹配。商店与所在地一致的账号始终计入。"
   },
   "locationPlaceholder": {
     "message": "搜索国家和地区——名称、代码或昵称…"

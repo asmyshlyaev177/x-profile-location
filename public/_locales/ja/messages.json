@@ -240,7 +240,31 @@
     "message": "地域"
   },
   "cardLocationsDesc": {
-    "message": "国旗の代わりに⚠️を表示します。ストアの国、またはVPNフラグがない場合はアカウントの位置情報に基づきます。開いた投稿には適用されません。"
+    "message": "国旗の代わりに⚠️を表示します。開いた投稿には適用されません。"
+  },
+  "matchPlace": {
+    "message": "ストアと位置情報が異なる場合"
+  },
+  "matchPlaceStore": {
+    "message": "ストア"
+  },
+  "matchPlaceLocation": {
+    "message": "位置情報"
+  },
+  "matchPlaceDesc": {
+    "message": "ストアの国はVPNでは変わりません。位置情報は、Xがアカウントの拠点としている場所です。"
+  },
+  "matchWebAccounts": {
+    "message": "Webアカウントは位置情報で判定"
+  },
+  "matchWebAccountsDesc": {
+    "message": "Webアカウントにはストアの国がないため、判定できるのは位置情報だけです。"
+  },
+  "matchVpnLocations": {
+    "message": "VPNの位置情報もブロック"
+  },
+  "matchVpnLocationsDesc": {
+    "message": "オフ：XがVPNとしてマークした位置情報は一致しません。ストアと位置情報が一致する場合はどちらでも対象になります。"
   },
   "locationPlaceholder": {
     "message": "国や地域を検索 — 名前、コード、通称…"

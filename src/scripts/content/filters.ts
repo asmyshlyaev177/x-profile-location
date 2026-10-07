@@ -4,10 +4,12 @@
 import {
   ACCOUNT_AGE_KEY,
   HIGHLIGHT_EXCEPTIONS_KEY,
+  LOCATION_MATCHING_KEY,
   RULE_EXCEPTIONS_KEY,
 } from '../constants'
 import type { LocationData } from '../cache/cache'
 import {
+  agreedPlace,
   canonicalLocation,
   COUNTRY_FLAGS,
   expandLocations,
@@ -23,6 +25,7 @@ import {
   type AccountAgeFilter,
   defaultSetting,
   type FilterRule,
+  type LocationMatching,
   normalizeRuleExceptions,
   type RuleExceptions,
   ruleHides,
@@ -43,6 +46,7 @@ let alwaysShow = new Set<string>()
 let blockedAffiliations = new Set<string>()
 // Filter accounts younger than N days. Off unless the user turns it on.
 let accountAgeFilter: AccountAgeFilter = defaultSetting(ACCOUNT_AGE_KEY)
+let locationMatching: LocationMatching = defaultSetting(LOCATION_MATCHING_KEY)
 
 // Expansion lives here, not in storage: what the user picked and what it picks
 // out are different things, and only the second belongs in a comparison.
@@ -70,6 +74,10 @@ export function setBlockedAffiliations(handles: string[]): void {
 
 export function setAccountAgeFilter(filter: AccountAgeFilter): void {
   accountAgeFilter = filter
+}
+
+export function setLocationMatching(next: LocationMatching): void {
+  locationMatching = next
 }
 
 export function currentRuleExceptions(): RuleExceptions {
@@ -162,17 +170,35 @@ export function getLocationDisplay(
   return { emoji: '🌐', label }
 }
 
-// The store country outranks the stated location - a store region is hard to
-// fake - and a stated one X flagged inaccurate does not count at all.
+/** The one place a location rule compares with the block list, or null - see
+ *  "Which place a location rule judges" in CLAUDE.md. */
+export function judgedPlace(data: LocationData): string | null {
+  const { country: store } = classifySource(data.source)
+  const { location } = data
+  // By the store, the store alone decides, exactly as before the setting existed.
+  if (store && (!location || locationMatching.preferredPlace === 'store')) {
+    return store
+  }
+  // Agreement outranks the VPN flag: X relabelled it on 2026-09-19 where neither moved.
+  const agreed = store && location ? agreedPlace(store, location) : null
+  if (agreed) return agreed
+  if (!location || !isStatedLocationCounted(data, store !== null)) return null
+  return location
+}
+
+function isStatedLocationCounted(
+  data: LocationData,
+  hasStore: boolean,
+): boolean {
+  if (!hasStore && !locationMatching.isLocationUsedWithoutStore) return false
+  return (
+    data.locationAccurate !== false || locationMatching.isVpnLocationCounted
+  )
+}
+
 function effectiveBlockedLocation(data: LocationData): string | null {
-  const { country: sourceCountry } = classifySource(data.source)
-  if (sourceCountry) {
-    return isBlockedLocation(sourceCountry) ? sourceCountry : null
-  }
-  if (data.location && data.locationAccurate !== false) {
-    return isBlockedLocation(data.location) ? data.location : null
-  }
-  return null
+  const place = judgedPlace(data)
+  return place && isBlockedLocation(place) ? place : null
 }
 
 /** Why a post is being collapsed or hidden, for the placeholder to explain. */
@@ -326,5 +352,6 @@ export function __resetFilters(): void {
   alwaysShow = new Set()
   blockedAffiliations = new Set()
   accountAgeFilter = defaultSetting(ACCOUNT_AGE_KEY)
+  locationMatching = defaultSetting(LOCATION_MATCHING_KEY)
   hideVerdicts.clear()
 }

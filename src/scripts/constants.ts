@@ -60,6 +60,8 @@ export const EXTENSION_ENABLED_KEY = 'extensionEnabled'
 export const BLOCKED_COUNTRIES_KEY = 'blockedCountries'
 // Members unchecked under a blocked region - see RegionExclusions.
 export const REGION_EXCLUSIONS_KEY = 'regionExclusions'
+// Which of the store country and the stated location a blocked location goes by.
+export const LOCATION_MATCHING_KEY = 'locationMatching'
 export const HIGHLIGHT_KEYWORDS_KEY = 'highlightKeywords'
 export const HIGHLIGHT_FLAGS_KEY = 'highlightFlags'
 export const SHOW_LOCATION_IN_FEED_KEY = 'showLocationInFeed'

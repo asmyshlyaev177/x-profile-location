@@ -15,12 +15,14 @@ import {
 import {
   ACCOUNT_AGE_CHOICES,
   DEFAULT_ACCOUNT_AGE_DAYS,
+  DEFAULT_LOCATION_MATCHING,
   DEFAULT_PREFETCH_SHARE,
   FILTER_RULES,
   PREFETCH_SHARE_CHOICES,
   SETTINGS_FORMAT,
   SETTINGS_KEYS,
   SettingsImportError,
+  canVpnLocationDecide,
   defaultSetting,
   exportSettings,
   formatAgeChoice,
@@ -28,6 +30,7 @@ import {
   normalizeAccountAge,
   normalizeHandle,
   normalizeHandleList,
+  normalizeLocationMatching,
   normalizeOptionsTab,
   normalizePrefetchPacing,
   normalizePrefetchShare,
@@ -479,6 +482,61 @@ describe('normalizeAccountAge', () => {
     // the odd value to the dropdown instead.
     expect(normalizeAccountAge({ enabled: true, days: 30 }).days).toBe(30)
     expect(normalizeAccountAge({ enabled: true, days: '45' }).days).toBe(45)
+  })
+})
+
+describe('normalizeLocationMatching', () => {
+  // The default is the rule every install ran before the setting existed, so an
+  // install that never opens it hides exactly what it hid the day before.
+  it('defaults to the store country, web accounts by location, VPN locations ignored', () => {
+    expect(normalizeLocationMatching(undefined)).toEqual({
+      preferredPlace: 'store',
+      isLocationUsedWithoutStore: true,
+      isVpnLocationCounted: false,
+    })
+  })
+
+  it('keeps what the reader chose', () => {
+    const chosen = {
+      preferredPlace: 'location',
+      isLocationUsedWithoutStore: false,
+      isVpnLocationCounted: true,
+    }
+    expect(normalizeLocationMatching(chosen)).toEqual(chosen)
+  })
+
+  it("fills a field it does not find with that field's default", () => {
+    expect(normalizeLocationMatching({ preferredPlace: 'location' })).toEqual({
+      ...DEFAULT_LOCATION_MATCHING,
+      preferredPlace: 'location',
+    })
+  })
+
+  it('reads a place it does not know as the store', () => {
+    expect(normalizeLocationMatching({ preferredPlace: 'bio' })).toEqual(
+      DEFAULT_LOCATION_MATCHING,
+    )
+  })
+})
+
+describe('canVpnLocationDecide', () => {
+  // Going by the store with web accounts off, every match is a store country or
+  // a store and location that agree - nothing the VPN box could change.
+  it('is false only when going by the store with web accounts off', () => {
+    expect(canVpnLocationDecide(DEFAULT_LOCATION_MATCHING)).toBe(true)
+    expect(
+      canVpnLocationDecide({
+        ...DEFAULT_LOCATION_MATCHING,
+        isLocationUsedWithoutStore: false,
+      }),
+    ).toBe(false)
+    expect(
+      canVpnLocationDecide({
+        ...DEFAULT_LOCATION_MATCHING,
+        preferredPlace: 'location',
+        isLocationUsedWithoutStore: false,
+      }),
+    ).toBe(true)
   })
 })
 

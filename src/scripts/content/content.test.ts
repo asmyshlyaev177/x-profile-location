@@ -125,8 +125,14 @@ import { fetchLocationData, setApiHeaders } from './lookup'
 import { accountChips } from './account-chips'
 import { keywordRangesIn } from './highlight'
 import { locationSummaryText } from './overlays'
-import { getCached, mergeCached, clearAllCache } from '../cache/cache'
-import type { FilterRule } from '../settings'
+import {
+  getCached,
+  mergeCached,
+  clearAllCache,
+  type LocationData,
+} from '../cache/cache'
+import type { FilterRule, LocationMatching } from '../settings'
+import type { RegionExclusions } from '../countries/countries'
 import {
   dayKey,
   RATE_PROMPT_IGNORED_SNOOZE_MS,
@@ -3636,6 +3642,258 @@ describe('hide tweets by blocked location', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Which place a blocked location goes by
+// ---------------------------------------------------------------------------
+// On 2026-09-19 X relabelled the VPN flag on accounts whose store and location
+// did not move at all, so the rule leans on the flag only where the reader says
+// a stated location may decide. Each case is one account under one setting; an
+// unset setting is the rule every install ran before it existed.
+describe('which place a blocked location goes by', () => {
+  const US_STORE = 'United States App Store'
+  const INDIA_STORE = 'India App Store'
+
+  const BLOCKED = ['India', 'Africa']
+
+  interface PlaceCase {
+    name: string
+    user: string
+    account: Pick<LocationData, 'source' | 'location' | 'locationAccurate'>
+    matching: Partial<LocationMatching> | undefined
+    hidden: boolean
+    blocked?: string[]
+    exclusions?: RegionExclusions
+  }
+
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    document.body.innerHTML = ''
+    pushSettings({
+      blockedCountries: BLOCKED,
+      hideBlockedLocations: 'collapse',
+    })
+    await flushAsync()
+  })
+
+  afterEach(() => {
+    pushSettings({
+      blockedCountries: [],
+      regionExclusions: {},
+      hideBlockedLocations: 'off',
+      locationMatching: undefined,
+    })
+  })
+
+  it.each<PlaceCase>([
+    {
+      name: 'goes by the store country when the two differ',
+      user: 'storeFirst1',
+      account: { source: US_STORE, location: 'India', locationAccurate: true },
+      matching: undefined,
+      hidden: false,
+    },
+    {
+      name: 'ignores a VPN flag when going by the store, which no VPN moves',
+      user: 'storeFirst2',
+      account: {
+        source: INDIA_STORE,
+        location: 'United States',
+        locationAccurate: false,
+      },
+      matching: undefined,
+      hidden: true,
+    },
+    {
+      name: 'goes by the location once the reader picks it',
+      user: 'locationFirst1',
+      account: { source: US_STORE, location: 'India', locationAccurate: true },
+      matching: { preferredPlace: 'location' },
+      hidden: true,
+    },
+    {
+      name: 'stops counting the store country when going by the location',
+      user: 'locationFirst2',
+      account: {
+        source: INDIA_STORE,
+        location: 'United States',
+        locationAccurate: true,
+      },
+      matching: { preferredPlace: 'location' },
+      hidden: false,
+    },
+    {
+      name: 'skips a VPN location when going by the location, box unticked',
+      user: 'locationFirst3',
+      account: { source: US_STORE, location: 'India', locationAccurate: false },
+      matching: { preferredPlace: 'location' },
+      hidden: false,
+    },
+    {
+      name: 'counts a VPN location when going by the location, box ticked',
+      user: 'locationFirst4',
+      account: { source: US_STORE, location: 'India', locationAccurate: false },
+      matching: { preferredPlace: 'location', isVpnLocationCounted: true },
+      hidden: true,
+    },
+    {
+      name: 'counts a store and location that agree, whatever the flag',
+      user: 'agreeing1',
+      account: {
+        source: 'India Android App',
+        location: 'India',
+        locationAccurate: false,
+      },
+      matching: { preferredPlace: 'location' },
+      hidden: true,
+    },
+    {
+      // By the store, Kenya is blocked through Africa anyway. Going by the
+      // location with the box unticked, a VPN-flagged "Africa" alone is skipped.
+      name: 'counts a location naming the store country by its region as agreeing',
+      user: 'agreeing2',
+      account: {
+        source: 'Kenya App Store',
+        location: 'Africa',
+        locationAccurate: false,
+      },
+      matching: { preferredPlace: 'location' },
+      hidden: true,
+    },
+    {
+      name: 'judges a store with no location by the store, even going by the location',
+      user: 'storeOnly1',
+      account: { source: INDIA_STORE, location: null, locationAccurate: true },
+      matching: { preferredPlace: 'location' },
+      hidden: true,
+    },
+    {
+      name: 'keeps the web-accounts box away from accounts that have a store',
+      user: 'storeAndBox1',
+      account: { source: US_STORE, location: 'India', locationAccurate: true },
+      matching: {
+        preferredPlace: 'location',
+        isLocationUsedWithoutStore: false,
+      },
+      hidden: true,
+    },
+    {
+      // The regression a review caught: the region's own name brought back a
+      // country the reader had unchecked under it.
+      name: 'keeps a country unchecked under a region out, though the location names the region',
+      user: 'unchecked1',
+      account: {
+        source: 'Germany App Store',
+        location: 'Europe',
+        locationAccurate: true,
+      },
+      matching: undefined,
+      hidden: false,
+      blocked: ['Europe'],
+      exclusions: { Europe: ['Germany'] },
+    },
+    {
+      name: 'keeps that country out going by the location as well',
+      user: 'unchecked2',
+      account: {
+        source: 'Germany App Store',
+        location: 'Europe',
+        locationAccurate: false,
+      },
+      matching: { preferredPlace: 'location' },
+      hidden: false,
+      blocked: ['Europe'],
+      exclusions: { Europe: ['Germany'] },
+    },
+    {
+      // Judging the region alone would miss it: Kenya is blocked, Africa is not.
+      name: 'judges the more specific place when a region and its country agree',
+      user: 'specific1',
+      account: {
+        source: 'Kenya App Store',
+        location: 'Africa',
+        locationAccurate: false,
+      },
+      matching: { preferredPlace: 'location' },
+      hidden: true,
+      blocked: ['Kenya'],
+    },
+    {
+      name: 'goes by the location of an account with no store',
+      user: 'noStore1',
+      account: { source: 'web', location: 'India', locationAccurate: true },
+      matching: undefined,
+      hidden: true,
+    },
+    {
+      name: 'leaves an account with no store alone once that is turned off',
+      user: 'noStore2',
+      account: { source: 'web', location: 'India', locationAccurate: true },
+      matching: { isLocationUsedWithoutStore: false },
+      hidden: false,
+    },
+    {
+      name: 'skips the VPN location of an account with no store, box unticked',
+      user: 'noStore3',
+      account: { source: 'web', location: 'India', locationAccurate: false },
+      matching: undefined,
+      hidden: false,
+    },
+    {
+      name: 'counts the VPN location of an account with no store, box ticked',
+      user: 'noStore4',
+      account: { source: 'web', location: 'India', locationAccurate: false },
+      matching: { isVpnLocationCounted: true },
+      hidden: true,
+    },
+    {
+      name: 'lets turning off accounts with no store win over the VPN box',
+      user: 'noStore5',
+      account: { source: 'web', location: 'India', locationAccurate: false },
+      matching: {
+        isVpnLocationCounted: true,
+        isLocationUsedWithoutStore: false,
+      },
+      hidden: false,
+    },
+  ])(
+    '$name',
+    async ({ user, account, matching, hidden, blocked, exclusions }) => {
+      pushSettings({
+        blockedCountries: blocked ?? BLOCKED,
+        regionExclusions: exclusions ?? {},
+        locationMatching: matching,
+      })
+      vi.mocked(getCached).mockResolvedValue({ ...account, bio: null })
+
+      const article = makeTweetArticle(user)
+      document.body.appendChild(article)
+      await flushAsync()
+
+      expect(article.getAttribute('data-x-loc-hidden')).toBe(
+        hidden ? 'collapse' : null,
+      )
+    },
+  )
+
+  it('re-judges the posts on screen when the setting changes', async () => {
+    vi.mocked(getCached).mockResolvedValue({
+      source: US_STORE,
+      location: 'India',
+      locationAccurate: true,
+      bio: null,
+    })
+    const article = makeTweetArticle('rejudged')
+    document.body.appendChild(article)
+    await flushAsync()
+    expect(article.getAttribute('data-x-loc-hidden')).toBeNull()
+
+    pushSettings({ locationMatching: { preferredPlace: 'location' } })
+    await flushAsync()
+
+    expect(article.getAttribute('data-x-loc-hidden')).toBe('collapse')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Lookup broker wiring
 // ---------------------------------------------------------------------------
 // The queue, the pace and the share all live in the service worker now, so what
@@ -3997,6 +4255,32 @@ describe('locationSummaryText', () => {
     expect(locationSummaryText(india, 'friend')).toBe('🇮🇳 India')
 
     pushSettings({ blockedCountries: [] })
+  })
+
+  it('names the stated location once the reader goes by it', () => {
+    pushSettings({ locationMatching: { preferredPlace: 'location' } })
+    try {
+      expect(
+        locationSummaryText({
+          location: 'United States',
+          locationAccurate: true,
+          source: 'Japan App Store',
+        }),
+      ).toBe('🇺🇸 United States')
+    } finally {
+      pushSettings({ locationMatching: undefined })
+    }
+  })
+
+  it("drops the VPN warning when the location is the store country's region", () => {
+    // The filter counts these as agreeing, so the toast must not call it VPN.
+    expect(
+      locationSummaryText({
+        location: 'Europe',
+        locationAccurate: false,
+        source: 'Germany App Store',
+      }),
+    ).toBe('🇩🇪 Germany')
   })
 })
 

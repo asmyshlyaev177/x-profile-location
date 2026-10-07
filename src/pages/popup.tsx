@@ -1,20 +1,25 @@
 import {
+  canVpnLocationDecide,
   defaultSetting,
   type HideBlockedMode,
+  type LocationMatching,
   normalizeHideBlockedMode,
   normalizePopupSection,
   normalizeRatePrompt,
   normalizeUsageStats,
+  onStoredSettingChange,
   type PopupSection,
   readSetting,
   withKeyword,
   withLocation,
+  withLocationMatching,
 } from '../scripts/settings'
 import {
   BLOCKED_COUNTRIES_KEY,
   EXTENSION_ENABLED_KEY,
   HIDE_BLOCKED_LOCATIONS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  LOCATION_MATCHING_KEY,
   POPUP_SECTION_KEY,
   RATE_PROMPT_KEY,
   REGION_EXCLUSIONS_KEY,
@@ -33,6 +38,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import { Autocomplete } from '../components/Autocomplete'
 import { KeywordAddRow, KeywordChips } from '../components/KeywordChips'
 import { LocationChips } from '../components/LocationChips'
+import { PlaceSelect } from '../components/PlaceSelect'
 import {
   CANONICAL_LOCATIONS,
   flagFor,
@@ -131,6 +137,65 @@ function Section({
   )
 }
 
+interface MatchingCheckboxProps {
+  label: string
+  checked: boolean
+  disabled?: boolean
+  onToggle: (checked: boolean) => void
+}
+
+function MatchingCheckbox({
+  label,
+  checked,
+  disabled = false,
+  onToggle,
+}: MatchingCheckboxProps) {
+  return (
+    <label class={disabled ? `${css.row} ${css.dimmed}` : css.row}>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onToggle((e.target as HTMLInputElement).checked)}
+      />
+      <span>{label}</span>
+    </label>
+  )
+}
+
+interface LocationMatchingProps {
+  matching: LocationMatching
+  onChange: (next: LocationMatching) => void
+}
+
+/** Which of the store and the stated location the blocked list goes by. */
+function LocationMatchingRows({ matching, onChange }: LocationMatchingProps) {
+  const edit = (patch: Record<string, unknown>) =>
+    onChange(withLocationMatching(matching, patch))
+  return (
+    <>
+      <label class={css.selectRow}>
+        <span>{t('matchPlace')}</span>
+        <PlaceSelect
+          place={matching.preferredPlace}
+          onPlace={(value) => edit({ preferredPlace: value })}
+        />
+      </label>
+      <MatchingCheckbox
+        label={t('matchWebAccounts')}
+        checked={matching.isLocationUsedWithoutStore}
+        onToggle={(checked) => edit({ isLocationUsedWithoutStore: checked })}
+      />
+      <MatchingCheckbox
+        label={t('matchVpnLocations')}
+        checked={matching.isVpnLocationCounted}
+        disabled={!canVpnLocationDecide(matching)}
+        onToggle={(checked) => edit({ isVpnLocationCounted: checked })}
+      />
+    </>
+  )
+}
+
 /** Days the extension was used, not days since install. See usage.ts. */
 function RatePrompt({ onAnswer }: { onAnswer: () => void }) {
   return (
@@ -186,6 +251,9 @@ export function Popup() {
   const [blocked, setBlocked] = useState<string[]>([])
   // Read-only here: the member picker is the options page's.
   const [exclusions, setExclusions] = useState<RegionExclusions>({})
+  const [matching, setMatching] = useState(
+    defaultSetting(LOCATION_MATCHING_KEY),
+  )
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [newKeywordMode, setNewKeywordMode] = useState<MatchMode>('word')
   const [section, setSection] = useState<PopupSection | null>(null)
@@ -210,6 +278,7 @@ export function Popup() {
   // The popup has no theme control of its own - it is set once in the options
   // page and every extension page follows it.
   useEffect(startThemeSync, [])
+  useEffect(() => onStoredSettingChange(LOCATION_MATCHING_KEY, setMatching), [])
 
   useEffect(() => {
     chrome.storage.local
@@ -220,6 +289,7 @@ export function Popup() {
         HIDE_BLOCKED_LOCATIONS_KEY,
         BLOCKED_COUNTRIES_KEY,
         REGION_EXCLUSIONS_KEY,
+        LOCATION_MATCHING_KEY,
         HIGHLIGHT_KEYWORDS_KEY,
         POPUP_SECTION_KEY,
         USAGE_STATS_KEY,
@@ -234,6 +304,7 @@ export function Popup() {
         setHideMode(readSetting(HIDE_BLOCKED_LOCATIONS_KEY, r))
         setBlocked(readSetting(BLOCKED_COUNTRIES_KEY, r))
         setExclusions(readSetting(REGION_EXCLUSIONS_KEY, r))
+        setMatching(readSetting(LOCATION_MATCHING_KEY, r))
         setKeywords(readSetting(HIGHLIGHT_KEYWORDS_KEY, r))
         setSection(normalizePopupSection(r[POPUP_SECTION_KEY]))
         setSharedCache(readSetting(SHARED_CACHE_KEY, r))
@@ -283,6 +354,11 @@ export function Popup() {
   function editExclusions(next: RegionExclusions) {
     setExclusions(next)
     write(REGION_EXCLUSIONS_KEY, next)
+  }
+
+  function editMatching(next: LocationMatching) {
+    setMatching(next)
+    write(LOCATION_MATCHING_KEY, next)
   }
 
   function editKeywords(next: Keyword[]) {
@@ -412,6 +488,8 @@ export function Popup() {
           {blocked.length === 0 && (
             <p class={css.empty}>{t('popupNothingBlocked')}</p>
           )}
+
+          <LocationMatchingRows matching={matching} onChange={editMatching} />
         </Section>
 
         <Section

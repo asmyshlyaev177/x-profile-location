@@ -5,6 +5,7 @@ import {
   type Page,
 } from '@playwright/test'
 import { CACHE_API_BASE } from '../src/scripts/constants'
+import type { PreferredPlace } from '../src/scripts/settings'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -591,6 +592,24 @@ export async function setRegionMember(
 /** How many of a region's countries its chip says it still covers. */
 async function coverageOf(chip: Locator): Promise<string> {
   return (await chip.textContent())?.match(/\d+\/\d+/)?.[0] ?? ''
+}
+
+/** Picks what a blocked location goes by when the app store and location differ. */
+export async function setPreferredPlace(
+  context: BrowserContext,
+  extensionId: string,
+  place: PreferredPlace,
+): Promise<void> {
+  const optPage = await openOptionsPage(context, extensionId)
+  const card = await optionsSection(optPage, 'blocked')
+  const select = card.locator('select')
+
+  await select.selectOption(place)
+  // Bound to the state the onChange writes, so it reads back as `place` only
+  // once chrome.storage.local.set has been called.
+  await expect(select).toHaveValue(place)
+  await storageSettled(optPage)
+  await optPage.close()
 }
 
 // Each section, its heading, and the tab it lives behind. Sections are only in

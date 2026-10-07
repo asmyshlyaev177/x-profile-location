@@ -10,6 +10,7 @@ import {
   HIGHLIGHT_EXCEPTIONS_KEY,
   HIGHLIGHT_FLAGS_KEY,
   HIGHLIGHT_KEYWORDS_KEY,
+  LOCATION_MATCHING_KEY,
   MIN_CONFIDENCE_KEY,
   PREFETCH_PACING_KEY,
   PREFETCH_SHARE_KEY,
@@ -67,6 +68,62 @@ export function normalizeHideBlockedMode(value: unknown): HideBlockedMode {
   return value === 'off' || value === 'collapse' || value === 'hide'
     ? value
     : 'collapse'
+}
+
+const PREFERRED_PLACES = ['store', 'location'] as const
+
+/** Which place a blocked location goes by when the store and the stated location disagree. */
+export type PreferredPlace = (typeof PREFERRED_PLACES)[number]
+
+function isPreferredPlace(value: unknown): value is PreferredPlace {
+  return PREFERRED_PLACES.includes(value as PreferredPlace)
+}
+
+export interface LocationMatching {
+  preferredPlace: PreferredPlace
+  /** Web accounts have no store, so only their stated location can match. */
+  isLocationUsedWithoutStore: boolean
+  /** A stated location X flags as possibly inaccurate still matches. */
+  isVpnLocationCounted: boolean
+}
+
+// The rule every install ran before the setting existed, so leaving it alone
+// hides exactly what it hid before.
+export const DEFAULT_LOCATION_MATCHING: LocationMatching = {
+  preferredPlace: 'store',
+  isLocationUsedWithoutStore: true,
+  isVpnLocationCounted: false,
+}
+
+export function normalizeLocationMatching(value: unknown): LocationMatching {
+  const v = asRecord(value)
+  return {
+    preferredPlace: isPreferredPlace(v.preferredPlace)
+      ? v.preferredPlace
+      : DEFAULT_LOCATION_MATCHING.preferredPlace,
+    isLocationUsedWithoutStore: asBoolean(
+      DEFAULT_LOCATION_MATCHING.isLocationUsedWithoutStore,
+    )(v.isLocationUsedWithoutStore),
+    isVpnLocationCounted: asBoolean(
+      DEFAULT_LOCATION_MATCHING.isVpnLocationCounted,
+    )(v.isVpnLocationCounted),
+  }
+}
+
+/** The setting with some fields replaced, cleaned the way a stored copy would be. */
+export function withLocationMatching(
+  current: LocationMatching,
+  patch: Record<string, unknown>,
+): LocationMatching {
+  return normalizeLocationMatching({ ...current, ...patch })
+}
+
+/** Whether the VPN box can change anything: some stated location has to decide. */
+export function canVpnLocationDecide(matching: LocationMatching): boolean {
+  return (
+    matching.preferredPlace === 'location' ||
+    matching.isLocationUsedWithoutStore
+  )
 }
 
 export interface SharedCacheCount {
@@ -408,6 +465,7 @@ export const SETTINGS_REGISTRY = {
   [BLOCKED_AFFILIATIONS_KEY]: normalizeHandleList,
   [ACCOUNT_AGE_KEY]: normalizeAccountAge,
   [HIDE_BLOCKED_LOCATIONS_KEY]: normalizeHideBlockedMode,
+  [LOCATION_MATCHING_KEY]: normalizeLocationMatching,
   [HIGHLIGHT_KEYWORDS_KEY]: asKeywordList,
   [HIGHLIGHT_FLAGS_KEY]: normalizeHighlightFlags,
   [RULE_EXCEPTIONS_KEY]: (v: unknown) => normalizeRuleExceptions(v),
@@ -450,6 +508,24 @@ export function readSetting<K extends SettingKey>(
 
 export function defaultSetting<K extends SettingKey>(key: K): SettingValue<K> {
   return settingValue(key, undefined)
+}
+
+/** Keeps a page's copy of one setting in step with writes from any other page,
+ *  so an open tab never writes back a value it read before. Returns the unsubscribe. */
+export function onStoredSettingChange<K extends SettingKey>(
+  key: K,
+  apply: (value: SettingValue<K>) => void,
+): () => void {
+  const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (
+    changes,
+    area,
+  ) => {
+    if (area === 'local' && changes[key]) {
+      apply(settingValue(key, changes[key].newValue))
+    }
+  }
+  chrome.storage.onChanged.addListener(listener)
+  return () => chrome.storage.onChanged.removeListener(listener)
 }
 
 // The two list edits both editors make. Each returns the list it was given when

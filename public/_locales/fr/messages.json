@@ -240,7 +240,31 @@
     "message": "Lieux"
   },
   "cardLocationsDesc": {
-    "message": "Ceux-ci affichent ⚠️ au lieu de leur drapeau. Se base sur le pays du store, ou sur le lieu du compte s'il n'est pas signalé comme VPN. Ne s'applique jamais au post que vous avez ouvert."
+    "message": "Ceux-ci affichent ⚠️ au lieu de leur drapeau. Ne s'applique jamais au post que vous avez ouvert."
+  },
+  "matchPlace": {
+    "message": "Si le store et le lieu diffèrent"
+  },
+  "matchPlaceStore": {
+    "message": "Store"
+  },
+  "matchPlaceLocation": {
+    "message": "Lieu"
+  },
+  "matchPlaceDesc": {
+    "message": "Le pays du store ne change pas avec un VPN. Le lieu est l'endroit où X dit que le compte est basé."
+  },
+  "matchWebAccounts": {
+    "message": "Filtrer les comptes web par lieu"
+  },
+  "matchWebAccountsDesc": {
+    "message": "Les comptes web n'ont pas de pays de store : le lieu est la seule chose à comparer."
+  },
+  "matchVpnLocations": {
+    "message": "Bloquer aussi les lieux VPN"
+  },
+  "matchVpnLocationsDesc": {
+    "message": "Désactivé : un lieu que X signale comme VPN ne correspond jamais. Un store et un lieu qui concordent comptent dans les deux cas."
   },
   "locationPlaceholder": {
     "message": "Rechercher pays et régions — nom, code ou surnom…"

@@ -147,6 +147,39 @@ test('a country added in the popup is stored under its canonical name', async ({
   await popup.close()
 })
 
+test('the place picker and its boxes keep what was chosen, and the VPN box waits until it can matter', async ({
+  context,
+  extensionId,
+}) => {
+  // Real storage, read back by a second popup after the first is gone: the
+  // round trip a mocked chrome.storage cannot show.
+  const first = await openPopupPage(context, extensionId)
+  await openPopupSection(first, 'Blocked locations')
+  const place = first.getByLabel(/If app store and location differ/)
+  const vpn = first.getByLabel('Block VPN locations too')
+
+  // Going by the store with web accounts off, no stated location decides
+  // anything, so the box would change nothing.
+  await first.getByLabel('Match web accounts by location').setChecked(false)
+  await expect(vpn).toBeDisabled()
+
+  await place.selectOption('location')
+  await expect(vpn).toBeEnabled()
+  await vpn.setChecked(true)
+  await first.close()
+
+  const second = await openPopupPage(context, extensionId)
+  await openPopupSection(second, 'Blocked locations')
+  await expect(
+    second.getByLabel(/If app store and location differ/),
+  ).toHaveValue('location')
+  await expect(
+    second.getByLabel('Match web accounts by location'),
+  ).not.toBeChecked()
+  await expect(second.getByLabel('Block VPN locations too')).toBeChecked()
+  await second.close()
+})
+
 /**
  * The rating ask, against real storage.
  *

@@ -240,7 +240,31 @@
     "message": "Vị trí"
   },
   "cardLocationsDesc": {
-    "message": "Những mục này hiển thị ⚠️ thay vì cờ của chúng. Dựa theo quốc gia cửa hàng ứng dụng, hoặc vị trí tài khoản khi không bị gắn cờ VPN. Không bao giờ áp dụng cho bài đăng bạn đã mở."
+    "message": "Những mục này hiển thị ⚠️ thay vì cờ của chúng. Không bao giờ áp dụng cho bài đăng bạn đã mở."
+  },
+  "matchPlace": {
+    "message": "Nếu cửa hàng ứng dụng và vị trí khác nhau"
+  },
+  "matchPlaceStore": {
+    "message": "Cửa hàng ứng dụng"
+  },
+  "matchPlaceLocation": {
+    "message": "Vị trí"
+  },
+  "matchPlaceDesc": {
+    "message": "Quốc gia của cửa hàng ứng dụng không đổi khi dùng VPN. Vị trí là nơi X cho biết tài khoản ở đó."
+  },
+  "matchWebAccounts": {
+    "message": "Đối chiếu tài khoản web theo vị trí"
+  },
+  "matchWebAccountsDesc": {
+    "message": "Tài khoản web không có quốc gia cửa hàng, nên chỉ có thể đối chiếu theo vị trí."
+  },
+  "matchVpnLocations": {
+    "message": "Chặn cả vị trí VPN"
+  },
+  "matchVpnLocationsDesc": {
+    "message": "Tắt: vị trí X đánh dấu là VPN không bao giờ khớp. Cửa hàng và vị trí trùng nhau vẫn được tính."
   },
   "locationPlaceholder": {
     "message": "Tìm kiếm quốc gia và khu vực — tên, mã hoặc biệt danh…"
