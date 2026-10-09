@@ -1,5 +1,5 @@
 // Full-table work split into username ranges, so a long scan can give way
-// between them. Runs on D1 and better-sqlite3, with or without a rowid.
+// between them. Runs on D1 and better-sqlite3.
 
 import type { Db } from './db-types.ts'
 

@@ -10,7 +10,6 @@
 -- get those for free from the timeline JSON, so there is nothing to share.
 --
 -- WITHOUT ROWID: each primary key is its table, not a second copy of its keys.
--- Older files keep a rowid until deploy/vacuum.ts converts them (CLAUDE.md).
 
 CREATE TABLE IF NOT EXISTS profiles (
   username            TEXT    PRIMARY KEY,        -- lowercased handle

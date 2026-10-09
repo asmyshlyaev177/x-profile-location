@@ -7,7 +7,6 @@
 
 import { spawnSync } from 'node:child_process'
 import {
-  existsSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
@@ -41,8 +40,7 @@ import {
   type Inspection,
 } from './lib.ts'
 import { availableArchives } from './restore.ts'
-import { needsRebuild, parseArgs, tablesInOldLayout } from './vacuum.ts'
-import { createRowidDatabase } from '../src/test-helpers.ts'
+import { needsRebuild, parseArgs } from './vacuum.ts'
 
 const SERVER = join(import.meta.dirname, '..')
 const HAS_SQLITE = spawnSync('sh', ['-c', 'command -v sqlite3']).status === 0
@@ -483,34 +481,6 @@ describe('stamp', () => {
 describe('uid', () => {
   it('agrees with the process it is asked about', () => {
     expect(uid()).toBe(process.getuid?.())
-  })
-})
-
-describe.skipIf(!HAS_SQLITE)('tablesInOldLayout', () => {
-  it('names the tables that still have the rowid schema.sql dropped', () => {
-    const file = join(dir, 'old.db')
-    createRowidDatabase(file).close()
-    expect(tablesInOldLayout(file)).toEqual(['location_votes', 'profiles'])
-  })
-
-  it('is empty for a database schema.sql made', () => {
-    const file = join(dir, 'new.db')
-    const db = new Database(file)
-    db.exec(readFileSync(join(SERVER, 'schema.sql'), 'utf8'))
-    db.close()
-    expect(tablesInOldLayout(file)).toEqual([])
-  })
-
-  it('is empty for a file with no tables, or no file at all', () => {
-    // A table that is missing is created at boot; there is nothing to convert.
-    const empty = join(dir, 'empty.db')
-    writeFileSync(empty, '')
-    expect(tablesInOldLayout(empty)).toEqual([])
-
-    const absent = join(dir, 'absent.db')
-    expect(tablesInOldLayout(absent)).toEqual([])
-    // And asking must not leave a database behind where there was none.
-    expect(existsSync(absent)).toBe(false)
   })
 })
 

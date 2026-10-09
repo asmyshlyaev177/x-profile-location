@@ -12,9 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Db } from './db-types.ts'
 import worker, { pruneExpired, VOTE_RETENTION_MS, type Env } from './index.ts'
 import { WHOLE_TABLE, type ScanPolicy } from './scan.ts'
-import { openDatabase, SqliteDb, yieldingScan } from './sqlite.ts'
+import { openDatabase, yieldingScan, type SqliteDb } from './sqlite.ts'
 import { countTotals } from './stats.ts'
-import { createRowidDatabase } from './test-helpers.ts'
 
 let db: SqliteDb
 let env: Env
@@ -316,23 +315,10 @@ describe('sqlite backend - chunked retention', () => {
     profiles: SeedProfile[]
   }
 
-  // Production walks rowid tables until vacuum.ts converts them, and an older
-  // archive restores to them, so the walk has to agree on both layouts.
-  const LAYOUTS = ['without rowid', 'rowid'] as const
-  type Layout = (typeof LAYOUTS)[number]
-
-  function emptyDb(layout: Layout): SqliteDb {
-    if (layout === 'rowid') return new SqliteDb(createRowidDatabase(':memory:'))
-    return openDatabase({ path: ':memory:', cacheMb: 8, mmapMb: 0 })
-  }
-
   /** Holes are deleted once everything is in, so range edges land next to
    *  usernames that are gone. */
-  function seededDb(
-    table: SeedTable,
-    layout: Layout = 'without rowid',
-  ): SqliteDb {
-    const target = emptyDb(layout)
+  function seededDb(table: SeedTable): SqliteDb {
+    const target = openDatabase({ path: ':memory:', cacheMb: 8, mmapMb: 0 })
     const vote = target.raw.prepare(
       'INSERT INTO location_votes (username, client_id, location, seen_at) VALUES (?, ?, ?, ?)',
     )
@@ -403,15 +389,14 @@ describe('sqlite backend - chunked retention', () => {
     return changes
   }
 
-  it('deletes what the two unchunked statements delete, at any chunk size, on either layout', async () => {
+  it('deletes what the two unchunked statements delete, at any chunk size', async () => {
     await fc.assert(
       fc.asyncProperty(
         seedTable,
         fc.integer({ min: 1, max: 16 }),
-        fc.constantFrom(...LAYOUTS),
-        async (table, chunkRows, layout) => {
-          const whole = seededDb(table, layout)
-          const chunked = seededDb(table, layout)
+        async (table, chunkRows) => {
+          const whole = seededDb(table)
+          const chunked = seededDb(table)
           try {
             const expected = pruneInTwoStatements(whole)
             const policy: ScanPolicy = { chunkRows, pause: async () => {} }
@@ -485,52 +470,47 @@ describe('sqlite backend - chunked retention', () => {
     )
   })
 
-  it('reads every range with an index seek, the bounds included, on either layout', async () => {
+  it('reads every range with an index seek, the bounds included', async () => {
     // A walk that opens with a full scan holds the event loop for that scan,
     // which is the stall the chunks exist to avoid.
-    for (const layout of LAYOUTS) {
-      // Fresh, so retention leaves rows behind and the stats walk has ranges
-      // to read.
-      const target = seededDb(
-        {
-          votes: ['a', 'b'].map((user) => ({
-            user,
-            client: 'c1',
-            offset: DAY,
-            isHole: false,
-          })),
-          profiles: ['a', 'b'].map((user) => ({ user, isHole: false })),
-        },
-        layout,
-      )
-      const prepared = new Set<string>()
-      const recording: Db = {
-        prepare: (sql) => {
-          prepared.add(sql)
-          return target.prepare(sql)
-        },
-        batch: (statements) => target.batch(statements),
-      }
-      const policy: ScanPolicy = { chunkRows: 1, pause: async () => {} }
-      await pruneExpired({ DB: recording }, NOW, policy)
-      await countTotals(recording, NOW, policy)
-
-      // Per table, its last username and where each range ends. Then two
-      // DELETEs and the stats walk's three range reads.
-      expect(prepared.size).toBe(9)
-      for (const sql of prepared) {
-        const binds = Array.from({ length: sql.split('?').length - 1 }, () => 0)
-        const plan = target.raw
-          .prepare(`EXPLAIN QUERY PLAN ${sql}`)
-          .all(...binds) as { detail: string }[]
-        const scans = plan.filter(
-          (row) =>
-            row.detail.startsWith('SCAN') && row.detail !== 'SCAN CONSTANT ROW',
-        )
-        expect({ layout, sql, scans }).toEqual({ layout, sql, scans: [] })
-      }
-      target.close()
+    // Fresh, so retention leaves rows behind and the stats walk has ranges
+    // to read.
+    const target = seededDb({
+      votes: ['a', 'b'].map((user) => ({
+        user,
+        client: 'c1',
+        offset: DAY,
+        isHole: false,
+      })),
+      profiles: ['a', 'b'].map((user) => ({ user, isHole: false })),
+    })
+    const prepared = new Set<string>()
+    const recording: Db = {
+      prepare: (sql) => {
+        prepared.add(sql)
+        return target.prepare(sql)
+      },
+      batch: (statements) => target.batch(statements),
     }
+    const policy: ScanPolicy = { chunkRows: 1, pause: async () => {} }
+    await pruneExpired({ DB: recording }, NOW, policy)
+    await countTotals(recording, NOW, policy)
+
+    // Per table, its last username and where each range ends. Then two
+    // DELETEs and the stats walk's three range reads.
+    expect(prepared.size).toBe(9)
+    for (const sql of prepared) {
+      const binds = Array.from({ length: sql.split('?').length - 1 }, () => 0)
+      const plan = target.raw
+        .prepare(`EXPLAIN QUERY PLAN ${sql}`)
+        .all(...binds) as { detail: string }[]
+      const scans = plan.filter(
+        (row) =>
+          row.detail.startsWith('SCAN') && row.detail !== 'SCAN CONSTANT ROW',
+      )
+      expect({ sql, scans }).toEqual({ sql, scans: [] })
+    }
+    target.close()
   })
 
   /** Event-loop turns taken while a pass runs, and the pauses it asked for. */

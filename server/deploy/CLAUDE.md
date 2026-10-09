@@ -143,9 +143,7 @@ result is verified before anything is replaced and the original stays as
 `*.replaced-<stamp>`. The service is stopped for the whole rebuild on purpose — a live
 snapshot would silently drop every contribution arriving before the swap, where a client
 that cannot reach the server keeps its votes. It is also the one script that can fill the
-disk the server writes to. When a table still has the rowid `schema.sql` dropped in 2026-10,
-the new file is made from `schema.sql` and filled in key order instead, because `VACUUM INTO`
-would copy the old layout along with the rows.
+disk the server writes to.
 
 **`restore.ts`** verifies the archive _before_ stopping the service, so a bad one costs no
 downtime.

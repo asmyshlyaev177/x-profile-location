@@ -1,6 +1,6 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// Compact the cache database, converting tables from the old rowid layout:
-// `sudo .../deploy/vacuum.ts [-y]`. See CLAUDE.md and README "Compacting".
+// Compact the cache database: `sudo .../deploy/vacuum.ts [-y]`.
+// See CLAUDE.md and README "Compacting".
 
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -37,67 +37,11 @@ import {
   type Inspection,
 } from './lib.ts'
 
-// Through .read: as an argument, the CLI takes schema.sql's opening `--` for
-// an option and refuses the whole file.
-const READ_SCHEMA = `.read '${join(import.meta.dirname, '..', 'schema.sql')}'`
-
-// Each table with its `wr` flag, 1 for WITHOUT ROWID; never SQLite's own.
-const LAYOUT_SQL = `SELECT name || ' ' || wr FROM pragma_table_list
-  WHERE schema = 'main' AND type = 'table' AND name NOT LIKE 'sqlite!_%' ESCAPE '!';`
-
-function layoutOf(result: CommandResult): Map<string, string> {
-  if (!result.ok) return new Map()
-  const lines = result.out.split('\n').filter((line) => line.includes(' '))
-  return new Map(lines.map((line) => line.split(' ') as [string, string]))
-}
-
-/** Tables whose rowid differs from what schema.sql declares: production's two
- *  until they are converted. A file that is not there has none. */
-export function tablesInOldLayout(dbFile: string, asUser?: string): string[] {
-  if (!existsSync(dbFile)) return []
-  const declared = layoutOf(sqlite([':memory:', READ_SCHEMA, LAYOUT_SQL]))
-  const live = layoutOf(sqlite([dbFile, LAYOUT_SQL], asUser))
-  return [...declared.keys()]
-    .filter((t) => live.has(t) && live.get(t) !== declared.get(t))
-    .sort()
-}
-
 function vacuumInto(dbFile: string, tmp: string): CommandResult {
   return sqlite(
     ['-cmd', '.timeout 5000', dbFile, `VACUUM INTO '${tmp}'`],
     OWNER,
   )
-}
-
-/** A new file from schema.sql, filled from the live one by column name and in
- *  key order. VACUUM INTO would copy the old layout along with the rows. */
-function convertInto(dbFile: string, tmp: string): CommandResult {
-  const created = sqlite([tmp, READ_SCHEMA], OWNER)
-  if (!created.ok) return created
-  const copies = [...layoutOf(sqlite([tmp, LAYOUT_SQL], OWNER)).keys()].map(
-    (table) => copyStatement(tmp, table),
-  )
-  return sqlite(
-    [
-      '-cmd',
-      '.timeout 5000',
-      tmp,
-      `ATTACH '${dbFile}' AS live; BEGIN; ${copies.join(' ')} COMMIT;`,
-    ],
-    OWNER,
-  )
-}
-
-function copyStatement(tmp: string, table: string): string {
-  const [columns = '', key = ''] = sqlite(
-    [
-      tmp,
-      `SELECT group_concat(name, ', ') FROM pragma_table_info('${table}');`,
-      `SELECT group_concat(name, ', ') FROM (SELECT name FROM pragma_table_info('${table}') WHERE pk > 0 ORDER BY pk);`,
-    ],
-    OWNER,
-  ).out.split('\n')
-  return `INSERT INTO main.${table} (${columns}) SELECT ${columns} FROM live.${table} ORDER BY ${key};`
 }
 
 export interface VacuumArgs {
@@ -253,7 +197,6 @@ async function main(): Promise<void> {
 
   const before = preflight(DB)
   if (!args.assumeYes) await confirmOrExit(DB)
-  const outdated = tablesInOldLayout(DB, OWNER)
 
   const STAMP = stamp()
   // Same directory as the database, so the final mv is atomic (one filesystem).
@@ -268,8 +211,7 @@ async function main(): Promise<void> {
 
   // The whole of the downtime: 0.6 s on a 236 MB database, scaling with it.
   const rebuildStartedAt = Date.now()
-  const rebuild =
-    outdated.length > 0 ? convertInto(DB, TMP) : vacuumInto(DB, TMP)
+  const rebuild = vacuumInto(DB, TMP)
   if (!rebuild.ok)
     die(`the rebuild failed — keeping the original: ${rebuild.out}`)
   const rebuildMs = Date.now() - rebuildStartedAt
@@ -309,12 +251,8 @@ async function main(): Promise<void> {
     })
     run('chown', [`${OWNER}:${OWNER}`, join(BACKUP_DIR, VACUUM_STATUS_FILE)])
   }
-  const converted =
-    outdated.length > 0
-      ? `converted ${outdated.join(', ')} to the layout schema.sql declares, `
-      : ''
   console.log(
-    `${converted}compacted ${DB}: ${before} -> ${after} bytes (${reclaimPct(before, after)}% reclaimed), ${found.profiles} profiles / ${found.votes} votes — rebuild ${secs(rebuildMs)}, service down ${secs(downtimeMs)}`,
+    `compacted ${DB}: ${before} -> ${after} bytes (${reclaimPct(before, after)}% reclaimed), ${found.profiles} profiles / ${found.votes} votes — rebuild ${secs(rebuildMs)}, service down ${secs(downtimeMs)}`,
   )
   console.log(
     `the original is kept as ${DB}.replaced-${STAMP} — delete it once this has proven out`,

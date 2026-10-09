@@ -89,17 +89,10 @@ rotate its id.
 - Measured 2026-10-05 on a copy of production (623k profiles, 693k votes), on the laptop:
   165 MB with rowid tables, 111 MB converted. Retention went from 1.08 s to 0.42 s and the
   stats walk from 0.79 s to 0.35 s, deleting and counting the same rows.
-- `CREATE TABLE IF NOT EXISTS` never changes a table that exists, so a file made earlier
-  keeps its rowid until `deploy/vacuum.ts` converts it, by hand after a backup (README
-  "Compacting the database"). On that copy the service was down 2.9 s.
-- Not at boot: `update.ts` rolls back when `/healthz` is slow, and the code it rolls back
-  to cannot read the new tables. A boot rebuild that committed late left that code running
-  with retention failing every day (reproduced in review, 2026-10-05).
-- Until then the code runs on rowid tables, and an archive from before restores to them, so
-  `sqlite.test.ts` runs the walk on both layouts.
-- One-way: code from before walks rowid ranges, and on the new tables its retention and
-  stats line fail. The way back is the `.replaced-<stamp>` file `vacuum.ts` keeps, which is
-  deleted by hand once the new one has proven out, or an older archive.
+- A table rebuild never runs at boot: `update.ts` rolls back when `/healthz` is slow, and
+  code from before a layout change cannot read the new tables. A boot rebuild that committed
+  late left that code running with retention failing every day (reproduced in review,
+  2026-10-05).
 
 ## Maintenance walks username ranges (scan.ts)
 
@@ -112,10 +105,10 @@ in it timing out (2026-09-30).
 - `forEachUsernameRange` splits the work into ranges of the primary key, which both
   tables lead with, so it needs no extra index. A `LIMIT`-chunked DELETE re-reads the table
   from the start for every chunk, which is why chunking once looked like it needed a
-  `seen_at` index. Until 2026-10-05 the ranges were rowids, which the tables no longer have.
+  `seen_at` index.
 - Its one bound is `MAX(username)`, read alone. SQLite seeks for a lone MIN or MAX, but
   `SELECT MIN(x), MAX(x)` together is a full scan, the one stall chunking exists to avoid.
-  `sqlite.test.ts` fails on any `SCAN` in a statement the walks prepare, on both layouts.
+  `sqlite.test.ts` fails on any `SCAN` in a statement the walks prepare.
 - Ranges are half-open, `username > after AND username <= upTo`, from `''`: a username has
   one character at least. `upTo` comes from an `OFFSET` that steps through the range's rows,
   so every range is read twice. A range ends on a whole username, so a votes range can run

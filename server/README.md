@@ -885,24 +885,6 @@ sudo /opt/x-loc-cache/server/deploy/vacuum.ts        # prompts first
 sudo /opt/x-loc-cache/server/deploy/vacuum.ts -y     # or don't
 ```
 
-**Converting from the old layout.** Until 2026-10 `schema.sql` made both tables
-with a rowid, and a file made then keeps them, because `CREATE TABLE IF NOT
-EXISTS` never changes a table that exists. `vacuum.ts` converts it. When a
-table's layout differs from `schema.sql`, the rebuild is a new file made from
-`schema.sql` with the rows copied over in key order, instead of `VACUUM INTO`.
-The checks, the swap and the kept original are the same. Deploy the code first,
-since it serves both layouts, then:
-
-```bash
-sudo systemctl start x-loc-backup.service             # a fresh archive first
-sudo /opt/x-loc-cache/server/deploy/vacuum.ts -y
-```
-
-On a copy of production (165 MB, 623k profiles) that came to 111 MB, with the
-service down for 2.9 s. Code from before the change cannot read the new tables,
-so going back means the kept `x-loc-cache.db.replaced-<stamp>` or an archive
-from before. Delete that file by hand once the new one has proven out.
-
 **Why nothing is scheduled.** `location_votes` is keyed
 `(username, client_id)` while retention ages rows out by `seen_at`, so the
 daily delete frees space scattered across the b-tree — which is exactly where
