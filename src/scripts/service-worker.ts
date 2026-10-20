@@ -19,6 +19,7 @@ import type {
   PacingOptions,
   PrefetchCandidate,
 } from './prefetch/prefetch-queue'
+import { answerCacheApi, isCacheApiRequest } from './cache/cache-api'
 import { readSetting } from './settings'
 import { ratingAskDue } from './usage'
 import { initI18n, readCatalogue, t, UI_LANGUAGE_KEY } from './i18n'
@@ -111,6 +112,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true // reply is async
   }
   return undefined
+})
+
+// The community cache is asked from here so x.com's Connection-Allowlist
+// cannot block it - see "Who calls the server" in cache/CLAUDE.md.
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (!isCacheApiRequest(message)) return undefined
+  void answerCacheApi(message).then(sendResponse)
+  return true // reply is async
 })
 
 // Cross-tab lookup broker

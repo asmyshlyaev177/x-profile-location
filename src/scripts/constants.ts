@@ -47,6 +47,8 @@ export const MSG = {
   RATE: 'LOOKUP_RATE',
   /** One tab resolved a handle; the rest re-read it from IDB and redraw. */
   RESOLVED: 'LOOKUP_RESOLVED',
+  /** A request for the community cache, made by the worker on a tab's behalf. */
+  CACHE_API: 'CACHE_API',
 } as const
 
 // Which community-cache backend a build talks to, and empty to disable it

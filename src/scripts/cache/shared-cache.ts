@@ -13,6 +13,7 @@ import {
 // location/source/accurate go over the wire - never bios or who looked up whom.
 
 import { answerSignature, type LocationData } from './cache'
+import { askCacheApi } from './cache-api'
 
 // Distinct clients that must agree before a location is trusted. Still 1 on
 // purpose - see "Community cache consensus" in CLAUDE.md.
@@ -32,7 +33,6 @@ const MAX_CONTRIB = 50
 const MAX_LOOKUP = 100
 const CLIENT_ID_KEY = 'sharedCacheClientId'
 
-const FETCH_TIMEOUT_MS = 5000
 const BREAKER_THRESHOLD = 3
 // Short enough that a deploy, a Caddy reload or the ~1s swap in deploy/vacuum.ts
 // costs a reader half a minute of a colder cache, not ten.
@@ -107,25 +107,23 @@ function noteSuccess(): void {
   breakerOpenUntil = 0
 }
 
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit,
-): Promise<Response> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-  try {
-    return await fetch(url, { ...init, signal: controller.signal })
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
 interface ServedProfile {
   u: string
   loc: string | null
   src: string | null
   acc: boolean
   conf: number
+}
+
+/** The batch answer's profiles, or null for a body that is not one. Null is a
+ *  failure, so the batch is retried rather than negative-cached as missing. */
+function servedProfiles(body: unknown): ServedProfile[] | null {
+  const profiles = (body as { profiles?: unknown } | null)?.profiles
+  if (!Array.isArray(profiles)) return null
+  return profiles.filter(
+    (p): p is ServedProfile =>
+      typeof (p as ServedProfile | null)?.u === 'string',
+  )
 }
 
 export interface SharedHit {
@@ -158,47 +156,35 @@ export async function sharedBatchLookup(
   const batch = names.slice(0, MAX_LOOKUP)
   for (const u of batch) recentlyQueried.set(u, now + QUERIED_TTL_MS)
 
-  try {
-    const resp = await fetchWithTimeout(`${CACHE_API_BASE}/v1/loc/batch`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ usernames: batch }),
-      credentials: 'omit',
-    })
-    if (!resp.ok) {
-      noteFailure()
-      forgetQueried(batch)
-      return []
-    }
-    const body = (await resp.json()) as { profiles?: ServedProfile[] }
-    noteSuccess()
-    const profiles = body.profiles ?? []
-
-    const found = new Set<string>()
-    const hits: SharedHit[] = []
-    for (const p of profiles) {
-      found.add(p.u)
-      if (p.conf < minConfidence) continue
-      hits.push({
-        userName: p.u,
-        data: {
-          location: p.loc,
-          locationAccurate: p.acc,
-          source: p.src as LocationData['source'],
-          votes: p.conf,
-        },
-      })
-    }
-    // Confirmed-missing: don't re-ask for NEG_TTL_MS.
-    for (const u of batch) {
-      if (!found.has(u)) negativeCache.set(u, now + NEG_TTL_MS)
-    }
-    return hits
-  } catch {
+  const reply = await askCacheApi('/v1/loc/batch', { usernames: batch })
+  const profiles = reply.ok ? servedProfiles(reply.body) : null
+  if (!profiles) {
     noteFailure()
     forgetQueried(batch)
     return []
   }
+  noteSuccess()
+
+  const found = new Set<string>()
+  const hits: SharedHit[] = []
+  for (const p of profiles) {
+    found.add(p.u)
+    if (p.conf < minConfidence) continue
+    hits.push({
+      userName: p.u,
+      data: {
+        location: p.loc,
+        locationAccurate: p.acc,
+        source: p.src as LocationData['source'],
+        votes: p.conf,
+      },
+    })
+  }
+  // Confirmed-missing: don't re-ask for NEG_TTL_MS.
+  for (const u of batch) {
+    if (!found.has(u)) negativeCache.set(u, now + NEG_TTL_MS)
+  }
+  return hits
 }
 
 // Contributions
@@ -252,19 +238,9 @@ async function flush(): Promise<void> {
 
   try {
     const clientId = await getClientId()
-    const resp = await fetchWithTimeout(`${CACHE_API_BASE}/v1/loc`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ clientId, entries }),
-      credentials: 'omit',
-      // So a flush triggered as the tab unloads still lands.
-      keepalive: true,
-    })
-    if (!resp.ok) {
-      noteFailure()
-      return
-    }
-    noteSuccess()
+    const reply = await askCacheApi('/v1/loc', { clientId, entries })
+    if (reply.ok) noteSuccess()
+    else noteFailure()
   } catch {
     noteFailure()
   }
@@ -289,19 +265,14 @@ const COUNT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
  *  breaker on purpose - see CLAUDE.md. */
 export async function fetchCacheCount(): Promise<number | null> {
   if (!isSharedCacheConfigured()) return null
-  try {
-    const resp = await fetchWithTimeout(`${CACHE_API_BASE}/v1/stats`, {
-      credentials: 'omit',
-    })
-    // Includes the 404 from a server too old to have the route, which is the
-    // one every install talked to until this shipped.
-    if (!resp.ok) return null
-    const body = (await resp.json()) as { profiles?: unknown }
-    const n = finiteNumber(body.profiles)
-    return n === null || n < 0 ? null : Math.floor(n)
-  } catch {
-    return null
-  }
+  const reply = await askCacheApi('/v1/stats')
+  // Includes the 404 from a server too old to have the route, which is the
+  // one every install talked to until this shipped.
+  if (!reply.ok) return null
+  const n = finiteNumber(
+    (reply.body as { profiles?: unknown } | null)?.profiles,
+  )
+  return n === null || n < 0 ? null : Math.floor(n)
 }
 
 /** The last answer, if recent enough to still mean something. `at` is when the

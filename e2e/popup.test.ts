@@ -343,25 +343,27 @@ test('a paused popup asks the cache nothing', async ({
   context,
   extensionId,
 }) => {
+  // On the context, because the worker makes the request and the popup page
+  // never sees it. Registered first, so the ask on load proves it is listening.
+  const asked: string[] = []
+  context.on('request', (r) => {
+    if (r.url().includes('/v1/stats')) asked.push(r.url())
+  })
+
   const popup = await openPopupPage(context, extensionId)
-  // The panel's one ask on load is not what this test is about, and
-  // openPopupPage only waits on a storage read — so wait for the count itself,
+  // openPopupPage only waits on a storage read, so wait for the count itself,
   // which is proof the request has been and gone. Caught it 1 run in 4.
   await expect(popup.getByText(/accounts in the community cache/)).toBeVisible({
     timeout: 5_000,
   })
-
-  const asked: string[] = []
-  popup.on('request', (r) => {
-    if (r.url().includes('/v1/stats')) asked.push(r.url())
-  })
+  expect(asked).toHaveLength(1)
 
   await popup.locator('header input[type="checkbox"]').click()
   await expect(popup.getByText(/accounts in the community cache/)).toBeHidden()
 
   // Paused means the extension does nothing, and that includes the one request
   // this panel makes on its own.
-  expect(asked).toEqual([])
+  expect(asked).toHaveLength(1)
 
   await popup.close()
 })

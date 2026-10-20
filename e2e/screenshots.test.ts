@@ -250,7 +250,7 @@ async function mockVariedCache(page: Page, countries: string[]): Promise<void> {
   const base = new URL(CACHE_API_BASE)
   const assigned = new Map<string, string>()
 
-  await page.route(
+  await page.context().route(
     (url) => url.host === base.host && url.pathname.endsWith('/v1/loc/batch'),
     async (route) => {
       if (route.request().method() === 'OPTIONS')
@@ -275,7 +275,7 @@ async function mockVariedCache(page: Page, countries: string[]): Promise<void> {
   )
 
   // Nothing is contributed back from a screenshot run.
-  await page.route(
+  await page.context().route(
     (url) => url.host === base.host && url.pathname.endsWith('/v1/loc'),
     (route) =>
       route.fulfill({

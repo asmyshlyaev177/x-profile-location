@@ -5,6 +5,14 @@ usernames, `mergeCached` deep-merges `facts`). `shared-cache.ts` is the optional
 one: a batch lookup before asking X, and a contribution after. Types are in
 [`../CLAUDE.md`](../CLAUDE.md); the server is [`server/README.md`](../../../server/README.md).
 
+## Who calls the server
+
+- **Only the service worker fetches from the cache server** (`cache-api.ts`); `shared-cache.ts` keeps its bookkeeping in the tab and sends each request as a `CACHE_API` message.
+- **Why:** x.com may send `Connection-Allowlist`, and Chrome applies it to a content script's isolated world as well as the page. With `(response-origin)` on the document, a content-script fetch to the cache failed and the worker's returned 200 (checked 2026-10-21, Chrome 155 and Chromium 147). X would never list this server.
+- **Re-check:** `pnpm test:integration` runs `connection-allowlist.test.ts`, which fails if a cache request comes from a tab. The header itself cannot be tested there, because Chrome checks it after Playwright pauses a request, so a fulfilled route passes whatever the page allows.
+- **No `keepalive` on contributions any more.** The worker's fetch outlives the tab, and a `CACHE_API` message sent from `pagehide` still reached the worker 3 runs of 3 (2026-10-21).
+- **Test stubs route on the context, not the page** (`e2e/helpers.ts`, `integration/x-stub.ts`). `page.route` never sees a worker's request, and a missed stub sends test data to the live server.
+
 ## The community cache
 
 Which backend a build talks to is a build-time switch, never a source edit: `pnpm build` →

@@ -43,6 +43,7 @@ import {
 } from './shared-cache'
 
 import type { LocationData } from './cache'
+import { answerCacheApi, type CacheApiRequest } from './cache-api'
 
 function mockFetchJson(payload: unknown) {
   const fn = vi.fn().mockResolvedValue({
@@ -62,6 +63,10 @@ const JP: LocationData = {
 beforeEach(() => {
   __resetSharedCache()
   setSharedCacheEnabled(true)
+  // The worker's real handler, so the stubbed `fetch` below is what it calls.
+  ;(chrome as unknown as { runtime: unknown }).runtime = {
+    sendMessage: vi.fn((m: CacheApiRequest) => answerCacheApi(m)),
+  }
 })
 
 afterEach(() => {
@@ -148,6 +153,39 @@ describe('sharedBatchLookup', () => {
 
     expect(hits).toEqual([])
     expect(fetchFn).not.toHaveBeenCalled()
+  })
+
+  it('returns [] when the worker cannot be reached', async () => {
+    const fetchFn = mockFetchJson({ profiles: [] })
+    vi.mocked(chrome.runtime.sendMessage).mockRejectedValue(
+      new Error('Extension context invalidated.'),
+    )
+    await expect(sharedBatchLookup(['alice'])).resolves.toEqual([])
+    expect(fetchFn).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['a null body', null],
+    ['no profiles at all', {}],
+    ['a profiles field that is not a list', { profiles: 5 }],
+  ])('treats %s as a failure and asks again', async (_label, payload) => {
+    const fetchFn = mockFetchJson(payload)
+    await expect(sharedBatchLookup(['alice'])).resolves.toEqual([])
+    // Not negative-cached as missing: the next lookup asks the server again.
+    await sharedBatchLookup(['alice'])
+    expect(fetchFn).toHaveBeenCalledTimes(2)
+  })
+
+  it('skips entries that are not profiles and serves the rest', async () => {
+    mockFetchJson({
+      profiles: [
+        null,
+        7,
+        { u: 'alice', loc: 'JP', src: null, acc: true, conf: 1 },
+      ],
+    })
+    const hits = await sharedBatchLookup(['alice'])
+    expect(hits.map((h) => h.userName)).toEqual(['alice'])
   })
 
   it('returns [] on network error without throwing', async () => {
@@ -461,7 +499,6 @@ describe('contributeLocation', () => {
       (fetchFn.mock.calls[0][1] as RequestInit).body as string,
     )
     expect(body.entries).toHaveLength(3)
-    expect((fetchFn.mock.calls[0][1] as RequestInit).keepalive).toBe(true)
   })
 
   it('makes no request when disabled', async () => {
@@ -502,7 +539,8 @@ describe('how much the cache holds', () => {
 
     const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('https://cache.test/v1/stats')
-    expect(init.method).toBeUndefined()
+    expect(init.method).toBe('GET')
+    expect(init.body).toBeUndefined()
     expect(init.credentials).toBe('omit')
   })
 

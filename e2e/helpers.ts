@@ -764,15 +764,6 @@ export const CORS_HEADERS = {
 }
 
 /**
- * Stands in for the community cache Worker so tests never touch the real one —
- * neither reading (responses would vary by what other users contributed) nor
- * writing (test data would end up in the shared consensus).
- *
- * Answers every batch lookup with `profile` for each username asked about, or
- * with no hits when `profile` is null. Contribution POSTs are captured and
- * acknowledged. Both arrays keep filling as the page makes further calls.
- */
-/**
  * Hovers *some* reply on a status page and returns its hover card once the
  * extension has put a location in it.
  *
@@ -817,10 +808,11 @@ export async function mockLocationApis(
 /** What the stubbed community cache says it holds, for popup assertions. */
 export const CACHED_ACCOUNTS = 44_210
 
-/** Stands in for GET /v1/stats — the count the popup shows while it is open. */
+/** Stands in for GET /v1/stats — the count the popup shows while it is open.
+ *  On the context: the service worker makes every community-cache request. */
 export async function mockCacheCount(page: Page, profiles: number) {
   const base = new URL(CACHE_API_BASE)
-  await page.route(
+  await page.context().route(
     (url) => url.host === base.host && url.pathname.endsWith('/v1/stats'),
     (route) =>
       route.fulfill({
@@ -831,6 +823,16 @@ export async function mockCacheCount(page: Page, profiles: number) {
   )
 }
 
+/**
+ * Stands in for the community cache Worker so tests never touch the real one —
+ * neither reading (responses would vary by what other users contributed) nor
+ * writing (test data would end up in the shared consensus).
+ *
+ * Answers every batch lookup with `profile` for each username asked about, or
+ * with no hits when `profile` is null. Contribution POSTs are captured and
+ * acknowledged. Both arrays keep filling as the page makes further calls.
+ * Routed on the context, because the service worker makes these requests.
+ */
 export async function mockSharedCache(
   page: Page,
   profile: SharedCacheProfile | null,
@@ -845,7 +847,7 @@ export async function mockSharedCache(
   const lookups: BatchLookup[] = []
   const contributions: Contribution[] = []
 
-  await page.route(
+  await page.context().route(
     (url) => url.host === base.host && url.pathname.endsWith('/v1/loc/batch'),
     async (route) => {
       if (route.request().method() === 'OPTIONS')
@@ -865,7 +867,7 @@ export async function mockSharedCache(
     },
   )
 
-  await page.route(
+  await page.context().route(
     (url) => url.host === base.host && url.pathname.endsWith('/v1/loc'),
     async (route) => {
       if (route.request().method() === 'OPTIONS')

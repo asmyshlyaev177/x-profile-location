@@ -26,6 +26,7 @@ import {
   REVIEW_URL,
 } from '../scripts/usage'
 import { COUNT_POLL_MS } from '../scripts/cache/shared-cache'
+import { answerCacheApi, isCacheApiRequest } from '../scripts/cache/cache-api'
 import { REGION_MEMBERS } from '../scripts/countries/countries'
 
 const SOUTH_ASIA = REGION_MEMBERS['South Asia']
@@ -66,7 +67,12 @@ const setMock = vi.fn()
     },
   },
   runtime: {
-    sendMessage: vi.fn().mockResolvedValue(undefined),
+    // The count is asked through the worker; its real handler calls `fetchMock`.
+    sendMessage: vi.fn((message: unknown) =>
+      isCacheApiRequest(message)
+        ? answerCacheApi(message)
+        : Promise.resolve(undefined),
+    ),
     openOptionsPage: vi.fn().mockResolvedValue(undefined),
     getURL: (p: string) => p,
   },

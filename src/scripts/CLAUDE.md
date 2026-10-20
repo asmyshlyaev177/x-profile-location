@@ -27,6 +27,7 @@ duplicates it.
 | `extract-users.ts`   | Recursive GraphQL walker. Finds `__typename: 'User'` nodes to depth 20.             |
 | `cache/cache.ts`     | IndexedDB wrapper (idb-keyval). 30-day TTL, keys are lowercased usernames.          |
 | `cache/shared-cache` | Client for the optional community cache; batch lookup + contribute, opt-in.         |
+| `cache/cache-api`    | The one route to the cache server: tabs and popup ask, the service worker fetches.  |
 | `prefetch/queue`     | `CandidateQueue` plus the pacing arithmetic. No timers, no state of its own.        |
 | `prefetch/broker`    | Service worker. One queue per tab, one ledger, one pace. No browser needed to test. |
 | `prefetch/poller`    | Asks the broker, looks up, asks again. Holds the clock the worker cannot.           |
