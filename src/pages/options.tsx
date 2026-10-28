@@ -2,6 +2,8 @@ import {
   ACCOUNT_AGE_CHOICES,
   type AccountAgeFilter,
   canVpnLocationDecide,
+  canWebAccountsChoiceDecide,
+  isWebAccountLocationUsed,
   DEFAULT_MIN_CONFIDENCE,
   defaultSetting,
   exportSettings,
@@ -293,7 +295,8 @@ function LocationMatchingSettings({
       <MatchingToggle
         label={t('matchWebAccounts')}
         description={t('matchWebAccountsDesc')}
-        checked={matching.isLocationUsedWithoutStore}
+        checked={isWebAccountLocationUsed(matching)}
+        disabled={!canWebAccountsChoiceDecide(matching)}
         onToggle={(checked) => edit({ isLocationUsedWithoutStore: checked })}
       />
       <MatchingToggle

@@ -1,5 +1,7 @@
 import {
   canVpnLocationDecide,
+  canWebAccountsChoiceDecide,
+  isWebAccountLocationUsed,
   defaultSetting,
   type HideBlockedMode,
   type LocationMatching,
@@ -183,7 +185,8 @@ function LocationMatchingRows({ matching, onChange }: LocationMatchingProps) {
       </label>
       <MatchingCheckbox
         label={t('matchWebAccounts')}
-        checked={matching.isLocationUsedWithoutStore}
+        checked={isWebAccountLocationUsed(matching)}
+        disabled={!canWebAccountsChoiceDecide(matching)}
         onToggle={(checked) => edit({ isLocationUsedWithoutStore: checked })}
       />
       <MatchingCheckbox

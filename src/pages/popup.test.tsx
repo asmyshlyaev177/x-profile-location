@@ -424,6 +424,31 @@ describe('which place a blocked location goes by', () => {
     )
   })
 
+  it('offers either place, which fixes the web box on and lets the VPN box decide', async () => {
+    const { getByLabelText } = mountStored({
+      [POPUP_SECTION_KEY]: 'locations',
+      [LOCATION_MATCHING_KEY]: {
+        preferredPlace: 'store',
+        isLocationUsedWithoutStore: false,
+        isVpnLocationCounted: false,
+      },
+    })
+    const vpn = (await waitFor(() => getByLabelText(VPN))) as HTMLInputElement
+    await waitFor(() => expect(vpn.disabled).toBe(true))
+
+    fireEvent.change(getByLabelText(PLACE), { target: { value: 'either' } })
+
+    await waitFor(() => expect(vpn.disabled).toBe(false))
+    const web = getByLabelText(WEB) as HTMLInputElement
+    expect(web.disabled).toBe(true)
+    expect(web.checked).toBe(true)
+    expect(lastWrite(LOCATION_MATCHING_KEY)).toEqual({
+      preferredPlace: 'either',
+      isLocationUsedWithoutStore: false,
+      isVpnLocationCounted: false,
+    })
+  })
+
   it('greys out the VPN box while no stated location could decide', async () => {
     // Going by the store with web accounts off, every match is a store country
     // or a store and location that agree, so the box would change nothing.

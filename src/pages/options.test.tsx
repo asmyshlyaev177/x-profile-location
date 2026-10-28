@@ -763,4 +763,31 @@ describe('which place a blocked location goes by', () => {
 
     await waitFor(() => expect(box(container, VPN).disabled).toBe(false))
   })
+
+  it('offers either place, which fixes the web box on and lets the VPN box decide', async () => {
+    const { container } = mountStored(
+      {
+        [LOCATION_MATCHING_KEY]: {
+          preferredPlace: 'store',
+          isLocationUsedWithoutStore: false,
+          isVpnLocationCounted: false,
+        },
+      },
+      'filters',
+    )
+    await waitFor(() => expect(box(container, VPN)?.disabled).toBe(true))
+
+    fireEvent.change(placeSelect(container), { target: { value: 'either' } })
+
+    await waitFor(() => expect(box(container, VPN).disabled).toBe(false))
+    expect(box(container, WEB).disabled).toBe(true)
+    expect(box(container, WEB).checked).toBe(true)
+    expect(setMock).toHaveBeenLastCalledWith({
+      [LOCATION_MATCHING_KEY]: {
+        preferredPlace: 'either',
+        isLocationUsedWithoutStore: false,
+        isVpnLocationCounted: false,
+      },
+    })
+  })
 })

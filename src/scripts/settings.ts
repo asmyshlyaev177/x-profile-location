@@ -70,9 +70,10 @@ export function normalizeHideBlockedMode(value: unknown): HideBlockedMode {
     : 'collapse'
 }
 
-const PREFERRED_PLACES = ['store', 'location'] as const
+const PREFERRED_PLACES = ['store', 'location', 'either'] as const
 
-/** Which place a blocked location goes by when the store and the stated location disagree. */
+/** Which place a blocked location goes by when the store and the stated location
+ *  disagree; 'either' blocks what going by the store or by the location would. */
 export type PreferredPlace = (typeof PREFERRED_PLACES)[number]
 
 function isPreferredPlace(value: unknown): value is PreferredPlace {
@@ -118,11 +119,25 @@ export function withLocationMatching(
   return normalizeLocationMatching({ ...current, ...patch })
 }
 
+/** Whether the web-accounts box can change anything: going by either, a web
+ *  account's location is the place it has, so it always counts. */
+export function canWebAccountsChoiceDecide(
+  matching: LocationMatching,
+): boolean {
+  return matching.preferredPlace !== 'either'
+}
+
+/** The web-accounts choice in effect; the stored one survives a switch to either. */
+export function isWebAccountLocationUsed(matching: LocationMatching): boolean {
+  return (
+    !canWebAccountsChoiceDecide(matching) || matching.isLocationUsedWithoutStore
+  )
+}
+
 /** Whether the VPN box can change anything: some stated location has to decide. */
 export function canVpnLocationDecide(matching: LocationMatching): boolean {
   return (
-    matching.preferredPlace === 'location' ||
-    matching.isLocationUsedWithoutStore
+    matching.preferredPlace !== 'store' || matching.isLocationUsedWithoutStore
   )
 }
 

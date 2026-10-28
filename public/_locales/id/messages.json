@@ -251,6 +251,9 @@
   "matchPlaceLocation": {
     "message": "Lokasi"
   },
+  "matchPlaceEither": {
+    "message": "Salah satunya"
+  },
   "matchPlaceDesc": {
     "message": "Negara toko aplikasi tidak berubah karena VPN. Lokasi adalah tempat akun berbasis menurut X."
   },

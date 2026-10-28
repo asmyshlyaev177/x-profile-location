@@ -25,8 +25,10 @@ import {
   type AccountAgeFilter,
   defaultSetting,
   type FilterRule,
+  isWebAccountLocationUsed,
   type LocationMatching,
   normalizeRuleExceptions,
+  type PreferredPlace,
   type RuleExceptions,
   ruleHides,
 } from '../settings'
@@ -173,12 +175,31 @@ export function getLocationDisplay(
 /** The one place a location rule compares with the block list, or null - see
  *  "Which place a location rule judges" in CLAUDE.md. */
 export function judgedPlace(data: LocationData): string | null {
+  const { preferredPlace } = locationMatching
+  if (preferredPlace !== 'either') return placeJudgedBy(preferredPlace, data)
+  const store = placeJudgedBy('store', data)
+  const location = placeJudgedBy('location', data)
+  // Only a VPN-flagged location the box leaves out drops the store's here: then
+  // one blocked place is not enough, even the store (Alex, 2026-10-28).
+  if (store && !location) {
+    const isBothBlocked =
+      data.location !== null &&
+      isBlockedLocation(store) &&
+      isBlockedLocation(data.location)
+    return isBothBlocked ? store : null
+  }
+  const places = [store, location].filter((place) => place !== null)
+  return places.find(isBlockedLocation) ?? places[0] ?? null
+}
+
+function placeJudgedBy(
+  preferredPlace: Exclude<PreferredPlace, 'either'>,
+  data: LocationData,
+): string | null {
   const { country: store } = classifySource(data.source)
   const { location } = data
   // By the store, the store alone decides, exactly as before the setting existed.
-  if (store && (!location || locationMatching.preferredPlace === 'store')) {
-    return store
-  }
+  if (store && (!location || preferredPlace === 'store')) return store
   // Agreement outranks the VPN flag: X relabelled it on 2026-09-19 where neither moved.
   const agreed = store && location ? agreedPlace(store, location) : null
   if (agreed) return agreed
@@ -190,7 +211,7 @@ function isStatedLocationCounted(
   data: LocationData,
   hasStore: boolean,
 ): boolean {
-  if (!hasStore && !locationMatching.isLocationUsedWithoutStore) return false
+  if (!hasStore && !isWebAccountLocationUsed(locationMatching)) return false
   return (
     data.locationAccurate !== false || locationMatching.isVpnLocationCounted
   )

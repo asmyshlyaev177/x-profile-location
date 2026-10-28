@@ -251,6 +251,9 @@
   "matchPlaceLocation": {
     "message": "Страна аккаунта"
   },
+  "matchPlaceEither": {
+    "message": "Любой из двух"
+  },
   "matchPlaceDesc": {
     "message": "Страна магазина приложений не меняется от VPN. Страна аккаунта — там, где, по словам X, находится аккаунт."
   },

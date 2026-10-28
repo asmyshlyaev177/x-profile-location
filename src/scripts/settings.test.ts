@@ -23,6 +23,7 @@ import {
   SETTINGS_KEYS,
   SettingsImportError,
   canVpnLocationDecide,
+  canWebAccountsChoiceDecide,
   defaultSetting,
   exportSettings,
   formatAgeChoice,
@@ -30,6 +31,7 @@ import {
   normalizeAccountAge,
   normalizeHandle,
   normalizeHandleList,
+  isWebAccountLocationUsed,
   normalizeLocationMatching,
   normalizeOptionsTab,
   normalizePrefetchPacing,
@@ -512,6 +514,12 @@ describe('normalizeLocationMatching', () => {
     })
   })
 
+  it('keeps either place as a choice', () => {
+    expect(
+      normalizeLocationMatching({ preferredPlace: 'either' }).preferredPlace,
+    ).toBe('either')
+  })
+
   it('reads a place it does not know as the store', () => {
     expect(normalizeLocationMatching({ preferredPlace: 'bio' })).toEqual(
       DEFAULT_LOCATION_MATCHING,
@@ -537,6 +545,34 @@ describe('canVpnLocationDecide', () => {
         isLocationUsedWithoutStore: false,
       }),
     ).toBe(true)
+    expect(
+      canVpnLocationDecide({
+        ...DEFAULT_LOCATION_MATCHING,
+        preferredPlace: 'either',
+        isLocationUsedWithoutStore: false,
+      }),
+    ).toBe(true)
+  })
+})
+
+describe('the web-accounts box', () => {
+  // Going by either, the location is the place a web account has, so it counts
+  // and the box is greyed out showing that, while the stored choice is kept.
+  it('is fixed on going by either, and the stored choice going by one place', () => {
+    for (const isLocationUsedWithoutStore of [true, false]) {
+      const either = {
+        ...DEFAULT_LOCATION_MATCHING,
+        preferredPlace: 'either',
+        isLocationUsedWithoutStore,
+      } as const
+      expect(canWebAccountsChoiceDecide(either)).toBe(false)
+      expect(isWebAccountLocationUsed(either)).toBe(true)
+      for (const preferredPlace of ['store', 'location'] as const) {
+        const one = { ...either, preferredPlace }
+        expect(canWebAccountsChoiceDecide(one)).toBe(true)
+        expect(isWebAccountLocationUsed(one)).toBe(isLocationUsedWithoutStore)
+      }
+    }
   })
 })
 

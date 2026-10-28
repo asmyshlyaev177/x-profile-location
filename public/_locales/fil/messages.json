@@ -251,6 +251,9 @@
   "matchPlaceLocation": {
     "message": "Lokasyon"
   },
+  "matchPlaceEither": {
+    "message": "Alinman sa dalawa"
+  },
   "matchPlaceDesc": {
     "message": "Hindi nagbabago ang bansa ng app store kahit may VPN. Ang lokasyon ay kung saan sinasabi ng X na nakabase ang account."
   },

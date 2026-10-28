@@ -251,6 +251,9 @@
   "matchPlaceLocation": {
     "message": "Ubicación"
   },
+  "matchPlaceEither": {
+    "message": "Cualquiera de los dos"
+  },
   "matchPlaceDesc": {
     "message": "El país de la tienda de apps no cambia con una VPN. La ubicación es donde X dice que está la cuenta."
   },

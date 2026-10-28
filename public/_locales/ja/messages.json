@@ -251,6 +251,9 @@
   "matchPlaceLocation": {
     "message": "位置情報"
   },
+  "matchPlaceEither": {
+    "message": "どちらか"
+  },
   "matchPlaceDesc": {
     "message": "ストアの国はVPNでは変わりません。位置情報は、Xがアカウントの拠点としている場所です。"
   },

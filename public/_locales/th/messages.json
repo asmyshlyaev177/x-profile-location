@@ -251,6 +251,9 @@
   "matchPlaceLocation": {
     "message": "ตำแหน่ง"
   },
+  "matchPlaceEither": {
+    "message": "อย่างใดอย่างหนึ่ง"
+  },
   "matchPlaceDesc": {
     "message": "ประเทศของสโตร์ไม่เปลี่ยนเพราะ VPN ตำแหน่งคือที่ที่ X ระบุว่าบัญชีอยู่"
   },

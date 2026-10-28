@@ -251,6 +251,9 @@
   "matchPlaceLocation": {
     "message": "위치"
   },
+  "matchPlaceEither": {
+    "message": "둘 중 하나"
+  },
   "matchPlaceDesc": {
     "message": "스토어 국가는 VPN으로 바뀌지 않습니다. 위치는 X가 계정이 있다고 밝힌 곳입니다."
   },

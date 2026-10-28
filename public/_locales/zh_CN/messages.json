@@ -251,6 +251,9 @@
   "matchPlaceLocation": {
     "message": "所在地"
   },
+  "matchPlaceEither": {
+    "message": "任一"
+  },
   "matchPlaceDesc": {
     "message": "应用商店所属国家不会因 VPN 改变。所在地是 X 所说的账号所在之处。"
   },

@@ -19,6 +19,7 @@ export function PlaceSelect({
     >
       <option value="store">{t('matchPlaceStore')}</option>
       <option value="location">{t('matchPlaceLocation')}</option>
+      <option value="either">{t('matchPlaceEither')}</option>
     </select>
   )
 }

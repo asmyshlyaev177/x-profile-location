@@ -303,7 +303,7 @@
   },
   "matchPlace": {
     "message": "If app store and location differ",
-    "description": "Label on the selector choosing which of an account's two places a blocked location goes by when they name different places: the country of the app store the account uses, or the location X states for it. Used in both the popup and the settings page."
+    "description": "Label on the selector choosing which of an account's two places a blocked location goes by when they name different places: the country of the app store the account uses, the location X states for it, or either of the two. Used in both the popup and the settings page."
   },
   "matchPlaceStore": {
     "message": "App store",
@@ -312,6 +312,10 @@
   "matchPlaceLocation": {
     "message": "Location",
     "description": "Option in that selector: go by the location X states for the account."
+  },
+  "matchPlaceEither": {
+    "message": "Either",
+    "description": "Option in that selector: block the account when either its app store country or its stated location is blocked."
   },
   "matchPlaceDesc": {
     "message": "An app store country doesn't change with a VPN. The location is where X says the account is based.",

@@ -251,6 +251,9 @@
   "matchPlaceLocation": {
     "message": "Vị trí"
   },
+  "matchPlaceEither": {
+    "message": "Một trong hai"
+  },
   "matchPlaceDesc": {
     "message": "Quốc gia của cửa hàng ứng dụng không đổi khi dùng VPN. Vị trí là nơi X cho biết tài khoản ở đó."
   },

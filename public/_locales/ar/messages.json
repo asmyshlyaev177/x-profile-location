@@ -251,6 +251,9 @@
   "matchPlaceLocation": {
     "message": "الموقع"
   },
+  "matchPlaceEither": {
+    "message": "أيٌّ منهما"
+  },
   "matchPlaceDesc": {
     "message": "بلد متجر التطبيقات لا يتغير مع VPN. الموقع هو المكان الذي يقول X إن الحساب موجود فيه."
   },

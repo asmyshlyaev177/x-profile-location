@@ -251,6 +251,9 @@
   "matchPlaceLocation": {
     "message": "Konum"
   },
+  "matchPlaceEither": {
+    "message": "İkisinden biri"
+  },
   "matchPlaceDesc": {
     "message": "Mağaza ülkesi VPN ile değişmez. Konum, X'in hesabın bulunduğunu söylediği yerdir."
   },
