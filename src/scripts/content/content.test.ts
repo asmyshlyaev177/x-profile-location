@@ -2416,6 +2416,25 @@ describe('bio injected into a card that carries none', () => {
     expect(card.querySelector('.x-loc-bio')).toBeNull()
   })
 
+  it('recognises a bio whose link X renders as its display form', async () => {
+    // The timeline bio carries the raw t.co URL; the card shows "executor.sh"
+    // in its place, so a probe spanning that gap never matched.
+    vi.mocked(getCached).mockResolvedValue({
+      location: null,
+      locationAccurate: true,
+      source: null,
+      bio: 'building https://t.co/gIFOwRUrLU - the cloud for personal software. connect all your integrations once, use them with any agent | yc 26',
+    })
+
+    const card = await addHoverCard(
+      'RhysSullivan',
+      '<div>building <a href="https://t.co/gIFOwRUrLU">executor.sh</a> - the cloud for personal software. connect all your integrations once, use them with any agent | yc 26</div>',
+    )
+    await flushAsync()
+
+    expect(card.querySelector('.x-loc-bio')).toBeNull()
+  })
+
   it("recognises its own bio through X's emoji images and reflowed whitespace", async () => {
     // X renders emoji as <img alt> and wraps freely, so a raw string compare
     // would report the bio missing from a card that is showing it.
@@ -2504,9 +2523,12 @@ describe('bio injected into a card that carries none', () => {
 })
 
 describe('bioProbe', () => {
-  it('drops URLs, which X rewrites to a t.co form when it renders them', () => {
+  it('never spans a URL, which X renders in a display form of its own', () => {
     expect(bioProbe('read more at https://example.com/blog now')).toBe(
-      'read more at now',
+      'read more at',
+    )
+    expect(bioProbe('hi example.com/x then the rest of it')).toBe(
+      'then the rest of it',
     )
   })
 

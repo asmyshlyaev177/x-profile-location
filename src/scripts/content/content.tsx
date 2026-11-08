@@ -1475,18 +1475,16 @@ function insertIntoCard(card: Element, userName: string, el: HTMLElement) {
 // The bio X declined to render - see "The bio X declined to render" in
 // CLAUDE.md.
 
-/** A slice distinctive enough to look for in a card. URLs come out first: X
- *  substitutes a t.co display form, so they never match verbatim. */
+/** A slice distinctive enough to look for in a card: the longest stretch
+ *  between URLs, because X renders each URL as a display form of its own. */
 export function bioProbe(bio: string): string {
-  const plain = bio
-    .replace(/https?:\/\/\S+/gi, ' ')
-    .replace(/(?:[a-z0-9-]+\.)+[a-z]{2,}\/\S*/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase()
+  const longest = bio
+    .split(/https?:\/\/\S+|(?:[a-z0-9-]+\.)+[a-z]{2,}\/\S*/i)
+    .map((piece) => piece.replace(/\s+/g, ' ').trim().toLowerCase())
+    .reduce((best, piece) => (piece.length > best.length ? piece : best), '')
   // Too short to identify a bio by - a three-character probe matches a display
   // name or one of our own chips as easily as the bio itself.
-  return plain.length < 4 ? '' : plain.slice(0, 40)
+  return longest.length < 4 ? '' : longest.slice(0, 40)
 }
 
 /** Whether the card is already showing this bio, ignoring what we injected. */

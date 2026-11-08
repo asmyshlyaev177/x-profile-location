@@ -75,8 +75,7 @@ doubting"; being blocked is where the reader stands with the account), and
 marked as it would be in a bio X had rendered.
 
 Gated on X's card not already showing a bio (`bioProbe` / `cardShowsBio`), not on the
-block, so it covers whatever else X strips. The probe drops URLs first (a t.co display
-form is the one part X doesn't render verbatim) and discards probes under four characters,
+block, so it covers whatever else X strips. The probe is the longest stretch between URLs (X renders each URL as its display form, so a probe spanning one never matched and the bio showed twice) and discards probes under four characters,
 which would match a display name or one of our own chips. `syncBioRow` runs twice per card
 and **rebuilds rather than appends**, so a card React fills in late doesn't end up with two
 bios. `blockedBy` is `null` when X sent no relationship at all - not the same as `false`.

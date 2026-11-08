@@ -4,14 +4,15 @@
  *
  * Archetypes:
  *   svtv_news       — accurate location, app-store source (📱 + flag)
- *   jk_rowling      — VPN detected (locationAccurate: false → ⚠ VPN badge)
+ *   nationalpost    — VPN detected (locationAccurate: false → ⚠ VPN badge)
  *   SpaceX          — accurate, web-only source (flag only, no store block)
  *   sotaproject     — any account with a location; used by the cache tests
  *
  * An account's VPN status is X's call and can change under us: sotaproject and
  * visegrad24 held the first and third slots until X flagged both as inaccurate
  * in July 2026. In September 2026 zgldz lost the second (X marked it accurate
- * again) and TheCriticalDri2 the third (now an Android App source). Each test
+ * again) and TheCriticalDri2 the third (now an Android App source), and in
+ * November 2026 jk_rowling lost the second (accurate, a UK App Store source). Each test
  * therefore asserts agreement with the account's own About page (the real
  * contract) *and* the archetype it was picked for — so a flagged account fails
  * loudly, saying it needs replacing rather than pretending the extension is wrong.
@@ -72,9 +73,9 @@ test('VPN warning matches About page', async ({ page }) => {
   // value instead of the one the About page is about to be read for.
   await mockSharedCache(page, null)
 
-  const card = await hoverOwnTweet(page, 'jk_rowling')
+  const card = await hoverOwnTweet(page, 'nationalpost')
   const fromCard = await hoverCardLocation(card)
-  const fromPage = await officialAccountLocation(page, 'jk_rowling')
+  const fromPage = await officialAccountLocation(page, 'nationalpost')
 
   expect(fromCard.basedIn).toBe(fromPage.basedIn)
   expect(fromCard.appStoreCountry).toBe(fromPage.appStoreCountry)
