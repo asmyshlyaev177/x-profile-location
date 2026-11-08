@@ -8,7 +8,9 @@ on:
 jobs:
   # The extension. `landing/` is the `audits` job below.
   extension:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest became 26.04 by 2026-10-28, and Playwright 1.59 refuses to
+    # install Chromium there (1.62.1 knows it). Move to it with a Playwright upgrade.
+    runs-on: ubuntu-24.04
     steps:
       # Actions are pinned by commit SHA — a tag is repointable by its owner and
       # these steps hold the repo and the runner's token. Keep the trailing tag
@@ -96,7 +98,7 @@ jobs:
   # at src/ and never runs this suite. The suite also fails when the committed
   # bundle in server/dist no longer matches server/src.
   server:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -122,7 +124,7 @@ jobs:
   # measurement and must not share a runner with the suites above. Unfiltered on
   # purpose — see landing/CLAUDE.md before adding a `paths:` filter back.
   audits:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
