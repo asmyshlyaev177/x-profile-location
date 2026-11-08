@@ -168,6 +168,15 @@ rewrite tool speaks. See "Fixing a recording already in history" in CONTRIBUTING
 Subjects come from the test sources as they are _now_ — today's policy applied uniformly,
 so an account the suite has stopped naming is pseudonymised in the old recording too.
 
+### Shared bodies
+
+Every capture carries X's whole client: on 2026-11-09 JavaScript and fonts were 673 of 769 MB across 37 HARs, as 6,038 responses holding 155 distinct bodies. A write run (`har-bodies.mjs`) moves each one to `e2e/recordings/bodies/<sha256>` and points `content._file` at it; test-proxy-recorder reads that field back relative to the HAR, in both its replay paths, so replay serves the same bytes. The corpus went to 80 MB.
+
+- Only JavaScript and fonts move. JSON and markup stay inline because the identity passes read them, and a body in `bodies/` is one no pass ever looks at.
+- Unreferenced bodies are pruned after every recording has been read, never per file, since HARs share them. The folder belongs to the scrub; don't put anything else in it.
+- `--check` and `--stdin` leave bodies inline. The check is about identities, and a history rewrite needs the blob on stdout.
+- Re-measure with `python3 -I` over `e2e/recordings/*.har`, summing `content.text` length by `mimeType` (a fresh capture is inline until scrubbed).
+
 ---
 
 ## Syncing the locale catalogues

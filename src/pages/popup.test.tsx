@@ -18,6 +18,7 @@ import {
   waitFor,
 } from '@testing-library/preact'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render as renderInto } from 'preact'
 
 import {
   RATE_PROMPT_IGNORED_SNOOZE_MS,
@@ -92,6 +93,12 @@ function answerCount(profiles: unknown) {
 
 const { Popup } = await import('./popup')
 
+// The module renders a Popup of its own once i18n loads. Unmounted here, not just
+// cleared out of the DOM: cleared, it lived on and asked the server inside whichever
+// test it finished loading in, which `--sequence.shuffle` made an early one.
+await vi.waitFor(() => expect(document.body.firstChild).not.toBeNull())
+renderInto(null, document.body)
+
 function mountStored(stored: Record<string, unknown>) {
   storedRef.current = stored
   return render(<Popup />)
@@ -112,9 +119,6 @@ beforeEach(() => {
   fetchMock.mockReset()
   answerCount(CACHED_ACCOUNTS)
   storedRef.current = {}
-  // The module rendered itself into document.body on import; clear it so each
-  // test's own render is the only Popup in the tree.
-  document.body.innerHTML = ''
 })
 
 afterEach(cleanup)

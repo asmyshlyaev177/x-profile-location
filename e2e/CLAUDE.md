@@ -101,7 +101,9 @@ binary via `executablePath`; absent → bundled Chromium + `state.json`.
   one still gets its own capture. Copying a HAR under a second name, or faking
   `titlePath` so two tests share a session id, is not the shortcut it looks like:
   the recording stops describing what the test does, and the next re-record has
-  two owners writing one file. 15MB of HAR is the price of the suite.
+  two owners writing one file. A capture costs ~2 MB once scrubbed: X's bundles and
+  fonts, the bulk of every raw HAR, are stored once in `recordings/bodies/` (see
+  "Shared bodies" in `scripts/CLAUDE.md`).
 - Tests that never load x.com (popup, options page) need no recording — the fast
   ones to iterate on.
 - The **popup** opens as an ordinary tab (`openPopupPage`) — Playwright can't open

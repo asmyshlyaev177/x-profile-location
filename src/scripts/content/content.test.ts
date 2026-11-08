@@ -172,13 +172,26 @@ const onMessageCallback: (message: unknown) => void =
 // hit ran first. Restore the mock defaults explicitly rather than relying on
 // vi.resetAllMocks(), which would also blank the `() => true` predicates in the
 // shared-cache mock and silently change behaviour.
-const originalFetch = globalThis.fetch
+//
+// Assigning `globalThis.fetch` back does not undo a `vi.spyOn` in Vitest 4: the
+// spy stays installed with the last test's answer. Swipe tests passed for months
+// on whatever response an earlier test had left there, and hung on the real
+// network when shuffled ahead of it. Hence restoreAllMocks (spies only - the
+// vi.fn module mocks keep their implementations) and a fetch that fails the test.
+const unmockedRequests: string[] = []
 
 beforeEach(() => {
+  vi.restoreAllMocks()
+  vi.clearAllMocks()
+  unmockedRequests.length = 0
+  globalThis.fetch = ((input: RequestInfo | URL) => {
+    unmockedRequests.push(String(input))
+    return Promise.reject(new Error(`unmocked fetch: ${String(input)}`))
+  }) as typeof fetch
+
   __testResetState()
   document.body.innerHTML = ''
   history.pushState({}, '', '/')
-  globalThis.fetch = originalFetch
 
   vi.mocked(getCached).mockResolvedValue(undefined)
   vi.mocked(mergeCached).mockResolvedValue(undefined)
@@ -186,6 +199,11 @@ beforeEach(() => {
   vi.mocked(sharedBatchLookup).mockResolvedValue([])
   vi.mocked(isSharedCacheConfigured).mockReturnValue(true)
   vi.mocked(isSharedCacheEnabled).mockReturnValue(true)
+})
+
+afterEach(() => {
+  // The app swallows a failed request, so the rejection alone would pass unseen.
+  expect(unmockedRequests, 'request reached the network unmocked').toEqual([])
 })
 
 // ---------------------------------------------------------------------------
@@ -2923,8 +2941,25 @@ describe('injectFeedLocationForUser - via hover card fetch', () => {
     await flushAsync()
     expect(article.querySelectorAll('.x-loc-feed-row')).toHaveLength(1)
 
-    // Hover card triggers another path (fetchLocationData returns cached value quickly)
-    vi.spyOn(globalThis, 'fetch')
+    // The hover card asks X again; X still says Italy.
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            user_result_by_screen_name: {
+              result: {
+                about_profile: {
+                  account_based_in: 'Italy',
+                  location_accurate: true,
+                  source: 'web',
+                },
+              },
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    )
 
     const hoverCard = document.createElement('div')
     hoverCard.setAttribute('data-testid', 'HoverCard')
@@ -4369,8 +4404,32 @@ describe('swipe-right gesture', () => {
     return document.getElementById('x-loc-location-toast')
   }
 
+  /** X's answer to the lookup a swipe makes even for a cached account. */
+  function xAnswersJapan() {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              user_result_by_screen_name: {
+                result: {
+                  about_profile: {
+                    account_based_in: 'Japan',
+                    location_accurate: true,
+                    source: 'web',
+                  },
+                },
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+    )
+  }
+
   /** A tweet already in the DOM, with its author's location cached. */
   function swipeableTweet(userName: string) {
+    xAnswersJapan()
     vi.mocked(getCached).mockResolvedValue({
       location: 'Japan',
       locationAccurate: true,
@@ -4398,6 +4457,7 @@ describe('swipe-right gesture', () => {
   // tweet drew the location twice.
   it('adds no second row where the primary tweet already has one', async () => {
     history.pushState({}, '', '/detail/status/123')
+    xAnswersJapan()
     vi.mocked(getCached).mockResolvedValue({
       location: 'Japan',
       locationAccurate: true,
@@ -4418,6 +4478,8 @@ describe('swipe-right gesture', () => {
   })
 
   it('acknowledges the swipe before the lookup resolves', async () => {
+    // Released at the end, when the lookup goes on to ask X.
+    xAnswersJapan()
     let release: (v: undefined) => void = () => {}
     vi.mocked(getCached).mockReturnValue(
       new Promise((resolve) => {
@@ -5644,13 +5706,9 @@ describe('the account card', () => {
 
 describe('the hover-card share button', () => {
   beforeEach(() => {
-    // Call history survives between tests otherwise, and "was it called" is
-    // exactly what these assert. The implementation is re-installed because
-    // clearAllMocks drops history but keeps implementations - and elsewhere in
-    // this file it is the other way round.
-    snapshot.snapshotElement.mockClear()
+    // Re-installed: a test elsewhere leaves it resolving, and clearAllMocks keeps
+    // implementations.
     snapshot.snapshotElement.mockRejectedValue(new Error('no canvas in tests'))
-    vi.mocked(renderShareCard).mockClear()
   })
 
   function makeHoverCard(userName: string) {

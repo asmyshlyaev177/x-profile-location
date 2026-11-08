@@ -11,6 +11,7 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { externaliseBodies, pruneBodies } from './har-bodies.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const RECORDINGS = path.join(ROOT, 'e2e', 'recordings')
@@ -829,6 +830,7 @@ function main() {
   let bytesBefore = 0
   let bytesAfter = 0
   const offenders = []
+  const bodyRefs = new Set()
 
   for (const file of files) {
     const before = statSync(file).size
@@ -847,10 +849,14 @@ function main() {
       continue
     }
 
+    // After the identity passes and outside --check, which asks only about identities.
+    for (const ref of externaliseBodies(har, RECORDINGS)) bodyRefs.add(ref)
+    const stored = JSON.stringify(har)
+
     // Temp file then rename: writeFileSync truncates first, and a half-written
     // HAR fails to parse on every later run.
     const tmp = `${file}.tmp`
-    writeFileSync(tmp, out)
+    writeFileSync(tmp, stored)
     renameSync(tmp, file)
     bytesAfter += statSync(file).size
 
@@ -858,7 +864,7 @@ function main() {
     if (VERBOSE) {
       console.log(
         `  ${path.basename(file).slice(0, 56).padEnd(56)} ` +
-          `${(before / 1e6).toFixed(1)}MB → ${(Buffer.byteLength(out) / 1e6).toFixed(1)}MB ` +
+          `${(before / 1e6).toFixed(1)}MB → ${(Buffer.byteLength(stored) / 1e6).toFixed(1)}MB ` +
           `handles:${stats.handles} bios:${stats.bios} imgs:${stats.images}`,
       )
     }
@@ -880,6 +886,9 @@ function main() {
     return
   }
 
+  // Only after every recording is read: a body one HAR dropped another may share.
+  const pruned = pruneBodies(RECORDINGS, bodyRefs)
+
   console.log(
     `\n  handles ${totals.handles} · session ids ${totals.sessionIds} · ` +
       `names ${totals.names} · bios ${totals.bios} · ` +
@@ -891,7 +900,8 @@ function main() {
   )
   console.log(
     `  ${(bytesBefore / 1e6).toFixed(1)} MB → ${(bytesAfter / 1e6).toFixed(1)} MB ` +
-      `(${(((bytesBefore - bytesAfter) / bytesBefore) * 100).toFixed(1)}% smaller)`,
+      `(${(((bytesBefore - bytesAfter) / bytesBefore) * 100).toFixed(1)}% smaller)` +
+      ` · ${bodyRefs.size} shared bodies in bodies/, ${pruned} unused removed`,
   )
   console.log('\n✓ scrubbed — now verify: pnpm test:e2e')
 }
