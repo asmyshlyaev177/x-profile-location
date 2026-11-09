@@ -33,30 +33,60 @@ export function sqlite(args: string[], asUser?: string): CommandResult {
   return run('sqlite3', args)
 }
 
-export interface Inspection {
-  integrity: string
+export interface RowCounts {
+  /** Usernames with a vote: a profile is worked out from its votes on read. */
   profiles: number | null
   votes: number | null
 }
 
-/** Both checks: `integrity_check` calls an *empty* database "ok", so the counts
- *  prove the tables arrived. An unparseable count is `null`, never a number. */
-export function inspect(dbFile: string, asUser?: string): Inspection {
-  const integrity = sqlite([dbFile, 'PRAGMA integrity_check;'], asUser)
+/** Reads `location_votes` alone, so it gives the same answer for an archive or
+ *  file still in the layout with a `profiles` table. Unparseable is `null`. */
+export function countRows(dbFile: string, asUser?: string): RowCounts {
   const counted = sqlite(
-    [
-      dbFile,
-      'SELECT COUNT(*) FROM profiles; SELECT COUNT(*) FROM location_votes;',
-    ],
+    [dbFile, 'SELECT COUNT(DISTINCT username), COUNT(*) FROM location_votes;'],
     asUser,
   )
   const [profiles = null, votes = null] = counted.ok
-    ? counted.out.split('\n').map((line) => {
-        const n = Number(line.trim())
-        return Number.isInteger(n) ? n : null
+    ? counted.out.split('|').map((field) => {
+        const n = Number(field.trim())
+        return field.trim() !== '' && Number.isInteger(n) ? n : null
       })
     : []
-  return { integrity: integrity.out, profiles, votes }
+  return { profiles, votes }
+}
+
+export interface Inspection extends RowCounts {
+  integrity: string
+}
+
+/** Both checks: `integrity_check` calls an *empty* database "ok", so the counts
+ *  prove the tables arrived. */
+export function inspect(dbFile: string, asUser?: string): Inspection {
+  const integrity = sqlite([dbFile, 'PRAGMA integrity_check;'], asUser)
+  return { integrity: integrity.out, ...countRows(dbFile, asUser) }
+}
+
+/** `profiles`: the layout before votes-only, which the server refuses and
+ *  vacuum.ts converts. `mixed`: a converted file the old schema ran on again. */
+export type Layout = 'votes-only' | 'profiles' | 'mixed'
+
+// Is there a `profiles` table | is there a `labels` table or a `net` column.
+const LAYOUT_SQL = `SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'profiles'),
+  EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'labels')
+  OR EXISTS (SELECT 1 FROM pragma_table_info('location_votes') WHERE name = 'net');`
+
+const LAYOUT_BY_TABLES: Record<string, Layout> = {
+  // No tables at all is rebuilt plainly, and its null counts refuse the swap.
+  '0|0': 'votes-only',
+  '0|1': 'votes-only',
+  '1|0': 'profiles',
+  '1|1': 'mixed',
+}
+
+/** `null` when it cannot be read. */
+export function layoutOf(dbFile: string, asUser?: string): Layout | null {
+  const found = sqlite([dbFile, LAYOUT_SQL], asUser)
+  return found.ok ? (LAYOUT_BY_TABLES[found.out.trim()] ?? null) : null
 }
 
 /** Through `id`, not `process.getuid()`, so tests can stub the root path. */
@@ -154,39 +184,53 @@ export interface SwapGuard {
   swapped: boolean
 }
 
-/** Cleanup for a swap that dies half-done — the original goes back first, and
- *  the service is restarted whatever happened. See CLAUDE.md. */
+function removeScratch(scratch: string[]): void {
+  for (const tmp of scratch) {
+    for (const part of ['', '-wal', '-shm', '-journal']) {
+      rmSync(`${tmp}${part}`, { force: true })
+    }
+  }
+}
+
+/** Only when the original is aside and nothing took its place. */
+function putOriginalBack(dbFile: string, suffix: string): void {
+  if (existsSync(dbFile) || !existsSync(`${dbFile}${suffix}`)) return
+  console.error('putting the original database back')
+  for (const part of ['', '-wal', '-shm']) {
+    const aside = `${dbFile}${part}${suffix}`
+    if (existsSync(aside)) mv(aside, `${dbFile}${part}`)
+  }
+}
+
+function restartUnlessKept(guard: SwapGuard, keepStopped?: string[]): void {
+  if (!guard.stopped) return
+  if (!guard.swapped && keepStopped) {
+    console.error(`the database was not modified — ${SERVICE} is left stopped`)
+    for (const line of keepStopped) console.error(line)
+    return
+  }
+  console.error(
+    guard.swapped
+      ? `the new database is in place — restarting ${SERVICE}`
+      : `the database was not modified — restarting ${SERVICE}`,
+  )
+  run('systemctl', ['start', SERVICE])
+}
+
+/** Cleanup for a swap that dies half-done: the original goes back first, then
+ *  the service restarts, unless `keepStopped` says how to serve the original. */
 export function guardSwap(
   dbFile: string,
   suffix: string,
-  tmp: string,
+  scratch: string[],
+  keepStopped?: string[],
 ): SwapGuard {
   const guard: SwapGuard = { stopped: false, swapped: false }
 
   process.on('exit', () => {
-    for (const part of ['', '-wal', '-shm']) {
-      rmSync(`${tmp}${part}`, { force: true })
-    }
-
-    if (
-      !guard.swapped &&
-      !existsSync(dbFile) &&
-      existsSync(`${dbFile}${suffix}`)
-    ) {
-      console.error('putting the original database back')
-      for (const part of ['', '-wal', '-shm']) {
-        const aside = `${dbFile}${part}${suffix}`
-        if (existsSync(aside)) mv(aside, `${dbFile}${part}`)
-      }
-    }
-
-    if (!guard.stopped) return
-    console.error(
-      guard.swapped
-        ? `the new database is in place — restarting ${SERVICE}`
-        : `the database was not modified — restarting ${SERVICE}`,
-    )
-    run('systemctl', ['start', SERVICE])
+    removeScratch(scratch)
+    if (!guard.swapped) putOriginalBack(dbFile, suffix)
+    restartUnlessKept(guard, keepStopped)
   })
 
   // SIGTERM (a reboot) ends the process without running the exit handler.

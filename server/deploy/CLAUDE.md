@@ -6,8 +6,7 @@ root), `alert.ts` (OnFailure= and the weekly heartbeat). Operator docs are in
 [`../README.md`](../README.md) — "Backups", "Restore", "Compacting the database",
 "Operating", "Alerting". This file is what a change here can quietly break.
 
-`lib.ts` is shared plumbing only: env loading, `sqlite`, `inspect`, `uid`, stamps,
-sizes, `moveAside`, `guardSwap`, healthz polling. Policy stays in the scripts.
+`lib.ts` is shared plumbing only: env loading, `sqlite`, `inspect`, `countRows`, `layoutOf`, `uid`, stamps, sizes, `moveAside`, `guardSwap`, healthz polling. Policy stays in the scripts.
 
 ## Four things that look incidental and are not
 
@@ -45,10 +44,7 @@ Two other things it holds:
   failure surfaces at startup as ERR*DLOPEN_FAILED. `/usr/bin/node` is named
   explicitly (`XLOC_NODE`) because it is what `ExecStart=` names — the module
   has to load under \_that* interpreter, not the shell's.
-- A failed `/healthz` resets the tree to the commit the run started from, syncs
-  the units and restarts again. Only then does it exit 1, and it says which of
-  the two versions is serving. Rolling back the source without the units would
-  leave the box on a mismatched pair.
+- A failed `/healthz` resets the tree to the commit the run started from, syncs the units and restarts again. Only then does it exit 1, and it says which of the two versions is serving. Rolling back the source without the units would leave the box on a mismatched pair. When nothing was pulled (the votes-only deploy pulls by hand first) that commit is the failing one, so it reports the failure and stops.
 
 `allowScripts` in `server/package.json` is for this script's `npm install`. npm 12
 blocks dependency install scripts unless they are listed there, and without its
@@ -92,18 +88,26 @@ after it.
 
 ## The two "is this copy short" baselines differ
 
-Retention deletes profiles ([`../src/index.ts`](../src/index.ts) `pruneExpired()`),
-so `profiles` shrinks on its own and the two scripts cannot check a copy the same
-way.
+A profile is a username with a vote in `location_votes`, worked out on read. Retention deletes expired votes ([`../src/index.ts`](../src/index.ts) `pruneExpired()`), so a username whose last vote expires drops out on its own, and the two scripts cannot check a copy the same way.
 
-| Script      | Baseline                                                  | Why                                                                                                              |
-| ----------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `backup.ts` | profiles with a vote inside `VOTE_RETENTION_MS`           | The service is up; retention can run mid-copy and legitimately take rows. This counts only what it cannot touch. |
-| `vacuum.ts` | `COUNT(*) FROM profiles`, read **after** `systemctl stop` | Nothing can change it, so any shortfall is a bad rebuild.                                                        |
+| Script      | Baseline                                                                               | Why                                                                                                                                                   |
+| ----------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backup.ts` | distinct usernames with a vote inside `VOTE_RETENTION_MS`                              | The service is up; retention can run mid-copy and legitimately take rows. Neither retention nor the vote cap (it evicts the oldest) can remove those. |
+| `vacuum.ts` | distinct usernames and `COUNT(*)` of `location_votes`, read **after** `systemctl stop` | Nothing can change them, so any difference, short or long, is a bad rebuild.                                                                          |
 
-A plain `COUNT(*)` in `backup.ts` false-alarms whenever a retention pass lands
-inside the ~0.6 s copy: verification fails, the archive is thrown away, an alert
-fires and an evidence copy is kept — for a good backup.
+A plain `COUNT(DISTINCT username)` in `backup.ts` false-alarms whenever a retention pass lands inside the ~0.6 s copy: verification fails, the archive is thrown away, an alert fires and an evidence copy is kept — for a good backup.
+
+`inspect()` counts from `location_votes` alone, so it reads an archive or file still in the layout with a `profiles` table the same way; restore.ts and vacuum.ts both meet one.
+
+## Converting from the layout with a `profiles` table
+
+- `vacuum.ts` converts any file that still has a `profiles` table (the layout before 2026-11-09) and rebuilds plainly otherwise, so a second run is an ordinary compaction.
+- The conversion is `votes-only.sql` into a new file made from `schema.sql`, in one transaction, then `VACUUM INTO`: INSERT leaves the key's pages ~89% full, 157.2 MB against 139.6 MB on the 2026-11-09 copy.
+- It is checked vote by vote as well as by count: a vote whose label id resolves to the wrong text passes `integrity_check` and both counts. Any mismatch dies and keeps the original. The read-back compares through `quote()`, because an INTEGER column's affinity makes the text '1' equal 1.
+- A `profiles` table beside `labels` or a `net` column (`layoutOf` calls it `mixed`) means code from before votes-only ran on a converted file: its schema adds the empty table and it writes text votes into the id columns. vacuum.ts refuses that file before the stop, because converting it again turns each label id into a label whose text is the number, and the counts still match.
+- A conversion that fails after the stop leaves the service stopped: the code checked out refuses the old-layout original, so a restart only crash-loops under `Restart=always`. It prints `git -C <repo> reset --hard ORIG_HEAD && systemctl start x-loc-cache` instead, with the repo taken from the script's own path, and its healthz-failure rollback adds the same reset.
+- Rehearsed 2026-11-09 on the production copy (321 MB, 2,096,748 votes, 1,646,708 usernames): 3.9 s to convert and pack, 1.9 s to verify, 671 labels, 0 mismatches. With the `net` column it comes to 139,628,544 B, byte-identical to the rehearsal's `final.db` (re-checked 2026-11-09 by running the conversion on a copy of `db/x-loc-cache.db`).
+- An archive from before the change restores the old layout, which the server refuses at boot (it throws on a `profiles` table rather than serve every old profile as "no location"). restore.ts's healthz then fails and names `vacuum.ts -y`; run it to convert.
 
 ## What each script refuses to do
 
@@ -148,11 +152,7 @@ disk the server writes to.
 **`restore.ts`** verifies the archive _before_ stopping the service, so a bad one costs no
 downtime.
 
-**The swap rollback** in `lib.ts` covers a window one `mv` wide: dying between moving the
-old database aside and the new one in leaves no database at all, and a restart there has
-SQLite create an empty one and answer from it. The original goes back first, and the
-service is restarted whatever happened. Moves take `-wal`/`-shm` along, or SQLite replays
-a stale WAL over the file that replaced it.
+**The swap rollback** in `lib.ts` covers a window one `mv` wide: dying between moving the old database aside and the new one in leaves no database at all, and a restart there has SQLite create an empty one and answer from it. The original goes back first, and the service is restarted whatever happened, except in a conversion, where `guardSwap`'s `keepStopped` lines are printed instead (see above). Moves take `-wal`/`-shm` along, or SQLite replays a stale WAL over the file that replaced it.
 
 **`alert.ts`** has two modes, both from systemd: `alert.ts <unit>` from `OnFailure=`
 (catching what `backup.ts` cannot report about itself — an OOM kill, a missing
@@ -200,4 +200,6 @@ What the suite pins, and what breaking it would cost: pruning never runs on a
 failed verify; the evidence file is one copy however many nights fail, and never
 counts as an archive; a `/healthz` that never answers exits 1 instead of reporting
 success; and both swap scripts put the original database back and restart the
-service if the one `mv` fails.
+service if the one `mv` fails, except a conversion, which leaves it stopped.
+
+The conversion has its own fixture, `fixtures/schema-before-votes-only.sql` with `fixtures/old-layout.ts`: every vote must read back through `labels` as it was, NULLs included, and a tampered rebuild must be counted (`conversionMismatches` in `helpers.test.ts`), or a wrong label id would ship with every check green.

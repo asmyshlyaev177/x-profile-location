@@ -7,6 +7,8 @@
 
 import { spawnSync } from 'node:child_process'
 import {
+  chmodSync,
+  copyFileSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
@@ -31,6 +33,7 @@ import {
   bytes,
   humanSize,
   inspect,
+  layoutOf,
   liveBytes,
   loadEnvFile,
   moveAside,
@@ -40,7 +43,17 @@ import {
   type Inspection,
 } from './lib.ts'
 import { availableArchives } from './restore.ts'
-import { needsRebuild, parseArgs } from './vacuum.ts'
+import {
+  conversionMismatches,
+  convertInto,
+  needsRebuild,
+  parseArgs,
+} from './vacuum.ts'
+import {
+  OLD_VOTES,
+  createOldLayoutDatabase,
+  readVotes,
+} from './fixtures/old-layout.ts'
 
 const SERVER = join(import.meta.dirname, '..')
 const HAS_SQLITE = spawnSync('sh', ['-c', 'command -v sqlite3']).status === 0
@@ -229,20 +242,15 @@ describe('snapshotIsGood', () => {
 })
 
 describe.skipIf(!HAS_SQLITE)('baselineQuery', () => {
-  function seeded(seenAt: number[]): string {
+  /** One vote per entry, `[username, seen_at]`. */
+  function seeded(votes: [string, number][]): string {
     const file = join(dir, 'baseline.db')
     const db = new Database(file)
     db.exec(readFileSync(join(SERVER, 'schema.sql'), 'utf8'))
-    const profile = db.prepare(
-      'INSERT INTO profiles (username, location) VALUES (?, ?)',
-    )
     const vote = db.prepare(
-      'INSERT INTO location_votes (username, client_id, location, source, location_accurate, seen_at) VALUES (?,?,?,?,?,?)',
+      'INSERT INTO location_votes (username, client_id, seen_at) VALUES (?, ?, ?)',
     )
-    seenAt.forEach((at, i) => {
-      profile.run(`user-${i}`, 'Peru')
-      vote.run(`user-${i}`, 'client', 'Peru', 'web', 1, at)
-    })
+    votes.forEach(([username, at], i) => vote.run(username, `client-${i}`, at))
     db.close()
     return file
   }
@@ -257,14 +265,26 @@ describe.skipIf(!HAS_SQLITE)('baselineQuery', () => {
 
   const RETENTION = 60 * 24 * 60 * 60 * 1000
 
-  it('counts only profiles retention cannot take', () => {
+  it('counts only usernames retention cannot take', () => {
     const now = Date.UTC(2026, 5, 1)
     const file = seeded([
-      now - 1000,
-      now - RETENTION + 1000,
-      now - RETENTION - 1000,
+      ['a', now - 1000],
+      ['b', now - RETENTION + 1000],
+      ['c', now - RETENTION - 1000],
     ])
     expect(baseline(file, now)).toBe(2)
+  })
+
+  it('counts a username once, however many of its votes are in the window', () => {
+    // An expired vote beside a live one leaves the username in place, so it
+    // counts; a username is one profile whatever its vote count.
+    const now = Date.UTC(2026, 5, 1)
+    const file = seeded([
+      ['a', now - 1000],
+      ['a', now - 2000],
+      ['a', now - RETENTION - 1000],
+    ])
+    expect(baseline(file, now)).toBe(1)
   })
 
   it('counts a vote sitting exactly on the window', () => {
@@ -272,12 +292,15 @@ describe.skipIf(!HAS_SQLITE)('baselineQuery', () => {
     // survives; a baseline that excluded it would be short by that profile and
     // could only ever be too forgiving, never wrong.
     const now = Date.UTC(2026, 5, 1)
-    expect(baseline(seeded([now - RETENTION]), now)).toBe(1)
+    expect(baseline(seeded([['a', now - RETENTION]]), now)).toBe(1)
   })
 
-  it('is 0 for a database of nothing but expired profiles', () => {
+  it('is 0 for a database of nothing but expired votes', () => {
     const now = Date.UTC(2026, 5, 1)
-    const file = seeded([now - RETENTION - 1, now - RETENTION - 2])
+    const file = seeded([
+      ['a', now - RETENTION - 1],
+      ['b', now - RETENTION - 2],
+    ])
     expect(baseline(file, now)).toBe(0)
   })
 })
@@ -485,16 +508,31 @@ describe('uid', () => {
 })
 
 describe.skipIf(!HAS_SQLITE)('inspect', () => {
-  it('reads integrity and both counts from a real database', () => {
+  it('reads integrity, usernames with a vote and votes from a real database', () => {
     const file = join(dir, 'real.db')
     const db = new Database(file)
     db.exec(readFileSync(join(SERVER, 'schema.sql'), 'utf8'))
-    db.prepare('INSERT INTO profiles (username, location) VALUES (?, ?)').run(
-      'someone',
-      'Peru',
+    const vote = db.prepare(
+      'INSERT INTO location_votes (username, client_id) VALUES (?, ?)',
     )
+    vote.run('someone', 'c1')
+    vote.run('someone', 'c2')
+    vote.run('another', 'c1')
     db.close()
-    expect(inspect(file)).toEqual({ integrity: 'ok', profiles: 1, votes: 0 })
+    expect(inspect(file)).toEqual({ integrity: 'ok', profiles: 2, votes: 3 })
+  })
+
+  it('reads an archive from before votes-only the same way', () => {
+    // restore.ts and vacuum.ts both meet that layout; its profile with no vote
+    // is not counted, as the retention sweep would have taken it.
+    const file = join(dir, 'old.db')
+    createOldLayoutDatabase(file)
+    const usernames = new Set(OLD_VOTES.map((v) => v.username)).size
+    expect(inspect(file)).toEqual({
+      integrity: 'ok',
+      profiles: usernames,
+      votes: OLD_VOTES.length,
+    })
   })
 
   it('reports nulls, never NaN, for a file with no such tables', () => {
@@ -515,5 +553,154 @@ describe.skipIf(!HAS_SQLITE)('inspect', () => {
     expect(found.integrity).not.toBe('ok')
     expect(found.profiles).toBeNull()
     expect(found.votes).toBeNull()
+  })
+})
+
+describe.skipIf(!HAS_SQLITE)('layoutOf', () => {
+  const BEFORE_VOTES_ONLY = join(
+    SERVER,
+    'deploy/fixtures/schema-before-votes-only.sql',
+  )
+
+  function databaseFrom(name: string, ...sql: string[]): string {
+    const file = join(dir, name)
+    const db = new Database(file)
+    for (const statements of sql) db.exec(statements)
+    db.close()
+    return file
+  }
+
+  it('tells the layout before votes-only from the one schema.sql makes', () => {
+    const old = join(dir, 'old.db')
+    createOldLayoutDatabase(old)
+    expect(layoutOf(old)).toBe('profiles')
+
+    const schema = readFileSync(join(SERVER, 'schema.sql'), 'utf8')
+    expect(layoutOf(databaseFrom('new.db', schema))).toBe('votes-only')
+  })
+
+  it('calls a converted file the old schema ran on again mixed, by either new table part', () => {
+    // The old schema's CREATE TABLE IF NOT EXISTS adds `profiles` beside what
+    // the conversion made; converting that again turns label ids into labels.
+    const before = readFileSync(BEFORE_VOTES_ONLY, 'utf8')
+    const schema = readFileSync(join(SERVER, 'schema.sql'), 'utf8')
+    expect(layoutOf(databaseFrom('mixed.db', schema, before))).toBe('mixed')
+    expect(
+      layoutOf(
+        databaseFrom(
+          'net-only.db',
+          before,
+          'ALTER TABLE location_votes ADD COLUMN net INTEGER',
+        ),
+      ),
+    ).toBe('mixed')
+  })
+
+  it('is null for a file it cannot read, so the caller refuses to guess', () => {
+    const file = join(dir, 'garbage.db')
+    writeFileSync(file, 'this is not a database')
+    expect(layoutOf(file)).toBeNull()
+  })
+})
+
+describe.skipIf(!HAS_SQLITE)('the votes-only conversion', () => {
+  const PATH = process.env.PATH
+  let live = ''
+  let converted = ''
+
+  beforeEach(() => {
+    // Both run their sqlite3 as xloc through sudo; this one passes through.
+    const bin = join(dir, 'bin')
+    mkdirSync(bin)
+    writeFileSync(join(bin, 'sudo'), '#!/bin/sh\nshift 2\nexec "$@"\n')
+    chmodSync(join(bin, 'sudo'), 0o755)
+    process.env.PATH = `${bin}:${PATH}`
+
+    live = join(dir, 'live.db')
+    converted = join(dir, 'converted.db')
+    createOldLayoutDatabase(live)
+    expect(convertInto(live, join(dir, 'scratch.db'), converted).ok).toBe(true)
+  })
+
+  afterEach(() => {
+    process.env.PATH = PATH
+  })
+
+  function tamper(sql: string): void {
+    const db = new Database(converted)
+    db.exec(sql)
+    db.close()
+  }
+
+  it('gives every vote back as it was, NULLs included', () => {
+    expect(readVotes(converted)).toEqual(readVotes(live))
+    expect(conversionMismatches(live, converted)).toBe(0)
+  })
+
+  it('numbers labels commonest first and dates each by its newest vote', () => {
+    // Id 1 is stored in zero bytes and ids up to 127 in one, so the strings
+    // most votes carry get the smallest ids.
+    const db = new Database(converted, { readonly: true })
+    const labels = db
+      .prepare('SELECT id, text, used_at FROM labels ORDER BY id')
+      .all()
+    db.close()
+    const T = OLD_VOTES[0]!.seen_at - 1
+    expect(labels).toEqual([
+      { id: 1, text: 'Japan', used_at: T + 4 },
+      { id: 2, text: 'web', used_at: T + 5 },
+      { id: 3, text: 'Japan App Store', used_at: T + 1 },
+      { id: 4, text: 'Peru', used_at: T + 5 },
+    ])
+  })
+
+  it('counts a vote whose label id points at another string', () => {
+    tamper("UPDATE location_votes SET location = 4 WHERE username = 'carol'")
+    expect(conversionMismatches(live, converted)).toBe(1)
+  })
+
+  it('counts a label lost to NULL, and a NULL that gained one', () => {
+    tamper(`UPDATE location_votes SET source = NULL WHERE username = 'carol';
+            UPDATE location_votes SET location = 1 WHERE username = 'bob'`)
+    expect(conversionMismatches(live, converted)).toBe(2)
+  })
+
+  it('counts an id with no label behind it where the old vote had none', () => {
+    tamper("UPDATE location_votes SET source = 99 WHERE username = 'bob'")
+    expect(conversionMismatches(live, converted)).toBe(1)
+  })
+
+  it('counts a changed flag or time, and a missing vote', () => {
+    tamper(`UPDATE location_votes SET location_accurate = 1 WHERE client_id = 'c2';
+            UPDATE location_votes SET seen_at = seen_at + 1 WHERE username = 'dave';
+            DELETE FROM location_votes WHERE username = 'carol'`)
+    expect(conversionMismatches(live, converted)).toBe(3)
+  })
+
+  it('tells a text label from the integer a vote held, whatever the column affinity', () => {
+    // A converted file the old schema ran on again holds label ids in INTEGER
+    // columns; converting it makes labels "1" and "3", and there '1' = 1.
+    const mixed = join(dir, 'mixed.db')
+    copyFileSync(converted, mixed)
+    const db = new Database(mixed)
+    db.exec(
+      readFileSync(
+        join(SERVER, 'deploy/fixtures/schema-before-votes-only.sql'),
+        'utf8',
+      ),
+    )
+    db.close()
+    const again = join(dir, 'again.db')
+    expect(convertInto(mixed, join(dir, 'scratch-2.db'), again).ok).toBe(true)
+
+    const withLabel = OLD_VOTES.filter(
+      (v) => v.location !== null || v.source !== null,
+    )
+    expect(conversionMismatches(mixed, again)).toBe(withLabel.length)
+  })
+
+  it('is null when the rebuilt file cannot be read', () => {
+    writeFileSync(converted, 'this is not a database')
+    expect(conversionMismatches(live, converted)).toBeNull()
   })
 })

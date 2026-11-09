@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import worker, { VOTE_RETENTION_MS as RETENTION_MS, type Env } from './index'
 
-// Minimal D1 stand-in that records the prepared SQL and bound args. Every table
-// reports the same last username to the walk in scan.ts.
+// Minimal D1 stand-in that records the prepared SQL and bound args. Every read
+// reports the same last username to the walk in scan.ts, and no counts.
 function mockDb(runResult: unknown = {}) {
   const run = vi.fn().mockResolvedValue(runResult)
   const all = vi.fn().mockResolvedValue({ results: [{ last: 'z' }] })
@@ -22,16 +22,16 @@ describe('scheduled - retention cleanup', () => {
 
     await worker.scheduled(null, env)
 
-    // A DELETE against location_votes filtered on seen_at, then the profiles
-    // that DELETE just stripped of their last vote.
+    // A DELETE against location_votes filtered on seen_at, then the labels no
+    // vote wrote within the window.
     const deletes = prepare.mock.calls
       .map(([sql]) => sql)
       .filter((sql) => sql.startsWith('DELETE'))
     expect(deletes).toHaveLength(2)
     expect(deletes[0]).toContain('DELETE FROM location_votes')
     expect(deletes[0]).toContain('seen_at < ?')
-    expect(deletes[1]).toContain('DELETE FROM profiles')
-    expect(deletes[1]).toContain('NOT EXISTS')
+    expect(deletes[1]).toContain('DELETE FROM labels')
+    expect(deletes[1]).toContain('used_at < ?')
     expect(run).toHaveBeenCalledTimes(2)
 
     // Cutoff is "now minus 60 days", evaluated at call time.
@@ -47,36 +47,36 @@ describe('scheduled - retention cleanup', () => {
     expect(cutoffOf(bind)).toBeLessThan(Date.now())
   })
 
-  it('keeps D1 to one DELETE per table however many rows it holds', async () => {
+  it('keeps D1 to four queries however many rows it holds', async () => {
     // D1 caps the queries one Worker invocation may run, so the chunked walk
     // the Node server uses would fail there once a table grew past a few. That
     // walk also asks where each range ends, which is what the count catches:
-    // per table, its last username and one DELETE, nothing else.
+    // the last username, one vote DELETE, one count, one labels DELETE.
     const { env, prepare, run } = mockDb()
     await worker.scheduled(null, env)
     expect(run).toHaveBeenCalledTimes(2)
     expect(prepare).toHaveBeenCalledTimes(4)
   })
 
-  // The count node-server.ts logs - votes deleted, not profiles expired. The two backends report it in different
+  // The count node-server.ts logs - votes deleted. The two backends report it in different
   // shapes, and neither is guaranteed by db-types.ts, so an unreadable result
   // must degrade to 0 rather than throw - the log line is not worth failing a
   // cleanup over.
   describe('deleted-row count', () => {
     it("reads D1's nested meta.changes", async () => {
       const { env } = mockDb({ success: true, meta: { changes: 42 } })
-      expect(await worker.scheduled(null, env)).toBe(42)
+      expect((await worker.scheduled(null, env)).deleted).toBe(42)
     })
 
     it("reads better-sqlite3's flat changes", async () => {
       const { env } = mockDb({ changes: 7, lastInsertRowid: 0 })
-      expect(await worker.scheduled(null, env)).toBe(7)
+      expect((await worker.scheduled(null, env)).deleted).toBe(7)
     })
 
     it('reports 0 for a result shape it does not recognise', async () => {
       for (const shape of [{}, null, undefined, 5, 'ok', { changes: '3' }]) {
         const { env } = mockDb(shape)
-        expect(await worker.scheduled(null, env)).toBe(0)
+        expect((await worker.scheduled(null, env)).deleted).toBe(0)
       }
     })
   })

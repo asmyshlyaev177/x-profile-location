@@ -1,5 +1,5 @@
-// Full-table work split into username ranges, so a long scan can give way
-// between them. Runs on D1 and better-sqlite3.
+// Walks of location_votes split into username ranges, so a long scan can give
+// way between them. Runs on D1 and better-sqlite3.
 
 import type { Db } from './db-types.ts'
 
@@ -17,22 +17,19 @@ export const WHOLE_TABLE: ScanPolicy = {
   pause: async () => {},
 }
 
-export type ScannedTable = 'profiles' | 'location_votes'
-
 /** Calls `visit` for each range `username > after AND username <= upTo`, in
  *  order, up to the last username the table held when the walk began. */
 export async function forEachUsernameRange(
   db: Db,
-  table: ScannedTable,
   policy: ScanPolicy,
   visit: (after: string, upTo: string) => Promise<void>,
 ): Promise<void> {
   const { results } = await db
-    .prepare(`SELECT MAX(username) AS last FROM ${table}`)
+    .prepare('SELECT MAX(username) AS last FROM location_votes')
     .all<{ last: string | null }>()
   const last = results?.[0]?.last ?? null
   if (last === null) return
-  const endAfter = rangeEnds(db, table, last, policy.chunkRows)
+  const endAfter = rangeEnds(db, last, policy.chunkRows)
   // USERNAME_RE takes one character at least, so every username sorts after ''.
   for (let after = ''; after !== last; ) {
     const upTo = await endAfter(after)
@@ -45,13 +42,12 @@ export async function forEachUsernameRange(
 /** The username `rows` rows past `after`, or `last` when fewer are left. */
 function rangeEnds(
   db: Db,
-  table: ScannedTable,
   last: string,
   rows: number,
 ): (after: string) => Promise<string> {
   // WHOLE_TABLE: an OFFSET past the end would step through every row to say so.
   if (!Number.isFinite(rows)) return async () => last
-  const sql = `SELECT username FROM ${table} WHERE username > ? AND username <= ?
+  const sql = `SELECT username FROM location_votes WHERE username > ? AND username <= ?
     ORDER BY username LIMIT 1 OFFSET ?`
   return async (after) => {
     const { results } = await db
@@ -60,6 +56,29 @@ function rangeEnds(
       .all<{ username: string }>()
     return results?.[0]?.username ?? last
   }
+}
+
+export interface RangeCount {
+  votes: number
+  /** Distinct usernames: a range ends on a whole username, so these sum. */
+  profiles: number
+}
+
+/** One statement for retention and the stats line, which both count a range. */
+export async function countRange(
+  db: Db,
+  after: string,
+  upTo: string,
+): Promise<RangeCount> {
+  const { results } = await db
+    .prepare(
+      `SELECT COUNT(*) AS votes, COUNT(DISTINCT username) AS profiles
+         FROM location_votes WHERE username > ? AND username <= ?`,
+    )
+    .bind(after, upTo)
+    .all<Partial<RangeCount>>()
+  const row = results?.[0]
+  return { votes: row?.votes ?? 0, profiles: row?.profiles ?? 0 }
 }
 
 /** Runs jobs in order, one at a time, so two full-table walks never interleave

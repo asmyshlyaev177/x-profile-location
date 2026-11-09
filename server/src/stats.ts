@@ -3,11 +3,7 @@
 
 import type { Db } from './db-types.ts'
 import { ROUTES, routeOf, type Route } from './index.ts'
-import {
-  forEachUsernameRange,
-  type ScanPolicy,
-  type ScannedTable,
-} from './scan.ts'
+import { countRange, forEachUsernameRange, type ScanPolicy } from './scan.ts'
 
 /** What a request counts as: the route that served it, a CORS preflight for
  *  one of those routes, or anything else. */
@@ -250,29 +246,6 @@ export interface Totals {
   users7d: number
 }
 
-async function countInRange(
-  db: Db,
-  table: ScannedTable,
-  after: string,
-  upTo: string,
-): Promise<number> {
-  const { results } = await db
-    .prepare(
-      `SELECT COUNT(*) AS n FROM ${table} WHERE username > ? AND username <= ?`,
-    )
-    .bind(after, upTo)
-    .all<{ n: number }>()
-  return results?.[0]?.n ?? 0
-}
-
-async function countProfiles(db: Db, policy: ScanPolicy): Promise<number> {
-  let profiles = 0
-  await forEachUsernameRange(db, 'profiles', policy, async (after, upTo) => {
-    profiles += await countInRange(db, 'profiles', after, upTo)
-  })
-  return profiles
-}
-
 interface InstallSeen {
   client_id: string
   last: number
@@ -295,29 +268,27 @@ async function installsSeenInRange(
   return results ?? []
 }
 
-/** The count and the installs read the same range, from pages still cached. */
+/** The counts and the installs read the same range, from pages still cached. */
 async function scanVotes(
   db: Db,
   since: number,
   policy: ScanPolicy,
-): Promise<{ votes: number; lastSeen: Map<string, number> }> {
+): Promise<{ votes: number; profiles: number; lastSeen: Map<string, number> }> {
   let votes = 0
+  let profiles = 0
   const lastSeen = new Map<string, number>()
-  await forEachUsernameRange(
-    db,
-    'location_votes',
-    policy,
-    async (after, upTo) => {
-      votes += await countInRange(db, 'location_votes', after, upTo)
-      for (const r of await installsSeenInRange(db, after, upTo, since)) {
-        lastSeen.set(
-          r.client_id,
-          Math.max(lastSeen.get(r.client_id) ?? 0, r.last),
-        )
-      }
-    },
-  )
-  return { votes, lastSeen }
+  await forEachUsernameRange(db, policy, async (after, upTo) => {
+    const range = await countRange(db, after, upTo)
+    votes += range.votes
+    profiles += range.profiles
+    for (const r of await installsSeenInRange(db, after, upTo, since)) {
+      lastSeen.set(
+        r.client_id,
+        Math.max(lastSeen.get(r.client_id) ?? 0, r.last),
+      )
+    }
+  })
+  return { votes, profiles, lastSeen }
 }
 
 /** A distinct count cannot be summed across chunks, so installs are gathered
@@ -327,8 +298,11 @@ export async function countTotals(
   now: number,
   policy: ScanPolicy,
 ): Promise<Totals> {
-  const profiles = await countProfiles(db, policy)
-  const { votes, lastSeen } = await scanVotes(db, now - 168 * HOUR_MS, policy)
+  const { votes, profiles, lastSeen } = await scanVotes(
+    db,
+    now - 168 * HOUR_MS,
+    policy,
+  )
   const dayAgo = now - 24 * HOUR_MS
   const users24h = [...lastSeen.values()].filter((at) => at >= dayAgo).length
   return { profiles, votes, users24h, users7d: lastSeen.size }

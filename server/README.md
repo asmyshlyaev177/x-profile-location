@@ -34,18 +34,15 @@ Only the three fields that cost a rate-limited X call are stored:
 **Bio and display name are deliberately not stored** — clients already get those
 for free from the timeline JSON, so there is nothing to share.
 
+Each vote also carries the contributing install's random `clientId` and `net`, a 16-bit hash of the network the request came from (/24 for IPv4, /48 for IPv6), which about 256 /24s share. The address itself is never written to the database, and Caddy's logs keep only its /24 or /48, unhashed ([`deploy/Caddyfile`](deploy/Caddyfile)). See [one vote per network](#one-vote-per-network).
+
 ## Anti-poisoning: consensus
 
 Anyone can POST a fake location. The endpoint and its body shape are documented
 below, so this section is written to be useful to someone deciding whether to
 trust the cache — including where it does not currently protect you.
 
-Each install sends an anonymous random `clientId`. The `location_votes` table
-keeps one (latest) vote per client per username, so a single client cannot stuff
-votes for a handle; `location_confidence` is the number of distinct clients
-backing the winning `(location, source, accurate)` tuple. Because the data comes
-from X's own API, honest clients all report an identical tuple. See
-[`src/consensus.ts`](src/consensus.ts).
+Each install sends an anonymous random `clientId`. The `location_votes` table keeps one (latest) vote per client per username, so a single client cannot stuff votes for a handle. Votes are the only record: every lookup works the answer out from the handle's votes, and `conf` is the number of distinct clients backing the winning `(location, source, accurate)` tuple, newest vote breaking a tie. Because the data comes from X's own API, honest clients all report an identical tuple. See [`src/consensus.ts`](src/consensus.ts).
 
 Clients then decide how much agreement to require before believing a value.
 **That threshold currently ships at 1, not 2** — i.e. a single unverified report
@@ -65,17 +62,12 @@ the second figure is a majority of the first:
 
 ```sh
 sqlite3 /var/lib/x-loc-cache/x-loc-cache.db \
-  'SELECT COUNT(*) AS profiles, SUM(location_confidence >= 2) AS ready FROM profiles;'
+  'SELECT COUNT(*) AS profiles, SUM(conf >= 2) AS ready FROM (SELECT MAX(n) AS conf FROM (SELECT username, COUNT(*) AS n FROM location_votes GROUP BY username, location, source, location_accurate) GROUP BY username);'
 ```
 
-Votes are also **capped per username** (`VOTE_CAP`, 10, pruned once a handle
-exceeds 15). Without it `location_votes` grows as _users × profiles each user
-sees_ — the only superlinear term in the system, and the first thing that
-exhausts a small disk. The cap makes it _distinct profiles × 10_, flat in user
-count. Eviction is oldest-first, so the surviving window is the most recent
-observers and a relocation can propagate instead of being outvoted by stale
-data. The trade-off is that poisoning gets cheaper: forged clients only have to
-fill the window rather than out-number every honest vote ever cast.
+On a copy of production from 2026-11-09 that was 1,646,708 profiles, 216,695 (13%) of them at 2 or more.
+
+Votes are also **capped per username** (`VOTE_CAP`, 10, a hard ceiling: the vote that would be the 11th evicts the oldest). Without it `location_votes` grows as _users × profiles each user sees_ — the only superlinear term in the system, and the first thing that exhausts a small disk. The cap makes it _distinct profiles × 10_, flat in user count. Eviction is oldest-first, so the surviving window is the most recent observers and a relocation can propagate instead of being outvoted by stale data. The trade-off is that poisoning gets cheaper: forged clients only have to fill the window rather than out-number every honest vote ever cast. Ids alone no longer do it, because one network keeps one vote per username (below), so it takes distinct networks.
 
 ### Contribution budget
 
@@ -101,6 +93,17 @@ request.** Nothing short of attestation would, and attestation is not compatible
 with the privacy guarantee below. What it does is make the cost of poisoning
 scale with the number of ids an attacker has to manufacture and rotate, where
 today one id poisons without limit.
+
+### One vote per network
+
+Minted ids used to be enough to take over a profile: one machine posting a forged tuple from 10 ids filled the `VOTE_CAP` window and evicted every honest vote. The server now stores each vote with `net`, the sender's /24 (IPv4) or /48 (IPv6) hashed to 16 bits ([`src/network.ts`](src/network.ts)), and a username keeps only the newest vote from each network before the cap applies. Poisoning a profile then takes distinct networks instead of ids.
+
+- The address is the `cf-connecting-ip` header. Cloudflare sets it on the Worker, and the Node server always overwrites it with the address its rate limiter uses (the last `X-Forwarded-For` hop behind a trusted proxy), so a client cannot choose its own network.
+- Installs on one network (a household, an office, a VPN exit) count once per profile.
+- Ties between tuples still go to the newest vote, so one network can still flip a single-vote profile. A forged single vote cannot be told apart from an honest report of a change.
+- 65,536 values over ~16.7M /24s: each value matches about 256 /24s, so it identifies no one. It is deleted with its vote.
+- Votes from before the column hold `NULL`, never merge with another vote, and age out within 60 days.
+- An attacker with many networks (a proxy pool, a botnet) still fills the window. The rule makes poisoning harder, not impossible.
 
 The budget is held in memory rather than in SQLite deliberately. Counting a
 client's recent handles from `location_votes` would need an index on
@@ -139,34 +142,18 @@ All endpoints are CORS-open and take/return JSON; no credentials.
 }
 ```
 
-A handle stays answerable only while somebody keeps looking at it: retention
-deletes votes older than `VOTE_RETENTION_MS` (60 days), and the same pass deletes
-any profile left with none. The next client to want that handle misses, reads it
-from X on hover or in the background, and contributes it back, which rebuilds the
-row. Values are cached for 60 days and then re-earned, so a relocation propagates
-without the server ever asking anyone to re-verify, and an account nobody opens
-any more leaves the database instead of sitting in it forever.
+A handle stays answerable only while somebody keeps looking at it: retention deletes votes older than `VOTE_RETENTION_MS` (60 days), and a handle with no vote left has no answer. The next client to want that handle misses, reads it from X on hover or in the background, and contributes it back. Values are cached for 60 days and then re-earned, so a relocation propagates without the server ever asking anyone to re-verify, and an account nobody opens any more leaves the database instead of sitting in it forever.
 
 `GET /v1/stats` is how many accounts the cache can answer for — the extension's
 toolbar popup shows it, and asks again every 60s for as long as that popup is
 open. It is the only endpoint whose traffic tracks popups rather than reading,
 so it is the only one shaped against a crowd all asking the same question:
 
-- The count is memoised for 3 minutes (`STATS_TTL_MS`), so the database is
-  asked once every 3 minutes however many clients turn up, whether or not they
-  honour the header below.
-- The response carries `Cache-Control: public, max-age=180`, which is what keeps
-  most of those repeats inside the browser. On the Worker backend this is the
-  part that matters: module state is per isolate, so the memo alone does not
-  bound it to one query per window, and an unfiltered `COUNT(*)` reads every
-  row of `profiles` against D1's 5M rows/day.
-- The query is a bare `COUNT(*)`, not `WHERE location_confidence > 0`, though
-  it is the latter that `/v1/loc/batch` serves. They are the same number —
-  `pickConsensus` never returns a confidence below 1, so no row is written
-  below it — and the filtered form decodes every row, where the bare one adds
-  up each page's row count: 26 ms against 0.33 ms over 623k profiles, which
-  better-sqlite3 makes an event-loop stall rather than a slow query. Do not add
-  an index to "fix" that; see [Indexes](#indexes-dont-add-any).
+- The number is distinct usernames with a vote. On Node a request never counts it: `COUNT(DISTINCT username)` over 2.1M votes takes 140 ms on a laptop core, which better-sqlite3 turns into a stall for every request in flight.
+- On Node the server counts it once before it starts listening, then walks of the votes keep it current: each retention pass (60 s after boot, then daily) and a recount every `XLOC_PROFILE_COUNT_MINUTES` (default 10, 0 turns it off), in the same chunks that give way to requests. The number is about ten minutes old at most.
+- A username first contributed into a range the recount has already walked waits for the next recount.
+- A Worker counts it on a request once its number is 180 s old, as before the votes-only layout: D1 runs the query off the isolate's thread, so nothing waits, and the weekly cron alone would leave each isolate's number as old as the isolate.
+- The response carries `Cache-Control: public, max-age=180` (`STATS_TTL_MS`), which keeps most of the popup's repeats inside the browser.
 
 It counts as its own line (`statsReads`) in the daily stats, so `other` still
 means what it did: scanners.
@@ -203,6 +190,8 @@ pnpm db:create          # prints database_id -> paste into wrangler.toml
 pnpm db:init            # applies schema.sql to remote D1
 pnpm deploy             # prints the Worker URL
 ```
+
+A D1 database made before the votes-only layout (2026-11) still has its `profiles` table, and `schema.sql` never converts an existing table. The Worker has no boot check, so this version deployed onto such a database fails every contribution (the old `location_votes` has no `net` column) and serves every profile as "no location". Deploy it onto a database made from the current `schema.sql`.
 
 Free tiers: Workers 100k req/day, D1 5 GB storage, 5M rows read/day, **100k rows
 written/day**. That last one is the binding constraint — measured at ~670 rows
@@ -436,6 +425,8 @@ instead, proxying to `127.0.0.1:8787`. It must set `X-Forwarded-For` the way
 [`deploy/Caddyfile`](deploy/Caddyfile) does, or the rate limiter buckets every
 user together. Caddy obtains and renews its certificate on its own.
 
+The Caddyfile also cuts each client address in Caddy's logs to its /24 or /48, in the access log and in the error entries Caddy writes to the journal, and drops request headers, where a proxy in front of a user puts that user's address. A vhost of your own needs the same, or the privacy policy's "never the full address" does not hold. Caddy only reads `/etc/caddy/Caddyfile`, so a change to the repo's copy takes a `cp` and a reload.
+
 Then, from somewhere off the box:
 
 ```bash
@@ -473,8 +464,10 @@ them:
 
 ```bash
 npx wrangler d1 execute x-loc-cache --remote --command \
-  "SELECT (SELECT COUNT(*) FROM profiles) AS profiles, (SELECT COUNT(*) FROM location_votes) AS votes"
+  "SELECT COUNT(DISTINCT username) AS profiles, COUNT(*) AS votes FROM location_votes"
 ```
+
+A dump of a D1 database in the layout from before votes-only carries `profiles` rows and text locations, so it replays only into that layout: replay it into a file made from that commit's `schema.sql`, then convert the file with `deploy/vacuum.ts` (see "Compacting the database").
 
 **Replay onto the VPS.** `sqlite3` may not be installed; it is worth having
 anyway for the operating commands below.
@@ -486,7 +479,7 @@ sudo apt install -y sqlite3
 sudo systemctl stop x-loc-cache
 sudo -u xloc sqlite3 /var/lib/x-loc-cache/x-loc-cache.db < /tmp/d1-data.sql
 sudo -u xloc sqlite3 /var/lib/x-loc-cache/x-loc-cache.db \
-  "SELECT (SELECT COUNT(*) FROM profiles) AS profiles, (SELECT COUNT(*) FROM location_votes) AS votes"
+  "SELECT COUNT(DISTINCT username) AS profiles, COUNT(*) AS votes FROM location_votes"
 sudo systemctl start x-loc-cache
 curl -s -X POST localhost:8787/v1/loc/batch -H 'content-type: application/json' \
   -d '{"usernames":["<a handle you know is in there>"]}'
@@ -506,14 +499,7 @@ sudo systemctl start x-loc-cache && sudo systemctl stop x-loc-cache
 sudo -u xloc sqlite3 /var/lib/x-loc-cache/x-loc-cache.db < /tmp/d1-data.sql
 ```
 
-Two things worth knowing about the result. **This is a copy, not a cutover** —
-D1 keeps serving every already-installed extension until those users update, so
-the two databases diverge from this moment on, and re-exporting later will carry
-rows that have since moved on independently on the VPS. And **the dump is not
-replayable twice**: it is plain `INSERT` statements, and both tables have primary
-keys (`profiles.username`, `location_votes(username, client_id)`), so a second
-replay fails on the first row that already exists. Re-importing means the wipe
-above, not another replay.
+Two things worth knowing about the result. **This is a copy, not a cutover** — D1 keeps serving every already-installed extension until those users update, so the two databases diverge from this moment on, and re-exporting later will carry rows that have since moved on independently on the VPS. And **the dump is not replayable twice**: it is plain `INSERT` statements, and every table has a primary key (`location_votes(username, client_id)`, `labels.id`), so a second replay fails on the first row that already exists. Re-importing means the wipe above, not another replay.
 
 Check `wrangler d1 export --help` if `--no-schema` has moved in your version; I
 have not run it against your database.
@@ -539,11 +525,7 @@ limit plus a per-IP rate limit, because a bare origin has no edge in front of it
 
 #### Indexes: don't add any
 
-`schema.sql` carries no secondary indexes, and that stays true on SQLite. The
-comment in the schema justifies it by D1's write budget, which does not apply
-here — so it was re-measured on this hardware instead (better-sqlite3, WAL,
-`synchronous=NORMAL`, votes spread over 61 days, one daily retention pass
-deleting the ~1/61 that just aged out):
+`schema.sql` adds no secondary index on `location_votes`, and that stays true on SQLite. Its only index is the automatic one behind `labels.text UNIQUE`, which a contribution uses to find a label by its text. The comment in the schema justifies it by D1's write budget, which does not apply here — so it was re-measured on this hardware instead (better-sqlite3, WAL, `synchronous=NORMAL`, votes spread over 61 days, one daily retention pass deleting the ~1/61 that just aged out):
 
 | Rows | `seen_at` index | Insert | DB size | Retention DELETE |
 | ---- | --------------- | ------ | ------- | ---------------- |
@@ -559,10 +541,7 @@ rows appear in, so a second index adds work to the delete itself, and at 5M rows
 that outweighs the cheaper lookup. Meanwhile every vote insert pays for it, on
 the hot path, forever.
 
-The read paths need nothing either: `profiles.username` is a `TEXT PRIMARY KEY`
-and `location_votes` has `PRIMARY KEY (username, client_id)`, so both
-`WHERE username IN (…)` queries already seek on the primary key, the b-tree each
-table is stored in.
+The read paths need nothing either: `location_votes` has `PRIMARY KEY (username, client_id)`, so the lookup's and the contribution's `WHERE username IN (…)` seek on the primary key, the b-tree the table is stored in, and a lookup finds each label by its integer key, a contribution by its text through the `UNIQUE` index on `labels.text`. Nothing deletes a label by searching the votes for it, which would need an index on `location` and `source`: retention deletes labels by their own `used_at` instead.
 
 Nor does chunking the DELETE need one. better-sqlite3 is synchronous, so the
 pass runs as username ranges that give the event loop a turn every 10 ms
@@ -586,7 +565,7 @@ a forged header can't mint a fresh bucket as long as the proxy appends its own.
 ```bash
 sudo systemctl status x-loc-cache
 sudo journalctl -u x-loc-cache -f
-sudo -u xloc sqlite3 /var/lib/x-loc-cache/x-loc-cache.db 'SELECT COUNT(*) FROM profiles'
+sudo -u xloc sqlite3 /var/lib/x-loc-cache/x-loc-cache.db 'SELECT COUNT(*) FROM location_votes'
 ```
 
 Backups are covered in [their own section](#backups) below.
@@ -739,17 +718,7 @@ WAL flag to carry into a restore. The one cost is that its read snapshot defers
 WAL checkpointing while it runs — sub-second, so the WAL grows by whatever
 arrives in that window.
 
-**Three checks, because each misses what the others catch.** `integrity_check`
-calls an _empty_ database "ok"; a `COUNT(*)` probe proves the tables actually
-arrived, since a failed `VACUUM INTO` leaves a valid file with no tables in it;
-and comparing that count against the source's own from before the run catches a
-short copy. That last comparison is not against the profile count: retention
-deletes profiles whose votes have aged out and can run inside the copy, so the
-table legitimately shrinks. The baseline counts only the rows that pass cannot
-touch — a profile with at least one vote still inside the window — which a
-snapshot can never legitimately come in under. A
-failure prunes nothing, fails the unit, and keeps the rejected snapshot as
-evidence — **one** copy, gzipped, at `backups/corrupt-evidence.db.gz`.
+**Three checks, because each misses what the others catch.** `integrity_check` calls an _empty_ database "ok"; a `COUNT(*)` probe proves the tables actually arrived, since a failed `VACUUM INTO` leaves a valid file with no tables in it; and comparing that count against the source's own from before the run catches a short copy. That last comparison is not against every vote: retention deletes votes that have aged out and can run inside the copy, so the table legitimately shrinks. The baseline counts only what that pass cannot touch, the usernames with at least one vote still inside the window (the cap evicts a username's oldest votes, never its last one), which a snapshot can never legitimately come in under. A failure prunes nothing, fails the unit, and keeps the rejected snapshot as evidence — **one** copy, gzipped, at `backups/corrupt-evidence.db.gz`.
 
 That it is one and not one-per-night is deliberate, and was a bug before it was
 a feature. Whatever fails verification is usually permanent, so the branch runs
@@ -932,10 +901,7 @@ running `VACUUM` in place:
    points at [Restore](#restore).
 2. Checks there is room beside the database for a second copy of it. This is
    the one script that can fill the disk the server writes to.
-3. Stops the service, rebuilds with `VACUUM INTO`, and verifies the result
-   with the same three checks `backup.ts` runs on a snapshot — `integrity_check`,
-   the row counts, and a profile count that cannot have shrunk. A failure at
-   any point restarts the service and leaves the original in place.
+3. Stops the service, rebuilds with `VACUUM INTO`, and verifies the result with `integrity_check` and the vote and username counts, which must equal the live file's: the service is stopped, so any difference is a bad rebuild. A failure at any point leaves the original in place and restarts the service, except in a [conversion](#converting-to-the-votes-only-layout-2026-11), where the service stays stopped because the code checked out cannot serve the original.
 4. Swaps it in, moving `-wal`/`-shm` aside with the file they belong to, and
    confirms `/healthz`. The original is kept as `*.replaced-<stamp>`; delete
    it once this has proven out.
@@ -969,6 +935,32 @@ for the entire rewrite, against a `busy_timeout` of 5 s, and it stages the new
 database in the WAL before checkpointing — peak disk of roughly twice the
 file, on the disk the backups are already sharing. It also cannot be verified
 before it commits, or rolled back after.
+
+#### Converting to the votes-only layout (2026-11)
+
+Until 2026-11 the database kept a `profiles` table beside the votes and stored locations as text. A file made then keeps that layout, because `CREATE TABLE IF NOT EXISTS` never changes a table that exists, and this version refuses to start on it. Were it to start, every contribution would fail with 500 and write nothing, because the old `location_votes` has no `net` column, and every old profile would be served as "no location" with `/healthz` green. `vacuum.ts` converts it. When the live file has a `profiles` table, the rebuild is a new file made from `schema.sql` and filled by [`deploy/votes-only.sql`](deploy/votes-only.sql), then packed with `VACUUM INTO`. Besides the integrity check and the exact counts, every vote is read back through `labels` and compared with the live row. The swap and the kept original are the same as for a compaction.
+
+`update.ts` cannot do this deploy alone: the new code fails to start on the old file, so it rolls back. Pull by hand, let `vacuum.ts` convert and start the new code, then run `update.ts` for the units:
+
+```bash
+sudo systemctl start x-loc-backup.service             # a fresh verified archive first
+sudo systemctl start x-loc-vacuum.service             # waits for the compaction that backup queued
+cd /opt/x-loc-cache && sudo git pull                   # the running process keeps the old code
+sudo /opt/x-loc-cache/server/deploy/vacuum.ts -y       # stop, convert, verify, swap, start the new code
+cd /opt/x-loc-cache/server && npm run update           # unit sync, settings note, restart, healthz
+sudo cp /opt/x-loc-cache/server/deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
+sudo sh -c 'rm -f /var/log/caddy/xloc-*.log* && truncate -s 0 /var/log/caddy/xloc.log'
+```
+
+The last two lines are this release's Caddyfile, which masks client addresses in Caddy's logs, and the removal of the logs written before it, which hold full addresses. Older Caddy error entries in the journal age out under journald's own limits.
+
+The second line is there because the backup's `OnSuccess=` only queues `x-loc-vacuum.service`, so the first line can return while the old `vacuum.ts` is still about to stop the service and swap the file. Both units are `Type=oneshot`, so starting the queued unit joins its start job and returns when it exits; if it already ran, it runs again and finds the measurement it refreshed, so it does nothing.
+
+After the hand pull `update.ts` finds nothing to pull, so it cannot see a changed `package.json`: it reinstalls only when the native module fails to load, and the conversion's `/healthz` has already shown that it loads. If `git pull` listed `server/package.json` or `server/package-lock.json`, run `cd /opt/x-loc-cache/server && sudo env PATH=/usr/bin:/bin /usr/bin/npm install --omit=dev` before `vacuum.ts`, under the Node that `ExecStart` names.
+
+A conversion that fails after stopping the service leaves the original in place and the service stopped, because the pulled code refuses the old layout and `Restart=always` would only crash-loop it. `vacuum.ts` prints the way back, which serves the original on the code from before the pull: `git -C /opt/x-loc-cache reset --hard ORIG_HEAD && systemctl start x-loc-cache`. When the converted file is swapped in and `/healthz` fails, it prints the same reset after the commands that put the original back. `ORIG_HEAD` moves on every `git pull`, a no-op one included, so after a second pull take the old commit from `git reflog`.
+
+On a copy of production (321 MB, 1.65M profiles, 2.1M votes, 2026-11-09) the conversion took 3.9 s and the checks 1.9 s on a laptop, and the file came to 139.6 MB with no vote mismatched. Code from before the change still starts on a converted file: its schema adds an empty `profiles` table, `/healthz` stays green, and it writes text votes into the columns that hold label ids. `vacuum.ts` refuses that file before stopping anything, because converting it again would turn each label id into a label. So rolling the code back past this change means putting back the kept `x-loc-cache.db.replaced-<stamp>` (or an archive from before) too, before the old code starts. An archive from before the change restores the old layout, which this version will not start on: run `vacuum.ts -y` after such a restore.
 
 ### Alerting
 
@@ -1071,7 +1063,7 @@ To rehearse a restore without touching the service:
 
 ```bash
 gunzip -c /var/lib/x-loc-cache/backups/x-loc-cache-<stamp>.db.gz > /tmp/rehearse.db
-sqlite3 /tmp/rehearse.db 'PRAGMA integrity_check; SELECT COUNT(*) FROM profiles;'
+sqlite3 /tmp/rehearse.db 'PRAGMA integrity_check; SELECT COUNT(*) FROM location_votes;'
 ```
 
 ### Performance at 10k users
@@ -1206,14 +1198,7 @@ reach, the same profiles take more room: 675 MB at ~2,200 users (tick 19 s, p99
 126 ms, backup 82 s) and 1361 MB at ~4,400 (tick 59 s, p99 94 ms, backup 175 s),
 again with no timeouts.
 
-The users row maps size linearly from ~300 users on ~500k profiles. Overlapping
-timelines should make profiles grow slower than users, so it is the pessimistic
-end. A Vultr vCPU and disk are also slower than the laptop core and NVMe that
-stood in for them, so every time here is a floor. `/v1/stats` still counts
-profiles in one statement on a cache miss, at most once per `STATS_TTL_MS`: at
-most 0.16 s up to 675 MB and 0.95 s at 1361 MB, measured without the memory
-limit. That count read only the key index then; it now reads the table itself,
-about three times the pages.
+The users row maps size linearly from ~300 users on ~500k profiles. Overlapping timelines should make profiles grow slower than users, so it is the pessimistic end. A Vultr vCPU and disk are also slower than the laptop core and NVMe that stood in for them, so every time here is a floor. `/v1/stats` counted profiles in one statement on a cache miss then: at most 0.16 s up to 675 MB and 0.95 s at 1361 MB, measured without the memory limit. It no longer counts on a request; retention and the Node recount do, in ranges.
 
 Further out, in the bench's older shape of ~2.7 votes per profile, at **10M
 profiles / 27.2M votes / 3084 MB** — three times the machine's RAM — lookups in
@@ -1232,9 +1217,26 @@ what keeps it from being 10x worse, since 10M profiles at `VOTE_CAP` rather than
 That peak is why the run preflights the disk and why the timer is every other
 day rather than nightly — see "Backups".
 
-Retention bounds `profiles` at the distinct handles seen inside the 60-day
-window, so size follows traffic, not age: ~500k profiles is ~8k new handles a
-day, and each column above is that rate multiplied.
+Retention bounds the votes at what was contributed inside the 60-day window, so size follows traffic, not age. Each column above is a rate of new handles multiplied.
+
+#### Production on 2026-11-09, and the votes-only layout
+
+Sizes here are MiB, the unit of the stats line's `dbMb` and `rssMb` and of `MemoryMax=640M`.
+
+- The window held 2.1M votes on 1.65M handles from 1,175 installs, ~660 of them in the last week. Each week added ~400k votes on ~340k distinct handles, ~290k of them first seen that week, and adjacent weeks shared only ~28k handles (a lower bound, as a vote keeps only its latest time), so the window does not saturate: `dbMb` grows with traffic until the low September weeks expire.
+- On the old layout that file was 307 MiB and the process 374 MiB RSS. At the same traffic the full window holds ~2.9-3.4M votes, ~430-500 MiB in the old layout, which is at the 640 MiB limit once the process's own 90-115 MiB (anonymous plus the mapped Node binary) is counted.
+- The votes-only layout converted that file to 133 MiB. Old and new builds, each on its own copy under the unit's start flags, one run each on the laptop:
+
+|                                                           | old layout     | votes-only     |
+| --------------------------------------------------------- | -------------- | -------------- |
+| RSS after the retention pass                              | 397 MiB        | 223 MiB        |
+| RSS after 4,000 lookups and 500 contributions             | 423 MiB        | 250 MiB        |
+| database mapped (the whole file, read daily by retention) | 307 MiB        | 133 MiB        |
+| retention pass                                            | 1.17 s         | 0.56 s         |
+| lookup of 50 names, p50 / p99                             | 0.52 / 1.36 ms | 0.55 / 1.48 ms |
+
+- RSS is the database file plus 90-115 MiB, because the daily walk touches every page. The lookup difference is smaller than the gap between two runs of the old build (0.52 and 0.71 ms p50).
+- Pages filled by random inserts sit ~89% full (307 MiB live against 273 MiB rebuilt), so at today's traffic the votes-only file settles near 205-245 MiB, leaving room for about twice the users before the file passes ~525 MiB, which is where the 640 MiB limit starts evicting pages.
 
 ### Usage stats
 
@@ -1476,13 +1478,35 @@ docker run --rm -v x-loc-data:/data x-loc-cache:latest sh -c '
   set -e
   sqlite3 /data/x-loc-cache.db "PRAGMA integrity_check;"
   sqlite3 /data/x-loc-cache.db "VACUUM INTO '\''/data/vacuum.tmp.db'\''"
-  sqlite3 /data/vacuum.tmp.db "PRAGMA integrity_check; SELECT COUNT(*) FROM profiles;"
+  sqlite3 /data/vacuum.tmp.db "PRAGMA integrity_check; SELECT COUNT(DISTINCT username), COUNT(*) FROM location_votes;"
   mv /data/x-loc-cache.db /data/x-loc-cache.db.replaced
   rm -f /data/x-loc-cache.db-wal /data/x-loc-cache.db-shm
   mv /data/vacuum.tmp.db /data/x-loc-cache.db'
 docker compose start
 curl -s localhost:8787/healthz
 ```
+
+**Converting to the votes-only layout** (see [the systemd version](#converting-to-the-votes-only-layout-2026-11)) is the same recipe with the conversion where the `VACUUM INTO` was. Build the new image first and do not start it: it refuses the old file.
+
+```bash
+git pull && docker compose build
+docker compose stop
+docker run --rm -v x-loc-data:/data x-loc-cache:latest sh -c '
+  set -e
+  rm -f /data/convert.tmp.db /data/vacuum.tmp.db
+  sqlite3 /data/x-loc-cache.db "PRAGMA integrity_check; SELECT COUNT(DISTINCT username), COUNT(*) FROM location_votes;"
+  sqlite3 -bail /data/convert.tmp.db ".read /app/schema.sql" "ATTACH '\''/data/x-loc-cache.db'\'' AS live;" "BEGIN;" ".read /app/deploy/votes-only.sql" "COMMIT;"
+  sqlite3 /data/convert.tmp.db "VACUUM INTO '\''/data/vacuum.tmp.db'\''"
+  rm /data/convert.tmp.db
+  sqlite3 /data/vacuum.tmp.db "PRAGMA integrity_check; SELECT COUNT(DISTINCT username), COUNT(*) FROM location_votes;"
+  mv /data/x-loc-cache.db /data/x-loc-cache.db.replaced
+  rm -f /data/x-loc-cache.db-wal /data/x-loc-cache.db-shm
+  mv /data/vacuum.tmp.db /data/x-loc-cache.db' &&
+docker compose up -d
+curl -s localhost:8787/healthz
+```
+
+Compare the two count lines before trusting the result: they must be equal. The `&&` keeps the new image stopped when the conversion fails, because it refuses the old file. Until the last two `mv`s the old file is still in place, so the old image serves it again after `git reset --hard ORIG_HEAD && docker compose build && docker compose up -d`, and the `rm -f` at the top lets the recipe run again from the start.
 
 The `-wal`/`-shm` warning above applies here in full: they describe the file
 being replaced. Check the integrity of the live database **before** rebuilding

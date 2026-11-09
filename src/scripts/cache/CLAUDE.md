@@ -39,8 +39,10 @@ measured without shipping a build. Flip it once this is a majority:
 
 ```bash
 sqlite3 /var/lib/x-loc-cache/x-loc-cache.db \
-  'SELECT COUNT(*) AS profiles, SUM(location_confidence >= 2) AS ready FROM profiles;'
+  'SELECT COUNT(*) AS profiles, SUM(conf >= 2) AS ready FROM (SELECT MAX(n) AS conf FROM (SELECT username, COUNT(*) AS n FROM location_votes GROUP BY username, location, source, location_accurate) GROUP BY username);'
 ```
+
+On a copy of production from 2026-11-09 it gave 216,695 of 1,646,708 (13%).
 
 Confidence can only climb if the same handle is looked up first-hand twice, and a value
 this cache hands over is written to local IDB immediately - which is exactly the state in

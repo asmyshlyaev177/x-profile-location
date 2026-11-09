@@ -200,6 +200,42 @@ export async function readIdb(page: Page): Promise<string[]> {
   )
 }
 
+/** The location the extension's IDB cache holds for `username`, or null when it
+ *  holds none. On a page at the x.com origin, like readIdb. */
+export async function readIdbLocation(
+  page: Page,
+  username: string,
+): Promise<string | null> {
+  return page.evaluate(
+    (key) =>
+      new Promise<string | null>((resolve, reject) => {
+        const req = indexedDB.open('x-profile-location')
+        req.onerror = () => reject(req.error)
+        req.onsuccess = () => {
+          const db = req.result
+          if (!db.objectStoreNames.contains('location-data')) {
+            db.close()
+            return resolve(null)
+          }
+          const tx = db.transaction('location-data', 'readonly')
+          const getReq = tx.objectStore('location-data').get(key)
+          getReq.onsuccess = () => {
+            db.close()
+            const entry = getReq.result as
+              | { data?: { location?: string | null } }
+              | undefined
+            resolve(entry?.data?.location ?? null)
+          }
+          getReq.onerror = () => {
+            db.close()
+            reject(getReq.error)
+          }
+        }
+      }),
+    username.toLowerCase(),
+  )
+}
+
 type ReplyRow = {
   screenName: string
   path: string
@@ -836,6 +872,7 @@ export async function mockCacheCount(page: Page, profiles: number) {
 export async function mockSharedCache(
   page: Page,
   profile: SharedCacheProfile | null,
+  { contributionStatus = 200 }: { contributionStatus?: number } = {},
 ): Promise<{
   served: string[]
   /** Every batch, hit or miss — `served` only sees the names it answered for. */
@@ -879,9 +916,11 @@ export async function mockSharedCache(
       contributions.push(...(body?.entries ?? []))
 
       await route.fulfill({
-        status: 200,
+        status: contributionStatus,
         headers: { ...CORS_HEADERS, 'content-type': 'application/json' },
-        body: JSON.stringify({ ok: true }),
+        body: JSON.stringify(
+          contributionStatus === 200 ? { ok: true } : { error: 'internal' },
+        ),
       })
     },
   )

@@ -36,12 +36,19 @@ import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { isOutOfSpace } from './alert.ts'
 import { autoVacuumPct, rootRefusal } from './backup.ts'
+import {
+  OLD_VOTES,
+  createOldLayoutDatabase,
+  readVotes,
+} from './fixtures/old-layout.ts'
 
 const DEPLOY = import.meta.dirname
 const SERVER = join(DEPLOY, '..')
 const BACKUP = join(DEPLOY, 'backup.ts')
 const RESTORE = join(DEPLOY, 'restore.ts')
 const VACUUM = join(DEPLOY, 'vacuum.ts')
+// The checkout these scripts run from; git pull leaves its old commit at ORIG_HEAD.
+const CODE_ROLLBACK = `git -C ${join(SERVER, '..')} reset --hard ORIG_HEAD`
 
 function available(cmd: string): boolean {
   return spawnSync('sh', ['-c', `command -v ${cmd}`]).status === 0
@@ -107,25 +114,31 @@ function realSqlite3(): string {
   }).stdout.trim()
 }
 
+// Label ids the seeded votes point at, as the server's own writes would.
+const LABELS = { 'United States': 1, web: 2, Japan: 3 } as const
+
+/** `profiles` usernames with three votes each, every one inside the window. */
 function seed(file: string, profiles: number): void {
   const db = new Database(file)
   db.pragma('journal_mode = WAL')
   db.exec(readFileSync(join(SERVER, 'schema.sql'), 'utf8'))
-  const insProfile = db.prepare(
-    'INSERT OR REPLACE INTO profiles (username, location, source, location_accurate, location_confidence, updated_at) VALUES (?,?,?,?,?,?)',
+  const insLabel = db.prepare(
+    'INSERT OR IGNORE INTO labels (id, text, used_at) VALUES (?, ?, ?)',
   )
+  for (const [text, id] of Object.entries(LABELS)) {
+    insLabel.run(id, text, Date.now())
+  }
   const insVote = db.prepare(
     'INSERT OR REPLACE INTO location_votes (username, client_id, location, source, location_accurate, seen_at) VALUES (?,?,?,?,?,?)',
   )
   const fill = db.transaction((n: number) => {
     for (let i = 0; i < n; i++) {
-      insProfile.run(`seeded-${i}`, 'United States', 'web', 1, 1, Date.now())
       for (let c = 0; c < 3; c++) {
         insVote.run(
           `seeded-${i}`,
           `client-${c}`,
-          'United States',
-          'web',
+          LABELS['United States'],
+          LABELS.web,
           1,
           Date.now(),
         )
@@ -165,23 +178,26 @@ describe('backup.ts — the auto vacuum threshold', () => {
 })
 
 /**
- * Profiles whose only votes are past the retention window — the rows the next
+ * Usernames whose only votes are past the retention window — the rows the next
  * retention pass deletes, and the ones backup.ts's baseline must not count.
  */
 function addExpiredProfiles(n: number): void {
   const db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
   const stale = Date.now() - 61 * 24 * 60 * 60 * 1000
-  const insProfile = db.prepare(
-    'INSERT OR REPLACE INTO profiles (username, location, source, location_accurate, location_confidence, updated_at) VALUES (?,?,?,?,?,?)',
-  )
   const insVote = db.prepare(
     'INSERT OR REPLACE INTO location_votes (username, client_id, location, source, location_accurate, seen_at) VALUES (?,?,?,?,?,?)',
   )
   const fill = db.transaction((count: number) => {
     for (let i = 0; i < count; i++) {
-      insProfile.run(`expired-${i}`, 'Japan', 'web', 1, 1, stale)
-      insVote.run(`expired-${i}`, 'old-client', 'Japan', 'web', 1, stale)
+      insVote.run(
+        `expired-${i}`,
+        'old-client',
+        LABELS.Japan,
+        LABELS.web,
+        1,
+        stale,
+      )
     }
   })
   fill(n)
@@ -226,10 +242,12 @@ function liveBytes(file = dbPath): number {
  * steady churn. Retention deletes votes where new ones land, so those pages
  * come straight back — this is the one-off the whole measurement exists for.
  */
-function emptyVotes(): void {
+/** Two of every username's three votes go, so a rebuild has pages to hand back
+ *  while every username keeps one. */
+function thinVotes(): void {
   const db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
-  db.exec('DELETE FROM location_votes')
+  db.exec("DELETE FROM location_votes WHERE client_id <> 'client-0'")
   db.pragma('wal_checkpoint(TRUNCATE)')
   db.close()
 }
@@ -263,13 +281,10 @@ const db = new Database(file)
 db.pragma('journal_mode = WAL')
 db.pragma('synchronous = NORMAL')
 db.pragma('busy_timeout = 5000')
-const p = db.prepare('INSERT OR REPLACE INTO profiles (username, location, source, location_accurate, location_confidence, updated_at) VALUES (?,?,?,?,?,?)')
 const v = db.prepare('INSERT OR REPLACE INTO location_votes (username, client_id, location, source, location_accurate, seen_at) VALUES (?,?,?,?,?,?)')
 const tx = db.transaction(n => {
   for (let i = 0; i < 10; i++) {
-    const u = 'load-' + (n + i)
-    p.run(u, 'United States', 'web', 1, 1, Date.now())
-    v.run(u, 'load-writer', 'United States', 'web', 1, Date.now())
+    v.run('load-' + (n + i), 'load-writer', 1, 2, 1, Date.now())
   }
 })
 const end = Date.now() + Number(seconds) * 1000
@@ -318,9 +333,11 @@ describe.skipIf(MISSING.length > 0)(
 
       const restored = openArchive(join(backupDir, only!))
       expect(restored.pragma('integrity_check', { simple: true })).toBe('ok')
-      expect(restored.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual(
-        { n: 200 },
-      )
+      expect(
+        restored
+          .prepare('SELECT COUNT(DISTINCT username) n FROM location_votes')
+          .get(),
+      ).toEqual({ n: 200 })
       expect(
         restored.prepare('SELECT COUNT(*) n FROM location_votes').get(),
       ).toEqual({ n: 600 })
@@ -422,7 +439,7 @@ describe.skipIf(MISSING.length > 0)(
 
     it('sees the free space a mass delete leaves behind', () => {
       seed(dbPath, 600)
-      emptyVotes()
+      thinVotes()
       // Measurement only: the auto vacuum below the assertions is off, so the
       // status file records the bloated live size rather than the fixed one.
       const r = run(BACKUP, [], { XLOC_AUTO_VACUUM_PCT: '0' })
@@ -442,7 +459,7 @@ describe.skipIf(MISSING.length > 0)(
 
     it('never touches the live database itself, whatever it measures', () => {
       seed(dbPath, 600)
-      emptyVotes()
+      thinVotes()
       const before = liveBytes()
       const r = run(BACKUP, []) // default threshold: 20%
       expect(r.status).toBe(0)
@@ -460,7 +477,7 @@ describe.skipIf(MISSING.length > 0)(
 
     it('reports a garbled threshold from the run that measures it', () => {
       seed(dbPath, 600)
-      emptyVotes()
+      thinVotes()
       const r = run(BACKUP, [], { XLOC_AUTO_VACUUM_PCT: 'lots' })
       expect(r.status).toBe(0)
       // Caught here rather than only in vacuum.ts, which runs afterwards: this
@@ -494,9 +511,11 @@ describe.skipIf(MISSING.length > 0)(
       expect(r.stdout).toContain('backup ok')
 
       const restored = openArchive(join(backupDir, archives()[0]!))
-      expect(restored.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual(
-        { n: 0 },
-      )
+      expect(
+        restored
+          .prepare('SELECT COUNT(DISTINCT username) n FROM location_votes')
+          .get(),
+      ).toEqual({ n: 0 })
       restored.close()
     })
 
@@ -509,9 +528,11 @@ describe.skipIf(MISSING.length > 0)(
       expect(r.status).toBe(0)
 
       const restored = openArchive(join(backupDir, archives()[0]!))
-      expect(restored.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual(
-        { n: 5 },
-      )
+      expect(
+        restored
+          .prepare('SELECT COUNT(DISTINCT username) n FROM location_votes')
+          .get(),
+      ).toEqual({ n: 5 })
       restored.close()
     })
 
@@ -713,7 +734,7 @@ describe.skipIf(MISSING.length > 0)(
       expect(archives()).toEqual([])
     })
 
-    it('fails when the snapshot holds fewer profiles than the source did', () => {
+    it('fails when the snapshot holds fewer usernames with a vote than the source did', () => {
       seed(dbPath, 300)
       mkdirSync(backupDir, { recursive: true })
       writeFileSync(
@@ -731,7 +752,7 @@ describe.skipIf(MISSING.length > 0)(
           {
             sqlite3: `
 case "$*" in
-  *"COUNT(*) FROM profiles; SELECT COUNT(*) FROM location_votes"*) echo 7; echo 9; exit 0 ;;
+  *"COUNT(DISTINCT username), COUNT(*) FROM location_votes"*) echo "7|9"; exit 0 ;;
 esac
 exec ${real} "$@"`,
           },
@@ -745,7 +766,7 @@ exec ${real} "$@"`,
     })
 
     it('accepts a snapshot short by exactly what retention could have taken', () => {
-      // Retention can land inside the copy and take profiles whose last vote
+      // Retention can land inside the copy and take usernames whose last vote
       // just aged out. The baseline excludes exactly those 50.
       seed(dbPath, 300)
       addExpiredProfiles(50)
@@ -758,7 +779,7 @@ exec ${real} "$@"`,
         stubs({
           sqlite3: `
 case "$*" in
-  *"COUNT(*) FROM profiles; SELECT COUNT(*) FROM location_votes"*) echo 300; echo 900; exit 0 ;;
+  *"COUNT(DISTINCT username), COUNT(*) FROM location_votes"*) echo "300|900"; exit 0 ;;
 esac
 exec ${real} "$@"`,
         }),
@@ -781,7 +802,7 @@ exec ${real} "$@"`,
       const short = stubs({
         sqlite3: `
 case "$*" in
-  *"COUNT(*) FROM profiles; SELECT COUNT(*) FROM location_votes"*) echo 7; echo 9; exit 0 ;;
+  *"COUNT(DISTINCT username), COUNT(*) FROM location_votes"*) echo "7|9"; exit 0 ;;
 esac
 exec ${real} "$@"`,
       })
@@ -841,7 +862,7 @@ exec ${real} "$@"`,
 case "$*" in
   *integrity_check*"${dbPath}"* | *"${dbPath}"*integrity_check*)
     echo "*** in database main ***"
-    echo "wrong # of entries in index sqlite_autoindex_profiles_1"
+    echo "wrong # of entries in index sqlite_autoindex_labels_1"
     exit 0 ;;
 esac
 exec ${real} "$@"`,
@@ -908,16 +929,13 @@ describe.skipIf(MISSING.length > 0)('backup.ts — under write load', () => {
     for (const gz of archives()) {
       const snap = openArchive(join(backupDir, gz))
       expect(snap.pragma('integrity_check', { simple: true })).toBe('ok')
-      const profiles = snap
-        .prepare("SELECT COUNT(*) n FROM profiles WHERE username LIKE 'load-%'")
-        .get() as { n: number }
       const votes = snap
         .prepare(
           "SELECT COUNT(*) n FROM location_votes WHERE client_id = 'load-writer'",
         )
         .get() as { n: number }
-      // Each writer transaction inserts one of each; a torn snapshot differs.
-      expect(profiles.n).toBe(votes.n)
+      // Each writer transaction inserts ten; a torn snapshot holds part of one.
+      expect(votes.n % 10).toBe(0)
       snap.close()
     }
 
@@ -949,7 +967,7 @@ describe.skipIf(MISSING.length > 0)('vacuum.ts', () => {
 
   it('--if-needed rebuilds off the backup measurement, and only past it', () => {
     seed(dbPath, 600)
-    emptyVotes()
+    thinVotes()
     const log = join(dir, 'systemctl.log')
 
     // No measurement yet: a rebuild is the last thing to do to a database no
@@ -980,7 +998,7 @@ describe.skipIf(MISSING.length > 0)('vacuum.ts', () => {
 
   it('--if-needed does nothing when the threshold is switched off', () => {
     seed(dbPath, 600)
-    emptyVotes()
+    thinVotes()
     expect(run(BACKUP, []).status).toBe(0)
     const before = liveBytes()
 
@@ -996,7 +1014,7 @@ describe.skipIf(MISSING.length > 0)('vacuum.ts', () => {
     // Written as root. Left root-owned it fails every backup after it, which
     // is the whole class of failure the vacuum unit is otherwise free of.
     seed(dbPath, 600)
-    emptyVotes()
+    thinVotes()
     expect(run(BACKUP, []).status).toBe(0)
 
     const log = join(dir, 'systemctl.log')
@@ -1010,7 +1028,7 @@ describe.skipIf(MISSING.length > 0)('vacuum.ts', () => {
     // Same reason, one step worse: a root-owned *directory* there cannot be
     // written to at all, and nothing in the backup path can repair it.
     seed(dbPath, 600)
-    emptyVotes()
+    thinVotes()
     const absent = join(dir, 'no-backups-here')
 
     const r = run(VACUUM, ['-y'], {
@@ -1026,7 +1044,7 @@ describe.skipIf(MISSING.length > 0)('vacuum.ts', () => {
     // systemd triggers this path now, so it runs with nobody watching. A
     // rebuild carries the fault across and destroys what a restore needs.
     seed(dbPath, 600)
-    emptyVotes()
+    thinVotes()
     expect(run(BACKUP, []).status).toBe(0)
 
     const log = join(dir, 'systemctl.log')
@@ -1038,7 +1056,7 @@ describe.skipIf(MISSING.length > 0)('vacuum.ts', () => {
 case "$*" in
   *"${dbPath}"*integrity_check* | *integrity_check*"${dbPath}"*)
     echo "*** in database main ***"
-    echo "wrong # of entries in index sqlite_autoindex_profiles_1"
+    echo "wrong # of entries in index sqlite_autoindex_labels_1"
     exit 0 ;;
 esac
 exec ${realSqlite3()} "$@"`,
@@ -1053,7 +1071,7 @@ exec ${realSqlite3()} "$@"`,
 
   it('rebuilds the database, verifies it, and keeps the original beside it', () => {
     seed(dbPath, 600)
-    emptyVotes()
+    thinVotes()
     const before = liveBytes()
     const log = join(dir, 'systemctl.log')
 
@@ -1082,14 +1100,15 @@ exec ${realSqlite3()} "$@"`,
 
     const db = new Database(dbPath)
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
-    expect(db.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+    expect(
+      db.prepare('SELECT COUNT(DISTINCT username) n FROM location_votes').get(),
+    ).toEqual({
       n: 600,
     })
     // And the server can write to what it was handed.
-    db.prepare('INSERT INTO profiles (username, location) VALUES (?, ?)').run(
-      'after-vacuum',
-      'Somewhere',
-    )
+    db.prepare(
+      'INSERT INTO location_votes (username, client_id) VALUES (?, ?)',
+    ).run('after-vacuum', 'Somewhere')
     db.close()
   })
 
@@ -1110,10 +1129,133 @@ exec ${realSqlite3()} "$@"`,
 
     const db = new Database(dbPath)
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
-    expect(db.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+    expect(
+      db.prepare('SELECT COUNT(DISTINCT username) n FROM location_votes').get(),
+    ).toEqual({
       n: 100,
     })
     db.close()
+  })
+
+  function tablesOf(file: string): string[] {
+    const db = new Database(file, { readonly: true })
+    const rows = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
+      )
+      .all() as { name: string }[]
+    db.close()
+    return rows.map((r) => r.name)
+  }
+
+  function rebuildLeftovers(): string[] {
+    return readdirSync(dir).filter((f) => /^(vacuum|convert)-/.test(f))
+  }
+
+  it('converts a file from before votes-only, keeping every vote and the original', () => {
+    // The server refuses to open that layout, so this is the only way across.
+    createOldLayoutDatabase(dbPath)
+    const r = run(VACUUM, ['-y'], vacuumStubs(join(dir, 'systemctl.log')))
+    expect(r.stderr).toBe('')
+    expect(r.status).toBe(0)
+    expect(r.stdout).toContain('converted to the votes-only layout')
+    expect(r.stdout).toContain('healthz ok')
+
+    expect(tablesOf(dbPath)).toEqual(['labels', 'location_votes'])
+    expect(readVotes(dbPath)).toEqual(OLD_VOTES)
+    expect(rebuildLeftovers()).toEqual([])
+
+    // The rollback the script prints puts back the old layout, every row.
+    const original = r.stdout.match(/kept as (\S+)/)![1]!
+    expect(tablesOf(original)).toEqual(['location_votes', 'profiles'])
+    expect(readVotes(original)).toEqual(OLD_VOTES)
+  })
+
+  it('rebuilds a converted file plainly the next time', () => {
+    createOldLayoutDatabase(dbPath)
+    const log = join(dir, 'systemctl.log')
+    expect(run(VACUUM, ['-y'], vacuumStubs(log)).status).toBe(0)
+
+    const again = run(VACUUM, ['-y'], vacuumStubs(log))
+    expect(again.stderr).toBe('')
+    expect(again.status).toBe(0)
+    expect(again.stdout).toContain('compacted')
+    expect(again.stdout).not.toContain('converted')
+    expect(readVotes(dbPath)).toEqual(OLD_VOTES)
+  })
+
+  it('keeps the original when a converted vote does not read back as it was', () => {
+    // Counts and integrity_check both pass a vote whose label id points at the
+    // wrong string; only reading every vote back catches it.
+    createOldLayoutDatabase(dbPath)
+    const log = join(dir, 'systemctl.log')
+    const r = run(
+      VACUUM,
+      ['-y'],
+      vacuumStubs(log, {
+        sqlite3: `
+case "$*" in
+  *"FROM live.location_votes o"*) echo 1; exit 0 ;;
+esac
+exec ${realSqlite3()} "$@"`,
+      }),
+    )
+
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('failed the content check')
+    expect(replaced()).toEqual([])
+    expect(rebuildLeftovers()).toEqual([])
+    expect(tablesOf(dbPath)).toEqual(['location_votes', 'profiles'])
+    expect(readVotes(dbPath)).toEqual(OLD_VOTES)
+    // The checked-out code refuses the old layout, so a restart only
+    // crash-loops: it stays down and names the code rollback instead.
+    expect(readFileSync(log, 'utf8')).not.toContain('systemctl start')
+    expect(r.stderr).toContain(CODE_ROLLBACK)
+  })
+
+  it('names the code rollback with the original when the converted file does not serve', () => {
+    // Putting the old-layout original back under the pulled code crash-loops
+    // the same way, so the rollback it prints has to take the code back too.
+    createOldLayoutDatabase(dbPath)
+    const r = run(
+      VACUUM,
+      ['-y'],
+      vacuumStubs(join(dir, 'systemctl.log'), { curl: 'exit 22' }),
+    )
+
+    expect(r.status).toBe(1)
+    expect(tablesOf(dbPath)).toEqual(['labels', 'location_votes'])
+    expect(r.stderr).toContain(`${dbPath}.replaced-`)
+    expect(r.stderr).toContain(CODE_ROLLBACK)
+  })
+
+  it('refuses a converted file that the code from before votes-only wrote to again', () => {
+    // A rollback past votes-only that kept the converted file: the old schema
+    // adds an empty profiles table, and the old code writes text votes.
+    createOldLayoutDatabase(dbPath)
+    expect(
+      run(VACUUM, ['-y'], vacuumStubs(join(dir, 'first.log'))).status,
+    ).toBe(0)
+    const db = new Database(dbPath)
+    db.exec(
+      readFileSync(
+        join(DEPLOY, 'fixtures/schema-before-votes-only.sql'),
+        'utf8',
+      ),
+    )
+    db.prepare(
+      "INSERT INTO location_votes (username, client_id, location, source, location_accurate, seen_at) VALUES ('erin', 'c9', 'Chile', 'web', 1, 1)",
+    ).run()
+    db.close()
+    const mixed = readFileSync(dbPath)
+
+    const log = join(dir, 'second.log')
+    const r = run(VACUUM, ['-y'], vacuumStubs(log))
+
+    expect(r.status).toBe(1)
+    expect(existsSync(log)).toBe(false) // the service was never stopped
+    expect(readFileSync(dbPath)).toEqual(mixed)
+    expect(replaced()).toHaveLength(1) // the first conversion's original only
   })
 
   it('refuses to compact a corrupt database, without stopping the service', () => {
@@ -1129,7 +1271,7 @@ exec ${realSqlite3()} "$@"`,
 case "$*" in
   *"${dbPath}"*integrity_check* | *integrity_check*"${dbPath}"*)
     echo "*** in database main ***"
-    echo "wrong # of entries in index sqlite_autoindex_profiles_1"
+    echo "wrong # of entries in index sqlite_autoindex_labels_1"
     exit 0 ;;
 esac
 exec ${realSqlite3()} "$@"`,
@@ -1150,11 +1292,11 @@ exec ${realSqlite3()} "$@"`,
       VACUUM,
       ['-y'],
       vacuumStubs(log, {
-        // Only the rebuilt file's counts are faked; that query runs against
-        // nothing else.
+        // Only the rebuilt file's counts are faked; the live file's, taken
+        // with the same query, are real.
         sqlite3: `
 case "$*" in
-  *"COUNT(*) FROM profiles; SELECT COUNT(*) FROM location_votes"*) echo 7; echo 9; exit 0 ;;
+  */vacuum-*"COUNT(DISTINCT username), COUNT(*) FROM location_votes"*) echo "7|9"; exit 0 ;;
 esac
 exec ${realSqlite3()} "$@"`,
       }),
@@ -1171,10 +1313,34 @@ exec ${realSqlite3()} "$@"`,
     expect(readdirSync(dir).filter((f) => f.startsWith('vacuum-'))).toEqual([])
 
     const db = new Database(dbPath, { readonly: true })
-    expect(db.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+    expect(
+      db.prepare('SELECT COUNT(DISTINCT username) n FROM location_votes').get(),
+    ).toEqual({
       n: 300,
     })
     db.close()
+  })
+
+  it('keeps the original when the rebuild holds more than the live file', () => {
+    // The service is down, so a rebuild can only match; extra rows are as
+    // wrong as missing ones.
+    seed(dbPath, 300)
+    const log = join(dir, 'systemctl.log')
+    const r = run(
+      VACUUM,
+      ['-y'],
+      vacuumStubs(log, {
+        sqlite3: `
+case "$*" in
+  */vacuum-*"COUNT(DISTINCT username), COUNT(*) FROM location_votes"*) echo "301|903"; exit 0 ;;
+esac
+exec ${realSqlite3()} "$@"`,
+      }),
+    )
+
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('301 rebuilt vs 300 live')
+    expect(replaced()).toEqual([])
   })
 
   it('puts the original back if it dies in the one-mv window', () => {
@@ -1210,7 +1376,9 @@ exec ${realMv} "$@"`,
 
     const db = new Database(dbPath, { readonly: true })
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok')
-    expect(db.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+    expect(
+      db.prepare('SELECT COUNT(DISTINCT username) n FROM location_votes').get(),
+    ).toEqual({
       n: 300,
     })
     db.close()
@@ -1294,7 +1462,11 @@ describe.skipIf(MISSING.length > 0)('restore.ts', () => {
     expect(readdirSync(dir).filter((f) => f.startsWith('restore-'))).toEqual([])
 
     const live = new Database(dbPath, { readonly: true })
-    expect(live.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+    expect(
+      live
+        .prepare('SELECT COUNT(DISTINCT username) n FROM location_votes')
+        .get(),
+    ).toEqual({
       n: 50,
     })
     live.close()
@@ -1360,7 +1532,11 @@ exec ${realMv} "$@"`,
     // What came back is the original, not an empty file.
     const back = new Database(dbPath, { readonly: true })
     expect(back.pragma('integrity_check', { simple: true })).toBe('ok')
-    expect(back.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+    expect(
+      back
+        .prepare('SELECT COUNT(DISTINCT username) n FROM location_votes')
+        .get(),
+    ).toEqual({
       n: 80,
     })
     back.close()
@@ -1392,6 +1568,34 @@ exec ${realMv} "$@"`,
     expect(readdirSync(dir).some((f) => f.includes('.replaced-'))).toBe(true)
   }, 30_000)
 
+  it('names the conversion when an archive from before votes-only will not serve', () => {
+    // The server refuses that layout at boot, so the restore's healthz fails
+    // with a working archive; the operator is owed the way forward.
+    seed(dbPath, 10)
+    const old = join(dir, 'old.db')
+    createOldLayoutDatabase(old)
+    const archive = join(dir, 'x-loc-cache-20261101-000000.db.gz')
+    spawnSync('sh', ['-c', `gzip -c '${old}' > '${archive}'`])
+    const log = join(dir, 'systemctl.log')
+
+    const r = run(
+      RESTORE,
+      [archive],
+      stubs({
+        id: 'echo 0',
+        systemctl: `echo "systemctl $*" >> '${log}'`,
+        chown: `echo "chown $*" >> '${log}'`,
+        curl: 'exit 7', // the server refused to boot
+        sudo: 'shift 2; exec "$@"',
+      }),
+    )
+
+    expect(r.status).toBe(1)
+    expect(r.stderr).toContain('healthz FAILED')
+    expect(r.stderr).toContain('predates the votes-only layout')
+    expect(r.stderr).toContain(join(DEPLOY, 'vacuum.ts'))
+  }, 30_000)
+
   it('restores the snapshot, discarding a stale WAL rather than replaying it', () => {
     seed(dbPath, 100)
     expect(run(BACKUP, []).status).toBe(0)
@@ -1401,7 +1605,7 @@ exec ${realMv} "$@"`,
     const live = new Database(dbPath)
     live.pragma('journal_mode = WAL')
     live
-      .prepare('INSERT INTO profiles (username, location) VALUES (?, ?)')
+      .prepare('INSERT INTO location_votes (username, client_id) VALUES (?, ?)')
       .run('written-after-the-backup', 'Nowhere')
     live.close()
     writeFileSync(`${dbPath}-wal`, 'stale')
@@ -1421,19 +1625,23 @@ exec ${realMv} "$@"`,
     const restored = new Database(dbPath)
     restored.pragma('journal_mode = WAL')
     expect(restored.pragma('integrity_check', { simple: true })).toBe('ok')
-    expect(restored.prepare('SELECT COUNT(*) n FROM profiles').get()).toEqual({
+    expect(
+      restored
+        .prepare('SELECT COUNT(DISTINCT username) n FROM location_votes')
+        .get(),
+    ).toEqual({
       n: 100,
     })
     expect(
       restored
         .prepare(
-          "SELECT COUNT(*) n FROM profiles WHERE username = 'written-after-the-backup'",
+          "SELECT COUNT(*) n FROM location_votes WHERE username = 'written-after-the-backup'",
         )
         .get(),
     ).toEqual({ n: 0 })
     // And the server can write to what it was handed.
     restored
-      .prepare('INSERT INTO profiles (username, location) VALUES (?, ?)')
+      .prepare('INSERT INTO location_votes (username, client_id) VALUES (?, ?)')
       .run('after-restore', 'Somewhere')
     restored.close()
   })

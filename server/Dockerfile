@@ -61,6 +61,9 @@ COPY src ./src
 # two deploy shapes cannot drift in how they back up or how they alert.
 COPY deploy/backup.ts deploy/lib.ts ./deploy/
 COPY deploy/alert.ts ./deploy/alert.ts
+# For the votes-only conversion recipe in README "Compacting (container)":
+# vacuum.ts drives systemctl, so the container runs this SQL by hand.
+COPY deploy/votes-only.sql ./deploy/votes-only.sql
 
 # Three defaults differ from the bare-metal ones, all forced by the container:
 #   XLOC_HOST       — 127.0.0.1 is loopback *inside the network namespace*, so a

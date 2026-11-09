@@ -10,7 +10,7 @@ export function PrivacyPolicy() {
         </a>
 
         <h1 class="t-h2">Privacy Policy</h1>
-        <p class="t-data mt-4 mb-12">Last updated: July 2026</p>
+        <p class="t-data mt-4 mb-12">Last updated: November 2026</p>
 
         <div class="policy space-y-10">
           <section>
@@ -111,6 +111,22 @@ export function PrivacyPolicy() {
               shared cache, keyed by the public handle and the random
               installation ID - never by your identity. They are not sold,
               rented, or used for advertising.
+            </p>
+            <p class="mt-3">
+              With each contribution the server also stores a 16-bit number
+              derived from the network the request came from. For an IPv4
+              address that is the address with its last part dropped, which
+              names your provider's block of addresses; for IPv6 it is the first
+              48 bits, which usually name your home or office network. Either is
+              hashed into one of 65,536 numbers, so about 256 IPv4 blocks, or
+              billions of IPv6 networks, share each one. It lets one network
+              count once per account, however many installation IDs it sends
+              from. The database keeps this number, never the address, and
+              deletes it with the contribution about two months after that
+              contribution was last sent; backups of the database keep it for
+              about ten days longer. The web server's request log never records
+              the full address either: it keeps the shortened one, unhashed, and
+              is overwritten as it fills.
             </p>
             <p class="mt-3">
               To keep the cache useful, the extension also looks up accounts

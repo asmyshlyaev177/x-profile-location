@@ -15,15 +15,16 @@ import {
   OWNER,
   SERVICE,
   die,
+  countRows,
   guardSwap,
   healthy,
   inspect,
+  layoutOf,
   loadEnvFile,
   moveAside,
   mv,
   run,
   servicePort,
-  sqlite,
   stamp,
   uid,
 } from './lib.ts'
@@ -71,7 +72,7 @@ async function main(): Promise<void> {
   // Same directory as the database, so the final mv is atomic (one filesystem).
   const TMP = join(dirname(DB), `restore-${STAMP}.db`)
 
-  const guard = guardSwap(DB, `.replaced-${STAMP}`, TMP)
+  const guard = guardSwap(DB, `.replaced-${STAMP}`, [TMP])
 
   // A file that is not gzip at all reaches this as a zlib error; an operator
   // mid-incident is owed the name of the problem, not a stack trace.
@@ -90,6 +91,8 @@ async function main(): Promise<void> {
     )
   }
 
+  const isOldLayout = layoutOf(TMP) === 'profiles'
+
   run('systemctl', ['stop', SERVICE])
   guard.stopped = true
 
@@ -106,18 +109,21 @@ async function main(): Promise<void> {
   guard.stopped = false
 
   if (!(await healthy(PORT))) {
-    die(`healthz FAILED — journalctl -u ${SERVICE} -n 50`)
+    // The server refuses the layout with a `profiles` table rather than serve
+    // every old profile as "no location"; vacuum.ts converts it.
+    die(
+      `healthz FAILED — journalctl -u ${SERVICE} -n 50`,
+      ...(isOldLayout
+        ? [
+            `${archive} predates the votes-only layout — convert it: sudo ${join(import.meta.dirname, 'vacuum.ts')} -y`,
+          ]
+        : []),
+    )
   }
   console.log('healthz ok')
 
-  const counted = sqlite(
-    [
-      DB,
-      'SELECT (SELECT COUNT(*) FROM profiles) AS profiles, (SELECT COUNT(*) FROM location_votes) AS votes;',
-    ],
-    OWNER,
-  )
-  console.log(counted.out)
+  const counted = countRows(DB, OWNER)
+  console.log(`${counted.profiles} profiles / ${counted.votes} votes`)
   console.log(
     `restored ${archive} -> ${DB}; previous files kept as ${DB}.replaced-${STAMP}`,
   )

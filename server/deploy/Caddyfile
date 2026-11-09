@@ -5,6 +5,22 @@
 # already holds them (`sudo ss -tlnp | grep -E ':80|:443'`), stop that first or
 # put this vhost into the existing server instead.
 
+# Caddy logs the client's address with every request, and with every error in
+# the journal. Both logs keep only the /24 or /48 the server keeps per vote, as
+# the privacy policy says. Headers go too, as a proxy in front of a user adds
+# that user's address as X-Forwarded-For or Forwarded. The same three filters
+# sit in the site's log below: a snippet cannot come before this block.
+{
+	log {
+		format filter {
+			request>remote_ip ip_mask 24 48
+			request>client_ip ip_mask 24 48
+			request>headers delete
+			wrap json
+		}
+	}
+}
+
 xloc.vmirrormanv.xyz {
 	# Responses are JSON and highly repetitive — a full 100-profile lookup
 	# compresses roughly 5:1, which is the single biggest lever on egress.
@@ -24,6 +40,11 @@ xloc.vmirrormanv.xyz {
 			roll_size 10MiB
 			roll_keep 3
 		}
-		format json
+		format filter {
+			request>remote_ip ip_mask 24 48
+			request>client_ip ip_mask 24 48
+			request>headers delete
+			wrap json
+		}
 	}
 }

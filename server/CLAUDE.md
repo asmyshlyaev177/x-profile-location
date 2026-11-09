@@ -12,22 +12,12 @@ here can quietly break. Deploy scripts have their own notes in
 
 ## Cached for 60 days, then re-earned
 
-`pruneExpired()` — the Worker's cron, a daily interval on Node — deletes votes past
-`VOTE_RETENTION_MS`, then the profiles left with no votes at all. A handle nobody looks at leaves the database; the next client to
-want it misses, reads it from X on hover or in the background, and contributes it
-back, which rebuilds the row. So a location is only as old as the last person who
-looked at it, and dead accounts cost nothing.
+`location_votes` is the only record. `POST /v1/loc/batch` reads the asked usernames' votes and runs `pickConsensus` on them; nothing stores an answer. `pruneExpired()` — the Worker's cron, a daily interval on Node — deletes votes past `VOTE_RETENTION_MS`. A handle nobody looks at leaves the database; the next client to want it misses, reads it from X on hover or in the background, and contributes it back. So a location is only as old as the last person who looked at it, and dead accounts cost nothing.
 
-Two consequences:
-
-- **`profiles` can shrink.** Anything comparing row counts across time has to
-  allow for it — see [`deploy/CLAUDE.md`](deploy/CLAUDE.md) for what the backup
-  baseline does about it.
-- **Confidence can overstate for one retention window.** Votes expire
-  individually by `seen_at`, and retention does not recompute consensus, so a
-  profile with votes at day 0 and day 10 still serves `conf: 2` between day 60
-  and day 70 when one vote is left. Default `minConfidence` is 1, so it only
-  reaches installs that raised it.
+- **The served answer follows the stored votes.** An evicted vote stops counting on the next read; an expired one counts until the retention pass deletes it, up to a day later on Node and a week on the Worker.
+- **Converted profiles keep every vote until their next contribution.** The conversion copies votes as they are, so 5,387 usernames held more than 10 on the 2026-11-09 copy; the cap trims each on its next write and retention does the rest.
+- **The number of usernames can shrink.** Anything comparing counts across time has to allow for it — see [`deploy/CLAUDE.md`](deploy/CLAUDE.md) for what the backup baseline does about it.
+- **Reading consensus costs what the stored row did.** On the 2026-11-09 production copy, 0.119 ms per 50-name batch against 0.115 ms from `profiles`.
 
 ## Tests
 
@@ -39,60 +29,38 @@ against real databases — separate config, never CI, see `deploy/CLAUDE.md`.
 database, which is what keeps the two backends honest about behaving identically.
 Prefer adding a case there over mocking `Env.DB`.
 
-## Why the vote cap has slack
+## Why the vote cap has no slack
 
 `location_votes` is keyed `(username, client_id)`, so uncapped it grows as
 users × profiles-each-user-sees — the only superlinear term here, and the first thing
 that would fill a small VPS disk. `VOTE_CAP` bounds it at distinct-profiles × cap, flat
 in user count.
 
-Pruning happens at `VOTE_CAP + VOTE_CAP_SLACK`, not at the cap. On the cap, every
-further contribution would evict a row and double writes on the hot path forever;
-letting rows pile to the slack and pruning in one go amortises the delete.
+`VOTE_CAP` (10) is a hard ceiling: a contribution that takes a username past it evicts the oldest votes in the same request. There used to be a slack of 5 above it, which let rows pile up and pruned them in one go to save D1 row writes on the hot path. Production is SQLite, where the eviction is one small batch of its own after the vote batch, so the slack bought nothing and let `conf` reach 15. Rows over the cap from before are not trimmed by a conversion; the next contribution to that username trims them.
 
-Eviction is oldest-first, which is also right on merit: the surviving window is the most
-recent observers, so a relocation propagates instead of being outvoted forever by stale
-votes. The cost is that poisoning gets cheaper — forged ids only need to fill the window,
-not out-number every honest vote ever cast. `minConfidence` on the client is the backstop,
-and `contrib-limit.ts` raises the price of manufacturing ids.
+Eviction is oldest-first, which is also right on merit: the surviving window is the most recent observers, so a relocation propagates instead of being outvoted forever by stale votes. The cost is that poisoning gets cheaper — forged votes only need to fill the window, not out-number every honest vote ever cast. `minConfidence` on the client is the backstop, `contrib-limit.ts` raises the price of manufacturing ids, and one vote per network makes filling the window take ten networks rather than ten ids.
 
 ## Two queries that look wrong and are not
 
-**`/v1/stats` counts unfiltered**, though `/v1/loc/batch` serves only
-`location_confidence > 0`. The counts are the same number: `pickConsensus` never returns
-below 1, so no row is written below 1, and `pruneExpired()` removes a profile rather than
-zeroing it. What differs is cost. The bare count adds up each page's row count, while the
-filter decodes every row: 0.33 ms against 26 ms over 623k profiles (2026-10-05). better-sqlite3
-is synchronous, so that gap is an event-loop stall.
+**`/v1/stats` on Node is as old as the last walk of the votes.** It serves the distinct usernames with a vote, and `COUNT(DISTINCT username)` over 2.1M votes took 140 ms on the laptop (2026-11-09), longer on the VPS — an event-loop stall on synchronous better-sqlite3 if a request paid it. So on Node a request never counts: `node-server.ts` counts once before it listens, then walks set the number from the counts they take range by range, each completed `pruneExpired()` pass and `recountProfiles()` every `XLOC_PROFILE_COUNT_MINUTES` (10) with `yieldingScan()`. A username first contributed into a range the recount has passed waits for the next one, which is the accuracy the chunks cost. A Worker recounts on a request once its number is `STATS_TTL_MS` (180 s) old, as before votes-only: D1 runs the count off the isolate's thread, and the weekly cron alone would leave each isolate's number as old as the isolate. `Env.profilesCountedByWalks` is the switch. Clients are told `max-age` `STATS_TTL_MS` either way.
 
-The count is memoised for `STATS_TTL_MS` and clients are told the same, so the endpoint
-costs one `COUNT` per 3 minutes rather than one per reader. `COUNT(*)` still reads every page
-of `profiles`, which took up to 0.95 s at 1361 MB past the memory limit (README "Where it slows
-down", on the old layout) — the memo is not a nicety.
+One recount on the 2026-11-09 production copy (2.1M votes, 1.65M usernames, laptop, load average ~6 from other sessions), 10 runs: 0.34-0.47 s in 8,370 chunks, the longest chunk 0.75 ms and the longest event-loop stall 11.5 ms, the 10 ms slice plus a chunk. It costs 2.4x the single statement because a walk reads every range twice; at the default that is about a minute of one core a day. `pnpm bench` prints the same walk on generated data (`profile recount` row).
 
-**The consensus recompute has no date filter.** `pruneExpired()` physically deletes votes
-older than `VOTE_RETENTION_MS`, so every row still in the table is inside the window by
-construction. That makes deletion the single source of truth for the 60-day bound and
-lets the query ride the primary key. The retention `DELETE` itself has no `seen_at` index
-to ride: a full scan spending the abundant read budget, deliberately traded against
-taxing every insert's ~50x scarcer write budget. It walks the table in username ranges,
-so the scan never needs one either — see "Maintenance walks username ranges".
+**The batch lookup has no date filter.** `pruneExpired()` physically deletes votes older than `VOTE_RETENTION_MS`, so every row still in the table is inside the window by construction. That makes deletion the single source of truth for the 60-day bound and lets the query ride the primary key (`sqlite.test.ts` checks its plan). The retention `DELETE` itself has no `seen_at` index to ride: a full scan spending the abundant read budget, deliberately traded against taxing every insert's ~50x scarcer write budget. It walks the table in username ranges, so the scan never needs one either — see "Maintenance walks username ranges".
 
 Contributions over a client's budget are dropped **silently**, with `{ ok: true }`
 either way — the client ignores the body, and a rejection would tell a poisoner when to
 rotate its id.
 
-## Tables are WITHOUT ROWID
+## Tables: votes WITHOUT ROWID, labels by id
 
-- Each primary key is its table. With a rowid it was a second b-tree holding the keys
-  again, so every vote stored its username and 36-character client id twice.
-- Measured 2026-10-05 on a copy of production (623k profiles, 693k votes), on the laptop:
-  165 MB with rowid tables, 111 MB converted. Retention went from 1.08 s to 0.42 s and the
-  stats walk from 0.79 s to 0.35 s, deleting and counting the same rows.
-- A table rebuild never runs at boot: `update.ts` rolls back when `/healthz` is slow, and
-  code from before a layout change cannot read the new tables. A boot rebuild that committed
-  late left that code running with retention failing every day (reproduced in review,
-  2026-10-05).
+- `location_votes` is WITHOUT ROWID: its primary key is the table. With a rowid it was a second b-tree holding the keys again, so every vote stored its username and 36-character client id twice.
+- Measured 2026-10-05 on a copy of production (623k profiles, 693k votes), on the laptop: 165 MB with rowid tables, 111 MB converted. Retention went from 1.08 s to 0.42 s and the stats walk from 0.79 s to 0.35 s.
+- `labels` holds each location and source string once and a vote holds its id. It is a rowid table, because `id INTEGER PRIMARY KEY` is the rowid and the id is what votes store.
+- `profiles` is gone: 86% of profiles had exactly one vote, so its row repeated that vote. Measured 2026-11-09 on a production copy (1.65M profiles, 2.1M votes): 285.9 MB → 139.6 MB, both after VACUUM (the live file was 321.5 MB), dropping `profiles` and storing labels by id.
+- `client_id` stays TEXT and timestamps stay in ms: seconds saved ~3% of the file, not worth a unit split.
+- A table rebuild never runs at boot: `update.ts` rolls back when `/healthz` is slow, and code from before a layout change cannot read the new tables correctly. A boot rebuild that committed late left that code running with retention failing every day (reproduced in review, 2026-10-05). `deploy/vacuum.ts` converts a file offline.
+- `openDatabase()` refuses a file that still has a `profiles` table, before touching it. Started on one, this code would fail every contribution (the old `location_votes` has no `net` column) and serve every profile as "no location" with `/healthz` green, so `update.ts` would not roll back; failing to start makes it roll back.
 
 ## Maintenance walks username ranges (scan.ts)
 
@@ -102,13 +70,8 @@ event loop for as long as it runs, so as single statements they were one long si
 on one core under `MemoryMax=640M`, 12 s at 554 MB and 40-58 s at 1.1 GB, every request
 in it timing out (2026-09-30).
 
-- `forEachUsernameRange` splits the work into ranges of the primary key, which both
-  tables lead with, so it needs no extra index. A `LIMIT`-chunked DELETE re-reads the table
-  from the start for every chunk, which is why chunking once looked like it needed a
-  `seen_at` index.
-- Its one bound is `MAX(username)`, read alone. SQLite seeks for a lone MIN or MAX, but
-  `SELECT MIN(x), MAX(x)` together is a full scan, the one stall chunking exists to avoid.
-  `sqlite.test.ts` fails on any `SCAN` in a statement the walks prepare.
+- `forEachUsernameRange` splits the work into ranges of the votes primary key, which leads with `username`, so it needs no extra index. A `LIMIT`-chunked DELETE re-reads the table from the start for every chunk, which is why chunking once looked like it needed a `seen_at` index.
+- Its one bound is `MAX(username)`, read alone. SQLite seeks for a lone MIN or MAX, but `SELECT MIN(x), MAX(x)` together is a full scan, the one stall chunking exists to avoid. `sqlite.test.ts` fails on any `SCAN` of `location_votes` in a statement the walks prepare.
 - Ranges are half-open, `username > after AND username <= upTo`, from `''`: a username has
   one character at least. `upTo` comes from an `OFFSET` that steps through the range's rows,
   so every range is read twice. A range ends on a whole username, so a votes range can run
@@ -116,22 +79,32 @@ in it timing out (2026-09-30).
 - Node passes `yieldingScan()`: 250 rows a statement and a turn of the event loop every
   10 ms. The measurements behind both numbers sit beside them in `sqlite.ts`, taken on
   rowid ranges.
-- `node-server.ts` runs the two walks through `oneAtATime()`: back to back, so the stats
-  line counts what retention left and one walk holds the loop at a time, and a pass still
-  running when its interval fires again is skipped, not stacked.
-- The Worker's `scheduled()` passes `WHOLE_TABLE`: per table, its last username and one
-  DELETE, with no `OFFSET`. D1 caps the queries one invocation may run, and a long D1 query
-  blocks nothing. `scheduled.test.ts` fails if the cron starts chunking.
-- The profile sweep stays a sweep of every profile, not of the ones this pass emptied: a
-  pass cut short by a restart is finished by the next, and a profile that never had a
-  vote still goes (`sqlite.test.ts`).
-- A distinct count cannot be summed across chunks, so `countTotals` keeps each install's
-  last `seen_at` in a map — only installs seen in the last 7 days, tens of thousands.
+- `node-server.ts` runs the three walks (retention, the stats line, the profile recount) through `oneAtATime()`: back to back, so the stats line counts what retention left and one walk holds the loop at a time, and a pass still running when its interval fires again is skipped, not stacked.
+- The Worker's `scheduled()` passes `WHOLE_TABLE`: the last username, one vote DELETE, one count and the labels DELETE, with no `OFFSET`. D1 caps the queries one invocation may run, and a long D1 query blocks nothing. `scheduled.test.ts` fails if the cron starts chunking.
+- Each range's visit deletes its expired votes, then counts its votes and distinct usernames in one statement (`countRange`). A range ends on a whole username, so the distinct counts sum exactly; retention and the recount hand the sum to `/v1/stats`, and the stats line uses both.
+- Labels go after the walk, in one `DELETE FROM labels WHERE used_at < cutoff`, and only when the walk completed. Every vote write sets its labels' `used_at` to at least its `seen_at` in the same transaction (`voteWrites`), so once every vote below the cutoff is gone, no survivor points at a label older than it. After a partial walk an expired vote could still point at one, and read as "no location" until the next pass.
+- The labels DELETE scans `labels`, ~700 rows on 2026-11-09, by design: an index on `used_at` would add a write to every contribution. Nothing deletes a label by looking for votes using it — there is no index on `location`, so that is a full scan per label.
+- A distinct install count cannot be summed across chunks, so `countTotals` keeps each install's last `seen_at` in a map — only installs seen in the last 7 days, tens of thousands.
 - The shutdown stats line takes `WHOLE_TABLE`: no connection is left to serve by then, and
   a scan that yields would let the 5 s exit timer cut it short.
 - Measured after (2026-10-01, same box): with the file at 1.1 GB in 640 MB the slowest
   chunk took 0.56 s, and no request in the tick timed out up to 1.36 GB. Past the memory
   limit what grows is latency — README "Where it slows down".
+
+## One vote per network per profile (network.ts)
+
+A `clientId` is whatever the client sends, so one machine looping over fresh ids could post one forged tuple for a username from 10 ids, fill its `VOTE_CAP` window and evict every honest vote. Eviction now keeps one vote per network per username first, so poisoning a profile costs distinct networks, not ids.
+
+- The network is the sender's /24 for IPv4 or /48 for IPv6, hashed to 16 bits by `networkOf` and stored on the vote as `net`.
+- Per username, eviction keeps the newest vote from each `net`, whichever client cast it, then the newest `VOTE_CAP` of those. A client that changes network takes its vote with it.
+- The cost: installs on one network (a household, an office, a VPN exit) count once per profile. `pickConsensus` ties stay newest-wins.
+- Privacy: 65,536 values over ~16.7M /24s, so each value matches ~256 /24s and names no one. It is unsalted because knowing the function gains an attacker nothing. It lives on the vote and is deleted with it.
+- The address is the `cf-connecting-ip` header on both backends. Cloudflare sets it and a client cannot override it.
+- `node-server.ts` always overwrites that header with `clientIp()`, the address the rate limiter uses (`XLOC_TRUST_PROXY`, last `X-Forwarded-For` hop), because a copy the client sent would let it pick its own network per request.
+- `NULL` means no known network: votes converted from before the column, or an address that did not parse. A `NULL` vote never merges with another.
+- Converted `NULL` votes age out within 60 days of the conversion (`VOTE_RETENTION_MS`), or gain a `net` when their client contributes the handle again.
+- It makes poisoning harder, not impossible: an attacker with many networks (a proxy pool, a botnet) still fills the window.
+- Changing `networkOf` splits each stored `net` from the next vote on the same network until the old votes age out.
 
 ## The contribution budget (contrib-limit.ts)
 
@@ -143,11 +116,7 @@ extension imports too, so a new measurement moves both sides at once. A
 poisoner skips that step and posts any number under a fresh `clientId` per burst, and
 open-sourcing publishes the endpoint and its body shape.
 
-The guard caps **distinct handles per clientId per window**. It does not stop an attacker
-minting an id per request — nothing short of attestation would — but it makes poisoning
-scale with the ids they have to manufacture and rotate. Re-reporting a handle already
-contributed this window is free: that is what an honest client does when a location
-changes, and it cannot grow the table.
+The guard caps **distinct handles per clientId per window**. Ids still rotate freely — nothing short of attestation would stop an attacker minting one per request — but "One vote per network per profile" above bounds one network to one vote per profile, however many ids it uses. Re-reporting a handle already contributed this window is free: that is what an honest client does when a location changes, and it cannot grow the table.
 
 **The cap is `LOOKUP_LIMIT_PER_WINDOW × 2.2`, 110.** X's window is fixed and resets on
 its own clock, while a budget window here starts at the client's first contribution. One
@@ -196,13 +165,7 @@ peer address, so the first is attacker-controlled.
 represented at all; these answer 405 or 400 and count as `other` rather than surfacing as
 500s. `/healthz` is uncounted — at one probe per 30s it would drown the real numbers.
 
-**Stats cost what they measure.** Per-window counters are in-process and reset on each log
-line, so a restart loses the partial window (hence the SIGTERM flush). The distinct-installs
-figure comes from the `client_id` already in `location_votes` — no new tracking — but there
-is no index on `seen_at`, so it is a full scan, walked in chunks that give way to requests
-("Maintenance walks username ranges"). Once a day; never on a request path. It counts _contributors_, a
-floor on active users: counting readers would mean identifying lookups, which is exactly
-what this server promises not to be able to do.
+**Stats cost what they measure.** Per-window counters are in-process and reset on each log line, so a restart loses the partial window (hence the SIGTERM flush). The distinct-installs figure comes from the `client_id` already in `location_votes` — no new tracking — but there is no index on `seen_at`, so it is a full scan, walked in chunks that give way to requests ("Maintenance walks username ranges"). The `profiles` figure is the distinct usernames in that walk; there is no profiles table to count. Once a day; never on a request path. It counts _contributors_, a floor on active users: counting readers would mean identifying lookups, which is exactly what this server promises not to be able to do.
 
 **The service runs `dist/node-server.js`, and git carries it.** `pnpm build` bundles
 `src/` with esbuild; the result is committed because the VPS deploys by `git pull` and

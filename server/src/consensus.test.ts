@@ -38,11 +38,9 @@ describe('pickConsensus', () => {
     expect(c?.confidence).toBe(3)
   })
 
-  it('never answers below 1, which is what lets /v1/stats count cheaply', () => {
-    // Every profile row is written from one of these, so `location_confidence`
-    // is >= 1 on all of them and the count handleStats wants is the plain
-    // COUNT(*) - the filtered one means the same thing and costs a table scan.
-    // If this ever returns 0, that query has to grow a WHERE clause again.
+  it('never answers below 1, so every username with a vote is a served profile', () => {
+    // /v1/stats serves distinct usernames in location_votes as its profile
+    // count, which matches what lookups answer only while no vote list scores 0.
     for (const votes of [
       [vote(null)],
       [vote('JP')],

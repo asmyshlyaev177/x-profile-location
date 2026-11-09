@@ -8,7 +8,7 @@ import {
 } from 'node:http'
 import { mkdirSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import worker, { pruneExpired, type Env } from './index.ts'
+import worker, { pruneExpired, recountProfiles, type Env } from './index.ts'
 import { oneAtATime, WHOLE_TABLE } from './scan.ts'
 import {
   DEFAULT_SQLITE_CONFIG,
@@ -48,6 +48,9 @@ const config = {
   rateLimit: num('XLOC_RATE_LIMIT', 600), // requests per window per IP; 0 = off
   rateWindowMs: num('XLOC_RATE_WINDOW_S', 60) * 1000,
   statsIntervalHours: num('XLOC_STATS_INTERVAL_HOURS', 24), // 0 = never log stats
+  // /v1/stats recount; 0 = retention alone. ~0.4 s a pass at 2.1M votes, never
+  // holding the loop past its 10 ms slice (2026-11-09, CLAUDE.md).
+  profileCountMinutes: num('XLOC_PROFILE_COUNT_MINUTES', 10),
   // Only honour X-Forwarded-For when told to: a directly-exposed server must
   // not let clients forge their own identity.
   trustProxy: bool('XLOC_TRUST_PROXY', true),
@@ -131,14 +134,22 @@ function toHeaders(req: IncomingMessage): Headers {
 
 /** Null when the request has no fetch equivalent, which the caller answers 400.
  *  Scanners live in that gap - malformed input, not a server fault. */
-function toRequest(req: IncomingMessage, body: string | null): Request | null {
+function toRequest(
+  req: IncomingMessage,
+  body: string | null,
+  ip: string,
+): Request | null {
   try {
     // The handlers only read `url.pathname`, so the authority is cosmetic - but
     // it has to parse, and req.headers.host is attacker-controlled.
     const url = new URL(req.url ?? '/', 'http://localhost')
+    const headers = toHeaders(req)
+    // index.ts buckets votes by network from this header, as Cloudflare sets
+    // it; a copy the client sent would let it pick a new network per request.
+    headers.set('cf-connecting-ip', ip)
     return new Request(url, {
       method: req.method,
-      headers: toHeaders(req),
+      headers,
       body: body === null || body === '' ? undefined : body,
     })
   } catch {
@@ -186,7 +197,7 @@ const db: SqliteDb = openDatabase({
   cacheMb: config.cacheMb,
   mmapMb: config.mmapMb,
 })
-const env: Env = { DB: db }
+const env: Env = { DB: db, profilesCountedByWalks: true }
 const stats = new Stats()
 
 /** Bytes on disk, main file plus the WAL that has not been checkpointed yet. */
@@ -241,7 +252,8 @@ const server = createServer((req, res) => {
       }
       // Retry-After is not politeness: without it a limited client retries into
       // the window and trips shared-cache.ts's breaker for ten minutes.
-      const retryAfter = rateLimited(clientIp(req), Date.now())
+      const ip = clientIp(req)
+      const retryAfter = rateLimited(ip, Date.now())
       if (retryAfter > 0) {
         stats.noteRateLimited()
         return plain(res, 429, 'Too Many Requests', {
@@ -268,7 +280,7 @@ const server = createServer((req, res) => {
         return rejectTooLarge(req, res)
       }
 
-      const request = toRequest(req, body)
+      const request = toRequest(req, body, ip)
       if (request === null) {
         stats.noteRequest('other', '', '', Date.now() - startedAt)
         return plain(res, 400, 'Bad Request')
@@ -292,9 +304,9 @@ const server = createServer((req, res) => {
 server.keepAliveTimeout = 61_000
 server.headersTimeout = 65_000
 
-// Retention and the stats line both walk whole tables, and their intervals fire
-// together; queued, the stats line counts what retention left, one walk holds
-// the loop at a time, and a pass slower than its interval is not stacked.
+// Retention, the stats line and the profile recount all walk whole tables;
+// queued, the stats line counts what retention left, one walk holds the loop at
+// a time, and a pass slower than its interval is not stacked.
 const maintain = oneAtATime()
 
 // Retention: an interval, run once shortly after boot so a box that reboots
@@ -303,13 +315,17 @@ const retentionMs = config.retentionHours * 60 * 60 * 1000
 async function runRetention(): Promise<void> {
   const startedAt = Date.now()
   try {
-    const deleted = await pruneExpired(env, Date.now(), yieldingScan())
+    const { deleted, profiles } = await pruneExpired(
+      env,
+      Date.now(),
+      yieldingScan(),
+    )
     sweepBuckets(Date.now())
     db.truncateWal()
     // Logged even for `deleted 0`: without a success line, an absent log cannot
     // be told from a timer that never fired.
     console.log(
-      `[x-loc-cache] retention: deleted ${deleted} vote(s) in ${Date.now() - startedAt}ms`,
+      `[x-loc-cache] retention: deleted ${deleted} vote(s), ${profiles} profile(s) left, in ${Date.now() - startedAt}ms`,
     )
   } catch (err) {
     console.error('[x-loc-cache] retention failed:', err)
@@ -328,6 +344,29 @@ if (config.statsIntervalHours > 0) {
     () => void maintain('stats', () => logStats('interval')),
     config.statsIntervalHours * 60 * 60 * 1000,
   ).unref()
+}
+
+// Logs failures only: a line per pass would be 144 a day at the default.
+async function runProfileCount(): Promise<void> {
+  try {
+    await recountProfiles(env, yieldingScan())
+  } catch (err) {
+    console.error('[x-loc-cache] profile count failed:', err)
+  }
+}
+if (config.profileCountMinutes > 0) {
+  setInterval(
+    () => void maintain('profiles', runProfileCount),
+    config.profileCountMinutes * 60 * 1000,
+  ).unref()
+}
+
+// Counted before listening, so no request waits on it; the walks above keep it
+// fresh. If it fails, the first /v1/stats counts instead, once.
+try {
+  await recountProfiles(env, WHOLE_TABLE)
+} catch (err) {
+  console.error('[x-loc-cache] boot profile count failed:', err)
 }
 
 server.listen(config.port, config.host, () => {

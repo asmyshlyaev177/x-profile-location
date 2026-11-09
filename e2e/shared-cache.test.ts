@@ -19,6 +19,7 @@ import {
   mockSharedCache,
   mostLikedReply,
   readIdb,
+  readIdbLocation,
   setCheckboxOption,
   waitForReplies,
 } from './helpers'
@@ -158,8 +159,9 @@ test('a first-hand lookup is contributed back to the community cache', async ({
   page,
 }) => {
   // Server has nothing: every account falls through to an X lookup, which is
-  // what makes the result first-hand and worth contributing.
-  const worker = await mockSharedCache(page, null)
+  // what makes the result first-hand and worth contributing. It also refuses the
+  // contribution, the worst a server can do with a vote: the local cache must not care.
+  const worker = await mockSharedCache(page, null, { contributionStatus: 500 })
   await mockAboutAccount(page, {
     account_based_in: 'Japan',
     source: 'Japan App Store',
@@ -192,4 +194,9 @@ test('a first-hand lookup is contributed back to the community cache', async ({
       src: 'Japan App Store',
       acc: true,
     })
+
+  // The server's answer never reaches the local cache: a vote it refused, or
+  // one it accepted and later evicted (one vote per network), is still X's
+  // answer on this machine.
+  expect(await readIdbLocation(page, screenName)).toBe('Japan')
 })

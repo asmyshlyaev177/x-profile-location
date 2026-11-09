@@ -1,8 +1,8 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// Compact the cache database: `sudo .../deploy/vacuum.ts [-y]`.
-// See CLAUDE.md and README "Compacting".
+// Compact the cache database, converting a file with a `profiles` table to
+// votes-only: `sudo .../deploy/vacuum.ts [-y]`. See CLAUDE.md, README "Compacting".
 
-import { existsSync } from 'node:fs'
+import { existsSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { autoVacuumPct } from './backup.ts'
@@ -16,12 +16,14 @@ import {
   OWNER,
   SERVICE,
   bytes,
+  countRows,
   die,
   freeBytes,
   guardSwap,
   healthy,
   humanSize,
   inspect,
+  layoutOf,
   liveBytes,
   loadEnvFile,
   moveAside,
@@ -37,11 +39,73 @@ import {
   type Inspection,
 } from './lib.ts'
 
+// Through .read: as an argument, the CLI takes schema.sql's opening `--` for
+// an option and refuses the whole file.
+const READ_SCHEMA = `.read '${join(import.meta.dirname, '..', 'schema.sql')}'`
+const READ_VOTES_ONLY = `.read '${join(import.meta.dirname, 'votes-only.sql')}'`
+
+// Votes the conversion did not carry over as they were: missing, or label ids
+// that do not resolve to the old text. IS NOT, so a NULL compares as a value;
+// quote(), because an INTEGER column's affinity makes the text '1' equal 1.
+const MISMATCHES_SQL = `SELECT COUNT(*) FROM live.location_votes o
+  LEFT JOIN main.location_votes n USING (username, client_id)
+  LEFT JOIN main.labels l ON l.id = n.location
+  LEFT JOIN main.labels s ON s.id = n.source
+ WHERE n.seen_at IS NULL
+    OR quote(l.text) IS NOT quote(o.location) OR (n.location IS NOT NULL AND l.id IS NULL)
+    OR quote(s.text) IS NOT quote(o.source) OR (n.source IS NOT NULL AND s.id IS NULL)
+    OR n.location_accurate IS NOT o.location_accurate
+    OR n.seen_at IS NOT o.seen_at;`
+
 function vacuumInto(dbFile: string, tmp: string): CommandResult {
   return sqlite(
     ['-cmd', '.timeout 5000', dbFile, `VACUUM INTO '${tmp}'`],
     OWNER,
   )
+}
+
+/** A new file from schema.sql, filled by votes-only.sql in one transaction:
+ *  -bail exits at the first failed statement, so COMMIT never runs. */
+function votesOnlyInto(dbFile: string, tmp: string): CommandResult {
+  return sqlite(
+    [
+      '-bail',
+      '-cmd',
+      '.timeout 5000',
+      tmp,
+      READ_SCHEMA,
+      `ATTACH '${dbFile}' AS live;`,
+      'BEGIN;',
+      READ_VOTES_ONLY,
+      'COMMIT;',
+    ],
+    OWNER,
+  )
+}
+
+/** Then VACUUM INTO, because INSERT leaves the key's pages ~89% full where a
+ *  rebuild fills them: 157.2 MB against 139.6 MB on the 2026-11-09 copy. */
+export function convertInto(
+  dbFile: string,
+  converted: string,
+  tmp: string,
+): CommandResult {
+  const conversion = votesOnlyInto(dbFile, converted)
+  if (!conversion.ok) return conversion
+  const packed = vacuumInto(converted, tmp)
+  rmSync(converted, { force: true })
+  return packed
+}
+
+/** Counts cannot see a vote that kept its key and lost its label; this reads
+ *  every vote back through `labels`. `null` when it could not be counted. */
+export function conversionMismatches(
+  dbFile: string,
+  tmp: string,
+): number | null {
+  const r = sqlite([tmp, `ATTACH '${dbFile}' AS live;`, MISMATCHES_SQL], OWNER)
+  const n = Number(r.out)
+  return r.ok && r.out !== '' && Number.isInteger(n) ? n : null
 }
 
 export interface VacuumArgs {
@@ -140,45 +204,92 @@ function wantedByLastBackup(backupDir: string, dbFile: string): boolean {
   return true
 }
 
-interface RowCounts {
+interface LiveCounts {
   profiles: number
   votes: number
 }
 
 /** Counted with the service down, so nothing can change them before the
- *  comparison — which is what makes a shorter rebuild proof of a bad copy. */
-function countLive(dbFile: string): RowCounts {
-  const counted = sqlite(
-    [
-      dbFile,
-      'SELECT (SELECT COUNT(*) FROM profiles), (SELECT COUNT(*) FROM location_votes);',
-    ],
-    OWNER,
-  )
-  const [profiles = NaN, votes = NaN] = counted.out.split('|').map(Number)
-  if (!Number.isInteger(profiles) || !Number.isInteger(votes)) {
-    die(`could not count the live database — keeping it: ${counted.out}`)
+ *  comparison — which is what makes any difference proof of a bad rebuild. */
+function countLive(dbFile: string): LiveCounts {
+  const { profiles, votes } = countRows(dbFile, OWNER)
+  if (profiles === null || votes === null) {
+    die('could not count the live database — keeping it')
   }
   return { profiles, votes }
 }
 
 /** The checks backup.ts runs on a snapshot, plus the counts taken before. */
-function verifyRebuild(tmp: string, live: RowCounts): Inspection {
+function verifyRebuild(tmp: string, live: LiveCounts): Inspection {
   const found = inspect(tmp, OWNER)
-  const short =
-    found.profiles === null ||
-    found.profiles < live.profiles ||
-    found.votes === null ||
-    found.votes < live.votes
-  if (found.integrity !== 'ok' || short) {
+  const differs = found.profiles !== live.profiles || found.votes !== live.votes
+  if (found.integrity !== 'ok' || differs) {
     die(
       'the rebuilt database failed verification — keeping the original.',
       `integrity_check: ${found.integrity}`,
-      `profiles: ${found.profiles} rebuilt vs ${live.profiles} live`,
+      `usernames with a vote: ${found.profiles} rebuilt vs ${live.profiles} live`,
       `votes: ${found.votes} rebuilt vs ${live.votes} live`,
     )
   }
   return found
+}
+
+function verifyConversion(dbFile: string, tmp: string): void {
+  const mismatches = conversionMismatches(dbFile, tmp)
+  if (mismatches === 0) return
+  die(
+    'the converted database failed the content check — keeping the original.',
+    `${mismatches ?? 'an uncountable number of'} votes do not read back as the live file holds them`,
+  )
+}
+
+/** What a conversion does differently from a compaction, decided once. */
+interface Rebuild {
+  into: (dbFile: string, converted: string, tmp: string) => CommandResult
+  verify: (dbFile: string, tmp: string) => void
+  /** Printed in place of restarting the service on the untouched original. */
+  keepStopped?: string[]
+  /** What serves the original once it is put back. */
+  serveOriginal: string
+  done: string
+}
+
+const COMPACTION: Rebuild = {
+  into: (dbFile, _converted, tmp) => vacuumInto(dbFile, tmp),
+  verify: () => undefined,
+  serveOriginal: `systemctl start ${SERVICE}`,
+  done: 'compacted',
+}
+
+// The code checked out refuses the old layout, so the original needs the commit
+// from before the pull, which git pull leaves at ORIG_HEAD.
+const SERVE_OLD_LAYOUT = `git -C ${resolve(import.meta.dirname, '..', '..')} reset --hard ORIG_HEAD && systemctl start ${SERVICE}`
+
+const CONVERSION: Rebuild = {
+  into: convertInto,
+  verify: verifyConversion,
+  keepStopped: [
+    'The code checked out refuses the old layout, so starting it would only crash-loop. To serve the original on the code from before your git pull:',
+    `  ${SERVE_OLD_LAYOUT}`,
+    'ORIG_HEAD moves on every pull, a no-op one too: after a second pull, take the commit from git reflog.',
+  ],
+  serveOriginal: SERVE_OLD_LAYOUT,
+  done: 'converted to the votes-only layout and compacted',
+}
+
+/** Decided before the service stops, so a file it will not rebuild costs no
+ *  downtime. Converting a mixed file would turn its label ids into labels. */
+function rebuildFor(dbFile: string): Rebuild {
+  const layout = layoutOf(dbFile, OWNER)
+  if (layout === null)
+    die(`could not list the tables of ${dbFile} — keeping it`)
+  if (layout === 'mixed') {
+    die(
+      `${dbFile} has a profiles table beside the votes-only tables: code from before votes-only ran on it after it was converted, and wrote to it.`,
+      `Restore an archive (${join(import.meta.dirname, 'restore.ts')}) or the ${dbFile}.replaced-<stamp> the conversion kept, then run this again. The service is untouched.`,
+    )
+  }
+  return layout === 'profiles' ? CONVERSION : COMPACTION
 }
 
 async function main(): Promise<void> {
@@ -197,11 +308,18 @@ async function main(): Promise<void> {
 
   const before = preflight(DB)
   if (!args.assumeYes) await confirmOrExit(DB)
+  const rebuild = rebuildFor(DB)
 
   const STAMP = stamp()
   // Same directory as the database, so the final mv is atomic (one filesystem).
   const TMP = join(dirname(DB), `vacuum-${STAMP}.db`)
-  const guard = guardSwap(DB, `.replaced-${STAMP}`, TMP)
+  const CONVERTED = join(dirname(DB), `convert-${STAMP}.db`)
+  const guard = guardSwap(
+    DB,
+    `.replaced-${STAMP}`,
+    [TMP, CONVERTED],
+    rebuild.keepStopped,
+  )
 
   const stoppedAt = Date.now()
   run('systemctl', ['stop', SERVICE])
@@ -211,12 +329,12 @@ async function main(): Promise<void> {
 
   // The whole of the downtime: 0.6 s on a 236 MB database, scaling with it.
   const rebuildStartedAt = Date.now()
-  const rebuild = vacuumInto(DB, TMP)
-  if (!rebuild.ok)
-    die(`the rebuild failed — keeping the original: ${rebuild.out}`)
+  const built = rebuild.into(DB, CONVERTED, TMP)
+  if (!built.ok) die(`the rebuild failed — keeping the original: ${built.out}`)
   const rebuildMs = Date.now() - rebuildStartedAt
 
   const found = verifyRebuild(TMP, live)
+  rebuild.verify(DB, TMP)
 
   // Everything that can fail has; from here to the swap is a single mv.
   run('chown', [`${OWNER}:${OWNER}`, TMP])
@@ -231,10 +349,12 @@ async function main(): Promise<void> {
   const downtimeMs = Date.now() - stoppedAt
 
   if (!(await healthy(PORT))) {
+    // A -wal left now belongs to the rebuilt file: never replay it over the original.
     die(
       `healthz FAILED — journalctl -u ${SERVICE} -n 50`,
       `To put the original back: systemctl stop ${SERVICE}`,
-      `  mv ${DB}.replaced-${STAMP} ${DB} && systemctl start ${SERVICE}`,
+      `  rm -f ${DB}-wal ${DB}-shm && mv ${DB}.replaced-${STAMP} ${DB}`,
+      `  ${rebuild.serveOriginal}`,
     )
   }
   console.log('healthz ok')
@@ -252,7 +372,7 @@ async function main(): Promise<void> {
     run('chown', [`${OWNER}:${OWNER}`, join(BACKUP_DIR, VACUUM_STATUS_FILE)])
   }
   console.log(
-    `compacted ${DB}: ${before} -> ${after} bytes (${reclaimPct(before, after)}% reclaimed), ${found.profiles} profiles / ${found.votes} votes — rebuild ${secs(rebuildMs)}, service down ${secs(downtimeMs)}`,
+    `${rebuild.done} ${DB}: ${before} -> ${after} bytes (${reclaimPct(before, after)}% reclaimed), ${found.profiles} profiles / ${found.votes} votes — rebuild ${secs(rebuildMs)}, service down ${secs(downtimeMs)}`,
   )
   console.log(
     `the original is kept as ${DB}.replaced-${STAMP} — delete it once this has proven out`,

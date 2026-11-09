@@ -29,10 +29,10 @@ export const DEFAULT_SQLITE_CONFIG = {
 } as const
 
 // Full-table scans run in chunks of this many rows and give the event loop a
-// turn every slice. At 250 the slowest chunks (p99, the profile sweep) took 7 ms
+// turn every slice. At 250 the slowest chunks (p99, the old profile sweep) took 7 ms
 // on one core with the file in memory and 32 ms with 1.1 GB in 640 MB; 100 cost
-// 12% more in total, 1000 took 55 ms. Retention and the stats line interleave,
-// so a request waits up to two slices plus the chunks that overrun them.
+// 12% more in total, 1000 took 55 ms. Walks run one at a time (oneAtATime), so
+// a request waits up to one slice plus the chunk that overruns it.
 const SCAN_CHUNK_ROWS = 250
 const SCAN_SLICE_MS = 10
 
@@ -148,10 +148,29 @@ export class SqliteDb implements Db {
   }
 }
 
+/** Started on a file from before the votes-only layout, this code would write
+ *  label ids into its text columns and serve every old profile as having no
+ *  location, with /healthz green. Failing to start makes update.ts roll back. */
+function refuseProfilesLayout(db: Database.Database, path: string): void {
+  const isOldLayout =
+    db
+      .prepare(
+        "SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'profiles'",
+      )
+      .get() !== undefined
+  if (!isOldLayout) return
+  db.close()
+  throw new Error(
+    `${path} is in the layout from before votes-only (it has a profiles table); convert it with deploy/vacuum.ts before starting this version`,
+  )
+}
+
 /** Open (creating if absent) and apply schema.sql, which is idempotent - there
  *  is no separate migration step to forget on a fresh box. */
 export function openDatabase(config: SqliteConfig): SqliteDb {
   const db = new Database(config.path)
+  // Before any pragma or schema write, so a refused file is left as it was.
+  refuseProfilesLayout(db, config.path)
 
   // WAL + synchronous=NORMAL: reads proceed during a write, at the cost of the
   // last few contributions on a crash. See CLAUDE.md.

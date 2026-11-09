@@ -10,6 +10,7 @@ import worker, {
   __resetStats,
   type Env,
   pruneExpired,
+  recountProfiles,
   VOTE_RETENTION_MS,
 } from '../src/index.ts'
 import {
@@ -78,26 +79,38 @@ const COUNTRIES = [
 ]
 const SOURCES = ['web', 'Japan Android App', 'India App Store', null]
 
+/** Each string once, as contributions store them; used_at is generation time,
+ *  past every vote's seen_at, so retention keeps them all. */
+function insertLabels(db: SqliteDb, now: number): Map<string, number> {
+  const ins = db.raw.prepare(
+    'INSERT INTO labels (text, used_at) VALUES (?, ?) RETURNING id',
+  )
+  const ids = new Map<string, number>()
+  for (const text of [...COUNTRIES, ...SOURCES]) {
+    if (text !== null) ids.set(text, ins.pluck().get(text, now) as number)
+  }
+  return ids
+}
+
 function generate(db: SqliteDb): void {
   const raw = db.raw
   const t0 = Date.now()
 
   raw.exec('BEGIN')
-  const insProfile = raw.prepare(
-    'INSERT OR IGNORE INTO profiles (username, location, source, location_accurate, location_confidence, updated_at)' +
-      ' VALUES (?, ?, ?, ?, ?, ?)',
-  )
   const insVote = raw.prepare(
     'INSERT OR IGNORE INTO location_votes (username, client_id, location, source, location_accurate, seen_at)' +
       ' VALUES (?, ?, ?, ?, ?, ?)',
   )
 
   const now = Date.now()
+  const labelIds = insertLabels(db, now)
+  const idOf = (text: string | null) =>
+    text === null ? null : labelIds.get(text)
   let votes = 0
   for (let i = 0; i < PROFILES; i++) {
     const username = `user${i}`
-    const loc = COUNTRIES[i % COUNTRIES.length]!
-    const src = SOURCES[i % SOURCES.length]!
+    const loc = idOf(COUNTRIES[i % COUNTRIES.length] ?? null)
+    const src = idOf(SOURCES[i % SOURCES.length] ?? null)
     // seen_at spread over the retention window plus one day, so a retention
     // pass deletes that oldest day — the steady state, not a first-run backlog.
     // Without the extra day nothing is past the cutoff and the pass times only
@@ -105,7 +118,6 @@ function generate(db: SqliteDb): void {
     const seenAt = now - (i % (RETENTION_DAYS + 1)) * DAY
 
     const nVotes = votesOn(i)
-    insProfile.run(username, loc, src, 1, nVotes, seenAt)
     for (let j = 0; j < nVotes; j++) {
       insVote.run(
         username,
@@ -280,8 +292,8 @@ results.push(
   ),
 )
 
-// /v1/stats counts profiles in one statement on the request path, at most
-// once per STATS_TTL_MS.
+// What /v1/stats costs before the first retention pass has counted for it: one
+// COUNT(DISTINCT username) over every vote, on the request path.
 results.push(
   await time('GET /v1/stats, count not cached', 5, async () => {
     __resetStats()
@@ -315,8 +327,10 @@ const statsLine = await maintenance(() =>
 const retention = await maintenance(() =>
   pruneExpired(env, dataNow, yieldingScan()),
 )
+// Every XLOC_PROFILE_COUNT_MINUTES between those, for /v1/stats.
+const recount = await maintenance(() => recountProfiles(env, yieldingScan()))
 const votesBefore = statsLine.value.votes
-const votesDeleted = retention.value
+const votesDeleted = retention.value.deleted
 
 const pad = (s: string, n: number) => s.padEnd(n)
 const num = (v: number) => `${v.toFixed(2)}ms`.padStart(10)
@@ -343,6 +357,7 @@ for (const r of results) {
 for (const [name, run] of [
   ['stats line totals (chunked)', statsLine],
   ['retention pass (chunked)', retention],
+  ['profile recount (chunked)', recount],
 ] as const) {
   console.log(
     `${pad(name, 38)}total ${num(run.ms)}   longest stall ${num(run.stallMs)}`,

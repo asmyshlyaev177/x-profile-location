@@ -338,6 +338,22 @@ describe.skipIf(MISSING.length > 0)('update.ts — rollback', () => {
     ).toHaveLength(2)
   })
 
+  it('reports a failed restart plainly when there was nothing to pull', () => {
+    // After a hand pull the commit it started from is the one that failed, so
+    // a rollback to it restarts the same code and calls it the old one.
+    const before = git(repo, 'rev-parse', 'HEAD')
+    stub('curl', `exit 22`)
+
+    const r = run()
+
+    expect(r.status).toBe(1)
+    expect(git(repo, 'rev-parse', 'HEAD')).toBe(before)
+    expect(
+      log().filter((l) => l === 'systemctl restart x-loc-cache'),
+    ).toHaveLength(1)
+    expect(r.stderr).not.toContain('rolled back')
+  })
+
   it('says so plainly when even the old commit will not serve', () => {
     writeInOrigin('server/src/node-server.ts', '// v2\n')
     commit('second')

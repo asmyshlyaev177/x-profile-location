@@ -79,17 +79,74 @@ function pickConsensus(votes) {
   };
 }
 
+// src/network.ts
+function networkOf(ip) {
+  if (!ip) return null;
+  const prefix = prefixOf(ip);
+  return prefix === null ? null : fold16(fnv1a32(prefix));
+}
+function prefixOf(ip) {
+  const v4 = parseIpv4(ip);
+  if (v4) return ipv4Prefix(v4);
+  const v6 = parseIpv6(ip.replace(/%.*$/, ""));
+  if (!v6) return null;
+  if (v6.slice(0, 5).every((g) => g === 0) && v6[5] === 65535) {
+    return ipv4Prefix([v6[6] >> 8, v6[6] & 255, v6[7] >> 8]);
+  }
+  return `6:${v6.slice(0, 3).map((g) => g.toString(16)).join(":")}`;
+}
+function ipv4Prefix(octets) {
+  return `4:${octets.slice(0, 3).join(".")}`;
+}
+function parseIpv4(text) {
+  const parts = text.split(".");
+  if (parts.length !== 4) return null;
+  const octets = parts.map((p) => /^\d{1,3}$/.test(p) ? Number(p) : NaN);
+  return octets.every((o) => o <= 255) ? octets : null;
+}
+function parseIpv6(text) {
+  const halves = text.split("::");
+  if (halves.length > 2) return null;
+  const isCompressed = halves.length === 2;
+  const head = groupsOf(halves[0], !isCompressed);
+  const tail = isCompressed ? groupsOf(halves[1], true) : [];
+  if (!head || !tail) return null;
+  const missing = 8 - head.length - tail.length;
+  if (isCompressed ? missing < 1 : missing !== 0) return null;
+  return [...head, ...Array(missing).fill(0), ...tail];
+}
+function groupsOf(part, mayEndInIpv4) {
+  if (part === "") return [];
+  const fields = part.split(":");
+  const v4 = mayEndInIpv4 ? parseIpv4(fields[fields.length - 1]) : null;
+  const hexFields = v4 ? fields.slice(0, -1) : fields;
+  if (!hexFields.every((f) => /^[0-9a-f]{1,4}$/i.test(f))) return null;
+  const groups = hexFields.map((f) => parseInt(f, 16));
+  return v4 ? [...groups, v4[0] << 8 | v4[1], v4[2] << 8 | v4[3]] : groups;
+}
+function fnv1a32(text) {
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+function fold16(hash) {
+  return hash >>> 16 ^ hash & 65535;
+}
+
 // src/scan.ts
 var WHOLE_TABLE = {
   chunkRows: Infinity,
   pause: async () => {
   }
 };
-async function forEachUsernameRange(db2, table, policy, visit) {
-  const { results } = await db2.prepare(`SELECT MAX(username) AS last FROM ${table}`).all();
+async function forEachUsernameRange(db2, policy, visit) {
+  const { results } = await db2.prepare("SELECT MAX(username) AS last FROM location_votes").all();
   const last = results?.[0]?.last ?? null;
   if (last === null) return;
-  const endAfter = rangeEnds(db2, table, last, policy.chunkRows);
+  const endAfter = rangeEnds(db2, last, policy.chunkRows);
   for (let after = ""; after !== last; ) {
     const upTo = await endAfter(after);
     await visit(after, upTo);
@@ -97,14 +154,22 @@ async function forEachUsernameRange(db2, table, policy, visit) {
     after = upTo;
   }
 }
-function rangeEnds(db2, table, last, rows) {
+function rangeEnds(db2, last, rows) {
   if (!Number.isFinite(rows)) return async () => last;
-  const sql = `SELECT username FROM ${table} WHERE username > ? AND username <= ?
+  const sql = `SELECT username FROM location_votes WHERE username > ? AND username <= ?
     ORDER BY username LIMIT 1 OFFSET ?`;
   return async (after) => {
     const { results } = await db2.prepare(sql).bind(after, last, rows - 1).all();
     return results?.[0]?.username ?? last;
   };
+}
+async function countRange(db2, after, upTo) {
+  const { results } = await db2.prepare(
+    `SELECT COUNT(*) AS votes, COUNT(DISTINCT username) AS profiles
+         FROM location_votes WHERE username > ? AND username <= ?`
+  ).bind(after, upTo).all();
+  const row = results?.[0];
+  return { votes: row?.votes ?? 0, profiles: row?.profiles ?? 0 };
 }
 function oneAtATime() {
   let tail = Promise.resolve();
@@ -124,7 +189,6 @@ var VOTE_RETENTION_MS = 60 * 24 * 60 * 60 * 1e3;
 var USERNAME_RE = /^[a-z0-9_]{1,50}$/;
 var MAX_FIELD_LEN = 60;
 var VOTE_CAP = 10;
-var VOTE_CAP_SLACK = 5;
 var STATS_TTL_MS = 18e4;
 function cors(resp) {
   resp.headers.set("Access-Control-Allow-Origin", "*");
@@ -167,14 +231,29 @@ function rowsChanged(result) {
   if (typeof meta?.changes === "number") return meta.changes;
   return 0;
 }
-function toServed(r) {
-  return {
-    u: r.username,
-    loc: r.location,
-    src: r.source,
-    acc: r.location_accurate !== 0,
-    conf: r.location_confidence
-  };
+function groupByUsername(rows) {
+  const byUser = /* @__PURE__ */ new Map();
+  for (const r of rows) {
+    const list = byUser.get(r.username);
+    if (list) list.push(r);
+    else byUser.set(r.username, [r]);
+  }
+  return byUser;
+}
+function servedFrom(rows) {
+  const served = [];
+  for (const [u, votes] of groupByUsername(rows)) {
+    const c = pickConsensus(votes.map(toLocationVote));
+    if (!c) continue;
+    served.push({
+      u,
+      loc: c.location,
+      src: c.source,
+      acc: c.locationAccurate,
+      conf: c.confidence
+    });
+  }
+  return served;
 }
 async function handleBatch(req, env2) {
   const body = await req.json().catch(() => null);
@@ -185,21 +264,31 @@ async function handleBatch(req, env2) {
   if (names.length === 0) return json({ profiles: [] });
   const placeholders = names.map(() => "?").join(",");
   const { results } = await env2.DB.prepare(
-    `SELECT username, location, source, location_accurate, location_confidence
-       FROM profiles
-      WHERE username IN (${placeholders}) AND location_confidence > 0`
+    `SELECT v.username, loc.text AS location, src.text AS source,
+            v.location_accurate, v.seen_at
+       FROM location_votes v
+       LEFT JOIN labels loc ON loc.id = v.location
+       LEFT JOIN labels src ON src.id = v.source
+      WHERE v.username IN (${placeholders})`
   ).bind(...names).all();
-  return json({ profiles: (results ?? []).map(toServed) });
+  return json({ profiles: servedFrom(results ?? []) });
 }
 var counted = null;
-async function handleStats(env2, now) {
-  if (counted === null || now - counted.at >= STATS_TTL_MS) {
+function servableCount(env2) {
+  if (counted === null) return null;
+  const isStale = !env2.profilesCountedByWalks && Date.now() - counted.at >= STATS_TTL_MS;
+  return isStale ? null : counted.profiles;
+}
+async function handleStats(env2) {
+  let profiles = servableCount(env2);
+  if (profiles === null) {
     const { results } = await env2.DB.prepare(
-      "SELECT COUNT(*) AS n FROM profiles"
+      "SELECT COUNT(DISTINCT username) AS n FROM location_votes"
     ).all();
-    counted = { at: now, profiles: results?.[0]?.n ?? 0 };
+    profiles = results?.[0]?.n ?? 0;
+    counted = { profiles, at: Date.now() };
   }
-  const resp = json({ profiles: counted.profiles });
+  const resp = json({ profiles });
   resp.headers.set("Cache-Control", `public, max-age=${STATS_TTL_MS / 1e3}`);
   return resp;
 }
@@ -221,23 +310,77 @@ function parseContribution(body) {
   }
   return parsed;
 }
-function groupAndCapVotes(rows) {
-  const byUser = /* @__PURE__ */ new Map();
-  for (const r of rows) {
-    const arr = byUser.get(r.username) ?? [];
-    arr.push(r);
-    byUser.set(r.username, arr);
-  }
-  const evictions = [];
-  for (const list of byUser.values()) {
-    if (list.length <= VOTE_CAP + VOTE_CAP_SLACK) continue;
-    list.sort((a, b) => b.seen_at - a.seen_at);
-    evictions.push(...list.splice(VOTE_CAP));
-  }
-  return { byUser, evictions };
+function newestFirst(a, b) {
+  if (a.seen_at !== b.seen_at) return b.seen_at - a.seen_at;
+  return a.client_id < b.client_id ? -1 : 1;
 }
-function alreadyStored(cur, c) {
-  return !!cur && cur.location === c.location && cur.source === c.source && cur.location_accurate !== 0 === c.locationAccurate && cur.location_confidence === c.confidence;
+function repeatsOfNetwork(newest) {
+  const seen = /* @__PURE__ */ new Set();
+  const repeats = /* @__PURE__ */ new Set();
+  for (const v of newest) {
+    if (v.net === null) continue;
+    if (seen.has(v.net)) repeats.add(v);
+    seen.add(v.net);
+  }
+  return repeats;
+}
+function votesToEvict(rows) {
+  const evictions = [];
+  for (const list of groupByUsername(rows).values()) {
+    list.sort(newestFirst);
+    const repeats = repeatsOfNetwork(list);
+    const kept = list.filter((v) => !repeats.has(v));
+    evictions.push(...repeats, ...kept.slice(VOTE_CAP));
+  }
+  return evictions;
+}
+var UPSERT_LABEL = `INSERT INTO labels (text, used_at) VALUES (?, ?)
+  ON CONFLICT(text) DO UPDATE SET used_at = MAX(used_at, excluded.used_at)`;
+var UPSERT_VOTE = `INSERT INTO location_votes
+    (username, client_id, location, source, location_accurate, seen_at, net)
+  VALUES (?, ?, (SELECT id FROM labels WHERE text = ?),
+          (SELECT id FROM labels WHERE text = ?), ?, ?, ?)
+  ON CONFLICT(username, client_id) DO UPDATE SET
+    location = excluded.location,
+    source = excluded.source,
+    location_accurate = excluded.location_accurate,
+    seen_at = excluded.seen_at,
+    net = excluded.net`;
+function voteWrites(env2, from, votes, now) {
+  const texts = new Set(
+    votes.flatMap((v) => [v.loc, v.src]).filter((t) => t !== null)
+  );
+  return [
+    ...[...texts].map((t) => env2.DB.prepare(UPSERT_LABEL).bind(t, now)),
+    ...votes.map(
+      (v) => env2.DB.prepare(UPSERT_VOTE).bind(
+        v.u,
+        from.clientId,
+        v.loc,
+        v.src,
+        v.acc,
+        now,
+        from.net
+      )
+    )
+  ];
+}
+async function evict(env2, usernames) {
+  const ph = usernames.map(() => "?").join(",");
+  const { results } = await env2.DB.prepare(
+    `SELECT username, client_id, net, seen_at FROM location_votes
+      WHERE username IN (${ph})`
+  ).bind(...usernames).all();
+  const evictions = votesToEvict(results ?? []);
+  if (evictions.length === 0) return;
+  await env2.DB.batch(
+    evictions.map(
+      (ev) => env2.DB.prepare(
+        // seen_at too: on D1 the install may re-send between the read and here.
+        "DELETE FROM location_votes WHERE username = ? AND client_id = ? AND seen_at = ?"
+      ).bind(ev.username, ev.client_id, ev.seen_at)
+    )
+  );
 }
 async function handleContribute(req, env2) {
   const body = await req.json().catch(() => null);
@@ -250,75 +393,14 @@ async function handleContribute(req, env2) {
     admitContributions(cid, [...new Set(parsed.map((v) => v.u))], now)
   );
   const votes = parsed.filter((v) => allowed.has(v.u));
-  const affected = new Set(votes.map((v) => v.u));
   if (votes.length === 0) return json({ ok: true });
-  await env2.DB.batch(
-    votes.map(
-      (v) => env2.DB.prepare(
-        `INSERT INTO location_votes
-           (username, client_id, location, source, location_accurate, seen_at)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(username, client_id) DO UPDATE SET
-           location = excluded.location,
-           source = excluded.source,
-           location_accurate = excluded.location_accurate,
-           seen_at = excluded.seen_at`
-      ).bind(v.u, cid, v.loc, v.src, v.acc, now)
-    )
-  );
-  const affectedList = [...affected];
-  const ph = affectedList.map(() => "?").join(",");
-  const { results } = await env2.DB.prepare(
-    `SELECT username, client_id, location, source, location_accurate, seen_at
-       FROM location_votes
-      WHERE username IN (${ph})`
-  ).bind(...affectedList).all();
-  const { byUser, evictions } = groupAndCapVotes(results ?? []);
-  const { results: curRows } = await env2.DB.prepare(
-    `SELECT username, location, source, location_accurate, location_confidence
-       FROM profiles
-      WHERE username IN (${ph})`
-  ).bind(...affectedList).all();
-  const current = /* @__PURE__ */ new Map();
-  for (const r of curRows ?? []) current.set(r.username, r);
-  const writes = [
-    ...evictions.map(
-      (ev) => env2.DB.prepare(
-        "DELETE FROM location_votes WHERE username = ? AND client_id = ?"
-      ).bind(ev.username, ev.client_id)
-    ),
-    ...consensusWrites(env2, { now, affected: affectedList, byUser, current })
-  ];
-  if (writes.length > 0) await env2.DB.batch(writes);
+  const from = {
+    clientId: cid,
+    net: networkOf(req.headers.get("cf-connecting-ip"))
+  };
+  await env2.DB.batch(voteWrites(env2, from, votes, now));
+  await evict(env2, [...new Set(votes.map((v) => v.u))]);
   return json({ ok: true });
-}
-function consensusWrites(env2, ctx) {
-  const writes = [];
-  for (const u of ctx.affected) {
-    const c = pickConsensus((ctx.byUser.get(u) ?? []).map(toLocationVote));
-    if (!c || alreadyStored(ctx.current.get(u), c)) continue;
-    writes.push(
-      env2.DB.prepare(
-        `INSERT INTO profiles
-           (username, location, source, location_accurate, location_confidence, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(username) DO UPDATE SET
-           location = excluded.location,
-           source = excluded.source,
-           location_accurate = excluded.location_accurate,
-           location_confidence = excluded.location_confidence,
-           updated_at = excluded.updated_at`
-      ).bind(
-        u,
-        c.location,
-        c.source,
-        c.locationAccurate ? 1 : 0,
-        c.confidence,
-        ctx.now
-      )
-    );
-  }
-  return writes;
 }
 var ROUTES = [
   { route: "lookup", method: "POST", path: "/v1/loc/batch" },
@@ -342,7 +424,7 @@ var index_default = {
         case "contribution":
           return await handleContribute(req, env2);
         case "stats":
-          return await handleStats(env2, Date.now());
+          return await handleStats(env2);
         case null:
           return cors(new Response("Not found", { status: 404 }));
       }
@@ -359,37 +441,27 @@ var index_default = {
 async function pruneExpired(env2, now, policy) {
   const cutoff = now - VOTE_RETENTION_MS;
   let deleted = 0;
-  await forEachUsernameRange(
-    env2.DB,
-    "location_votes",
-    policy,
-    async (after, upTo) => {
-      deleted += rowsChanged(await deleteExpiredVotes(env2, after, upTo, cutoff));
-    }
-  );
-  await forEachUsernameRange(
-    env2.DB,
-    "profiles",
-    policy,
-    async (after, upTo) => {
-      await deleteVotelessProfiles(env2, after, upTo);
-    }
-  );
-  return deleted;
+  let profiles = 0;
+  await forEachUsernameRange(env2.DB, policy, async (after, upTo) => {
+    deleted += rowsChanged(await deleteExpiredVotes(env2, after, upTo, cutoff));
+    profiles += (await countRange(env2.DB, after, upTo)).profiles;
+  });
+  await env2.DB.prepare("DELETE FROM labels WHERE used_at < ?").bind(cutoff).run();
+  counted = { profiles, at: Date.now() };
+  return { deleted, profiles };
+}
+async function recountProfiles(env2, policy) {
+  let profiles = 0;
+  await forEachUsernameRange(env2.DB, policy, async (after, upTo) => {
+    profiles += (await countRange(env2.DB, after, upTo)).profiles;
+  });
+  counted = { profiles, at: Date.now() };
+  return profiles;
 }
 function deleteExpiredVotes(env2, after, upTo, cutoff) {
   return env2.DB.prepare(
     "DELETE FROM location_votes WHERE username > ? AND username <= ? AND seen_at < ?"
   ).bind(after, upTo, cutoff).run();
-}
-function deleteVotelessProfiles(env2, after, upTo) {
-  return env2.DB.prepare(
-    `DELETE FROM profiles
-      WHERE username > ? AND username <= ?
-        AND NOT EXISTS (
-              SELECT 1 FROM location_votes v WHERE v.username = profiles.username
-            )`
-  ).bind(after, upTo).run();
 }
 
 // src/sqlite.ts
@@ -499,8 +571,19 @@ var SqliteDb = class {
     this.#db.close();
   }
 };
+function refuseProfilesLayout(db2, path) {
+  const isOldLayout = db2.prepare(
+    "SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'profiles'"
+  ).get() !== void 0;
+  if (!isOldLayout) return;
+  db2.close();
+  throw new Error(
+    `${path} is in the layout from before votes-only (it has a profiles table); convert it with deploy/vacuum.ts before starting this version`
+  );
+}
 function openDatabase(config2) {
   const db2 = new Database(config2.path);
+  refuseProfilesLayout(db2, config2.path);
   db2.pragma("journal_mode = WAL");
   db2.pragma("synchronous = NORMAL");
   db2.pragma(`busy_timeout = ${DEFAULT_SQLITE_CONFIG.busyTimeoutMs}`);
@@ -660,19 +743,6 @@ var Stats = class {
   }
 };
 var HOUR_MS = 60 * 60 * 1e3;
-async function countInRange(db2, table, after, upTo) {
-  const { results } = await db2.prepare(
-    `SELECT COUNT(*) AS n FROM ${table} WHERE username > ? AND username <= ?`
-  ).bind(after, upTo).all();
-  return results?.[0]?.n ?? 0;
-}
-async function countProfiles(db2, policy) {
-  let profiles = 0;
-  await forEachUsernameRange(db2, "profiles", policy, async (after, upTo) => {
-    profiles += await countInRange(db2, "profiles", after, upTo);
-  });
-  return profiles;
-}
 async function installsSeenInRange(db2, after, upTo, since) {
   const { results } = await db2.prepare(
     `SELECT client_id, MAX(seen_at) AS last FROM location_votes
@@ -682,26 +752,27 @@ async function installsSeenInRange(db2, after, upTo, since) {
 }
 async function scanVotes(db2, since, policy) {
   let votes = 0;
+  let profiles = 0;
   const lastSeen = /* @__PURE__ */ new Map();
-  await forEachUsernameRange(
-    db2,
-    "location_votes",
-    policy,
-    async (after, upTo) => {
-      votes += await countInRange(db2, "location_votes", after, upTo);
-      for (const r of await installsSeenInRange(db2, after, upTo, since)) {
-        lastSeen.set(
-          r.client_id,
-          Math.max(lastSeen.get(r.client_id) ?? 0, r.last)
-        );
-      }
+  await forEachUsernameRange(db2, policy, async (after, upTo) => {
+    const range = await countRange(db2, after, upTo);
+    votes += range.votes;
+    profiles += range.profiles;
+    for (const r of await installsSeenInRange(db2, after, upTo, since)) {
+      lastSeen.set(
+        r.client_id,
+        Math.max(lastSeen.get(r.client_id) ?? 0, r.last)
+      );
     }
-  );
-  return { votes, lastSeen };
+  });
+  return { votes, profiles, lastSeen };
 }
 async function countTotals(db2, now, policy) {
-  const profiles = await countProfiles(db2, policy);
-  const { votes, lastSeen } = await scanVotes(db2, now - 168 * HOUR_MS, policy);
+  const { votes, profiles, lastSeen } = await scanVotes(
+    db2,
+    now - 168 * HOUR_MS,
+    policy
+  );
   const dayAgo = now - 24 * HOUR_MS;
   const users24h = [...lastSeen.values()].filter((at) => at >= dayAgo).length;
   return { profiles, votes, users24h, users7d: lastSeen.size };
@@ -737,6 +808,9 @@ var config = {
   rateWindowMs: num("XLOC_RATE_WINDOW_S", 60) * 1e3,
   statsIntervalHours: num("XLOC_STATS_INTERVAL_HOURS", 24),
   // 0 = never log stats
+  // /v1/stats recount; 0 = retention alone. ~0.4 s a pass at 2.1M votes, never
+  // holding the loop past its 10 ms slice (2026-11-09, CLAUDE.md).
+  profileCountMinutes: num("XLOC_PROFILE_COUNT_MINUTES", 10),
   // Only honour X-Forwarded-For when told to: a directly-exposed server must
   // not let clients forge their own identity.
   trustProxy: bool("XLOC_TRUST_PROXY", true)
@@ -795,12 +869,14 @@ function toHeaders(req) {
   }
   return headers;
 }
-function toRequest(req, body) {
+function toRequest(req, body, ip) {
   try {
     const url = new URL(req.url ?? "/", "http://localhost");
+    const headers = toHeaders(req);
+    headers.set("cf-connecting-ip", ip);
     return new Request(url, {
       method: req.method,
-      headers: toHeaders(req),
+      headers,
       body: body === null || body === "" ? void 0 : body
     });
   } catch {
@@ -835,7 +911,7 @@ var db = openDatabase({
   cacheMb: config.cacheMb,
   mmapMb: config.mmapMb
 });
-var env = { DB: db };
+var env = { DB: db, profilesCountedByWalks: true };
 var stats = new Stats();
 function dbBytes() {
   let total = 0;
@@ -875,7 +951,8 @@ var server = createServer((req, res) => {
       if (req.method === "GET" && req.url === "/healthz") {
         return plain(res, 200, "ok");
       }
-      const retryAfter = rateLimited(clientIp(req), Date.now());
+      const ip = clientIp(req);
+      const retryAfter = rateLimited(ip, Date.now());
       if (retryAfter > 0) {
         stats.noteRateLimited();
         return plain(res, 429, "Too Many Requests", {
@@ -897,7 +974,7 @@ var server = createServer((req, res) => {
         stats.noteTooLarge();
         return rejectTooLarge(req, res);
       }
-      const request = toRequest(req, body);
+      const request = toRequest(req, body, ip);
       if (request === null) {
         stats.noteRequest("other", "", "", Date.now() - startedAt);
         return plain(res, 400, "Bad Request");
@@ -920,11 +997,15 @@ var retentionMs = config.retentionHours * 60 * 60 * 1e3;
 async function runRetention() {
   const startedAt = Date.now();
   try {
-    const deleted = await pruneExpired(env, Date.now(), yieldingScan());
+    const { deleted, profiles } = await pruneExpired(
+      env,
+      Date.now(),
+      yieldingScan()
+    );
     sweepBuckets(Date.now());
     db.truncateWal();
     console.log(
-      `[x-loc-cache] retention: deleted ${deleted} vote(s) in ${Date.now() - startedAt}ms`
+      `[x-loc-cache] retention: deleted ${deleted} vote(s), ${profiles} profile(s) left, in ${Date.now() - startedAt}ms`
     );
   } catch (err) {
     console.error("[x-loc-cache] retention failed:", err);
@@ -938,6 +1019,24 @@ if (config.statsIntervalHours > 0) {
     () => void maintain("stats", () => logStats("interval")),
     config.statsIntervalHours * 60 * 60 * 1e3
   ).unref();
+}
+async function runProfileCount() {
+  try {
+    await recountProfiles(env, yieldingScan());
+  } catch (err) {
+    console.error("[x-loc-cache] profile count failed:", err);
+  }
+}
+if (config.profileCountMinutes > 0) {
+  setInterval(
+    () => void maintain("profiles", runProfileCount),
+    config.profileCountMinutes * 60 * 1e3
+  ).unref();
+}
+try {
+  await recountProfiles(env, WHOLE_TABLE);
+} catch (err) {
+  console.error("[x-loc-cache] boot profile count failed:", err);
 }
 server.listen(config.port, config.host, () => {
   console.log(

@@ -316,7 +316,7 @@ describe('countTotals', () => {
         NOW - hours * HOUR,
       )
     return {
-      profiles: one('SELECT COUNT(*) FROM profiles'),
+      profiles: one('SELECT COUNT(DISTINCT username) FROM location_votes'),
       votes: one('SELECT COUNT(*) FROM location_votes'),
       users24h: distinctSince(24),
       users7d: distinctSince(168),
@@ -335,11 +335,6 @@ describe('countTotals', () => {
               'INSERT OR REPLACE INTO location_votes (username, client_id, seen_at) VALUES (?, ?, ?)',
             )
             for (const v of votes) insert.run(v.user, v.client, NOW - v.age)
-            db.raw
-              .prepare(
-                'INSERT INTO profiles (username) SELECT DISTINCT username FROM location_votes',
-              )
-              .run()
             const policy: ScanPolicy = { chunkRows, pause: async () => {} }
             expect(await countTotals(db, NOW, policy)).toEqual(oracle(db))
             expect(await countTotals(db, NOW, WHOLE_TABLE)).toEqual(oracle(db))

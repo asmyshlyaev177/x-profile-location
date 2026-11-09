@@ -23,10 +23,15 @@ async function startBundle(
   return server.child
 }
 
-function post(port: number, path: string, body: unknown): Promise<Response> {
+function post(
+  port: number,
+  path: string,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Promise<Response> {
   return fetch(`http://127.0.0.1:${port}${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
   })
 }
@@ -57,8 +62,17 @@ describe('dist/node-server.js', () => {
     expect(await health.text()).toBe('ok')
 
     const vote = { u: 'Jack', loc: 'United States', src: 'web', acc: true }
-    for (const clientId of ['install-a', 'install-b']) {
-      const r = await post(port, '/v1/loc', { clientId, entries: [vote] })
+    // Two networks, as a proxy reports them: one host would count once.
+    for (const [clientId, ip] of [
+      ['install-a', '198.51.100.7'],
+      ['install-b', '203.0.113.9'],
+    ]) {
+      const r = await post(
+        port,
+        '/v1/loc',
+        { clientId, entries: [vote] },
+        { 'x-forwarded-for': ip },
+      )
       expect(await r.json()).toEqual({ ok: true })
     }
     const lookup = await post(port, '/v1/loc/batch', { usernames: ['jack'] })

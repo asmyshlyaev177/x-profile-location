@@ -35,6 +35,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createOldLayoutDatabase } from './fixtures/old-layout.ts'
 
 const DEPLOY = import.meta.dirname
 const SERVER = join(DEPLOY, '..')
@@ -249,19 +250,21 @@ function liveBytes(): number {
  * going through the API for these would measure the API. `keep: false` deletes
  * them again, which is what leaves the free pages a compaction reclaims.
  */
-function fillProfiles(count: number, keep = true): void {
+function fillVotes(count: number, keep = true): void {
   const db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
   const ins = db.prepare(
-    'INSERT INTO profiles (username, location, source, location_accurate, location_confidence, updated_at) VALUES (?,?,?,?,?,?)',
+    'INSERT INTO location_votes (username, client_id, location_accurate, seen_at) VALUES (?, ?, 1, ?)',
   )
   db.transaction(() => {
     for (let i = 0; i < count; i++) {
-      ins.run(`bulk_${i}`, 'United States', 'web', 1, 1, Date.now())
+      ins.run(`bulk_${i}`, 'bulk-client', Date.now())
     }
   })()
   if (!keep)
-    db.exec("DELETE FROM profiles WHERE username LIKE 'bulk!_%' ESCAPE '!'")
+    db.exec(
+      "DELETE FROM location_votes WHERE username LIKE 'bulk!_%' ESCAPE '!'",
+    )
   db.pragma('wal_checkpoint(TRUNCATE)')
   db.close()
 }
@@ -317,7 +320,7 @@ describe.skipIf(MISSING.length > 0)(
       // the acknowledgements correspond to rows before trusting them as the
       // baseline for what must survive.
       expect(storedVotes()).toEqual(new Set(seeded))
-      fillProfiles(40_000, false)
+      fillVotes(40_000, false)
       const before = liveBytes()
 
       const load = startLoad('load-client')
@@ -384,7 +387,7 @@ describe.skipIf(MISSING.length > 0)(
       // A database with something in it, so the rebuild is real work rather
       // than an instant no-op — the measurement below is only interesting to
       // the extent the file is.
-      fillProfiles(200_000)
+      fillVotes(200_000)
 
       const dbMb = Math.round((liveBytes() / 1_048_576) * 10) / 10
       const load = startLoad('load-client')
@@ -428,5 +431,33 @@ describe.skipIf(MISSING.length > 0)(
         `[vacuum] ${dbMb} MB database: ${refused.length} requests refused over ${outageMs}ms (sampled every ${LOAD_INTERVAL_MS}ms), script ${scriptMs}ms, slowest failure ${slowest}ms`,
       )
     }, 120_000)
+
+    it('converts a file from before votes-only, and the server serves its votes', async () => {
+      // The server refuses that layout at boot, so the conversion is the only
+      // way across; healthz alone would not show a label id read as the wrong text.
+      createOldLayoutDatabase(dbPath)
+      const r = await runVacuum()
+      expect(r.err).toBe('')
+      expect(r.code).toBe(0)
+      expect(r.out).toContain('converted to the votes-only layout')
+
+      // One vote each in the fixture, so each answer is that vote.
+      const read = await fetch(`http://127.0.0.1:${port}/v1/loc/batch`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ usernames: ['carol', 'dave'] }),
+      })
+      expect(read.ok).toBe(true)
+      const served = (await read.json()) as {
+        profiles: { u: string; loc: string; src: string; conf: number }[]
+      }
+      const byName = new Map(served.profiles.map((p) => [p.u, p]))
+      expect(byName.get('carol')).toMatchObject({ loc: 'Japan', src: 'web' })
+      expect(byName.get('dave')).toMatchObject({ loc: 'web', src: 'Peru' })
+
+      const after = await contribute('after_the_conversion', 'seed-client')
+      expect(after.ok).toBe(true)
+      expect(storedVotes().has('after_the_conversion')).toBe(true)
+    }, 60_000)
   },
 )

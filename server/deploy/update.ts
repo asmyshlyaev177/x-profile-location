@@ -262,7 +262,16 @@ async function main(): Promise<void> {
   const restart = run('systemctl', ['restart', SERVICE])
   if (!restart.ok) die(`could not restart ${SERVICE}: ${restart.out}`)
 
-  if (!(await healthy(PORT))) await rollback(before, PORT)
+  // Nothing pulled (a hand pull came first): the commit it started from is the
+  // one failing, so a rollback would restart the same code as the "old" one.
+  const isServing = await healthy(PORT)
+  if (!isServing && after === before) {
+    die(
+      `healthz FAILED on ${after.slice(0, 7)}, which was already checked out — there is no older commit to roll back to.`,
+      `journalctl -u ${SERVICE} -n 50`,
+    )
+  }
+  if (!isServing) await rollback(before, PORT)
 
   warnAboutNewSettings()
   console.log(`healthz ok — ${SERVICE} is serving ${after.slice(0, 7)}`)

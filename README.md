@@ -147,11 +147,7 @@ endpoint it captures the `authorization` header X attaches to its requests — t
 header goes to X and nowhere else. Your CSRF token is deliberately never broadcast
 internally, and never leaves the browser.
 
-**If you enable the community cache**, three fields are shared for accounts you look
-up: country, source label, and the location-accuracy flag. Nothing else — not bios,
-not post text, not your handle, not who you looked at. Lookups carry no identifier at
-all, so the server cannot link an install to the accounts it viewed. Contributions
-carry a random per-install id and nothing tied to you.
+**If you enable the community cache**, three fields are shared for accounts you look up: country, source label, and the location-accuracy flag. Nothing else — not bios, not post text, not your handle, not who you looked at. Lookups carry no identifier at all, so the server cannot link an install to the accounts it viewed. Contributions carry a random per-install id and nothing tied to you. The server stores each contribution with a 16-bit number derived from the network it came from. For IPv4 that is the /24 block, which names a provider's block of addresses; for IPv6 it is the /48, which usually names one home or office. Either is hashed into one of 65,536 numbers, so about 256 IPv4 blocks, or billions of IPv6 networks, share each one. One network then counts once per account, however many install ids it uses. The database keeps the number, never the address, and deletes it with the contribution about two months after it was last sent; database backups keep it about ten days longer. The web server's request log keeps only the shortened address, unhashed, and is overwritten as it fills.
 
 It's **on by default** and can be turned off in Options; there's also a build with it
 compiled out entirely (`pnpm build:nocache`), and it stays inert in any build with no

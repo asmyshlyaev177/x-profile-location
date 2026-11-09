@@ -68,13 +68,12 @@ export function rootRefusal(userId: number, self: string): string[] | null {
   ]
 }
 
-/** The baseline a snapshot must not come in under: profiles with a vote still
- *  inside the window, which retention cannot touch mid-copy. */
+/** The baseline a snapshot must not come in under: usernames with a vote still
+ *  inside the window. Retention cannot take those mid-copy, and the vote cap
+ *  evicts a username's oldest votes, never its last one. */
 export function baselineQuery(now: number): string {
-  return `SELECT COUNT(*) FROM profiles p WHERE EXISTS (
-    SELECT 1 FROM location_votes v
-     WHERE v.username = p.username
-       AND v.seen_at >= ${now - VOTE_RETENTION_MS});`
+  return `SELECT COUNT(DISTINCT username) FROM location_votes
+    WHERE seen_at >= ${now - VOTE_RETENTION_MS};`
 }
 
 /** inspect()'s two checks plus the baseline, which is what proves it is not short. */
@@ -293,7 +292,7 @@ async function main(): Promise<void> {
     console.error('snapshot verification FAILED.')
     console.error(`integrity_check: ${found.integrity}`)
     console.error(
-      `profiles: ${found.profiles} in snapshot vs ${baseline.out} in the source still backed by a vote inside the retention window`,
+      `usernames with a vote: ${found.profiles} in snapshot vs ${baseline.out} in the source with one inside the retention window`,
     )
     await keepEvidence(SNAP, EVIDENCE)
     process.exit(1)
